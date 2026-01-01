@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Library</OutputType>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>ChillSharp Client library</Title>
+		<Version>1.0.2</Version>
+		<Copyright>© 2025 Andrea Piovesan</Copyright>
+		<PackageIcon>logo.png</PackageIcon>
+		<RepositoryUrl>https://github.com/e-500/chill-sharp</RepositoryUrl>
+		<PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<IsPackable>true</IsPackable>
+		<PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
+		<Description>Lightweight client for interacting with the ChillSharp API. ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
+	</PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\LICENSE.md" Link="LICENSE.md">
+      <PackagePath>\</PackagePath>
+      <Pack>True</Pack>
+    </None>
+	<None Include="..\logo\logo.png">
+		<Pack>True</Pack>
+		<PackagePath>\</PackagePath>
+	</None>
+    <None Include="..\README.md" Link="README.md">
+      <PackagePath>\</PackagePath>
+      <Pack>True</Pack>
+    </None>
+  </ItemGroup>
+
+</Project>

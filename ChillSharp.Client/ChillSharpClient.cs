@@ -1,0 +1,248 @@
+﻿/*
+ * Author: Andrea Piovesan
+ * Year: 2025
+ * License: GNU Affero General Public License (AGPL) version 3
+ *
+ * Disclaimer:
+ * You are free to use, modify, and distribute it under the terms of the AGPL v3 license.
+ * This code comes with no warranty; use it at your own risk.
+ * 
+ * For further information, please refer to README and LICENSE files.
+ */
+
+using ChillSharp.Client.Dto;
+using System.Text;
+using System.Text.Json;
+
+namespace ChillSharp.Client
+{
+    /// <summary>
+    /// Lightweight client for interacting with the ChillSharp API.
+    /// Provides methods for querying, CRUD operations, and batch actions.
+    /// </summary>
+    public class ChillSharpClient
+    {
+        private string _BaseUrl = string.Empty;
+
+        /// <summary>
+        /// Initializes the client with the base URL of the ChillSharp API.
+        /// Removes trailing slashes for consistent request formatting.
+        /// </summary>
+        /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
+        public ChillSharpClient(string BaseUrl)
+        { 
+            if (BaseUrl.EndsWith("/"))
+                BaseUrl = BaseUrl.Substring(0, BaseUrl.Length - 1);
+            _BaseUrl = BaseUrl;
+        }
+
+        /// <summary>
+        /// Sends a query request to the ChillSharp API.
+        /// </summary>
+        /// <param name="Query">Query DTO defining filters and parameters.</param>
+        /// <returns>The response mapped back into a ChillDtoQuery object.</returns>
+        public ChillDtoQuery Query(ChillDtoQuery Query)
+        {
+            DateTime start = DateTime.Now;
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            string url = $"{_BaseUrl}/query";
+            using (HttpClient client = new HttpClient())
+            {
+                string jsonString = JsonSerializer.Serialize(Query);
+                var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+                try
+                {
+                    // Send the POST request
+                    var req = client.PostAsync(url, content);
+                    req.Wait();
+                    HttpResponseMessage response = req.Result;
+
+                    // Check the response
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string responseBody = res.Result;
+                        var ret = JsonSerializer.Deserialize<ChillDtoQuery>(responseBody, options);
+                        Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                        if (ret == null) throw new ChillClientException("Unexpected null query result");
+                        return ret;
+                    }
+                    else
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string errorDetails = res.Result;
+                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ChillClientException($"Unexpected error executing {Action}, see inner exception for details", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes a FIND operation on the given entity.
+        /// </summary>
+        //public ChillDtoEntity? Find(ChillDtoEntity Entity)
+        //{
+        //    return Action("FIND", Entity);
+        //}
+
+        /// <summary>
+        /// Executes a CREATE operation on the given entity.
+        /// <param name="Entity">Entity payload for the action.</param>
+        /// <returns>The server response mapped to ChillDtoEntity.</returns>
+        /// </summary>
+        public ChillDtoEntity Create(ChillDtoEntity Entity)
+        {
+            var res = Action("CREATE", Entity);
+            if (res == null) throw new ChillClientException("Unexpected null entity result");
+            return res;
+        }
+
+        /// <summary>
+        /// Executes an UPDATE operation on the given entity.
+        /// <param name="Entity">Entity payload for the action.</param>
+        /// <returns>The server response mapped to ChillDtoEntity.</returns>
+        /// </summary>
+        public ChillDtoEntity Update(ChillDtoEntity Entity)
+        {
+            var res = Action("UPDATE", Entity);
+            if (res == null) throw new ChillClientException("Unexpected null entity result");
+            return res;
+        }
+
+        /// <summary>
+        /// Executes a DELETE operation on the given entity.
+        /// <param name="Entity">Entity payload for the action.</param>
+        /// </summary>
+        public void Delete(ChillDtoEntity Entity)
+        {
+            Action("DELETE", Entity);
+        }
+
+        /// <summary>
+        /// Internal method used by the CRUD helpers to send
+        /// an action-based request to the API.
+        /// </summary>
+        /// <param name="Action">Action verb (FIND, CREATE, UPDATE, DELETE).</param>
+        /// <param name="Entity">Entity payload for the action.</param>
+        /// <returns>The server response mapped to ChillDtoEntity.</returns>
+        protected ChillDtoEntity? Action(string Action, ChillDtoEntity Entity)
+        {
+            DateTime start = DateTime.Now;
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            string url = $"{_BaseUrl}/{Action.ToLowerInvariant()}";
+            using (HttpClient client = new HttpClient())
+            {
+                string jsonString = JsonSerializer.Serialize(Entity, options);
+
+                var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+
+                try
+                {
+                    // Send the POST request
+                    var req = client.PostAsync(url, content);
+                    req.Wait();
+                    HttpResponseMessage response = req.Result;
+
+                    // Check the response
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string responseBody = res.Result;
+                        if (Action.ToLowerInvariant() != "delete")
+                        {
+                            var ret = JsonSerializer.Deserialize<ChillDtoEntity>(responseBody, options);
+                            Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                            return ret;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string errorDetails = res.Result;
+                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ChillClientException($"Unexpected error executing {Action}, see inner exception for details", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a batch (chunk) of ChillOperation objects to the API.
+        /// </summary>
+        /// <param name="Chunk">List of operations to process.</param>
+        /// <returns>The processed operations returned by the server.</returns>
+        public List<ChillOperation> Chunk(List<ChillOperation> Chunk)
+        {
+            DateTime start = DateTime.Now;
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            string url = $"{_BaseUrl}/chunk";
+            using (HttpClient client = new HttpClient())
+            {
+                string jsonString = JsonSerializer.Serialize(Chunk, options);
+
+                var content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+
+                try
+                {
+                    // Send the POST request
+                    var req = client.PostAsync(url, content);
+                    req.Wait();
+                    HttpResponseMessage response = req.Result;
+
+                    // Check the response
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string responseBody = res.Result;
+                        var ret = JsonSerializer.Deserialize<List<ChillOperation>>(responseBody, options);
+                        Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                        return ret;
+                    }
+                    else
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string errorDetails = res.Result;
+                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ChillClientException($"Unexpected error executing chunk, see inner exception for details", ex);
+                }
+            }
+        }
+    }
+}
