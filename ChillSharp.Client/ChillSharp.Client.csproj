@@ -7,7 +7,6 @@
 		<OutputType>Library</OutputType>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Title>ChillSharp Client library</Title>
-		<Version>1.0.2</Version>
 		<Copyright>© 2025 Andrea Piovesan</Copyright>
 		<PackageIcon>logo.png</PackageIcon>
 		<RepositoryUrl>https://github.com/e-500/chill-sharp</RepositoryUrl>
