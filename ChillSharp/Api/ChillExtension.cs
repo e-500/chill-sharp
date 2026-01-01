@@ -95,17 +95,23 @@ namespace ChillSharp.Api
             endpoints.MapControllers().WithGroupName(ApiUrlBasePath);
 
             ///
-            /// This software is using ChillSharp library that is released under the GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007
+            /// This software is using ChillSharp library that is released under the 
+            /// GNU Affero General Public License version 3
             /// 
-            /// The following endpoint MUST NOT be removed or altered.
-            /// It is required to comply with the AGPL v3 license terms of this product.
-            /// Removing or modifying this endpoint would violate the licensing conditions.
+            /// Please do not remove the following endpoint.
+            /// This helps you to comply with the AGPL v3 license terms of this product.
             /// 
-            endpoints.MapGet($"/{ApiUrlBasePath}/34C890F9", () => "{ disclaimer = \"This software is using ChillSharp library that is released under the GNU GENERAL PUBLIC LICENSE - Version 3, 29 June 2007\" }");
+            string year = "2025";
+            string authors = "Andrea Piovesan";
+            string disclaimer = "This software is using ChillSharp library that is released under the GNU AFFERO GENERAL PUBLIC LICENSE - Version 3";
+            string website = "https://chillsharp.dev/";
+            string repository = "https://github.com/e-500/chill-sharp";
+
+            string body = $"{{ \"authors\":\"{authors}\", \"year\":\"{year}\", \"disclaimer\":\"{disclaimer}\", \"website\":\"{website}\", \"repository\":\"{repository}\" }}";
+
+            endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
             ///
             /// If you need a commercial a LGPL license, please ask!
-            /// 
-            /// The Author: Andrea Piovesan, Year: 2025
             /// 
 
             return endpoints;
