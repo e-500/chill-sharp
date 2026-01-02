@@ -1,7 +1,7 @@
 # **ChillSharp**
 ***Simplifying Enterprise Data Management and API Development***
 
-[https://chillsharp.dev/](ChillSharp.dev)
+[ChillSharp.dev](https://chillsharp.dev/)
 
 ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).
 
