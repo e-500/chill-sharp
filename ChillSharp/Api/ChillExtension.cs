@@ -109,6 +109,7 @@ namespace ChillSharp.Api
 
             string body = $"{{ \"authors\":\"{authors}\", \"year\":\"{year}\", \"disclaimer\":\"{disclaimer}\", \"website\":\"{website}\", \"repository\":\"{repository}\" }}";
 
+            endpoints.MapGet($"/{ApiUrlBasePath}/test", () => "ChillSharp is up and running!");
             endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
             ///
             /// If you need a commercial a LGPL license, please ask!
