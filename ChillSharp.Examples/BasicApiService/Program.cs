@@ -24,6 +24,9 @@ namespace ChillSharp.Examples.BasicApiService
         {
             Console.WriteLine("Starting ChillSharp Basic API Service example... ");
 
+            if (args.Length == 0)
+                args = new string[] { "--urls=https://localhost:5000/" };
+
             var apiServer = Task.Run(() =>
             {
                 var builder = WebApplication.CreateBuilder(args);
@@ -32,9 +35,7 @@ namespace ChillSharp.Examples.BasicApiService
                 app.MapChillApi();
                 app.Run();
             });
-            apiServer.Wait(5000);
-
-            Console.WriteLine("ChillSharp Basic API Service example is running.");
+            apiServer.Wait();
         }
     }
 }
