@@ -22,7 +22,7 @@ namespace ChillSharp.Examples.BasicApiService
         /// <param name="args"></param>
         static void Main(string[] args)
         {
-            Console.WriteLine("Running a ChillSharp Basic API Service example... ");
+            Console.WriteLine("Starting ChillSharp Basic API Service example... ");
 
             var apiServer = Task.Run(() =>
             {
