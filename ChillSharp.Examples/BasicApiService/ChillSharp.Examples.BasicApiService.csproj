@@ -1,4 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<!-- 
+// This is a library that uses Microsoft.NET.Sdk.Web
+// We are looking to optimize the imports without using the whole SDK
+// If you have any ideas, please give us a feedback.
+
+// If you create a new project MUST replace:
+<Project Sdk="Microsoft.NET.Sdk">
+
+// with the following line:
+-->
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -8,12 +18,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ChillSharp" Version="1.0.0" />
+    <PackageReference Include="ChillSharp.Client" Version="1.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\ChillSharp.Client\ChillSharp.Client.csproj" />
-    <ProjectReference Include="..\..\ChillSharp\ChillSharp.csproj" />
   </ItemGroup>
 
 </Project>

@@ -5,6 +5,9 @@ namespace ChillSharp.Examples.BasicApiService
 {
     public class Program
     {
+        /// <summary>
+        /// This is only a dummy EF Core database context used for demo purposes.
+        /// </summary>
         private class DummyContext : DbContext, IChillContext
         {
             public string GetChillTypePrefix()
@@ -13,13 +16,13 @@ namespace ChillSharp.Examples.BasicApiService
             }
         }
 
+        /// <summary>
+        /// Basic API Service demo
+        /// </summary>
+        /// <param name="args"></param>
         static void Main(string[] args)
         {
-            // This is a library that uses Microsoft.NET.Sdk.Web
-            // ChillSharp are looking to optimize the imports without using the whole SDK
-            // If you have any ideas, please give me a feedback.
-
-            Console.WriteLine("Running a ChillSharp Asp.Net.Core library example...");
+            Console.WriteLine("Running a ChillSharp Basic API Service example... ");
 
             var apiServer = Task.Run(() =>
             {
@@ -31,7 +34,7 @@ namespace ChillSharp.Examples.BasicApiService
             });
             apiServer.Wait(5000);
 
-            // Ready
+            Console.WriteLine("ChillSharp Basic API Service example is running.");
         }
     }
 }
