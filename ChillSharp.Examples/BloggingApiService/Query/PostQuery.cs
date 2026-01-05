@@ -1,8 +1,8 @@
 ﻿using ChillSharp.Annotations;
 using ChillSharp.EF;
-using ChillSharp.Examples.CustomChillApiService.Model;
+using ChillSharp.Examples.BloggingApiService.Model;
 
-namespace ChillSharp.Examples.CustomChillApiService.Query
+namespace ChillSharp.Examples.BloggingApiService.Query
 {
     public class PostQuery : ChillQuery
     {

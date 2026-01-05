@@ -1,7 +1,7 @@
 ﻿using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChillSharp.Examples.CustomChillApiService.Model
+namespace ChillSharp.Examples.BloggingApiService.Model
 {
     public partial class Blog : ChillEntity, IChillEntity
     {

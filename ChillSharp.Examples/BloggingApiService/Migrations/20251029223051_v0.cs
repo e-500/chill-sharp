@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace ChillSharp.Examples.CustomChillApiService.Migrations
+namespace ChillSharp.Examples.BloggingApiService.Migrations
 {
     /// <inheritdoc />
     public partial class v0 : Migration

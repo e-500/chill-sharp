@@ -2,7 +2,7 @@
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
 using ChillSharp.EF;
-using ChillSharp.Examples.CustomChillApiService.Model;
+using ChillSharp.Examples.BloggingApiService.Model;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ using System.Text;
 using System.Text.Json;
 using ChillDtoEntity = ChillSharp.Client.Dto.ChillDtoEntity;
 
-namespace ChillSharp.Examples.CustomChillApiService
+namespace ChillSharp.Examples.BloggingApiService
 {
     internal class Program
 	{
@@ -39,7 +39,7 @@ namespace ChillSharp.Examples.CustomChillApiService
                 
 				// MAP
 				app.MapChillApi();
-                app.MapGet("/", () => "CustomChillApiService is running!");
+                app.MapGet("/", () => "BloggingApiService is running!");
                 
 				// RUN
 				app.Run();

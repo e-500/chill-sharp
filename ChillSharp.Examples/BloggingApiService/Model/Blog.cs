@@ -3,7 +3,7 @@ using ChillSharp.EF;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ChillSharp.Examples.CustomChillApiService.Model
+namespace ChillSharp.Examples.BloggingApiService.Model
 {
     public partial class Blog : ChillEntity
     {

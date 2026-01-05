@@ -1,6 +1,6 @@
 ﻿using ChillSharp.EF;
 
-namespace ChillSharp.Examples.CustomChillApiService.Model
+namespace ChillSharp.Examples.BloggingApiService.Model
 {
     public partial class Post : ChillEntity
     {

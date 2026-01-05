@@ -2,7 +2,7 @@
 using ChillSharp.EF;
 using System.ComponentModel.DataAnnotations;
 
-namespace ChillSharp.Examples.CustomChillApiService.Model
+namespace ChillSharp.Examples.BloggingApiService.Model
 {
     public partial class Post : ChillEntity
     {

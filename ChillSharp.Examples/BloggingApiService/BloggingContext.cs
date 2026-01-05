@@ -10,10 +10,10 @@
  * For further information, please refer to README and LICENSE files.
  */
 
-using ChillSharp.Examples.CustomChillApiService.Model;
+using ChillSharp.Examples.BloggingApiService.Model;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChillSharp.Examples.CustomChillApiService
+namespace ChillSharp.Examples.BloggingApiService
 {
     public class BloggingContext : DbContext, IChillContext
     {
@@ -26,18 +26,18 @@ namespace ChillSharp.Examples.CustomChillApiService
         {
             var folder = Environment.SpecialFolder.LocalApplicationData;
             var path = Environment.GetFolderPath(folder);
-            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.CustomChillApiService");
+            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService");
             Directory.CreateDirectory(DbPath);
-            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.CustomChillApiService", "blogging.db");
+            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService", "blogging.db");
         }
 
         public BloggingContext(DbContextOptions<BloggingContext> options) : base(options) 
         {
             var folder = Environment.SpecialFolder.LocalApplicationData;
             var path = Environment.GetFolderPath(folder);
-            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.CustomChillApiService");
+            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService");
             Directory.CreateDirectory(DbPath);
-            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.CustomChillApiService", "blogging.db");
+            DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService", "blogging.db");
         }
 
         // The following configures EF to create a Sqlite database file in the
@@ -50,7 +50,7 @@ namespace ChillSharp.Examples.CustomChillApiService
 
         public string GetChillTypePrefix()
         {
-            return "ChillSharp.Examples.CustomChillApiService";
+            return "ChillSharp.Examples.BloggingApiService";
         }
     }
 }
