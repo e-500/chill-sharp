@@ -17,12 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Api;
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using System.Text.Json;
 using ChillDtoEntity = ChillSharp.Client.Dto.ChillDtoEntity;
 
@@ -30,35 +26,6 @@ namespace ChillSharp.Examples.BloggingApiService
 {
     internal class ProgramWithTestData
     {
-        private static void StartApiService()
-        {
-            var apiServer = Task.Run(() =>
-            {
-                // Activate BloggingContext (implements IChillContext)
-                var ctx = new BloggingContext();
-                ctx.Database.Migrate();
-                
-				// CREATE
-				var builder = WebApplication.CreateBuilder(new string[0]);
-                
-				// ADD
-				builder.Services.AddDbContext<BloggingContext>(options =>
-                        options.UseSqlite($"Data Source={ctx.DbPath}"));
-                builder.Services.AddChillApi<BloggingContext>();
-
-				// BUILD
-                var app = builder.Build();
-                
-				// MAP
-				app.MapChillApi();
-                app.MapGet("/", () => "BloggingApiService is running!");
-                
-				// RUN
-				app.Run();
-            });
-            apiServer.Wait(5000);
-        }
-
         private static ChillDtoEntity CreateBlog(ChillSharpClient Client)
         {
             // Create a new Blog
@@ -169,12 +136,23 @@ namespace ChillSharp.Examples.BloggingApiService
 		{
             try
             {
-                StartApiService();
+                // Init client
                 ChillSharpClient cli = new ChillSharpClient("http://localhost:5000/api/chill");
+
+                // Creating a blog
+                Console.WriteLine("Creating a new blog");
                 var blog = CreateBlog(cli);
+
+                // Create first blog post
+                Console.WriteLine("Creating the first blog post");
                 var post1 = CreateFirstBlogPost(cli, blog);
+
+                // Create a chunk of posts
+                Console.WriteLine("Creating 20 blog posts");
                 CreateTwentyPosts(cli, blog);
 
+                // Quering for blog entity and Posts collection in one query
+                Console.WriteLine("Quering blog with posts");
                 PrintBlogByGuid(cli, blog.Guid);
             }
             catch (Exception ex)
