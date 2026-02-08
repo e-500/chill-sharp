@@ -19,5 +19,8 @@ namespace ChillSharp.Tests.EF.Model
 
         [ChillProperty]
         public string Title { get; set; } = string.Empty;
+
+        [ChillProperty]
+        public string Author { get; set; } = string.Empty;
     }
 }
