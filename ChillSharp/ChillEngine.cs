@@ -20,6 +20,7 @@
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Reflection;
 
 namespace ChillSharp
 {
@@ -89,6 +90,155 @@ namespace ChillSharp
             _CurrentTransaction = null;
         }
 
+        private Assembly _GetContextAssembly()
+        {
+            return _Context.GetType().Assembly;
+        }
+
+        private string _PrepareFullChillType(string ChillType)
+        {
+            var chillTypePrefixWithDot = _Context.GetChillTypePrefix();
+            if (!string.IsNullOrEmpty(chillTypePrefixWithDot) && !chillTypePrefixWithDot.EndsWith("."))
+                chillTypePrefixWithDot += ".";
+            if (string.IsNullOrEmpty(ChillType))
+                throw new ChillException($"Entity type full name ({ChillType}) is invalid");
+            if (ChillType.StartsWith("."))
+                ChillType = ChillType.Substring(1);
+            if (ChillType.EndsWith("."))
+                ChillType = ChillType.Substring(ChillType.Length - 1);
+
+            if (!ChillType.StartsWith(chillTypePrefixWithDot))
+                ChillType = $"{chillTypePrefixWithDot}{ChillType}";
+            return ChillType;
+        }
+
+        public IChillEntity ActivateDetachedChillEntity(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
+            return (IChillEntity)res;
+        }
+
+        public IChillEntity ActivateChillEntity(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
+            return (IChillEntity)res;
+        }
+
+        public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
+            return (IChillQuery<IChillEntity>)res;
+        }
+
+        private object _GetDbSet(DbContext ctx, string ChillType)
+        {
+            var entityType = ActivateChillEntity(ChillType).GetType();
+            // Call DbContext.Set<TEntity>() dynamically
+            var method = typeof(DbContext)
+                .GetMethod("Set", Type.EmptyTypes)?
+                .MakeGenericMethod(entityType);
+            if (method == null)
+                throw new ChillException("DbContext.Set(Type.EmptyTypes) method is not available");
+            var dbSet = method.Invoke(ctx, null);
+            if (dbSet == null)
+                throw new ChillException($"DbSet for {ChillType} not found");
+
+            return dbSet;
+        }
+
+        private IChillEntity? _Find(object DbSet, Guid Guid)
+        {
+            // Try to get Find method
+            var findMethod = DbSet.GetType().GetMethod("Find");
+
+            if (findMethod == null)
+                throw new ChillException($"Unable to locate Find() method on DbSet");
+
+            // Invoke Find(Guid)
+            var result = findMethod.Invoke(DbSet, new object[] { new object[] { Guid } });
+
+            if (result == null)
+                return null;
+
+            // Check entity implements IChillEntity
+            if (result is not IChillEntity entity)
+                throw new ChillException($"Loaded entity is not an IChillEntity (actual type: {result.GetType().FullName})");
+
+            return (IChillEntity)result;
+        }
+
+        //public IChillEntityMetadata? Metadata(string ChillType)
+        //{
+
+        //}
+
+        /// <summary>
+        /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
+        /// <para>
+        /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods
+        /// before execution. After retrieval, <c>OnSelect</c> is called on each entity.
+        /// </para>
+        /// </summary>
+        /// <param name="Query">The Chill query object defining filtering, sorting, and pagination.</param>
+        /// <returns>A list of entities matching the query.</returns>
+        public IChillEntity? Find(string ChillType, Guid Key)
+        {
+            // Find entity
+            var ctx = (DbContext)_Context;
+            var dbSet = _GetDbSet(ctx, ChillType);
+            var Entity = _Find(dbSet, Key);
+            if (Entity == null)
+                return null;
+            Entity.OnSelect(_Context);
+            return Entity;
+        }
+
+        /// <summary>
+        /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
+        /// <para>
+        /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods
+        /// before execution. After retrieval, <c>OnSelect</c> is called on each entity.
+        /// </para>
+        /// </summary>
+        /// <param name="Query">The Chill query object defining filtering, sorting, and pagination.</param>
+        /// <returns>A list of entities matching the query.</returns>
+        public List<IChillEntity> Query(IChillQuery<IChillEntity> Query)
+        {
+            var db = (DbContext)_Context;
+            bool opTrans = false;
+            if (_CurrentTransaction == null)
+            {
+                opTrans = true;
+                db.Database.BeginTransaction();
+            }
+            try
+            {
+                var q = Query.OnQuery(_Context);
+                q = Query.OnSort(_Context, q);
+                q = Query.OnPaginate(_Context, q);
+                var res = q.ToList();
+                res.ForEach(x => x.OnSelect(_Context));
+                if (opTrans)
+                    db.Database.CommitTransaction();
+                return res;
+            }
+            catch //(Exception ex)
+            {
+                if (opTrans)
+                    db.Database.RollbackTransaction();
+                throw;
+            }
+        }
+
         /// <summary>
         /// Creates a new entity in the database.
         /// <para>
@@ -125,11 +275,11 @@ namespace ChillSharp
                     db.Database.CommitTransaction();
                 return entry.Entity;
             }
-            catch (Exception ex)
+            catch //(Exception ex)
             {
                 if (opTrans)
                     db.Database.RollbackTransaction();
-                throw ex;
+                throw;
             }
         }
 
@@ -175,11 +325,11 @@ namespace ChillSharp
                     db.Database.CommitTransaction();
                 return entry.Entity;
             }
-            catch (Exception ex)
+            catch //(Exception ex)
             {
                 if (opTrans)
                     db.Database.RollbackTransaction();
-                throw ex;
+                throw;
             }
         }
 
@@ -210,48 +360,11 @@ namespace ChillSharp
                 if (opTrans)
                     db.Database.CommitTransaction();
             }
-            catch (Exception ex)
+            catch //(Exception ex)
             {
                 if (opTrans)
                     db.Database.RollbackTransaction();
-                throw ex;
-            }
-        }
-
-        /// <summary>
-        /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
-        /// <para>
-        /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods
-        /// before execution. After retrieval, <c>OnSelect</c> is called on each entity.
-        /// </para>
-        /// </summary>
-        /// <param name="Query">The Chill query object defining filtering, sorting, and pagination.</param>
-        /// <returns>A list of entities matching the query.</returns>
-        public List<IChillEntity> Query(IChillQuery<IChillEntity> Query)
-        {
-            var db = (DbContext)_Context;
-            bool opTrans = false;
-            if (_CurrentTransaction == null)
-            {
-                opTrans = true;
-                db.Database.BeginTransaction();
-            }
-            try
-            {
-                var q = Query.OnQuery(_Context);
-                q = Query.OnSort(_Context, q);
-                q = Query.OnPaginate(_Context, q);
-                var res = q.ToList();
-                res.ForEach(x => x.OnSelect(_Context));
-                if (opTrans)
-                    db.Database.CommitTransaction();
-                return res;
-            }
-            catch (Exception ex)
-            {
-                if (opTrans)
-                    db.Database.RollbackTransaction();
-                throw ex;
+                throw;
             }
         }
     }

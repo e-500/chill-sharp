@@ -89,12 +89,12 @@ namespace ChillSharp.Api.Controllers
         /// <returns>
         /// The located entity as a DTO, or <c>null</c> if no matching entity is found.
         /// </returns>
-        //[HttpPost]
-        //[Route("find")]
-        //public IActionResult Find(ChillDtoEntity DtoEntity)
-        //{
-        //    return Ok(_ce.Find(DtoEntity));
-        //}
+        [HttpPost]
+        [Route("find")]
+        public IActionResult Find(ChillDtoEntity DtoEntity)
+        {
+            return Ok(_ce.Find(DtoEntity));
+        }
 
         /// <summary>
         /// Creates a new entity in the database using the Chill DTO engine and returns the saved version.

@@ -73,7 +73,7 @@ namespace ChillSharp
         /// <returns>
         /// A <see cref="ChillDtoEntity"/> representing the entity if found, or <c>null</c> if not found.
         /// </returns>
-        //ChillDtoEntity? Find(ChillDtoEntity DtoEntity);
+        ChillDtoEntity? Find(ChillDtoEntity DtoEntity);
 
         /// <summary>
         /// Creates a new entity in the database from the provided DTO and returns the persisted DTO.

@@ -20,7 +20,6 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 
 namespace ChillSharp
 {
@@ -67,59 +66,6 @@ namespace ChillSharp
         private IChillContext _Context;
         private ChillEngine _Engine;
 
-        private Assembly _GetContextAssembly()
-        {
-            return _Context.GetType().Assembly;
-        }
-
-        private string _PrepareFullChillType(string ChillType)
-        {
-            var chillTypePrefixWithDot = _Context.GetChillTypePrefix();
-            if (!string.IsNullOrEmpty(chillTypePrefixWithDot) && !chillTypePrefixWithDot.EndsWith("."))
-                chillTypePrefixWithDot += ".";
-            if (string.IsNullOrEmpty(ChillType))
-                throw new ChillException($"Entity type full name ({ChillType}) is invalid");
-            if (ChillType.StartsWith("."))
-                ChillType = ChillType.Substring(1);
-            if (ChillType.EndsWith("."))
-                ChillType = ChillType.Substring(ChillType.Length - 1);
-
-            if (!ChillType.StartsWith(chillTypePrefixWithDot))
-                ChillType = $"{chillTypePrefixWithDot}{ChillType}";
-            return ChillType;
-        }
-
-        private IChillEntity _ActivateChillEntity(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-            return (IChillEntity)res;
-        }
-
-        private IChillQuery<IChillEntity> _ActivateChillQuery(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-            return (IChillQuery<IChillEntity>)res;
-        }
-
-        //private IChillEntity? _FindChillEntity(ChillDtoEntity DtoEntity)
-        //{
-        //    string fullChillType = _PrepareFullChillType(DtoEntity.ChillType);
-        //    var entityClass = _GetContextAssembly().GetType(fullChillType);
-        //    if (entityClass == null)
-        //        throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-        //    var entitySelectMethod = entityClass.GetMethod("Find", BindingFlags.Public | BindingFlags.Static);
-        //    if (entitySelectMethod == null)
-        //        throw new ChillException($"Activator was unable to get ({fullChillType}.{entitySelectMethod}()) method using current context assembly");
-
-        //    return (IChillEntity?)entitySelectMethod.Invoke(null, new object[] { _Context, DtoEntity.Guid });
-        //}
-
         /// <summary>
         /// Starts a transaction
         /// </summary>
@@ -145,19 +91,51 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Executes a Chill query represented by a <see cref="ChillDtoQuery"/>, 
+        /// populates its <see cref="ChillDtoQuery.Results"/> with the results, 
+        /// and returns the executed DTO query.
+        /// </summary>
+        /// <param name="DtoQuery">The DTO query containing parameters and type information.</param>
+        /// <returns>
+        /// The same <see cref="ChillDtoQuery"/> with <see cref="ChillDtoQuery.Results"/> filled
+        /// with the query results.
+        /// </returns>
+        /// <exception cref="ChillException">Thrown if the query cannot be activated or executed.</exception>
+        public ChillDtoQuery Query(ChillDtoQuery DtoQuery)
+        {
+            // Activate ChillQuery object from ChillType
+            var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
+
+            // Check activated object
+            if (q == null || !(q is IChillQuery<IChillEntity>))
+                throw new ChillException($"{DtoQuery.ChillType} is not an IChillQuery");
+
+            // Create the query object from Dto setting query params
+            IChillQuery<IChillEntity> chillQuery = q as IChillQuery<IChillEntity>;
+            DtoQuery.ToQuery(_Context, chillQuery);
+
+            // Get and embed results
+            DtoQuery.Results = _Engine.Query(chillQuery).Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties)).ToList();
+
+            // Return executed query Dto
+            return DtoQuery;
+        }
+
+        /// <summary>
         /// Finds a Chill entity based on the provided DTO and returns a corresponding DTO representation.
         /// </summary>
         /// <param name="DtoEntity">The DTO containing the type and GUID of the entity to find.</param>
         /// <returns>
         /// A <see cref="ChillDtoEntity"/> representing the found entity, or <c>null</c> if no matching entity exists.
         /// </returns>
-        //public ChillDtoEntity? Find(ChillDtoEntity DtoEntity)
-        //{
-        //    var Entity = _FindChillEntity(DtoEntity);
-        //    if (Entity == null) 
-        //        return null;
-        //    return new ChillDtoEntity(_Context, Entity);
-        //}
+        public ChillDtoEntity? Find(ChillDtoEntity DtoEntity)
+        {
+            // Find entity
+            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
+            if (Entity == null)
+                return null;
+            return new ChillDtoEntity(_Context, Entity);
+        }
 
         /// <summary>
         /// Creates a new entity in the database based on the provided DTO and returns the persisted DTO.
@@ -166,7 +144,7 @@ namespace ChillSharp
         /// <returns>The newly created <see cref="ChillDtoEntity"/>.</returns>
         public ChillDtoEntity Create(ChillDtoEntity DtoEntity)
         {
-            var e = _ActivateChillEntity(DtoEntity.ChillType);
+            var e = _Engine.ActivateDetachedChillEntity(DtoEntity.ChillType);
 
             // Add to context with ADDED state
             var ctx = (DbContext)_Context;
@@ -190,20 +168,21 @@ namespace ChillSharp
         /// <returns>The updated <see cref="ChillDtoEntity"/>.</returns>
         public ChillDtoEntity Update(ChillDtoEntity DtoEntity)
         {
-            var e = _ActivateChillEntity(DtoEntity.ChillType);
-
-            // Add to context with ADDED state
-            var ctx = (DbContext)_Context;
-            e.Guid = DtoEntity.Guid;
-            if (e.Guid == Guid.Empty)
+            if (DtoEntity.Guid == Guid.Empty)
                 throw new ChillException("Can't update without a valid guid");
 
-            e = ctx.Entry(e).Entity;
-            ctx.Entry(e).State = EntityState.Modified;
+            // Find entity
+            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
 
-            DtoEntity.ToEntity(_Context, e);
-            e = _Engine.Update(e);
-            DtoEntity.FromEntity(_Context, e);
+            // Check Find returned something
+            if (Entity == null)
+                throw new ChillException(
+                    $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
+                );
+
+            DtoEntity.ToEntity(_Context, Entity);
+            Entity = _Engine.Update(Entity);
+            DtoEntity.FromEntity(_Context, Entity);
             return DtoEntity;
         }
 
@@ -213,47 +192,20 @@ namespace ChillSharp
         /// <param name="DtoEntity">The DTO identifying the entity to delete.</param>
         public void Delete(ChillDtoEntity DtoEntity)
         {
-            var e = _ActivateChillEntity(DtoEntity.ChillType);
-            var ctx = (DbContext)_Context;
-            e.Guid = DtoEntity.Guid;
-            if (e.Guid == Guid.Empty)
+            if (DtoEntity.Guid == Guid.Empty)
                 throw new ChillException("Can't update without a valid guid");
 
-            e = ctx.Entry(e).Entity;
+            // Find entity
+            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
 
-            DtoEntity.ToEntity(_Context, e);
-            _Engine.Delete(e);
-        }
+            // Check Find returned something
+            if (Entity == null)
+                throw new ChillException(
+                    $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
+                );
 
-        /// <summary>
-        /// Executes a Chill query represented by a <see cref="ChillDtoQuery"/>, 
-        /// populates its <see cref="ChillDtoQuery.Results"/> with the results, 
-        /// and returns the executed DTO query.
-        /// </summary>
-        /// <param name="DtoQuery">The DTO query containing parameters and type information.</param>
-        /// <returns>
-        /// The same <see cref="ChillDtoQuery"/> with <see cref="ChillDtoQuery.Results"/> filled
-        /// with the query results.
-        /// </returns>
-        /// <exception cref="ChillException">Thrown if the query cannot be activated or executed.</exception>
-        public ChillDtoQuery Query(ChillDtoQuery DtoQuery)
-        {
-            // Activate ChillQuery object from ChillType
-            var q = _ActivateChillQuery(DtoQuery.ChillType);
-            
-            // Check activated object
-            if (q == null || !(q is IChillQuery<IChillEntity>))
-                throw new ChillException($"{DtoQuery.ChillType} is not an IChillQuery");
-
-            // Create the query object from Dto setting query params
-            IChillQuery<IChillEntity> chillQuery = q as IChillQuery<IChillEntity>;
-            DtoQuery.ToQuery(_Context, chillQuery);
-            
-            // Get and embed results
-            DtoQuery.Results = _Engine.Query(chillQuery).Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties)).ToList();
-            
-            // Return executed query Dto
-            return DtoQuery;
+            DtoEntity.ToEntity(_Context, Entity);
+            _Engine.Delete(Entity);
         }
     }
 }

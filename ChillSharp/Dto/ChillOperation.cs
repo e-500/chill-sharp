@@ -71,10 +71,10 @@ namespace ChillSharp.Dto
                     if (obj == null) return;
                     ChillEngine.Query((ChillDtoQuery)obj);
                     break;
-                //case ChillOperationVerb.FIND:
-                //    if (obj == null) return;
-                //    ChillEngine.Find((ChillDtoEntity)obj);
-                //    break;
+                case ChillOperationVerb.FIND:
+                    if (obj == null) return;
+                    ChillEngine.Find((ChillDtoEntity)obj);
+                    break;
                 case ChillOperationVerb.CREATE:
                     if (obj == null) return;
                     ChillEngine.Create((ChillDtoEntity)obj);
@@ -101,7 +101,7 @@ namespace ChillSharp.Dto
     {
         public const string TRANSACTION  = "transaction";
         public const string QUERY  = "query";
-        //public const string FIND   = "find";
+        public const string FIND   = "find";
         public const string CREATE = "create";
         public const string UPDATE = "update";
         public const string DELETE = "delete";
