@@ -52,9 +52,16 @@ namespace ChillSharp.Api
         /// Registers ChillApi controllers and allows sharing an existing DbContext type.
         /// </summary>
         /// <typeparam name="TContext">The application's EF Core DbContext type.</typeparam>
-        public static IServiceCollection AddChillApi<TContext>(this IServiceCollection services)
+        public static IServiceCollection AddChillApi<TContext>(this IServiceCollection services, Action<ChillApiOptions>? configureOptions = null)
             where TContext : DbContext, IChillContext // Both class and interface checked at compile-time
         {
+            // Configure options
+            var options = new ChillApiOptions();
+            configureOptions?.Invoke(options);
+
+            // Store options in DI
+            services.AddSingleton(options);
+
             // Ensure DbContext<TContext> is already registered by the host app
             // Ensure the controllers from this assembly are available
             services.AddControllers()
@@ -92,7 +99,13 @@ namespace ChillSharp.Api
                 ApiUrlBasePath = ApiUrlBasePath.Substring(0, ApiUrlBasePath.Length - 1);
             if (ApiUrlBasePath.StartsWith("/"))
                 ApiUrlBasePath = ApiUrlBasePath.Substring(1, ApiUrlBasePath.Length);
-            endpoints.MapControllers().WithGroupName(ApiUrlBasePath);
+
+            var chillControllers = endpoints.MapControllers().WithGroupName(ApiUrlBasePath);
+            var options = endpoints.ServiceProvider.GetRequiredService<ChillApiOptions>();
+            if (options.ProtectedApi)
+            {
+                chillControllers.RequireAuthorization();
+            }
 
             ///
             /// This software is using ChillSharp library that is released under the 
@@ -117,5 +130,13 @@ namespace ChillSharp.Api
 
             return endpoints;
         }
+    }
+
+    public class ChillApiOptions
+    {
+        /// <summary>
+        /// If true, Chill API endpoints will require authentication.
+        /// </summary>
+        public bool ProtectedApi { get; set; } = false;
     }
 }
