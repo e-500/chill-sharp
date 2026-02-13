@@ -59,8 +59,8 @@ namespace ChillSharp.Annotations
             [CallerMemberName] string? PropertyName = null, 
             bool CallOnInflate = false)
         {
-            this._PropertyName = PropertyName;
-            this._CallOnInflate = CallOnInflate;
+            this.PropertyName = PropertyName;
+            this.CallOnInflate = CallOnInflate;
         }
 
         /// <summary>
@@ -91,43 +91,38 @@ namespace ChillSharp.Annotations
             [CallerMemberName] string? PropertyName = null,
             bool CallOnInflate = false)
         {
-            this._PropertyName = PropertyName;
-            this._CallOnInflate = CallOnInflate;
-            this._UniquePropertyKey = new Guid(UniquePropertyKeyString);
-            this._PrimaryLanguageLabel = PrimaryLanguageLabel;
-            this._SecondaryLanguageLabel = SecondaryLanguageLabel;
+            this.PropertyName = PropertyName;
+            this.CallOnInflate = CallOnInflate;
+            this.UniquePropertyKey = new Guid(UniquePropertyKeyString);
+            this.PrimaryLanguageLabel = PrimaryLanguageLabel;
+            this.SecondaryLanguageLabel = SecondaryLanguageLabel;
         }
 
-        private readonly string? _PropertyName = null;
         /// <summary>
         /// Holds the name of the field or property associated with this attribute.
         /// This is kept private, but could be used internally if reflection is applied.
         /// </summary>
-        public string? PropertyName { get { return this._PropertyName; } }
+        public string? PropertyName { get; }
 
-        private readonly bool _CallOnInflate = false;
         /// <summary>
         /// Tells ChillSharp engine to call OnInflate() to populate the property
         /// Generally because EF can't do it automatically (eg. NotMapped)
         /// </summary>
-        public bool CallOnInflate { get { return this._CallOnInflate; } }
+        public bool CallOnInflate { get; }
 
-        private readonly Guid? _UniquePropertyKey;
         /// <summary>
         /// Unique key for the property to store the label for translation purposes
         /// </summary>
-        public Guid? UniquePropertyKey { get { return this._UniquePropertyKey; } }
+        public Guid? UniquePropertyKey { get; }
 
-        private readonly string? _PrimaryLanguageLabel;
         /// <summary>
         /// Primary language label text (International english)
         /// </summary>
-        public string? PrimaryLanguageLabel { get { return this._PrimaryLanguageLabel; } }
+        public string? PrimaryLanguageLabel { get; }
 
-        private readonly string? _SecondaryLanguageLabel;
         /// <summary>
         /// Secondary language label text (Software house / Developer language)
         /// </summary>
-        public string? SecondaryLanguageLabel { get { return this. _SecondaryLanguageLabel; } }
+        public string? SecondaryLanguageLabel { get ; }
     }
 }
