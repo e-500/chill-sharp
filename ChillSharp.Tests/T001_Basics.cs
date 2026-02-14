@@ -159,7 +159,7 @@ namespace ChillSharp.Tests
             // Init client
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Create an empty mock with a Guid of the entity to delete
+            // Create an empty mock with a Guid of the entity to find
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = PostGuid.Value;

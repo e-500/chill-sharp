@@ -60,7 +60,7 @@ namespace ChillSharp.Client.Dto
 		/// Each value is wrapped in a ChillFieldValue, which includes metadata about the field type.
 		/// This allows for flexible, dynamic serialization of entity fields.
 		/// </summary>
-		public Dictionary<string, dynamic?> Properties { get; set; } = new Dictionary<string, dynamic?>();
+		public Dictionary<string, object?> Properties { get; set; } = new Dictionary<string, object?>();
 
         /// <summary>
         /// List of properties of the entity to be obtained with this query

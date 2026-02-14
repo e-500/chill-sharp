@@ -131,10 +131,10 @@ namespace ChillSharp
         public ChillDtoEntity? Find(ChillDtoEntity DtoEntity)
         {
             // Find entity
-            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
-            if (Entity == null)
+            var e = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
+            if (e == null)
                 return null;
-            return new ChillDtoEntity(_Context, Entity);
+            return new ChillDtoEntity(_Context, e);
         }
 
         /// <summary>
@@ -172,17 +172,17 @@ namespace ChillSharp
                 throw new ChillException("Can't update without a valid guid");
 
             // Find entity
-            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
+            var e = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
 
             // Check Find returned something
-            if (Entity == null)
+            if (e == null)
                 throw new ChillException(
                     $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
                 );
 
-            DtoEntity.ToEntity(_Context, Entity);
-            Entity = _Engine.Update(Entity);
-            DtoEntity.FromEntity(_Context, Entity);
+            DtoEntity.ToEntity(_Context, e);
+            e = _Engine.Update(e);
+            DtoEntity.FromEntity(_Context, e);
             return DtoEntity;
         }
 
@@ -196,16 +196,16 @@ namespace ChillSharp
                 throw new ChillException("Can't update without a valid guid");
 
             // Find entity
-            var Entity = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
+            var e = _Engine.Find(DtoEntity.ChillType, DtoEntity.Guid);
 
             // Check Find returned something
-            if (Entity == null)
+            if (e == null)
                 throw new ChillException(
                     $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
                 );
 
-            DtoEntity.ToEntity(_Context, Entity);
-            _Engine.Delete(Entity);
+            DtoEntity.ToEntity(_Context, e);
+            _Engine.Delete(e);
         }
     }
 }
