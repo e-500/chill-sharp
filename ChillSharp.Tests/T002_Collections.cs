@@ -57,9 +57,13 @@ namespace ChillSharp.Tests
             var q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
             q.Properties.Add("Guid", cRes.Guid);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title", "Url" });
-            // Request also the collection property
-            q.ResultProperties.Add(new ChillDtoProperty() { PropertyName = "Posts", SubProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title" }) });
+            q.ResultProperties = ChillDtoProperty.Build([
+                "Guid",
+                "Title",
+                "Url",
+                // Request also the Posts collection property with sub properties
+                ChillDtoProperty.With("Posts", ["Guid", "Title"])
+                ]);
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
@@ -119,8 +123,13 @@ namespace ChillSharp.Tests
             q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
             q.Properties.Add("Guid", BlogGuid.Value);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title", "Url" });
-            q.ResultProperties.Add(new ChillDtoProperty() { PropertyName = "Posts", SubProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title" }) });
+            q.ResultProperties = ChillDtoProperty.Build([
+                "Guid",
+                "Title",
+                "Url",
+                // Request also the Posts collection property with sub properties
+                ChillDtoProperty.With("Posts", ["Guid", "Title"])
+                ]);
             qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
@@ -180,7 +189,7 @@ namespace ChillSharp.Tests
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", post.Guid);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Blog", "Title" });
+            q.ResultProperties = ChillDtoProperty.Build(["Guid", "Blog", "Title"]);
             var qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
@@ -197,7 +206,7 @@ namespace ChillSharp.Tests
             q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", post.Guid);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Blog", "Title" });
+            q.ResultProperties = ChillDtoProperty.Build(["Guid", "Blog", "Title"]);
             qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
