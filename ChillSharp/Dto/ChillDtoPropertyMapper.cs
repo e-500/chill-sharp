@@ -17,155 +17,254 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/// <summary>
-/// Frontend-oriented abstraction of CLR property types.
-/// Numeric values are stable and can be safely consumed by clients.
-/// </summary>
-public enum ChillDtoPropertyType
+using ChillSharp.EF;
+
+namespace ChillSharp.Dto
 {
     /// <summary>
-    /// Fallback when a type cannot be mapped.
+    /// Frontend-oriented abstraction of CLR property types.
+    /// Numeric values are stable and can be safely consumed by clients.
     /// </summary>
-    Unknown = 0,
-
-    /// <summary>
-    /// Any integral numeric type (int, long, short, etc.).
-    /// </summary>
-    Integer = 10,
-
-    /// <summary>
-    /// Any floating-point or fixed-point numeric type.
-    /// </summary>
-    Decimal = 20,
-
-    /// <summary>
-    /// Date without time component.
-    /// </summary>
-    Date = 30,
-
-    /// <summary>
-    /// Time of day without date component.
-    /// </summary>
-    Time = 40,
-
-    /// <summary>
-    /// Date and time, possibly with offset.
-    /// </summary>
-    DateTime = 50,
-
-    /// <summary>
-    /// Duration or time interval.
-    /// </summary>
-    Duration = 60,
-
-    /// <summary>
-    /// Boolean value.
-    /// </summary>
-    Boolean = 70,
-
-    /// <summary>
-    /// Textual value.
-    /// </summary>
-    String = 80
-}
-
-/// <summary>
-/// Maps CLR types to frontend-friendly <see cref="ChillDtoPropertyType"/> values.
-/// </summary>
-public static class UiPropertyTypeMapper
-{
-    /// <summary>
-    /// Maps a CLR <see cref="Type"/> to a corresponding <see cref="ChillDtoPropertyType"/>.
-    /// Nullable types are unwrapped before evaluation.
-    /// </summary>
-    public static ChillDtoPropertyType Map(Type type)
+    public enum ChillDtoPropertyType
     {
-        // Null safety
-        if (type == null)
-            return ChillDtoPropertyType.Unknown;
+        /// <summary>
+        /// Fallback when a type cannot be mapped.
+        /// </summary>
+        Unknown = 0,
 
-        // Unwrap Nullable<T> to its underlying type
-        type = Nullable.GetUnderlyingType(type) ?? type;
+        /// <summary>
+        /// Any integral numeric type (int, long, short, etc.).
+        /// </summary>
+        Integer = 10,
 
-        // Integer numeric types
-        if (IsInteger(type))
-            return ChillDtoPropertyType.Integer;
+        /// <summary>
+        /// Any floating-point or fixed-point numeric type.
+        /// </summary>
+        Decimal = 20,
 
-        // Floating-point and fixed-point numeric types
-        if (IsDecimal(type))
-            return ChillDtoPropertyType.Decimal;
+        /// <summary>
+        /// Date without time component.
+        /// </summary>
+        Date = 30,
 
-        // Date-only types
-        if (IsDate(type))
-            return ChillDtoPropertyType.Date;
+        /// <summary>
+        /// Time of day without date component.
+        /// </summary>
+        Time = 40,
 
-        // Time-only types
-        if (IsTime(type))
-            return ChillDtoPropertyType.Time;
+        /// <summary>
+        /// Date and time, possibly with offset.
+        /// </summary>
+        DateTime = 50,
 
-        // Date + time types
-        if (IsDateTime(type))
-            return ChillDtoPropertyType.DateTime;
+        /// <summary>
+        /// Duration or time interval.
+        /// </summary>
+        Duration = 60,
 
-        // Duration / interval types
-        if (IsDuration(type))
-            return ChillDtoPropertyType.Duration;
+        /// <summary>
+        /// Boolean value.
+        /// </summary>
+        Boolean = 70,
 
-        // Boolean type
-        if (type == typeof(bool))
-            return ChillDtoPropertyType.Boolean;
+        /// <summary>
+        /// Textual value.
+        /// </summary>
+        String = 80,
 
-        // Textual types
-        if (type == typeof(string) || type == typeof(char))
-            return ChillDtoPropertyType.String;
+        /// <summary>
+        /// Textual value.
+        /// </summary>
+        Text = 81,
 
-        // Unknown or unsupported type
-        return ChillDtoPropertyType.Unknown;
+        /// <summary>
+        /// Represents an entity that is associated with a chill or cooling process.
+        /// </summary>
+        ChillEntity = 1000,
+
+        /// <summary>
+        /// Represents a collection of entities that are in a chilled or inactive state.
+        /// </summary>
+        ChillEntityCollection = 1010,
+
+        /// <summary>
+        /// Specifies a query that retrieves data in a relaxed or non-urgent manner.
+        /// </summary>
+        ChillQuery = 1100
     }
 
     /// <summary>
-    /// Determines whether the type is an integral numeric type.
+    /// Maps CLR types to frontend-friendly <see cref="ChillDtoPropertyType"/> values.
     /// </summary>
-    private static bool IsInteger(Type type) =>
-        type == typeof(byte) ||
-        type == typeof(sbyte) ||
-        type == typeof(short) ||
-        type == typeof(ushort) ||
-        type == typeof(int) ||
-        type == typeof(uint) ||
-        type == typeof(long) ||
-        type == typeof(ulong);
+    public static class ChillDtoPropertyMapper
+    {
+        /// <summary>
+        /// Maps a CLR <see cref="Type"/> to a corresponding <see cref="ChillDtoPropertyType"/>.
+        /// Nullable types are unwrapped before evaluation.
+        /// </summary>
+        public static ChillDtoPropertyType Map(Type type)
+        {
+            // Null safety
+            if (type == null)
+                return ChillDtoPropertyType.Unknown;
 
-    /// <summary>
-    /// Determines whether the type is a floating-point or fixed-point numeric type.
-    /// </summary>
-    private static bool IsDecimal(Type type) =>
-        type == typeof(float) ||
-        type == typeof(double) ||
-        type == typeof(decimal);
+            // Unwrap Nullable<T> to its underlying type
+            type = Nullable.GetUnderlyingType(type) ?? type;
 
-    /// <summary>
-    /// Determines whether the type represents a date without time.
-    /// </summary>
-    private static bool IsDate(Type type) =>
-        type == typeof(DateOnly);
+            // Integer numeric types
+            if (IsInteger(type))
+                return ChillDtoPropertyType.Integer;
 
-    /// <summary>
-    /// Determines whether the type represents a time of day without date.
-    /// </summary>
-    private static bool IsTime(Type type) =>
-        type == typeof(TimeOnly);
+            // Floating-point and fixed-point numeric types
+            if (IsDecimal(type))
+                return ChillDtoPropertyType.Decimal;
 
-    /// <summary>
-    /// Determines whether the type represents a date and time.
-    /// </summary>
-    private static bool IsDateTime(Type type) =>
-        type == typeof(DateTime) ||
-        type == typeof(DateTimeOffset);
+            // Date-only types
+            if (IsDate(type))
+                return ChillDtoPropertyType.Date;
 
-    /// <summary>
-    /// Determines whether the type represents a duration or interval.
-    /// </summary>
-    private static bool IsDuration(Type type) =>
-        type == typeof(TimeSpan);
+            // Time-only types
+            if (IsTime(type))
+                return ChillDtoPropertyType.Time;
+
+            // Date + time types
+            if (IsDateTime(type))
+                return ChillDtoPropertyType.DateTime;
+
+            // Duration / interval types
+            if (IsDuration(type))
+                return ChillDtoPropertyType.Duration;
+
+            // Chill entities
+            if (IsChillEntity(type))
+                return ChillDtoPropertyType.ChillEntity;
+
+            // Collections of chill entities
+            if (IsChillEntityCollection(type))
+                return ChillDtoPropertyType.ChillEntityCollection;
+
+            // Chill query types
+            if (IsChillQuery(type))
+                return ChillDtoPropertyType.ChillQuery; //ciao papi
+
+            // Boolean type
+            if (type == typeof(bool))
+                return ChillDtoPropertyType.Boolean;
+
+            // Textual types
+            if (type == typeof(string) || type == typeof(char))
+                return ChillDtoPropertyType.String;
+
+            // Unknown or unsupported type
+            return ChillDtoPropertyType.Unknown;
+        }
+
+        /// <summary>
+        /// Determines whether the type is an integral numeric type.
+        /// </summary>
+        private static bool IsInteger(Type type) =>
+            type == typeof(byte) ||
+            type == typeof(sbyte) ||
+            type == typeof(short) ||
+            type == typeof(ushort) ||
+            type == typeof(int) ||
+            type == typeof(uint) ||
+            type == typeof(long) ||
+            type == typeof(ulong);
+
+        /// <summary>
+        /// Determines whether the type is a floating-point or fixed-point numeric type.
+        /// </summary>
+        private static bool IsDecimal(Type type) =>
+            type == typeof(float) ||
+            type == typeof(double) ||
+            type == typeof(decimal);
+
+        /// <summary>
+        /// Determines whether the type represents a date without time.
+        /// </summary>
+        private static bool IsDate(Type type) =>
+            type == typeof(DateOnly);
+
+        /// <summary>
+        /// Determines whether the type represents a time of day without date.
+        /// </summary>
+        private static bool IsTime(Type type) =>
+            type == typeof(TimeOnly);
+
+        /// <summary>
+        /// Determines whether the type represents a date and time.
+        /// </summary>
+        private static bool IsDateTime(Type type) =>
+            type == typeof(DateTime) ||
+            type == typeof(DateTimeOffset);
+
+        /// <summary>
+        /// Determines whether the type represents a duration or interval.
+        /// </summary>
+        private static bool IsDuration(Type type) =>
+            type == typeof(TimeSpan);
+
+        private static bool IsChillEntity(Type type) =>
+            type != null && typeof(IChillEntity).IsAssignableFrom(type);
+
+        private static bool IsChillEntityCollection(Type type)
+        {
+            if (type == null)
+                return false;
+
+            // array of IChillEntity
+            if (type.IsArray)
+            {
+                var elem = type.GetElementType();
+                return elem != null && typeof(IChillEntity).IsAssignableFrom(elem);
+            }
+
+            // check IEnumerable<T> (List<IChillEntity>, IEnumerable<IChillEntity>, ICollection<IChillEntity>, etc.)
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (!iface.IsGenericType)
+                    continue;
+
+                if (iface.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>))
+                {
+                    var arg = iface.GetGenericArguments()[0];
+                    if (typeof(IChillEntity).IsAssignableFrom(arg))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsChillQuery(Type type)
+        {
+            if (type == null)
+                return false;
+
+            // direct closed generic: IChillQuery<SomeEntity>
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IChillQuery<>))
+            {
+                var arg = type.GetGenericArguments()[0];
+                if (typeof(IChillEntity).IsAssignableFrom(arg))
+                    return true;
+            }
+
+            // check all implemented interfaces for IChillQuery<T>
+            foreach (var iface in type.GetInterfaces())
+            {
+                if (!iface.IsGenericType)
+                    continue;
+
+                if (iface.GetGenericTypeDefinition() == typeof(IChillQuery<>))
+                {
+                    var arg = iface.GetGenericArguments()[0];
+                    if (typeof(IChillEntity).IsAssignableFrom(arg))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+    }
 }

@@ -46,10 +46,9 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillDtoEngine"/> using a Chill context.
         /// </summary>
         /// <param name="Context">The ChillSharp database context.</param>
-
-        public ChillDtoEngine(IChillContext Context)
+        public ChillDtoEngine(IChillContext Context, IChillDtoSchemaCache SchemaCache)
         {
-            _Engine = new ChillEngine(Context);
+            _Engine = new ChillEngine(Context, SchemaCache);
             _Context = Context;
         }
 
@@ -206,6 +205,16 @@ namespace ChillSharp
 
             DtoEntity.ToEntity(_Context, e);
             _Engine.Delete(e);
+        }
+
+        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
+        {
+            return _Engine.GetSchema(ChillType, ChillViewCode);
+        }
+
+        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
+        {
+            return _Engine.SetSchema(Schema);
         }
     }
 }

@@ -17,11 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using ChillSharp.Dto;
 
 namespace ChillSharp.Api
 {
@@ -62,6 +60,9 @@ namespace ChillSharp.Api
             // Store options in DI
             services.AddSingleton(options);
 
+            // Set schema cache system
+            services.AddSingleton<IChillDtoSchemaCache, ChillDtoSchemaCache>();
+
             // Ensure DbContext<TContext> is already registered by the host app
             // Ensure the controllers from this assembly are available
             services.AddControllers()
@@ -80,11 +81,12 @@ namespace ChillSharp.Api
                 return context;
             });
 
-            // Register IChillDtoEngine using the provided IChillContext
+            // Register IChillDtoEngine using the provided IChillContext and the IChillDtoSchemaCache singleton
             services.AddScoped<IChillDtoEngine>(provider =>
             {
                 var chillContext = provider.GetRequiredService<IChillContext>();
-                return new ChillDtoEngine(chillContext);
+                var schemaCache = provider.GetRequiredService<IChillDtoSchemaCache>();
+                return new ChillDtoEngine(chillContext, schemaCache);
             });
 
             return services;

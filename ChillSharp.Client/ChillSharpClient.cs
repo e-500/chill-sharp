@@ -234,6 +234,59 @@ namespace ChillSharp.Client
                         res.Wait();
                         string responseBody = res.Result;
                         var ret = JsonSerializer.Deserialize<List<ChillOperation>>(responseBody, options);
+                            Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                            return ret;
+                        }
+                        else
+                        {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string errorDetails = res.Result;
+                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ChillClientException($"Unexpected error executing {Action}, see inner exception for details", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the schema definition for a specified chill type and view code from the remote service.
+        /// </summary>
+        /// <param name="chillType">The identifier of the chill type for which to retrieve the schema. Cannot be null or empty.</param>
+        /// <param name="chillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
+        /// <returns>A <see cref="ChillDtoSchema"/> object containing the schema definition if found; otherwise, <see
+        /// langword="null"/>.</returns>
+        /// <exception cref="ChillClientException">Thrown if the remote service returns an error response or if an unexpected error occurs during the request.</exception>
+        public ChillDtoSchema? GetSchema(string chillType, string chillViewCode)
+        {
+            DateTime start = DateTime.Now;
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            string url = $"{_BaseUrl}/get-schema?chillType={chillType}&chillViewCode={chillViewCode}";
+
+            using (HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    // Send the GET request
+                    var req = client.GetAsync(url);
+                    req.Wait();
+                    HttpResponseMessage response = req.Result;
+
+                    // Check the response
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string responseBody = res.Result;
+                        var ret = JsonSerializer.Deserialize<ChillDtoSchema>(responseBody, options);
                         Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
                         return ret;
                     }
@@ -247,7 +300,61 @@ namespace ChillSharp.Client
                 }
                 catch (Exception ex)
                 {
-                    throw new ChillClientException($"Unexpected error executing chunk, see inner exception for details", ex);
+                    throw new ChillClientException($"Unexpected error executing {Action}, see inner exception for details", ex);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a schema definition to the remote service.
+        /// </summary>
+        /// <param name="schema">
+        /// The <see cref="ChillDtoSchema"/> object containing the schema definition,
+        /// including chillType and chillViewCode. Cannot be null.
+        /// </param>
+        /// <exception cref="ChillClientException">
+        /// Thrown if the remote service returns an error response or if an unexpected error occurs during the request.
+        /// </exception>
+        public void SetSchema(ChillDtoSchema schema)
+        {
+            DateTime start = DateTime.Now;
+
+            if (schema == null)
+                throw new ArgumentNullException(nameof(schema));
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            string url = $"{_BaseUrl}/set-schema";
+
+            using (HttpClient client = new HttpClient())
+            {
+                try
+                {
+                    string json = JsonSerializer.Serialize(schema, options);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                    var req = client.PostAsync(url, content);
+                    req.Wait();
+                    HttpResponseMessage response = req.Result;
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
+                    }
+                    else
+                    {
+                        var res = response.Content.ReadAsStringAsync();
+                        res.Wait();
+                        string errorDetails = res.Result;
+                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new ChillClientException($"Unexpected error executing {Action}, see inner exception for details", ex);
                 }
             }
         }

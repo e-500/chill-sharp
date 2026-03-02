@@ -17,12 +17,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Annotations;
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 
 namespace ChillSharp
 {
@@ -49,12 +51,14 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillEngine"/> with the given Chill context.
         /// </summary>
         /// <param name="Contex">The Chill database context implementing <see cref="IChillContext"/>.</param>
-        public ChillEngine(IChillContext Contex) 
+        public ChillEngine(IChillContext Contex, IChillDtoSchemaCache SchemaCache) 
         {
             _Context = Contex;
+            _SchemaCache = SchemaCache;
         }
 
         internal IChillContext _Context;
+        private IChillDtoSchemaCache _SchemaCache;
         private IDbContextTransaction? _CurrentTransaction;
 
         /// <summary>
@@ -213,6 +217,26 @@ namespace ChillSharp
                     $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
 
             return (IChillQuery<IChillEntity>)res;
+        }
+
+       /// <summary>
+       /// Creates and returns an instance of the specified chill type using the current context assembly.
+       /// </summary>
+       /// <remarks>The returned instance is created dynamically based on the provided chill type name.
+       /// Ensure that the chill type exists and is accessible in the context assembly before calling this
+       /// method.</remarks>
+       /// <param name="ChillType">The name of the chill type to activate. Must be a valid type name recognized by the context assembly.</param>
+       /// <returns>An object instance of the specified chill type. The returned object will be of the type corresponding to the
+       /// provided chill type name.</returns>
+       /// <exception cref="ChillException">Thrown if the specified chill type cannot be instantiated using the current context assembly.</exception>
+        private object ActivateGenericChillType(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
+            return res;
         }
 
         private IChillEntity? _Find(object DbSet, Guid Guid)
@@ -422,5 +446,147 @@ namespace ChillSharp
                 throw;
             }
         }
-    }
+
+        /// <summary>
+        /// Returns the file path where schemas are stored (AppData\ChillSharp\Schema).
+        /// </summary>
+        private string GetSchemaDirectory()
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            return Path.Combine(appData, "ChillSharp", "Schema");
         }
+
+        /// <summary>
+        /// Makes a safe file name by replacing invalid chars with underscore and falling back to 'default'.
+        /// </summary>
+        private static string SafeFileName(string? s)
+        {
+            if (string.IsNullOrWhiteSpace(s))
+                return "default";
+            var invalid = Path.GetInvalidFileNameChars();
+            var sb = new StringBuilder(s.Length);
+            foreach (var c in s)
+            {
+                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds and ensures the schema file path for given chillType and chillViewCode.
+        /// </summary>
+        private string GetSchemaFilePath(string chillType, string chillViewCode)
+        {
+            var dir = GetSchemaDirectory();
+            Directory.CreateDirectory(dir);
+            var safeType = SafeFileName(chillType);
+            var safeView = SafeFileName(chillViewCode);
+            var fileName = $"{safeType}-{safeView}.json";
+            return Path.Combine(dir, fileName);
+        }
+
+        /// <summary>
+        /// Build a ChillDtoSchema by activating a detached entity and a query for the provided chillType.
+        /// Uses reflection to extract public properties from the activated entity / query and attempts
+        /// to populate common schema properties via JSON-driven assignment to match target types.
+        /// This method is best-effort and will not throw on mismatches.
+        /// </summary>
+        private ChillDtoSchema BuildSchemaFromActivations(string chillType, string chillViewCode)
+        {
+            var schema = new ChillDtoSchema();
+            schema.ChillType = chillType;
+            schema.ChillViewCode = chillViewCode;
+
+            // Activate detached entity and query using engine
+            object? e = null;
+            try
+            {
+                e = ActivateGenericChillType(chillType);
+            }
+            catch
+            {
+                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
+            }
+            if (e == null)
+                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
+
+            // All chill properties matching the list
+            // or all chill properties if list is null
+            // No fields if list is empty.
+            var ef_props = e.GetType().GetProperties().Where(prop =>
+                prop.IsDefined(typeof(ChillPropertyAttribute), false));
+
+            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, _Context.GetChillTypePrefix())).ToList();
+
+            return schema;
+        }
+
+        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
+        {
+            if (_SchemaCache.TryGet(ChillType, ChillViewCode, out ChillDtoSchema? cachedSchema))
+                return cachedSchema;
+
+            var path = GetSchemaFilePath(ChillType, ChillViewCode);
+            ChillDtoSchema? schema = null;
+            if (!File.Exists(path))
+            {
+                // Build a best-effort schema by activating entity and query and reflecting their properties.
+                try
+                {
+                    schema = BuildSchemaFromActivations(ChillType, ChillViewCode);
+                }
+                catch
+                {
+                    // If ChillDtoSchema doesn't expose those properties, ignore.
+                }
+            }
+            else
+            {
+                var json = File.ReadAllText(path);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    WriteIndented = true
+                };
+                schema = JsonSerializer.Deserialize<ChillDtoSchema>(json, options);
+            }
+            if (schema != null)
+                _SchemaCache.SetSchema(schema);
+            return schema;
+        }
+
+        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
+        {
+            if (Schema == null)
+                throw new ArgumentNullException(nameof(Schema));
+
+            string chillType = null!;
+            string chillViewCode = null!;
+            try
+            {
+                chillType = Schema.ChillType;
+                chillViewCode = Schema.ChillViewCode;
+            }
+            catch
+            {
+                // If properties are not present on the type, fall back to defaults.
+                chillType = "default";
+                chillViewCode = "default";
+            }
+
+            var path = GetSchemaFilePath(chillType, chillViewCode);
+
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+
+            var json = JsonSerializer.Serialize(Schema, options);
+            File.WriteAllText(path, json);
+
+            _SchemaCache.SetSchema(Schema);
+
+            return Schema;
+        }
+    }
+}
