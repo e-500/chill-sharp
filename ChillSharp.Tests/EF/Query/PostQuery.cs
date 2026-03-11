@@ -9,6 +9,10 @@ using System.Threading.Tasks;
 
 namespace ChillSharp.Tests.EF.Query
 {
+    [ChillEntity(
+        UniquePropertyKeyString: "0FE6425D-6C0F-402B-A63E-2A671CCA85E1",
+        PrimaryLanguageLabel: "Post query",
+        SecondaryLanguageLabel: "Ricerca Post")]
     public class PostQuery : ChillQuery
     {
         [ChillProperty(
