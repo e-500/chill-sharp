@@ -22,12 +22,35 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth;
 
+/// <summary>
+/// Defines the persistence contract required by the auth services.
+/// </summary>
 public interface IChillAuthDbContext
 {
+    /// <summary>
+    /// Gets the users managed by the authorization store.
+    /// </summary>
     DbSet<AuthUser> Users { get; }
+
+    /// <summary>
+    /// Gets the roles managed by the authorization store.
+    /// </summary>
     DbSet<AuthRole> Roles { get; }
+
+    /// <summary>
+    /// Gets the user-to-role memberships.
+    /// </summary>
     DbSet<AuthUserRole> UserRoles { get; }
+
+    /// <summary>
+    /// Gets the permission rules assigned to users or roles.
+    /// </summary>
     DbSet<AuthPermissionRule> PermissionRules { get; }
 
+    /// <summary>
+    /// Persists changes to the underlying store.
+    /// </summary>
+    /// <param name="cancellationToken">Token used to cancel the save operation.</param>
+    /// <returns>The number of state entries written to the store.</returns>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

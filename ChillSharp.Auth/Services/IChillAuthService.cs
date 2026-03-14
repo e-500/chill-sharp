@@ -22,31 +22,113 @@ using ChillSharp.Auth.Model;
 
 namespace ChillSharp.Auth.Services;
 
+/// <summary>
+/// Exposes the auth library operations for managing users, roles, rules, and permission evaluation.
+/// </summary>
 public interface IChillAuthService
 {
+    /// <summary>
+    /// Returns all authorization users.
+    /// </summary>
     Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a single authorization user by identifier.
+    /// </summary>
     Task<AuthUser?> GetUserAsync(Guid userGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new authorization user.
+    /// </summary>
     Task<AuthUser> CreateUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing authorization user.
+    /// </summary>
     Task<AuthUser?> UpdateUserAsync(Guid userGuid, UpdateAuthUserRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes an authorization user.
+    /// </summary>
     Task<bool> DeleteUserAsync(Guid userGuid, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns all authorization roles.
+    /// </summary>
     Task<IReadOnlyList<AuthRole>> GetRolesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a single authorization role by identifier.
+    /// </summary>
     Task<AuthRole?> GetRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new authorization role.
+    /// </summary>
     Task<AuthRole> CreateRoleAsync(CreateAuthRoleRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing authorization role.
+    /// </summary>
     Task<AuthRole?> UpdateRoleAsync(Guid roleGuid, UpdateAuthRoleRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes an authorization role.
+    /// </summary>
     Task<bool> DeleteRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns the roles assigned to a user.
+    /// </summary>
     Task<IReadOnlyList<AuthRole>> GetUserRolesAsync(Guid userGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Assigns a role to a user.
+    /// </summary>
     Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes a role from a user.
+    /// </summary>
     Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns permission rules filtered by optional user or role.
+    /// </summary>
     Task<IReadOnlyList<AuthPermissionRule>> GetPermissionRulesAsync(Guid? userGuid = null, Guid? roleGuid = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns a single permission rule by identifier.
+    /// </summary>
     Task<AuthPermissionRule?> GetPermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates a new permission rule.
+    /// </summary>
     Task<AuthPermissionRule> CreatePermissionRuleAsync(CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing permission rule.
+    /// </summary>
     Task<AuthPermissionRule?> UpdatePermissionRuleAsync(Guid ruleGuid, UpdateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a permission rule.
+    /// </summary>
     Task<bool> DeletePermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Evaluates whether a user can perform an entity-level action.
+    /// </summary>
     Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evaluates whether a user can perform a property-level action.
+    /// </summary>
     Task<PermissionEvaluationResult> EvaluatePropertyPermissionAsync(EvaluatePropertyPermissionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evaluates whether a user can perform a property-level action across a set of properties.
+    /// </summary>
     Task<PropertyPermissionSetResult> EvaluatePropertySetPermissionAsync(EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken = default);
 }

@@ -22,22 +22,52 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth;
 
+/// <summary>
+/// EF Core context containing the reusable authorization model for ChillSharp host applications.
+/// </summary>
 public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
 {
+    /// <summary>
+    /// Initializes a new auth context instance.
+    /// </summary>
+    /// <param name="options">The EF Core options for the context.</param>
     public ChillAuthDbContext(DbContextOptions<ChillAuthDbContext> options) : base(options)
     {
     }
 
+    /// <summary>
+    /// Gets the set of authorization users.
+    /// </summary>
     public DbSet<AuthUser> Users => Set<AuthUser>();
+
+    /// <summary>
+    /// Gets the set of authorization roles.
+    /// </summary>
     public DbSet<AuthRole> Roles => Set<AuthRole>();
+
+    /// <summary>
+    /// Gets the set of user-role memberships.
+    /// </summary>
     public DbSet<AuthUserRole> UserRoles => Set<AuthUserRole>();
+
+    /// <summary>
+    /// Gets the set of permission rules.
+    /// </summary>
     public DbSet<AuthPermissionRule> PermissionRules => Set<AuthPermissionRule>();
 
+    /// <summary>
+    /// Returns the namespace prefix used by ChillSharp to resolve auth entity types dynamically.
+    /// </summary>
+    /// <returns>The model namespace prefix.</returns>
     public string GetChillTypePrefix()
     {
         return "ChillSharp.Auth.Model";
     }
 
+    /// <summary>
+    /// Configures indexes, key definitions, and relationships for the auth model.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder used to configure EF Core metadata.</param>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -22,104 +22,217 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ChillSharp.Auth.Contracts;
 
+/// <summary>
+/// Request payload for creating a new authorization user.
+/// </summary>
 public class CreateAuthUserRequest
 {
+    /// <summary>
+    /// Gets or sets the external identity provider identifier.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string ExternalId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the unique user name.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string UserName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the display name shown in the UI.
+    /// </summary>
     [MaxLength(256)]
     public string DisplayName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets whether the user is active.
+    /// </summary>
     public bool IsActive { get; set; } = true;
 }
 
+/// <summary>
+/// Request payload for updating an existing authorization user.
+/// </summary>
 public class UpdateAuthUserRequest
 {
+    /// <summary>
+    /// Gets or sets the external identity provider identifier.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string ExternalId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the unique user name.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string UserName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the display name shown in the UI.
+    /// </summary>
     [MaxLength(256)]
     public string DisplayName { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets whether the user is active.
+    /// </summary>
     public bool IsActive { get; set; } = true;
 }
 
+/// <summary>
+/// Request payload for creating a new authorization role.
+/// </summary>
 public class CreateAuthRoleRequest
 {
+    /// <summary>
+    /// Gets or sets the unique role name.
+    /// </summary>
     [Required]
     [MaxLength(128)]
     public string Name { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the role description.
+    /// </summary>
     [MaxLength(1024)]
     public string Description { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets whether the role is active.
+    /// </summary>
     public bool IsActive { get; set; } = true;
 }
 
+/// <summary>
+/// Request payload for updating an existing authorization role.
+/// </summary>
 public class UpdateAuthRoleRequest : CreateAuthRoleRequest
 {
 }
 
+/// <summary>
+/// Request payload for creating a new permission rule.
+/// </summary>
 public class CreateAuthPermissionRuleRequest
 {
+    /// <summary>
+    /// Gets or sets the target user identifier for direct user rules.
+    /// </summary>
     public Guid? UserGuid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the target role identifier for role-based rules.
+    /// </summary>
     public Guid? RoleGuid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the effect applied by the rule.
+    /// </summary>
     public PermissionEffect Effect { get; set; }
+
+    /// <summary>
+    /// Gets or sets the action controlled by the rule.
+    /// </summary>
     public PermissionAction Action { get; set; }
+
+    /// <summary>
+    /// Gets or sets the hierarchy scope targeted by the rule.
+    /// </summary>
     public PermissionScope Scope { get; set; }
 
+    /// <summary>
+    /// Gets or sets the targeted module prefix.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string Module { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the targeted entity name for entity and property rules.
+    /// </summary>
     [MaxLength(128)]
     public string? EntityName { get; set; }
 
+    /// <summary>
+    /// Gets or sets the targeted property name for property rules.
+    /// </summary>
     [MaxLength(128)]
     public string? PropertyName { get; set; }
 
+    /// <summary>
+    /// Gets or sets whether a property rule applies to all properties of the entity.
+    /// </summary>
     public bool AppliesToAllProperties { get; set; }
 
+    /// <summary>
+    /// Gets or sets a free-text description for the rule.
+    /// </summary>
     [MaxLength(1024)]
     public string Description { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Request payload for updating an existing permission rule.
+/// </summary>
 public class UpdateAuthPermissionRuleRequest : CreateAuthPermissionRuleRequest
 {
 }
 
+/// <summary>
+/// Request payload for evaluating an entity-level permission.
+/// </summary>
 public class EvaluateEntityPermissionRequest
 {
+    /// <summary>
+    /// Gets or sets the user whose effective permissions should be evaluated.
+    /// </summary>
     public Guid UserGuid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the entity-level action to evaluate.
+    /// </summary>
     public PermissionAction Action { get; set; }
 
+    /// <summary>
+    /// Gets or sets the targeted module.
+    /// </summary>
     [Required]
     [MaxLength(256)]
     public string Module { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the targeted entity name.
+    /// </summary>
     [Required]
     [MaxLength(128)]
     public string EntityName { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Request payload for evaluating a single property permission.
+/// </summary>
 public class EvaluatePropertyPermissionRequest : EvaluateEntityPermissionRequest
 {
+    /// <summary>
+    /// Gets or sets the targeted property name.
+    /// </summary>
     [Required]
     [MaxLength(128)]
     public string PropertyName { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Request payload for evaluating multiple property permissions in one request.
+/// </summary>
 public class EvaluatePropertySetPermissionRequest : EvaluateEntityPermissionRequest
 {
+    /// <summary>
+    /// Gets or sets the property names to evaluate.
+    /// </summary>
     public IReadOnlyList<string> PropertyNames { get; set; } = Array.Empty<string>();
 }

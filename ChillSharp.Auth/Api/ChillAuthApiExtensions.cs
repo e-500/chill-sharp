@@ -24,8 +24,17 @@ using System.Reflection;
 
 namespace ChillSharp.Auth.Api;
 
+/// <summary>
+/// Registers the ChillSharp authorization controllers and services for ASP.NET Core applications.
+/// </summary>
 public static class ChillAuthApiExtensions
 {
+    /// <summary>
+    /// Adds the ChillSharp authorization API surface and binds it to an existing auth-aware DbContext.
+    /// </summary>
+    /// <typeparam name="TContext">The host application DbContext type.</typeparam>
+    /// <param name="services">The service collection receiving the auth registrations.</param>
+    /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddChillAuthApi<TContext>(this IServiceCollection services)
         where TContext : DbContext, IChillAuthDbContext
     {

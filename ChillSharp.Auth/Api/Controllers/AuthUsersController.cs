@@ -23,23 +23,36 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ChillSharp.Auth.Api.Controllers;
 
+/// <summary>
+/// Exposes endpoints for managing authorization users and their role assignments.
+/// </summary>
 [ApiController]
 [Route("api/chill-auth/users")]
 public class AuthUsersController : ControllerBase
 {
     private readonly IChillAuthService _service;
 
+    /// <summary>
+    /// Initializes the controller with the auth service.
+    /// </summary>
+    /// <param name="service">The auth service handling user operations.</param>
     public AuthUsersController(IChillAuthService service)
     {
         _service = service;
     }
 
+    /// <summary>
+    /// Returns all authorization users.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
     {
         return Ok(await _service.GetUsersAsync(cancellationToken));
     }
 
+    /// <summary>
+    /// Returns a single authorization user by identifier.
+    /// </summary>
     [HttpGet("{userGuid:guid}")]
     public async Task<IActionResult> GetUser(Guid userGuid, CancellationToken cancellationToken)
     {
@@ -47,6 +60,9 @@ public class AuthUsersController : ControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
+    /// <summary>
+    /// Creates a new authorization user.
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateUser([FromBody] CreateAuthUserRequest request, CancellationToken cancellationToken)
     {
@@ -54,6 +70,9 @@ public class AuthUsersController : ControllerBase
         return CreatedAtAction(nameof(GetUser), new { userGuid = user.Guid }, user);
     }
 
+    /// <summary>
+    /// Updates an existing authorization user.
+    /// </summary>
     [HttpPut("{userGuid:guid}")]
     public async Task<IActionResult> UpdateUser(Guid userGuid, [FromBody] UpdateAuthUserRequest request, CancellationToken cancellationToken)
     {
@@ -61,24 +80,36 @@ public class AuthUsersController : ControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
+    /// <summary>
+    /// Deletes an authorization user.
+    /// </summary>
     [HttpDelete("{userGuid:guid}")]
     public async Task<IActionResult> DeleteUser(Guid userGuid, CancellationToken cancellationToken)
     {
         return await _service.DeleteUserAsync(userGuid, cancellationToken) ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Returns the roles assigned to a user.
+    /// </summary>
     [HttpGet("{userGuid:guid}/roles")]
     public async Task<IActionResult> GetUserRoles(Guid userGuid, CancellationToken cancellationToken)
     {
         return Ok(await _service.GetUserRolesAsync(userGuid, cancellationToken));
     }
 
+    /// <summary>
+    /// Assigns a role to a user.
+    /// </summary>
     [HttpPut("{userGuid:guid}/roles/{roleGuid:guid}")]
     public async Task<IActionResult> AssignRole(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken)
     {
         return await _service.AssignRoleAsync(userGuid, roleGuid, cancellationToken) ? NoContent() : NotFound();
     }
 
+    /// <summary>
+    /// Removes a role assignment from a user.
+    /// </summary>
     [HttpDelete("{userGuid:guid}/roles/{roleGuid:guid}")]
     public async Task<IActionResult> RemoveRole(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken)
     {

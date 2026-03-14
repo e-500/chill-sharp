@@ -23,15 +23,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth.Services;
 
+/// <summary>
+/// Default implementation of the authorization service backed by <see cref="IChillAuthDbContext"/>.
+/// </summary>
 public class ChillAuthService : IChillAuthService
 {
     private readonly IChillAuthDbContext _context;
 
+    /// <summary>
+    /// Initializes the service with the auth persistence abstraction.
+    /// </summary>
+    /// <param name="context">The auth store used for reads and writes.</param>
     public ChillAuthService(IChillAuthDbContext context)
     {
         _context = context;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Users
@@ -40,6 +48,7 @@ public class ChillAuthService : IChillAuthService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<AuthUser?> GetUserAsync(Guid userGuid, CancellationToken cancellationToken = default)
     {
         return _context.Users
@@ -47,6 +56,7 @@ public class ChillAuthService : IChillAuthService
             .FirstOrDefaultAsync(x => x.Guid == userGuid, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<AuthUser> CreateUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default)
     {
         ValidateUser(request.ExternalId, request.UserName);
@@ -65,6 +75,7 @@ public class ChillAuthService : IChillAuthService
         return user;
     }
 
+    /// <inheritdoc />
     public async Task<AuthUser?> UpdateUserAsync(Guid userGuid, UpdateAuthUserRequest request, CancellationToken cancellationToken = default)
     {
         ValidateUser(request.ExternalId, request.UserName);
@@ -84,6 +95,7 @@ public class ChillAuthService : IChillAuthService
         return user;
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteUserAsync(Guid userGuid, CancellationToken cancellationToken = default)
     {
         var user = await _context.Users.FirstOrDefaultAsync(x => x.Guid == userGuid, cancellationToken);
@@ -97,6 +109,7 @@ public class ChillAuthService : IChillAuthService
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
         return await _context.Roles
@@ -105,6 +118,7 @@ public class ChillAuthService : IChillAuthService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<AuthRole?> GetRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default)
     {
         return _context.Roles
@@ -112,6 +126,7 @@ public class ChillAuthService : IChillAuthService
             .FirstOrDefaultAsync(x => x.Guid == roleGuid, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<AuthRole> CreateRoleAsync(CreateAuthRoleRequest request, CancellationToken cancellationToken = default)
     {
         ValidateRole(request.Name);
@@ -129,6 +144,7 @@ public class ChillAuthService : IChillAuthService
         return role;
     }
 
+    /// <inheritdoc />
     public async Task<AuthRole?> UpdateRoleAsync(Guid roleGuid, UpdateAuthRoleRequest request, CancellationToken cancellationToken = default)
     {
         ValidateRole(request.Name);
@@ -147,6 +163,7 @@ public class ChillAuthService : IChillAuthService
         return role;
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeleteRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default)
     {
         var role = await _context.Roles.FirstOrDefaultAsync(x => x.Guid == roleGuid, cancellationToken);
@@ -160,6 +177,7 @@ public class ChillAuthService : IChillAuthService
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetUserRolesAsync(Guid userGuid, CancellationToken cancellationToken = default)
     {
         return await _context.UserRoles
@@ -170,6 +188,7 @@ public class ChillAuthService : IChillAuthService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
         var userExists = await _context.Users.AnyAsync(x => x.Guid == userGuid, cancellationToken);
@@ -196,6 +215,7 @@ public class ChillAuthService : IChillAuthService
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
         var membership = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserGuid == userGuid && x.RoleGuid == roleGuid, cancellationToken);
@@ -209,6 +229,7 @@ public class ChillAuthService : IChillAuthService
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuthPermissionRule>> GetPermissionRulesAsync(Guid? userGuid = null, Guid? roleGuid = null, CancellationToken cancellationToken = default)
     {
         var query = _context.PermissionRules.AsNoTracking().AsQueryable();
@@ -232,6 +253,7 @@ public class ChillAuthService : IChillAuthService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
     public Task<AuthPermissionRule?> GetPermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default)
     {
         return _context.PermissionRules
@@ -239,6 +261,7 @@ public class ChillAuthService : IChillAuthService
             .FirstOrDefaultAsync(x => x.Guid == ruleGuid, cancellationToken);
     }
 
+    /// <inheritdoc />
     public async Task<AuthPermissionRule> CreatePermissionRuleAsync(CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default)
     {
         await ValidatePermissionRuleAsync(request.UserGuid, request.RoleGuid, request.Scope, request.Module, request.EntityName, request.PropertyName, request.AppliesToAllProperties, cancellationToken);
@@ -264,6 +287,7 @@ public class ChillAuthService : IChillAuthService
         return rule;
     }
 
+    /// <inheritdoc />
     public async Task<AuthPermissionRule?> UpdatePermissionRuleAsync(Guid ruleGuid, UpdateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default)
     {
         await ValidatePermissionRuleAsync(request.UserGuid, request.RoleGuid, request.Scope, request.Module, request.EntityName, request.PropertyName, request.AppliesToAllProperties, cancellationToken);
@@ -289,6 +313,7 @@ public class ChillAuthService : IChillAuthService
         return rule;
     }
 
+    /// <inheritdoc />
     public async Task<bool> DeletePermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default)
     {
         var rule = await _context.PermissionRules.FirstOrDefaultAsync(x => x.Guid == ruleGuid, cancellationToken);
@@ -302,6 +327,7 @@ public class ChillAuthService : IChillAuthService
         return true;
     }
 
+    /// <inheritdoc />
     public async Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default)
     {
         ValidateEntityEvaluation(request.Action, request.Module, request.EntityName);
@@ -317,6 +343,7 @@ public class ChillAuthService : IChillAuthService
         return candidate?.ToResult() ?? DefaultDeny("No matching entity permission rule.");
     }
 
+    /// <inheritdoc />
     public async Task<PermissionEvaluationResult> EvaluatePropertyPermissionAsync(EvaluatePropertyPermissionRequest request, CancellationToken cancellationToken = default)
     {
         ValidatePropertyEvaluation(request.Action, request.Module, request.EntityName, request.PropertyName);
@@ -332,6 +359,7 @@ public class ChillAuthService : IChillAuthService
         return candidate?.ToResult() ?? DefaultDeny("No matching property permission rule.");
     }
 
+    /// <inheritdoc />
     public async Task<PropertyPermissionSetResult> EvaluatePropertySetPermissionAsync(EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken = default)
     {
         if (request.PropertyNames.Count == 0)

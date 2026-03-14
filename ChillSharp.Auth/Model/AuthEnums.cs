@@ -19,25 +19,75 @@
 
 namespace ChillSharp.Auth.Model;
 
+/// <summary>
+/// Defines whether a permission rule grants or forbids an action.
+/// </summary>
 public enum PermissionEffect
 {
+    /// <summary>
+    /// Grants access to the targeted action.
+    /// </summary>
     Allow = 1,
+
+    /// <summary>
+    /// Explicitly blocks access to the targeted action.
+    /// </summary>
     Deny = 2
 }
 
+/// <summary>
+/// Lists the actions that can be controlled by the authorization model.
+/// </summary>
 public enum PermissionAction
 {
+    /// <summary>
+    /// Allows querying entity data.
+    /// </summary>
     Query = 1,
+
+    /// <summary>
+    /// Allows creating new entity records.
+    /// </summary>
     Create = 2,
+
+    /// <summary>
+    /// Allows updating existing entity records.
+    /// </summary>
     Update = 3,
+
+    /// <summary>
+    /// Allows deleting entity records.
+    /// </summary>
     Delete = 4,
+
+    /// <summary>
+    /// Allows seeing a specific property in query results.
+    /// </summary>
     See = 5,
+
+    /// <summary>
+    /// Allows modifying a specific property during create or update.
+    /// </summary>
     Modify = 6
 }
 
+/// <summary>
+/// Identifies the hierarchy level targeted by a permission rule.
+/// </summary>
 public enum PermissionScope
 {
+    /// <summary>
+    /// Targets a module and its submodules.
+    /// </summary>
     Module = 1,
+
+    /// <summary>
+    /// Targets a specific entity within a module.
+    /// </summary>
     Entity = 2,
+
+    /// <summary>
+    /// Targets a specific property within an entity.
+    /// </summary>
     Property = 3
 }

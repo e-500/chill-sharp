@@ -23,23 +23,36 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ChillSharp.Auth.Api.Controllers;
 
+/// <summary>
+/// Exposes endpoints for managing authorization roles.
+/// </summary>
 [ApiController]
 [Route("api/chill-auth/roles")]
 public class AuthRolesController : ControllerBase
 {
     private readonly IChillAuthService _service;
 
+    /// <summary>
+    /// Initializes the controller with the auth service.
+    /// </summary>
+    /// <param name="service">The auth service handling role operations.</param>
     public AuthRolesController(IChillAuthService service)
     {
         _service = service;
     }
 
+    /// <summary>
+    /// Returns all authorization roles.
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetRoles(CancellationToken cancellationToken)
     {
         return Ok(await _service.GetRolesAsync(cancellationToken));
     }
 
+    /// <summary>
+    /// Returns a single authorization role by identifier.
+    /// </summary>
     [HttpGet("{roleGuid:guid}")]
     public async Task<IActionResult> GetRole(Guid roleGuid, CancellationToken cancellationToken)
     {
@@ -47,6 +60,9 @@ public class AuthRolesController : ControllerBase
         return role is null ? NotFound() : Ok(role);
     }
 
+    /// <summary>
+    /// Creates a new authorization role.
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateRole([FromBody] CreateAuthRoleRequest request, CancellationToken cancellationToken)
     {
@@ -54,6 +70,9 @@ public class AuthRolesController : ControllerBase
         return CreatedAtAction(nameof(GetRole), new { roleGuid = role.Guid }, role);
     }
 
+    /// <summary>
+    /// Updates an existing authorization role.
+    /// </summary>
     [HttpPut("{roleGuid:guid}")]
     public async Task<IActionResult> UpdateRole(Guid roleGuid, [FromBody] UpdateAuthRoleRequest request, CancellationToken cancellationToken)
     {
@@ -61,6 +80,9 @@ public class AuthRolesController : ControllerBase
         return role is null ? NotFound() : Ok(role);
     }
 
+    /// <summary>
+    /// Deletes an authorization role.
+    /// </summary>
     [HttpDelete("{roleGuid:guid}")]
     public async Task<IActionResult> DeleteRole(Guid roleGuid, CancellationToken cancellationToken)
     {
