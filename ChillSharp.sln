@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Tests", "ChillSh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Auth", "ChillSharp.Auth\ChillSharp.Auth.csproj", "{271EAFA7-87AA-4379-83DC-F3729CB08CA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Schema", "ChillSharp.Schema\ChillSharp.Schema.csproj", "{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{271EAFA7-87AA-4379-83DC-F3729CB08CA8}.Release|x64.Build.0 = Release|Any CPU
 		{271EAFA7-87AA-4379-83DC-F3729CB08CA8}.Release|x86.ActiveCfg = Release|Any CPU
 		{271EAFA7-87AA-4379-83DC-F3729CB08CA8}.Release|x86.Build.0 = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|x64.Build.0 = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Debug|x86.Build.0 = Debug|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|x64.ActiveCfg = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|x64.Build.0 = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|x86.ActiveCfg = Release|Any CPU
+		{07DBBD6A-5AC2-4BCC-8E80-DE77C3B65EC6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

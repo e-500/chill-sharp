@@ -34,6 +34,9 @@ namespace ChillSharp.Tests.EF
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.AddChillAuthModel();
+            OnModelCreatingPartial(modelBuilder);
         }
+
+        partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
     }
 }

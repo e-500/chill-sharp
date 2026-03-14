@@ -46,10 +46,11 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillDtoEngine"/> using a Chill context.
         /// </summary>
         /// <param name="Context">The ChillSharp database context.</param>
-        public ChillDtoEngine(IChillContext Context, IChillDtoSchemaCache SchemaCache)
+        public ChillDtoEngine(IChillContext Context, IChillSchemaService? schemaService = null)
         {
-            _Engine = new ChillEngine(Context, SchemaCache);
+            _Engine = new ChillEngine(Context);
             _Context = Context;
+            _SchemaService = schemaService;
         }
 
         /// <summary>
@@ -64,6 +65,7 @@ namespace ChillSharp
 
         private IChillContext _Context;
         private ChillEngine _Engine;
+        private IChillSchemaService? _SchemaService;
 
         /// <summary>
         /// Starts a transaction
@@ -209,12 +211,18 @@ namespace ChillSharp
 
         public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
         {
-            return _Engine.GetSchema(ChillType, ChillViewCode);
+            if (_SchemaService == null)
+                throw new ChillException("Chill schema service is not registered.");
+
+            return _SchemaService.GetSchemaAsync(ChillType, ChillViewCode).GetAwaiter().GetResult();
         }
 
         public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
         {
-            return _Engine.SetSchema(Schema);
+            if (_SchemaService == null)
+                throw new ChillException("Chill schema service is not registered.");
+
+            return _SchemaService.SetSchemaAsync(Schema).GetAwaiter().GetResult();
         }
     }
 }

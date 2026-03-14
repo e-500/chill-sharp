@@ -23,8 +23,6 @@ using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Reflection;
-using System.Text;
-using System.Text.Json;
 
 namespace ChillSharp
 {
@@ -52,15 +50,12 @@ namespace ChillSharp
         /// </summary>
         /// <param name="Contex">The Chill database context implementing <see cref="IChillContext"/>.</param>
         /// <param name="SchemaCache">Shared schema cache object across multiple contexts</param>
-        public ChillEngine(IChillContext Contex, IChillDtoSchemaCache? SchemaCache = null) 
+        public ChillEngine(IChillContext Contex) 
         {
             _Context = Contex;
-            // Use a shared schema cache
-            _SchemaCache = SchemaCache ?? new ChillDtoSchemaCache(); // else create internal one
         }
 
         internal IChillContext _Context;
-        private IChillDtoSchemaCache _SchemaCache;
         private IDbContextTransaction? _CurrentTransaction;
 
         #region TRANSACTION MANAGEMENT
@@ -371,90 +366,6 @@ namespace ChillSharp
 
         #endregion
 
-        #region SCHEMA MANAGEMENT
-
-        /// <summary>
-        /// Get the schema for a given ChillType and ChillViewCode. If a cached schema exists, it is returned.
-        /// </summary>
-        /// <param name="ChillType"></param>
-        /// <param name="ChillViewCode"></param>
-        /// <returns></returns>
-        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
-        {
-            if (_SchemaCache.TryGet(ChillType, ChillViewCode, out ChillDtoSchema? cachedSchema))
-                return cachedSchema;
-
-            var path = _GetSchemaFilePath(ChillType, ChillViewCode);
-            ChillDtoSchema? schema = null;
-            if (!File.Exists(path))
-            {
-                // Build a best-effort schema by activating entity and query and reflecting their properties.
-                try
-                {
-                    schema = _BuildSchema(ChillType, ChillViewCode);
-                }
-                catch
-                {
-                    // If ChillDtoSchema doesn't expose those properties, ignore.
-                }
-            }
-            else
-            {
-                var json = File.ReadAllText(path);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                schema = JsonSerializer.Deserialize<ChillDtoSchema>(json, options);
-            }
-            if (schema != null)
-                _SchemaCache.SetSchema(schema);
-            return schema;
-        }
-
-        /// <summary>
-        /// Set the schema for a given ChillType and ChillViewCode. If a cached schema exists, it is returned.
-        /// </summary>
-        /// <param name="Schema"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentNullException"></exception>
-        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
-        {
-            if (Schema == null)
-                throw new ArgumentNullException(nameof(Schema));
-
-            string chillType = null!;
-            string chillViewCode = null!;
-            try
-            {
-                chillType = Schema.ChillType;
-                chillViewCode = Schema.ChillViewCode;
-            }
-            catch
-            {
-                // If properties are not present on the type, fall back to defaults.
-                chillType = "default";
-                chillViewCode = "default";
-            }
-
-            var path = _GetSchemaFilePath(chillType, chillViewCode);
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-
-            var json = JsonSerializer.Serialize(Schema, options);
-            File.WriteAllText(path, json);
-
-            _SchemaCache.SetSchema(Schema);
-
-            return Schema;
-        }
-
-        #endregion
-
         #region CLASS INTERNAL HELPERS
 
         /// <summary>
@@ -538,86 +449,6 @@ namespace ChillSharp
                 throw new ChillException($"Loaded entity is not an IChillEntity (actual type: {result.GetType().FullName})");
 
             return (IChillEntity)result;
-        }
-
-        /// <summary>
-        /// Returns the file path where schemas are stored (AppData\ChillSharp\Schema).
-        /// </summary>
-        private string _GetSchemaDirectory()
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(appData, "ChillSharp", "Schema");
-        }
-
-        /// <summary>
-        /// Makes a safe file name by replacing invalid chars with underscore and falling back to 'default'.
-        /// </summary>
-        private static string _SafeFileName(string? s)
-        {
-            if (string.IsNullOrWhiteSpace(s))
-                return "default";
-            var invalid = Path.GetInvalidFileNameChars();
-            var sb = new StringBuilder(s.Length);
-            foreach (var c in s)
-            {
-                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
-            }
-            return sb.ToString();
-        }
-
-        /// <summary>
-        /// Builds and ensures the schema file path for given chillType and chillViewCode.
-        /// </summary>
-        /// <param name="chillType">Type of the entity for schema</param>
-        /// <param name="chillViewCode">Code to differentiate schemas with the same chill type</param>
-        private string _GetSchemaFilePath(string chillType, string chillViewCode)
-        {
-            var dir = _GetSchemaDirectory();
-            Directory.CreateDirectory(dir);
-            var safeType = _SafeFileName(chillType);
-            var safeView = _SafeFileName(chillViewCode);
-            var fileName = $"{safeType}-{safeView}.json";
-            return Path.Combine(dir, fileName);
-        }
-
-        /// <summary>
-        /// Build a ChillDtoSchema by activating a detached entity and a query for the provided chillType.
-        /// Uses reflection to extract public properties from the activated entity / query and attempts
-        /// to populate common schema properties via JSON-driven assignment to match target types.
-        /// This method is best-effort and will not throw on mismatches.
-        /// </summary>
-        /// <param name="chillType">Type of the entity for schema</param>
-        /// <param name="chillViewCode">Code to differentiate schemas with the same chill type</param>
-        private ChillDtoSchema _BuildSchema(string chillType, string chillViewCode)
-        {
-            // Activate detached entity and query using engine
-            object? e = null;
-            try
-            {
-                e = ActivateGenericChillType(chillType);
-            }
-            catch
-            {
-                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
-            }
-
-            if (e == null)
-                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
-
-            if (e.GetType().IsAssignableTo(typeof(IChillEntity)))
-            {
-                // If it's a entity, build schema from entity
-                return ChillDtoSchema.FromIChillEntity((IChillEntity)e, chillViewCode, _Context.GetChillTypePrefix());
-            }
-            else if (e.GetType().IsAssignableTo(typeof(IChillQuery<IChillEntity>)))
-            {
-                // If it's a query, build schema from query
-                return ChillDtoSchema.FromIChillQuery((IChillQuery<IChillEntity>)e, chillViewCode, _Context.GetChillTypePrefix());
-            }
-            else
-            {
-                throw new ChillException($"Unable to activate entity for ChillType '{chillType}' is not IChillEntity or IChillQuery<IChillEntity>");
-            }
         }
 
         #endregion
