@@ -51,10 +51,12 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillEngine"/> with the given Chill context.
         /// </summary>
         /// <param name="Contex">The Chill database context implementing <see cref="IChillContext"/>.</param>
-        public ChillEngine(IChillContext Contex, IChillDtoSchemaCache SchemaCache) 
+        /// <param name="SchemaCache">Shared schema cache object across multiple contexts</param>
+        public ChillEngine(IChillContext Contex, IChillDtoSchemaCache? SchemaCache = null) 
         {
             _Context = Contex;
-            _SchemaCache = SchemaCache;
+            // Use a shared schema cache
+            _SchemaCache = SchemaCache ?? new ChillDtoSchemaCache(); // else create internal one
         }
 
         internal IChillContext _Context;
