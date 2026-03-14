@@ -29,7 +29,16 @@ namespace ChillSharp.Tests;
 internal static class TestApiHost
 {
     private static readonly object SyncRoot = new();
+    private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "test-api-host.db");
     private static bool _apiServiceUpAndRunning;
+
+    public static EF.DummyContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={DatabasePath}")
+            .Options;
+        return new EF.DummyContext(options);
+    }
 
     public static void EnsureStarted()
     {
@@ -47,13 +56,14 @@ internal static class TestApiHost
 
             var apiServer = Task.Run(() =>
             {
-                var ctx = new EF.DummyContext();
+                Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
+                var ctx = CreateDbContext();
                 ctx.Database.EnsureDeleted();
                 ctx.Database.EnsureCreated();
 
                 var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                 builder.Services.AddDbContext<EF.DummyContext>(options =>
-                    options.UseSqlite($"Data Source={ctx.DbPath}"));
+                    options.UseSqlite($"Data Source={DatabasePath}"));
                 builder.Services.AddChillApi<EF.DummyContext>();
                 builder.Services.AddChillAuthApi<EF.DummyContext>();
                 builder.Services.AddChillSchema<EF.DummyContext>();

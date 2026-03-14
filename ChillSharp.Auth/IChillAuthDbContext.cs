@@ -48,6 +48,11 @@ public interface IChillAuthDbContext
     DbSet<AuthPermissionRule> PermissionRules { get; }
 
     /// <summary>
+    /// Gets the refresh-token sessions issued for authenticated clients.
+    /// </summary>
+    DbSet<AuthRefreshToken> RefreshTokens { get; }
+
+    /// <summary>
     /// Persists changes to the underlying store.
     /// </summary>
     /// <param name="cancellationToken">Token used to cancel the save operation.</param>

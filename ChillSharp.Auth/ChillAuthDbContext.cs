@@ -56,6 +56,11 @@ public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
     public DbSet<AuthPermissionRule> PermissionRules => Set<AuthPermissionRule>();
 
     /// <summary>
+    /// Gets the set of refresh-token sessions.
+    /// </summary>
+    public DbSet<AuthRefreshToken> RefreshTokens => Set<AuthRefreshToken>();
+
+    /// <summary>
     /// Returns the namespace prefix used by ChillSharp to resolve auth entity types dynamically.
     /// </summary>
     /// <returns>The model namespace prefix.</returns>

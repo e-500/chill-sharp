@@ -18,6 +18,8 @@
  */
 
 using ChillSharp.Auth.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -55,6 +57,31 @@ public static class ChillAuthApiExtensions
 
         services.AddScoped<IChillAuthService, ChillAuthService>();
         services.AddChillAuthIdentityIntegration();
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the ChillSharp authorization API plus ASP.NET Core Identity account endpoints backed by the host application's user type.
+    /// </summary>
+    /// <typeparam name="TContext">The host application DbContext type.</typeparam>
+    /// <typeparam name="TUser">The ASP.NET Core Identity user type.</typeparam>
+    /// <param name="services">The service collection receiving the auth registrations.</param>
+    /// <param name="configureOptions">Optional configuration for token lifetimes and password-reset endpoint behavior.</param>
+    /// <returns>The updated service collection.</returns>
+    public static IServiceCollection AddChillAuthIdentityApi<TContext, TUser>(this IServiceCollection services, Action<ChillAuthIdentityApiOptions>? configureOptions = null)
+        where TContext : DbContext, IChillAuthDbContext
+        where TUser : class
+    {
+        services.AddChillAuthApi<TContext>();
+        services.AddDataProtection();
+        services.AddOptions<ChillAuthIdentityApiOptions>();
+        if (configureOptions != null)
+        {
+            services.Configure(configureOptions);
+        }
+
+        services.AddScoped<IChillAuthTokenService, ChillAuthTokenService>();
+        services.AddScoped<IChillAuthIdentityService, ChillAuthIdentityService<TUser>>();
         return services;
     }
 }

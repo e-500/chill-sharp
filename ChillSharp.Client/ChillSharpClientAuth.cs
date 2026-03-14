@@ -1,7 +1,6 @@
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
-using System.Text;
-using System.Text.Json;
+using System.Net.Http;
 
 namespace ChillSharp.Client
 {
@@ -11,11 +10,73 @@ namespace ChillSharp.Client
     public partial class ChillSharpClient
     {
         /// <summary>
+        /// Registers a new Identity account and stores the returned token pair inside the client.
+        /// </summary>
+        public AuthTokenResponse RegisterAuthAccount(RegisterAuthIdentityRequest request)
+        {
+            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "account/register", request, allowAnonymous: true);
+            if (result == null) throw new ChillClientException("Unexpected null auth register result");
+            ApplyAuthToken(result, forgetPassword: true);
+            return result;
+        }
+
+        /// <summary>
+        /// Authenticates an Identity account with user name and password and stores the returned token pair.
+        /// </summary>
+        public AuthTokenResponse LoginAuthAccount(LoginAuthIdentityRequest request)
+        {
+            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "account/login", request, allowAnonymous: true);
+            if (result == null) throw new ChillClientException("Unexpected null auth login result");
+            ApplyAuthToken(result, forgetPassword: true);
+            return result;
+        }
+
+        /// <summary>
+        /// Exchanges the current refresh token for a new token pair and stores it inside the client.
+        /// </summary>
+        public AuthTokenResponse RefreshAuthAccount()
+        {
+            var result = GetAuthTokenWithPasswordIfNecessary(forceRefresh: true);
+            if (result == null) throw new ChillClientException("Unexpected null auth refresh result");
+            return result;
+        }
+
+        /// <summary>
+        /// Changes the password of the authenticated user.
+        /// </summary>
+        public ChangePasswordResponse ChangeAuthPassword(ChangePasswordRequest request)
+        {
+            var result = SendAuthJson<ChangePasswordResponse>(HttpMethod.Post, "account/change-password", request);
+            if (result == null) throw new ChillClientException("Unexpected null change-password result");
+            return result;
+        }
+
+        /// <summary>
+        /// Requests a password-reset token for a user.
+        /// </summary>
+        public PasswordResetTokenResponse RequestAuthPasswordReset(RequestPasswordResetRequest request)
+        {
+            var result = SendAuthJson<PasswordResetTokenResponse>(HttpMethod.Post, "account/request-password-reset", request, allowAnonymous: true);
+            if (result == null) throw new ChillClientException("Unexpected null request-password-reset result");
+            return result;
+        }
+
+        /// <summary>
+        /// Resets a password by using a reset token.
+        /// </summary>
+        public ResetPasswordResponse ResetAuthPassword(ResetPasswordRequest request)
+        {
+            var result = SendAuthJson<ResetPasswordResponse>(HttpMethod.Post, "account/reset-password", request, allowAnonymous: true);
+            if (result == null) throw new ChillClientException("Unexpected null reset-password result");
+            return result;
+        }
+
+        /// <summary>
         /// Returns all auth users.
         /// </summary>
         public List<AuthUser> GetAuthUsers()
         {
-            return GetAuth<List<AuthUser>>("users") ?? new List<AuthUser>();
+            return SendAuthJson<List<AuthUser>>(HttpMethod.Get, "users") ?? new List<AuthUser>();
         }
 
         /// <summary>
@@ -23,7 +84,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthUser? GetAuthUser(Guid userGuid)
         {
-            return GetAuth<AuthUser>($"users/{userGuid}");
+            return SendAuthJson<AuthUser>(HttpMethod.Get, $"users/{userGuid}");
         }
 
         /// <summary>
@@ -31,7 +92,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthUser CreateAuthUser(CreateAuthUserRequest request)
         {
-            var result = PostAuth<AuthUser>("users", request);
+            var result = SendAuthJson<AuthUser>(HttpMethod.Post, "users", request);
             if (result == null) throw new ChillClientException("Unexpected null auth user result");
             return result;
         }
@@ -41,7 +102,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthUser? UpdateAuthUser(Guid userGuid, UpdateAuthUserRequest request)
         {
-            return PutAuth<AuthUser>($"users/{userGuid}", request);
+            return SendAuthJson<AuthUser>(HttpMethod.Put, $"users/{userGuid}", request);
         }
 
         /// <summary>
@@ -49,7 +110,7 @@ namespace ChillSharp.Client
         /// </summary>
         public void DeleteAuthUser(Guid userGuid)
         {
-            DeleteAuth($"users/{userGuid}");
+            SendAuthJson<object>(HttpMethod.Delete, $"users/{userGuid}", expectResponseBody: false);
         }
 
         /// <summary>
@@ -57,7 +118,7 @@ namespace ChillSharp.Client
         /// </summary>
         public List<AuthRole> GetAuthUserRoles(Guid userGuid)
         {
-            return GetAuth<List<AuthRole>>($"users/{userGuid}/roles") ?? new List<AuthRole>();
+            return SendAuthJson<List<AuthRole>>(HttpMethod.Get, $"users/{userGuid}/roles") ?? new List<AuthRole>();
         }
 
         /// <summary>
@@ -65,7 +126,7 @@ namespace ChillSharp.Client
         /// </summary>
         public void AssignAuthRole(Guid userGuid, Guid roleGuid)
         {
-            PutAuthNoBody($"users/{userGuid}/roles/{roleGuid}");
+            SendAuthJson<object>(HttpMethod.Put, $"users/{userGuid}/roles/{roleGuid}", payload: null, expectResponseBody: false);
         }
 
         /// <summary>
@@ -73,7 +134,7 @@ namespace ChillSharp.Client
         /// </summary>
         public void RemoveAuthRole(Guid userGuid, Guid roleGuid)
         {
-            DeleteAuth($"users/{userGuid}/roles/{roleGuid}");
+            SendAuthJson<object>(HttpMethod.Delete, $"users/{userGuid}/roles/{roleGuid}", payload: null, expectResponseBody: false);
         }
 
         /// <summary>
@@ -81,7 +142,7 @@ namespace ChillSharp.Client
         /// </summary>
         public List<AuthRole> GetAuthRoles()
         {
-            return GetAuth<List<AuthRole>>("roles") ?? new List<AuthRole>();
+            return SendAuthJson<List<AuthRole>>(HttpMethod.Get, "roles") ?? new List<AuthRole>();
         }
 
         /// <summary>
@@ -89,7 +150,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthRole? GetAuthRole(Guid roleGuid)
         {
-            return GetAuth<AuthRole>($"roles/{roleGuid}");
+            return SendAuthJson<AuthRole>(HttpMethod.Get, $"roles/{roleGuid}");
         }
 
         /// <summary>
@@ -97,7 +158,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthRole CreateAuthRole(CreateAuthRoleRequest request)
         {
-            var result = PostAuth<AuthRole>("roles", request);
+            var result = SendAuthJson<AuthRole>(HttpMethod.Post, "roles", request);
             if (result == null) throw new ChillClientException("Unexpected null auth role result");
             return result;
         }
@@ -107,7 +168,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthRole? UpdateAuthRole(Guid roleGuid, UpdateAuthRoleRequest request)
         {
-            return PutAuth<AuthRole>($"roles/{roleGuid}", request);
+            return SendAuthJson<AuthRole>(HttpMethod.Put, $"roles/{roleGuid}", request);
         }
 
         /// <summary>
@@ -115,7 +176,7 @@ namespace ChillSharp.Client
         /// </summary>
         public void DeleteAuthRole(Guid roleGuid)
         {
-            DeleteAuth($"roles/{roleGuid}");
+            SendAuthJson<object>(HttpMethod.Delete, $"roles/{roleGuid}", payload: null, expectResponseBody: false);
         }
 
         /// <summary>
@@ -130,7 +191,7 @@ namespace ChillSharp.Client
                 query.Add($"roleGuid={Uri.EscapeDataString(roleGuid.Value.ToString())}");
 
             var suffix = query.Count == 0 ? string.Empty : "?" + string.Join("&", query);
-            return GetAuth<List<AuthPermissionRule>>($"permissions{suffix}") ?? new List<AuthPermissionRule>();
+            return SendAuthJson<List<AuthPermissionRule>>(HttpMethod.Get, $"permissions{suffix}") ?? new List<AuthPermissionRule>();
         }
 
         /// <summary>
@@ -138,7 +199,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthPermissionRule? GetAuthPermissionRule(Guid ruleGuid)
         {
-            return GetAuth<AuthPermissionRule>($"permissions/{ruleGuid}");
+            return SendAuthJson<AuthPermissionRule>(HttpMethod.Get, $"permissions/{ruleGuid}");
         }
 
         /// <summary>
@@ -146,7 +207,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthPermissionRule CreateAuthPermissionRule(CreateAuthPermissionRuleRequest request)
         {
-            var result = PostAuth<AuthPermissionRule>("permissions", request);
+            var result = SendAuthJson<AuthPermissionRule>(HttpMethod.Post, "permissions", request);
             if (result == null) throw new ChillClientException("Unexpected null auth permission rule result");
             return result;
         }
@@ -156,7 +217,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthPermissionRule? UpdateAuthPermissionRule(Guid ruleGuid, UpdateAuthPermissionRuleRequest request)
         {
-            return PutAuth<AuthPermissionRule>($"permissions/{ruleGuid}", request);
+            return SendAuthJson<AuthPermissionRule>(HttpMethod.Put, $"permissions/{ruleGuid}", request);
         }
 
         /// <summary>
@@ -164,7 +225,7 @@ namespace ChillSharp.Client
         /// </summary>
         public void DeleteAuthPermissionRule(Guid ruleGuid)
         {
-            DeleteAuth($"permissions/{ruleGuid}");
+            SendAuthJson<object>(HttpMethod.Delete, $"permissions/{ruleGuid}", payload: null, expectResponseBody: false);
         }
 
         /// <summary>
@@ -172,7 +233,7 @@ namespace ChillSharp.Client
         /// </summary>
         public PermissionEvaluationResult EvaluateAuthEntityPermission(EvaluateEntityPermissionRequest request)
         {
-            var result = PostAuth<PermissionEvaluationResult>("permissions/evaluate/entity", request);
+            var result = SendAuthJson<PermissionEvaluationResult>(HttpMethod.Post, "permissions/evaluate/entity", request);
             if (result == null) throw new ChillClientException("Unexpected null entity permission result");
             return result;
         }
@@ -182,7 +243,7 @@ namespace ChillSharp.Client
         /// </summary>
         public PermissionEvaluationResult EvaluateAuthPropertyPermission(EvaluatePropertyPermissionRequest request)
         {
-            var result = PostAuth<PermissionEvaluationResult>("permissions/evaluate/property", request);
+            var result = SendAuthJson<PermissionEvaluationResult>(HttpMethod.Post, "permissions/evaluate/property", request);
             if (result == null) throw new ChillClientException("Unexpected null property permission result");
             return result;
         }
@@ -192,103 +253,9 @@ namespace ChillSharp.Client
         /// </summary>
         public PropertyPermissionSetResult EvaluateAuthPropertySetPermission(EvaluatePropertySetPermissionRequest request)
         {
-            var result = PostAuth<PropertyPermissionSetResult>("permissions/evaluate/property-set", request);
+            var result = SendAuthJson<PropertyPermissionSetResult>(HttpMethod.Post, "permissions/evaluate/property-set", request);
             if (result == null) throw new ChillClientException("Unexpected null property set permission result");
             return result;
-        }
-
-        private T? GetAuth<T>(string relativeUrl)
-        {
-            return SendAuth<T>(HttpMethod.Get, relativeUrl);
-        }
-
-        private T? PostAuth<T>(string relativeUrl, object payload)
-        {
-            return SendAuth<T>(HttpMethod.Post, relativeUrl, payload);
-        }
-
-        private T? PutAuth<T>(string relativeUrl, object payload)
-        {
-            return SendAuth<T>(HttpMethod.Put, relativeUrl, payload);
-        }
-
-        private void PutAuthNoBody(string relativeUrl)
-        {
-            SendAuth<object>(HttpMethod.Put, relativeUrl, payload: null, expectResponseBody: false);
-        }
-
-        private void DeleteAuth(string relativeUrl)
-        {
-            SendAuth<object>(HttpMethod.Delete, relativeUrl, payload: null, expectResponseBody: false);
-        }
-
-        private T? SendAuth<T>(HttpMethod method, string relativeUrl, object? payload = null, bool expectResponseBody = true)
-        {
-            DateTime start = DateTime.Now;
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            string url = $"{GetAuthBaseUrl().TrimEnd('/')}/{relativeUrl.TrimStart('/')}";
-
-            using (HttpClient client = new HttpClient())
-            using (var request = new HttpRequestMessage(method, url))
-            {
-                if (payload != null)
-                {
-                    string jsonString = JsonSerializer.Serialize(payload, options);
-                    request.Content = new StringContent(jsonString, Encoding.UTF8, "application/json");
-                }
-
-                try
-                {
-                    var req = client.SendAsync(request);
-                    req.Wait();
-                    HttpResponseMessage response = req.Result;
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        Console.WriteLine($"\n\nExecution time {Math.Round((DateTime.Now - start).TotalMilliseconds / 1000, 2)} s");
-                        if (!expectResponseBody)
-                        {
-                            return default;
-                        }
-
-                        var res = response.Content.ReadAsStringAsync();
-                        res.Wait();
-                        string responseBody = res.Result;
-                        if (string.IsNullOrWhiteSpace(responseBody))
-                        {
-                            return default;
-                        }
-
-                        return JsonSerializer.Deserialize<T>(responseBody, options);
-                    }
-                    else
-                    {
-                        var res = response.Content.ReadAsStringAsync();
-                        res.Wait();
-                        string errorDetails = res.Result;
-                        throw new ChillClientException($"Error: {response.StatusCode} {errorDetails}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new ChillClientException($"Unexpected error executing auth request {method} {relativeUrl}, see inner exception for details", ex);
-                }
-            }
-        }
-
-        private string GetAuthBaseUrl()
-        {
-            const string chillSuffix = "/chill";
-            if (_BaseUrl.EndsWith(chillSuffix, StringComparison.OrdinalIgnoreCase))
-            {
-                return _BaseUrl.Substring(0, _BaseUrl.Length - chillSuffix.Length) + "/chill-auth";
-            }
-
-            return _BaseUrl.TrimEnd('/') + "-auth";
         }
     }
 }

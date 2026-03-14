@@ -25,10 +25,11 @@ namespace ChillSharp.Tests.EF
 {
     public partial class DummyContext : IChillAuthDbContext
     {
-        public DbSet<AuthUser> Users { get; set; }
-        public DbSet<AuthRole> Roles { get; set; }
-        public DbSet<AuthUserRole> UserRoles { get; set; }
+        public new DbSet<AuthUser> Users { get; set; }
+        public new DbSet<AuthRole> Roles { get; set; }
+        public new DbSet<AuthUserRole> UserRoles { get; set; }
         public DbSet<AuthPermissionRule> PermissionRules { get; set; }
+        public DbSet<AuthRefreshToken> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

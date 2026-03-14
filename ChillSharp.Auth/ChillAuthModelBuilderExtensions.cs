@@ -91,6 +91,17 @@ public static class ChillAuthModelBuilderExtensions
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<AuthRefreshToken>(builder =>
+        {
+            builder.Property(x => x.IdentityUserId).HasMaxLength(256);
+            builder.Property(x => x.UserName).HasMaxLength(256);
+            builder.Property(x => x.TokenHash).HasMaxLength(256);
+
+            builder.HasIndex(x => x.TokenHash).IsUnique();
+            builder.HasIndex(x => x.IdentityUserId);
+            builder.HasIndex(x => x.ExpiresUtc);
+        });
+
         return modelBuilder;
     }
 }
