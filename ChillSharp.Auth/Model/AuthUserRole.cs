@@ -18,24 +18,65 @@
  */
 
 using ChillSharp.Annotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ChillSharp.Auth.Model;
 
-[ChillEntity]
+/// <summary>
+/// Links users to roles for permission inheritance.
+/// </summary>
+[ChillEntity(
+    "391D0A80-D073-45B5-9A7A-F24A91F65B1F",
+    "Auth user role",
+    "Ruolo utente auth")]
+[Table("auth-user-role")]
 public class AuthUserRole
 {
-    [ChillProperty]
+    /// <summary>
+    /// Identifier of the user in the membership.
+    /// </summary>
+    [Column("user-guid")]
+    [ChillProperty(
+        "2C784E32-1345-4F59-8F9C-D65AF419BD23",
+        "User guid",
+        "Guid utente")]
     public Guid UserGuid { get; set; }
 
-    [ChillProperty]
+    /// <summary>
+    /// User participating in the membership.
+    /// </summary>
+    [ChillProperty(
+        "1A0F6C52-2A9E-4A8A-9E85-64B96A830757",
+        "User",
+        "Utente")]
     public AuthUser User { get; set; } = null!;
 
-    [ChillProperty]
+    /// <summary>
+    /// Identifier of the role in the membership.
+    /// </summary>
+    [Column("role-guid")]
+    [ChillProperty(
+        "FD86C7F0-69B7-4A7E-BD56-0C3159F80D99",
+        "Role guid",
+        "Guid ruolo")]
     public Guid RoleGuid { get; set; }
 
-    [ChillProperty]
+    /// <summary>
+    /// Role participating in the membership.
+    /// </summary>
+    [ChillProperty(
+        "374A66C3-FF95-4736-970C-CE5F98FC1C84",
+        "Role",
+        "Ruolo")]
     public AuthRole Role { get; set; } = null!;
 
-    [ChillProperty]
+    /// <summary>
+    /// Datetime when the membership was assigned.
+    /// </summary>
+    [Column("assigned-utc")]
+    [ChillProperty(
+        "8A333F89-BED2-4C7F-AF84-9F5C92067F8B",
+        "Assigned utc",
+        "Assegnato utc")]
     public DateTime AssignedUtc { get; set; } = DateTime.UtcNow;
 }

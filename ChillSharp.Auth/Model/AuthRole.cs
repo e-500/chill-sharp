@@ -20,25 +20,68 @@
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ChillSharp.Auth.Model;
 
-[ChillEntity]
+/// <summary>
+/// Defines a role that groups permission rules for multiple users.
+/// </summary>
+[ChillEntity(
+    "A58CD663-78C5-4CF8-84F2-04342FD4B4C1",
+    "Auth role",
+    "Ruolo auth")]
+[Table("auth-role")]
 public class AuthRole : ChillEntity
 {
+    /// <summary>
+    /// Unique identifier of the role.
+    /// </summary>
     [Key]
+    [Column("guid")]
+    [ChillProperty(
+        "BB09BECA-E4A0-4409-88CE-EB57E5189304",
+        "Guid",
+        "Guid")]
     public override Guid Guid { get; set; }
 
-    [ChillProperty]
+    /// <summary>
+    /// Name of the role.
+    /// </summary>
+    [Column("name")]
+    [ChillProperty(
+        "79EB3C1C-95BD-4EF9-890E-2284E1D83DD4",
+        "Name",
+        "Nome")]
     public string Name { get; set; } = string.Empty;
 
-    [ChillProperty]
+    /// <summary>
+    /// Brief description of the role.
+    /// </summary>
+    [Column("description")]
+    [ChillProperty(
+        "74E61624-C2A4-4626-913F-D71790931B8B",
+        "Description",
+        "Descrizione")]
     public string Description { get; set; } = string.Empty;
 
-    [ChillProperty]
+    /// <summary>
+    /// Indicates whether the role is active.
+    /// </summary>
+    [Column("is-active")]
+    [ChillProperty(
+        "F87599E2-A50D-4556-97EC-F5E8BA63A9E0",
+        "Is active",
+        "Attivo")]
     public bool IsActive { get; set; } = true;
 
-    [ChillProperty]
+    /// <summary>
+    /// User memberships associated with this role.
+    /// </summary>
+    [ChillProperty(
+        "0DAA8BE8-E9F3-438B-8EF3-D284517C01F2",
+        "User roles",
+        "Ruoli utente")]
     public ICollection<AuthUserRole> UserRoles { get; set; } = new List<AuthUserRole>();
 
     public override string GetLabel(IChillContext Context)
