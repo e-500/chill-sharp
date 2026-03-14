@@ -1,48 +1,43 @@
-﻿using ChillSharp.Api;
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace ChillSharp.Tests
 {
     [TestClass]
     public sealed class Collections
     {
-        private void StartApiService()
-        {
-            var apiServer = Task.Run(() =>
-            {
-                var ctx = new EF.DummyContext();
-                ctx.Database.Migrate();
-                var builder = WebApplication.CreateBuilder(new string[0]);
-                builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={ctx.DbPath}"));
-                builder.Services.AddChillApi<EF.DummyContext>();
-                var app = builder.Build();
-                app.MapChillApi();
-                app.Run();
-            });
-            apiServer.Wait(5000);
-            _ApiServiceUpAndRunning = true;
-        }
-
-        private bool _ApiServiceUpAndRunning = false;
-
+        /// <summary>
+        /// Creates a blog without posts and verifies that the returned collection is empty.
+        /// </summary>
         [TestMethod]
         public void Step001_CreateEntityWithAnEmptyCollection()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            // Start the shared API host only once for the whole test run.
+            TestApiHost.EnsureStarted();
 
-            // Init client
+            // Use the HTTP client wrapper against the Chill endpoints.
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Create an entity with an empty collection
+            // Create a Blog entity without any Posts children.
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Blog";
             e.Guid = Guid.NewGuid();
@@ -53,7 +48,7 @@ namespace ChillSharp.Tests
             Assert.IsTrue(cRes.HasValue("Title"));
             Assert.AreEqual("The BLOG!", cRes.GetString("Title"));
 
-            // Check if that newly created entity has been created
+            // Query the blog including its Posts collection and verify that it is empty.
             var q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
             q.Properties.Add("Guid", cRes.Guid);
@@ -61,9 +56,8 @@ namespace ChillSharp.Tests
                 "Guid",
                 "Title",
                 "Url",
-                // Request also the Posts collection property with sub properties
                 ChillDtoProperty.With("Posts", ["Guid", "Title"])
-                ]);
+            ]);
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
@@ -72,33 +66,33 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
             Assert.AreEqual("The BLOG!", qEntity.GetString("Title"));
-            // Check if collection is empty
             var posts = qEntity.GetCollection("Posts");
             Assert.IsNotNull(posts);
             Assert.AreEqual(0, posts.Count());
 
-            // Save data for the upcoming tests
+            // Persist the Guid for the following collection steps.
             BlogGuid = qEntity.Guid;
         }
 
         private Guid? BlogGuid = null;
 
+        /// <summary>
+        /// Adds a post to the blog collection by setting the Blog reference during create.
+        /// </summary>
         [TestMethod]
         public void Step002_AddEntityToCollection()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            TestApiHost.EnsureStarted();
 
+            // Ensure a blog exists before linking a post to it.
             if (!BlogGuid.HasValue)
                 Step001_CreateEntityWithAnEmptyCollection();
 
-            // Test initial state for the test
             Assert.IsNotNull(BlogGuid);
 
-            // Init client
+            // Load the parent Blog DTO so it can be used as the foreign-key reference.
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
-            
-            // Get FK reference
+
             var q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
             q.Properties.Add("Guid", BlogGuid.Value);
@@ -108,7 +102,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual(1, qBlog.Results.Count);
             var blog = qBlog.Results[0];
 
-            // Create entity specifying directly the FK to link it to collection directly on create
+            // Create a Post and attach it to the Blog by sending the Blog DTO as reference.
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = Guid.NewGuid();
@@ -119,7 +113,7 @@ namespace ChillSharp.Tests
             Assert.IsTrue(cRes.HasValue("Title"));
             Assert.AreEqual("Post title", cRes.GetString("Title"));
 
-            // Get the entity with the collection to test if the newly create entity has be linked to the collection
+            // Query the Blog with its Posts collection and verify that the child entity is linked.
             q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
             q.Properties.Add("Guid", BlogGuid.Value);
@@ -127,9 +121,8 @@ namespace ChillSharp.Tests
                 "Guid",
                 "Title",
                 "Url",
-                // Request also the Posts collection property with sub properties
                 ChillDtoProperty.With("Posts", ["Guid", "Title"])
-                ]);
+            ]);
             qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
@@ -138,54 +131,51 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(blog);
             Assert.IsTrue(blog.HasValue("Title"));
             Assert.AreEqual("The BLOG!", blog.GetString("Title"));
-            // Check collection count
             var posts = blog.GetCollection("Posts");
             Assert.AreEqual(1, posts.Count());
             foreach (var post in posts)
             {
-                // Check if linked entity is the correct one
-                Assert.IsNotNull(post); 
+                Assert.IsNotNull(post);
                 Assert.IsTrue(post.HasValue("Title"));
                 Assert.AreEqual("Post title", post.GetString("Title"));
             }
 
-            // Save data for the upcoming tests
+            // Store the DTO with collection data for the remove step.
             BlogDtoWithCollection = blog;
         }
 
         ChillDtoEntity? BlogDtoWithCollection = null;
 
+        /// <summary>
+        /// Removes a post from the blog collection, verifies the relation is cleared, then deletes the orphaned post.
+        /// </summary>
         [TestMethod]
         public void Step003_RemoveEntityFromCollection()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            TestApiHost.EnsureStarted();
 
+            // Ensure there is a blog with one linked post.
             if (!BlogGuid.HasValue)
                 Step002_AddEntityToCollection();
 
-            // Test initial state for the test
             Assert.IsNotNull(BlogDtoWithCollection);
             Assert.AreEqual(1, BlogDtoWithCollection.GetCollection("Posts").Count());
 
-            // Init client
+            // Load the current child entity and verify the expected starting state.
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Get and test collection element
             var post = BlogDtoWithCollection.GetCollection("Posts").First();
             Assert.IsNotNull(post);
             Assert.IsTrue(post.HasValue("Title"));
             Assert.AreEqual("Post title", post.GetString("Title"));
 
-            // Replace collection with an empty one (aka remove element)
+            // Replace the collection with an empty list to remove the relationship.
             BlogDtoWithCollection.Properties["Posts"] = new List<ChillDtoEntity>();
-            // Update the entity with the empty collection
             var blogDtoWithEmptyCollection = cli.Update(BlogDtoWithCollection);
             Assert.IsNotNull(blogDtoWithEmptyCollection);
-            // Check if collection is empty after save
             Assert.AreEqual(0, blogDtoWithEmptyCollection.GetCollection("Posts").Count());
 
-            // Select removed entity to check if is still present with null FK
+            // Query the Post and verify that the Blog reference is now null.
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", post.Guid);
@@ -197,12 +187,12 @@ namespace ChillSharp.Tests
             var qPost = qr.Results[0];
 
             Assert.IsNotNull(qPost);
-            Assert.IsFalse(qPost.HasValue("Blog")); // Null FK
+            Assert.IsFalse(qPost.HasValue("Blog"));
 
-            // Remove entity unlinked from Posts collection
+            // Delete the now-unlinked post.
             cli.Delete(qPost);
 
-            // Test if entity previously linked in the collection has been removed successfully
+            // Confirm that the post has been fully removed from the database.
             q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", post.Guid);
@@ -211,8 +201,6 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
             Assert.AreEqual(0, qr.Results.Count);
-
-            // No entity, No errors => ok
         }
     }
 }

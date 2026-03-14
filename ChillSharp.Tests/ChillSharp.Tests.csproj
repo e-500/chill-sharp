@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChillSharp.Client\ChillSharp.Client.csproj" />
+    <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
     <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
   </ItemGroup>
 

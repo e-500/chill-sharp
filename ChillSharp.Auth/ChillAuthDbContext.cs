@@ -71,62 +71,6 @@ public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<AuthUser>(builder =>
-        {
-            builder.Property(x => x.ExternalId).HasMaxLength(256);
-            builder.Property(x => x.UserName).HasMaxLength(256);
-            builder.Property(x => x.DisplayName).HasMaxLength(256);
-            builder.HasIndex(x => x.ExternalId).IsUnique();
-            builder.HasIndex(x => x.UserName).IsUnique();
-        });
-
-        modelBuilder.Entity<AuthRole>(builder =>
-        {
-            builder.Property(x => x.Name).HasMaxLength(128);
-            builder.Property(x => x.Description).HasMaxLength(1024);
-            builder.HasIndex(x => x.Name).IsUnique();
-        });
-
-        modelBuilder.Entity<AuthUserRole>(builder =>
-        {
-            builder.HasKey(x => new { x.UserGuid, x.RoleGuid });
-
-            builder.HasOne(x => x.User)
-                .WithMany(x => x.UserRoles)
-                .HasForeignKey(x => x.UserGuid)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(x => x.Role)
-                .WithMany(x => x.UserRoles)
-                .HasForeignKey(x => x.RoleGuid)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<AuthPermissionRule>(builder =>
-        {
-            builder.Property(x => x.Effect).HasConversion<string>().HasMaxLength(16);
-            builder.Property(x => x.Action).HasConversion<string>().HasMaxLength(16);
-            builder.Property(x => x.Scope).HasConversion<string>().HasMaxLength(16);
-            builder.Property(x => x.Module).HasMaxLength(256);
-            builder.Property(x => x.EntityName).HasMaxLength(128);
-            builder.Property(x => x.PropertyName).HasMaxLength(128);
-            builder.Property(x => x.Description).HasMaxLength(1024);
-
-            builder.HasIndex(x => x.UserGuid);
-            builder.HasIndex(x => x.RoleGuid);
-            builder.HasIndex(x => new { x.UserGuid, x.Scope, x.Action, x.Module, x.EntityName, x.PropertyName });
-            builder.HasIndex(x => new { x.RoleGuid, x.Scope, x.Action, x.Module, x.EntityName, x.PropertyName });
-
-            builder.HasOne(x => x.User)
-                .WithMany()
-                .HasForeignKey(x => x.UserGuid)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(x => x.Role)
-                .WithMany()
-                .HasForeignKey(x => x.RoleGuid)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
+        modelBuilder.AddChillAuthModel();
     }
 }
