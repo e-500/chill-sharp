@@ -54,6 +54,7 @@ public static class ChillAuthApiExtensions
         });
 
         services.AddScoped<IChillAuthService, ChillAuthService>();
+        services.AddChillAuthIdentityIntegration();
         return services;
     }
 }

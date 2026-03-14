@@ -57,6 +57,20 @@ public class ChillAuthService : IChillAuthService
     }
 
     /// <inheritdoc />
+    public Task<AuthUser?> GetUserByExternalIdAsync(string externalId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+        {
+            return Task.FromResult<AuthUser?>(null);
+        }
+
+        var normalized = externalId.Trim();
+        return _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ExternalId == normalized, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<AuthUser> CreateUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default)
     {
         ValidateUser(request.ExternalId, request.UserName);

@@ -38,6 +38,11 @@ public interface IChillAuthService
     Task<AuthUser?> GetUserAsync(Guid userGuid, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns a single authorization user by external identity identifier.
+    /// </summary>
+    Task<AuthUser?> GetUserByExternalIdAsync(string externalId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new authorization user.
     /// </summary>
     Task<AuthUser> CreateUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default);
