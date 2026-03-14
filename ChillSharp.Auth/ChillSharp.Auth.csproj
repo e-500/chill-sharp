@@ -35,4 +35,13 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
+  </ItemGroup>
+
 </Project>
