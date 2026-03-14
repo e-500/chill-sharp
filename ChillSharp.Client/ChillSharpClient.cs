@@ -27,7 +27,7 @@ namespace ChillSharp.Client
     /// Lightweight client for interacting with the ChillSharp API.
     /// Provides methods for querying, CRUD operations, and batch actions.
     /// </summary>
-    public class ChillSharpClient
+    public partial class ChillSharpClient
     {
         private string _BaseUrl = string.Empty;
 

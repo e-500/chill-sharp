@@ -35,4 +35,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
+  </ItemGroup>
+
 </Project>

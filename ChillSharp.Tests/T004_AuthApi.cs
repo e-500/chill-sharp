@@ -18,9 +18,8 @@
  */
 
 using ChillSharp.Auth.Contracts;
-using ChillSharp.Auth.Model;
+using ChillSharp.Client;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Http.Json;
 
 namespace ChillSharp.Tests;
 
@@ -36,14 +35,11 @@ public sealed class AuthApi
         // Start the shared API host with both ChillApi and ChillAuthApi mapped.
         TestApiHost.EnsureStarted();
 
-        // Use a raw HttpClient because this test targets the auth-specific endpoints directly.
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5000/")
-        };
+        // Use the ChillSharp client auth methods against the sibling auth API endpoints.
+        var client = new ChillSharpClient("http://localhost:5000/api/chill");
 
         // Create an auth user through the REST API.
-        var createUserResponse = await client.PostAsJsonAsync("api/chill-auth/users", new CreateAuthUserRequest
+        var user = client.CreateAuthUser(new CreateAuthUserRequest
         {
             ExternalId = "user-auth-test-001",
             UserName = "auth.test",
@@ -51,25 +47,20 @@ public sealed class AuthApi
             IsActive = true
         });
 
-        createUserResponse.EnsureSuccessStatusCode();
-        var user = await createUserResponse.Content.ReadFromJsonAsync<AuthUser>();
         Assert.IsNotNull(user);
 
         // Create an auth role through the REST API.
-        var createRoleResponse = await client.PostAsJsonAsync("api/chill-auth/roles", new CreateAuthRoleRequest
+        var role = client.CreateAuthRole(new CreateAuthRoleRequest
         {
             Name = "TestRole",
             Description = "Role created by integration test",
             IsActive = true
         });
 
-        createRoleResponse.EnsureSuccessStatusCode();
-        var role = await createRoleResponse.Content.ReadFromJsonAsync<AuthRole>();
         Assert.IsNotNull(role);
 
         // Assign the created role to the created user.
-        var assignRoleResponse = await client.PutAsync($"api/chill-auth/users/{user.Guid}/roles/{role.Guid}", null);
-        assignRoleResponse.EnsureSuccessStatusCode();
+        client.AssignAuthRole(user.Guid, role.Guid);
 
         // Open the same DummyContext database directly and verify that all auth records were persisted there.
         await using var verificationContext = new EF.DummyContext();
