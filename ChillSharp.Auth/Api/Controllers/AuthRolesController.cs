@@ -27,6 +27,7 @@ namespace ChillSharp.Auth.Api.Controllers;
 /// Exposes endpoints for managing authorization roles.
 /// </summary>
 [ApiController]
+[ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
 [Route("api/chill-auth/roles")]
 public class AuthRolesController : ControllerBase
 {

@@ -57,6 +57,7 @@ public static class ChillAuthApiExtensions
 
         services.AddScoped<IChillAuthService, ChillAuthService>();
         services.AddChillAuthIdentityIntegration();
+        services.AddScoped<ChillAuthManagementAccessFilter>();
         return services;
     }
 
@@ -82,6 +83,7 @@ public static class ChillAuthApiExtensions
 
         services.AddScoped<IChillAuthTokenService, ChillAuthTokenService>();
         services.AddScoped<IChillAuthIdentityService, ChillAuthIdentityService<TUser>>();
+        services.AddHostedService<ChillAuthRootUserInitializer<TUser>>();
         return services;
     }
 }

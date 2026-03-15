@@ -51,6 +51,11 @@ public class CreateAuthUserRequest
     /// Gets or sets whether the user is active.
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the user can manage the auth API.
+    /// </summary>
+    public bool CanManagePermissions { get; set; }
 }
 
 /// <summary>
@@ -82,6 +87,11 @@ public class UpdateAuthUserRequest
     /// Gets or sets whether the user is active.
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the user can manage the auth API.
+    /// </summary>
+    public bool CanManagePermissions { get; set; }
 }
 
 /// <summary>

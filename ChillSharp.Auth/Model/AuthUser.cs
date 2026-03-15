@@ -86,6 +86,16 @@ public class AuthUser : ChillEntity
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Indicates whether the user can access the auth-management API and manage users, roles, and permission rules.
+    /// </summary>
+    [Column("can-manage-permissions")]
+    [ChillProperty(
+        "40846A6A-6B66-470E-902B-E95A8DF1B6DE",
+        "Can manage permissions",
+        "Può gestire permessi")]
+    public bool CanManagePermissions { get; set; }
+
+    /// <summary>
     /// Role memberships assigned to the user.
     /// </summary>
     [ChillProperty(

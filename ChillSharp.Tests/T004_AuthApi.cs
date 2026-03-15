@@ -198,6 +198,15 @@ public sealed class AuthApi
         Assert.IsFalse(string.IsNullOrWhiteSpace(registerResponse.AccessToken));
         Assert.IsFalse(string.IsNullOrWhiteSpace(registerResponse.RefreshToken));
 
+        try
+        {
+            client.GetAuthUsers();
+            Assert.Fail("A normal authenticated user should not be allowed to manage the auth API.");
+        }
+        catch (ChillClientException)
+        {
+        }
+
         // Wait long enough to cross the 75% refresh threshold and force the client to refresh automatically on the next authenticated call.
         await Task.Delay(TimeSpan.FromSeconds(4));
 
@@ -254,6 +263,56 @@ public sealed class AuthApi
 
         Assert.IsNotNull(persistedAuthUser);
         Assert.IsNotNull(persistedRefreshToken);
+    }
+
+    /// <summary>
+    /// Verifies that the Identity integration can bootstrap a root account from environment variables during startup.
+    /// </summary>
+    [TestMethod]
+    public async Task Step005_RootAccountCanBeInitializedFromEnvironment()
+    {
+        const string rootUserName = "root";
+        const string rootPassword = "Pass123$";
+        const string rootEmail = "root@test.local";
+        const string rootDisplayName = "Root User";
+
+        Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_USERNAME", rootUserName);
+        Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_PASSWORD", rootPassword);
+        Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_EMAIL", rootEmail);
+        Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_DISPLAY_NAME", rootDisplayName);
+
+        try
+        {
+            RootBootstrapAuthApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5003/api/chill");
+            var loginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
+            {
+                UserNameOrEmail = rootUserName,
+                Password = rootPassword
+            });
+
+            Assert.AreEqual(rootUserName, loginResponse.UserName);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(loginResponse.AccessToken));
+            Assert.AreEqual(1, client.GetAuthUsers().Count);
+
+            await using var verificationContext = RootBootstrapAuthApiHost.CreateDbContext();
+            var persistedIdentityUser = await verificationContext.Set<IdentityUser>().FirstOrDefaultAsync(x => x.UserName == rootUserName);
+
+            Assert.IsNotNull(persistedIdentityUser);
+
+            var persistedAuthUser = await verificationContext.Users.FirstOrDefaultAsync(x => x.ExternalId == persistedIdentityUser.Id);
+            Assert.IsNotNull(persistedAuthUser);
+            Assert.AreEqual(rootDisplayName, persistedAuthUser.DisplayName);
+            Assert.IsTrue(persistedAuthUser.CanManagePermissions);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_USERNAME", null);
+            Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_PASSWORD", null);
+            Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_EMAIL", null);
+            Environment.SetEnvironmentVariable("CHILLSHARP_AUTH_ROOT_DISPLAY_NAME", null);
+        }
     }
 
     private static class SecuredAuthApiHost
@@ -357,6 +416,68 @@ public sealed class AuthApi
                         options.RefreshTokenLifetime = TimeSpan.FromMinutes(5);
                         options.ReturnPasswordResetTokensInResponse = true;
                     });
+
+                    var app = builder.Build();
+                    app.UseAuthentication();
+                    app.UseAuthorization();
+                    app.MapChillApi();
+                    app.Run();
+                });
+
+                apiServer.Wait(5000);
+                _apiServiceUpAndRunning = true;
+            }
+        }
+
+        public static EF.DummyContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={DatabasePath}")
+                .Options;
+            return new EF.DummyContext(options);
+        }
+    }
+
+    private static class RootBootstrapAuthApiHost
+    {
+        private static readonly object SyncRoot = new();
+        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "root-bootstrap-auth-api-host.db");
+        private static bool _apiServiceUpAndRunning;
+
+        public static void EnsureStarted()
+        {
+            if (_apiServiceUpAndRunning)
+            {
+                return;
+            }
+
+            lock (SyncRoot)
+            {
+                if (_apiServiceUpAndRunning)
+                {
+                    return;
+                }
+
+                var apiServer = Task.Run(() =>
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
+                    var ctx = CreateDbContext();
+                    ctx.Database.EnsureDeleted();
+                    ctx.Database.EnsureCreated();
+
+                    var builder = WebApplication.CreateBuilder(Array.Empty<string>());
+                    builder.WebHost.UseUrls("http://localhost:5003");
+                    builder.Services.AddDbContext<EF.DummyContext>(options =>
+                        options.UseSqlite($"Data Source={DatabasePath}"));
+                    builder.Services.AddIdentityCore<IdentityUser>()
+                        .AddEntityFrameworkStores<EF.DummyContext>()
+                        .AddSignInManager()
+                        .AddDefaultTokenProviders();
+                    builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
+                        .AddChillAuthBearer();
+                    builder.Services.AddAuthorization();
+                    builder.Services.AddChillApi<EF.DummyContext>(options => options.ProtectedApi = true);
+                    builder.Services.AddChillAuthIdentityApi<EF.DummyContext, IdentityUser>();
 
                     var app = builder.Build();
                     app.UseAuthentication();

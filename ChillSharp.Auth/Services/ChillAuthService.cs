@@ -81,7 +81,8 @@ public class ChillAuthService : IChillAuthService
             ExternalId = request.ExternalId.Trim(),
             UserName = request.UserName.Trim(),
             DisplayName = request.DisplayName.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            CanManagePermissions = request.CanManagePermissions
         };
 
         _context.Users.Add(user);
@@ -104,6 +105,7 @@ public class ChillAuthService : IChillAuthService
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
         user.IsActive = request.IsActive;
+        user.CanManagePermissions = request.CanManagePermissions;
 
         await _context.SaveChangesAsync(cancellationToken);
         return user;

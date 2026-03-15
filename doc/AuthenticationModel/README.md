@@ -93,6 +93,8 @@ This has one important consequence:
 
 So after the first registration, the user is authenticated but still has no application permissions until you create roles and/or direct permission rules.
 
+Also, a normal `AuthUser` does not automatically gain access to the auth-management API. That requires `CanManagePermissions = true`.
+
 If you protect the auth-management endpoints (`/api/chill-auth/users`, `/roles`, `/permissions`) from the first request, you must also provide a bootstrap strategy for the first administrator, for example:
 
 - seed the first admin user and its rules in the database
@@ -135,6 +137,9 @@ builder.Services.AddChillApi<DummyContext>(options =>
 builder.Services.AddChillAuthIdentityApi<DummyContext, IdentityUser>(options =>
 {
     options.ReturnPasswordResetTokensInResponse = true;
+    // Optional explicit bootstrap values.
+    // options.RootUserName = "root";
+    // options.RootPassword = "Pass123$";
 });
 
 var app = builder.Build();
@@ -158,6 +163,43 @@ app.Run();
 - an `IChillAuthDbContext`
 
 and it includes the auth tables through `modelBuilder.AddChillAuthModel()`.
+
+## Optional Root User Bootstrap
+
+`AddChillAuthIdentityApi(...)` can initialize a root Identity account during startup.
+
+By default, it looks for these environment variables:
+
+- `CHILLSHARP_AUTH_ROOT_USERNAME`
+- `CHILLSHARP_AUTH_ROOT_PASSWORD`
+- `CHILLSHARP_AUTH_ROOT_EMAIL`
+- `CHILLSHARP_AUTH_ROOT_DISPLAY_NAME`
+
+If user name and password are present, the extension creates the Identity account if it does not already exist. By default it also creates the matching `AuthUser`.
+
+The root `AuthUser` is created with `CanManagePermissions = true`.
+
+Example:
+
+```csharp
+builder.Services.AddChillAuthIdentityApi<DummyContext, IdentityUser>(options =>
+{
+    options.InitializeRootUserOnStartup = true;
+    options.CreateChillAuthUserForRoot = true;
+});
+```
+
+You can also set the values directly in code instead of using environment variables:
+
+```csharp
+builder.Services.AddChillAuthIdentityApi<DummyContext, IdentityUser>(options =>
+{
+    options.RootUserName = "root";
+    options.RootPassword = "Pass123$";
+    options.RootEmail = "root@example.com";
+    options.RootDisplayName = "Root";
+});
+```
 
 ## Typical Client Flows
 
@@ -239,9 +281,12 @@ var authUser = client.CreateAuthUser(new CreateAuthUserRequest
     ExternalId = "external-user-001",
     UserName = "external.admin",
     DisplayName = "External Admin",
-    IsActive = true
+    IsActive = true,
+    CanManagePermissions = false
 });
 ```
+
+If `CanManagePermissions` is `true`, that user can interact with the auth-management API and therefore manage all auth users, roles, and permission rules.
 
 ### Create a role and assign it
 

@@ -27,6 +27,7 @@ namespace ChillSharp.Auth.Api.Controllers;
 /// Exposes endpoints for managing permission rules and evaluating effective access.
 /// </summary>
 [ApiController]
+[ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
 [Route("api/chill-auth/permissions")]
 public class AuthPermissionRulesController : ControllerBase
 {
