@@ -82,6 +82,17 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Gets the default user culture name used when callers do not explicitly request a schema culture.
+        /// </summary>
+        /// <remarks>
+        /// Contexts can override this to align schema labels with tenant-specific or request-specific user preferences.
+        /// </remarks>
+        string GetDefaultUserCultureName()
+        {
+            return GetPrimaryCultureName();
+        }
+
+        /// <summary>
         /// Gets the user name associated with the current logical Chill operation.
         /// </summary>
         /// <remarks>

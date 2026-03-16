@@ -100,9 +100,10 @@ namespace ChillSharp
         /// </summary>
         /// <param name="ChillType">The identifier representing the chill type for which the schema is requested. Cannot be null or empty.</param>
         /// <param name="ChillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
+        /// <param name="CultureName">Optional explicit culture used to localize schema labels.</param>
         /// <returns>A ChillDtoSchema object containing the schema definition for the specified chill type and view code. Returns
         /// null if no matching schema is found.</returns>
-        ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode);
+        ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null);
 
         /// <summary>
         /// Sets the schema definition used for DTO operations and returns the previous schema.

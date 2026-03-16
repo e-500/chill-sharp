@@ -7,11 +7,11 @@ namespace ChillSharp.Schema;
 /// </summary>
 public interface IChillSchemaCache
 {
-    bool TryGet(string chillType, string chillViewCode, out ChillDtoSchema? schema);
+    bool TryGet(string chillType, string chillViewCode, string? cultureName, out ChillDtoSchema? schema);
 
-    ChillDtoSchema SetSchema(ChillDtoSchema schema);
+    ChillDtoSchema SetSchema(ChillDtoSchema schema, string? cultureName);
 
-    void Invalidate(string chillType, string chillViewCode);
+    void Invalidate(string chillType, string chillViewCode, string? cultureName);
 
     void InvalidateAll();
 }

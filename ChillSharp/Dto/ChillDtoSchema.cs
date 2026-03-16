@@ -61,8 +61,14 @@ namespace ChillSharp.Dto
         /// <param name="ChillViewCode">The view code attached to the generated schema.</param>
         /// <param name="shrinkTypePrefix">Optional namespace prefix removed from generated Chill type names.</param>
         /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <param name="cultureName">Optional explicit culture used to choose between primary and secondary labels.</param>
         /// <returns>A schema representation of the entity.</returns>
-        public static ChillDtoSchema FromIChillEntity(IChillEntity chillEntity, string ChillViewCode = "default", string shrinkTypePrefix = "", IChillContext? context = null)
+        public static ChillDtoSchema FromIChillEntity(
+            IChillEntity chillEntity,
+            string ChillViewCode = "default",
+            string shrinkTypePrefix = "",
+            IChillContext? context = null,
+            string? cultureName = null)
         {
             if (chillEntity == null)
                 throw new ArgumentNullException(nameof(chillEntity));
@@ -74,7 +80,8 @@ namespace ChillSharp.Dto
                 chillAttr?.PrimaryLanguageLabel,
                 chillAttr?.SecondaryLanguageLabel,
                 type.Name,
-                context);
+                context,
+                cultureName);
 
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
@@ -85,7 +92,7 @@ namespace ChillSharp.Dto
 
             var ef_props = chillEntity.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context)).ToList();
+            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
 
             return schema;
         }
@@ -97,8 +104,14 @@ namespace ChillSharp.Dto
         /// <param name="ChillViewCode">The view code attached to the generated schema.</param>
         /// <param name="shrinkTypePrefix">Optional namespace prefix removed from generated Chill type names.</param>
         /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <param name="cultureName">Optional explicit culture used to choose between primary and secondary labels.</param>
         /// <returns>A schema representation of the query.</returns>
-        public static ChillDtoSchema FromIChillQuery(IChillQuery<IChillEntity> chillQuery, string ChillViewCode = "default", string shrinkTypePrefix = "", IChillContext? context = null)
+        public static ChillDtoSchema FromIChillQuery(
+            IChillQuery<IChillEntity> chillQuery,
+            string ChillViewCode = "default",
+            string shrinkTypePrefix = "",
+            IChillContext? context = null,
+            string? cultureName = null)
         {
             if (chillQuery == null)
                 throw new ArgumentNullException(nameof(chillQuery));
@@ -110,7 +123,8 @@ namespace ChillSharp.Dto
                 chillAttr?.PrimaryLanguageLabel,
                 chillAttr?.SecondaryLanguageLabel,
                 type.Name,
-                context);
+                context,
+                cultureName);
 
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
@@ -121,7 +135,7 @@ namespace ChillSharp.Dto
 
             var ef_props = chillQuery.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context)).ToList();
+            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
 
             return schema;
         }

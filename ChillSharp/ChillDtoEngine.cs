@@ -209,12 +209,12 @@ namespace ChillSharp
             _Engine.Delete(e);
         }
 
-        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
+        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
         {
             if (_SchemaService == null)
                 throw new ChillException("Chill schema service is not registered.");
 
-            return _SchemaService.GetSchemaAsync(ChillType, ChillViewCode).GetAwaiter().GetResult();
+            return _SchemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName).GetAwaiter().GetResult();
         }
 
         public ChillDtoSchema SetSchema(ChillDtoSchema Schema)

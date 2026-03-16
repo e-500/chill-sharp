@@ -41,6 +41,7 @@ namespace ChillSharp.Client
         private string _BaseUrl = string.Empty;
         private string? _UserName;
         private string? _Password;
+        private string? _CultureName;
         private string? _AccessToken;
         private DateTimeOffset? _AccessTokenIssuedUtc;
         private DateTimeOffset? _AccessTokenExpiresUtc;
@@ -52,9 +53,10 @@ namespace ChillSharp.Client
         /// Removes trailing slashes for consistent request formatting.
         /// </summary>
         /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
-        public ChillSharpClient(string BaseUrl)
+        public ChillSharpClient(string BaseUrl, string? CultureName = null)
         {
             _BaseUrl = NormalizeBaseUrl(BaseUrl);
+            _CultureName = NormalizeOptionalValue(CultureName);
         }
 
         /// <summary>
@@ -62,8 +64,8 @@ namespace ChillSharp.Client
         /// </summary>
         /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
         /// <param name="AuthToken">Bearer token applied to outgoing requests.</param>
-        public ChillSharpClient(string BaseUrl, string AuthToken)
-            : this(BaseUrl)
+        public ChillSharpClient(string BaseUrl, string AuthToken, string? CultureName = null)
+            : this(BaseUrl, CultureName)
         {
             _AccessToken = NormalizeRequiredValue(AuthToken, nameof(AuthToken));
         }
@@ -74,8 +76,8 @@ namespace ChillSharp.Client
         /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
         /// <param name="UserName">User name or email used to authenticate.</param>
         /// <param name="Password">Password used to authenticate.</param>
-        public ChillSharpClient(string BaseUrl, string UserName, string Password)
-            : this(BaseUrl)
+        public ChillSharpClient(string BaseUrl, string UserName, string Password, string? CultureName = null)
+            : this(BaseUrl, CultureName)
         {
             _UserName = NormalizeRequiredValue(UserName, nameof(UserName));
             _Password = NormalizeRequiredValue(Password, nameof(Password));
@@ -168,11 +170,18 @@ namespace ChillSharp.Client
         /// <param name="chillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
         /// <returns>A <see cref="ChillDtoSchema"/> object containing the schema definition if found; otherwise, <see langword="null"/>.</returns>
         /// <exception cref="ChillClientException">Thrown if the remote service returns an error response or if an unexpected error occurs during the request.</exception>
-        public ChillDtoSchema? GetSchema(string chillType, string chillViewCode)
+        public ChillDtoSchema? GetSchema(string chillType, string chillViewCode, string? cultureName = null)
         {
             var encodedType = Uri.EscapeDataString(chillType);
             var encodedView = Uri.EscapeDataString(chillViewCode);
-            return SendJson<ChillDtoSchema>(HttpMethod.Get, BuildChillUrl($"get-schema?chillType={encodedType}&chillViewCode={encodedView}"), payload: null);
+            var effectiveCultureName = NormalizeOptionalValue(cultureName) ?? _CultureName;
+            var relativeUrl = $"get-schema?chillType={encodedType}&chillViewCode={encodedView}";
+            if (!string.IsNullOrWhiteSpace(effectiveCultureName))
+            {
+                relativeUrl += $"&cultureName={Uri.EscapeDataString(effectiveCultureName)}";
+            }
+
+            return SendJson<ChillDtoSchema>(HttpMethod.Get, BuildChillUrl(relativeUrl), payload: null);
         }
 
         /// <summary>
@@ -440,6 +449,12 @@ namespace ChillSharp.Client
         {
             var normalized = NormalizeRequiredValue(baseUrl, nameof(baseUrl));
             return normalized.EndsWith("/") ? normalized[..^1] : normalized;
+        }
+
+        private static string? NormalizeOptionalValue(string? value)
+        {
+            var normalized = value?.Trim();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
         }
 
         private static string NormalizeRequiredValue(string value, string argumentName)

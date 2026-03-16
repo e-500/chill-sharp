@@ -202,12 +202,13 @@ namespace ChillSharp.Api.Controllers
         /// UI generation or validation scenarios.</remarks>
         /// <param name="ChillType">The type of chill for which to retrieve schema information. Cannot be null or empty.</param>
         /// <param name="ChillViewCode">The code representing the specific chill view to query. Cannot be null or empty.</param>
+        /// <param name="CultureName">Optional explicit culture used to localize schema labels.</param>
         /// <returns>An <see cref="IActionResult"/> containing the schema data for the requested chill type and view code.</returns>
         [HttpGet]
         [Route("get-schema")]
-        public IActionResult GetSchema(string ChillType, string ChillViewCode)
+        public IActionResult GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
         {
-            return Ok(_ce.GetSchema(ChillType, ChillViewCode));
+            return Ok(_ce.GetSchema(ChillType, ChillViewCode, CultureName));
         }
 
         /// <summary>

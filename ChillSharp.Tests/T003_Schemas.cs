@@ -20,7 +20,6 @@
 using ChillSharp.Client;
 using ChillSharp.Dto;
 using ChillSharp.Tests.EF.Model;
-using System.Globalization;
 
 namespace ChillSharp.Tests
 {
@@ -32,12 +31,18 @@ namespace ChillSharp.Tests
         {
             TestApiHost.EnsureStarted();
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
+            var defaultCultureClient = new ChillSharpClient("http://localhost:5000/api/chill");
 
             var blogSchema = cli.GetSchema("Model.Blog", "default");
             Assert.IsNotNull(blogSchema, "GetSchema('Model.Blog', 'default') returned null");
             Assert.IsTrue(blogSchema.Properties.Select(x => x.Name).ToArray().Contains("Title"),
                 "Blog schema properties don't contains 'Title'");
+            Assert.AreEqual("Titolo del blog", blogSchema.Properties.Single(x => x.Name == "Title").DisplayName);
+
+            var defaultBlogSchema = defaultCultureClient.GetSchema("Model.Blog", "default");
+            Assert.IsNotNull(defaultBlogSchema, "GetSchema('Model.Blog', 'default') returned null");
+            Assert.AreEqual("Blog title", defaultBlogSchema.Properties.Single(x => x.Name == "Title").DisplayName);
 
             var postSchema = cli.GetSchema("Model.Post", "default");
             Assert.IsNotNull(postSchema, "GetSchema('Model.Post', 'default') returned null");
@@ -56,27 +61,20 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step002_ContextCulturesDrivePrimaryAndSecondaryLabelResolution()
         {
-            var originalUiCulture = CultureInfo.CurrentUICulture;
-            try
-            {
-                CultureInfo.CurrentUICulture = new CultureInfo("it-IT");
+            var italianAwareContext = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "it-IT");
+            var defaultOnlyContext = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "de-DE", "en-GB");
 
-                var italianAwareContext = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT");
-                var defaultOnlyContext = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "de-DE");
+            var italianSchema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", italianAwareContext.GetChillTypePrefix(), italianAwareContext);
+            var defaultSchema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", defaultOnlyContext.GetChillTypePrefix(), defaultOnlyContext);
+            var explicitPrimarySchema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", italianAwareContext.GetChillTypePrefix(), italianAwareContext, "en-GB");
 
-                var italianSchema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", italianAwareContext.GetChillTypePrefix(), italianAwareContext);
-                var defaultSchema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", defaultOnlyContext.GetChillTypePrefix(), defaultOnlyContext);
+            var italianTitle = italianSchema.Properties.Single(x => x.Name == "Title");
+            var defaultTitle = defaultSchema.Properties.Single(x => x.Name == "Title");
+            var explicitPrimaryTitle = explicitPrimarySchema.Properties.Single(x => x.Name == "Title");
 
-                var italianTitle = italianSchema.Properties.Single(x => x.Name == "Title");
-                var defaultTitle = defaultSchema.Properties.Single(x => x.Name == "Title");
-
-                Assert.AreEqual("Titolo del blog", italianTitle.DisplayName);
-                Assert.AreEqual("Blog title", defaultTitle.DisplayName);
-            }
-            finally
-            {
-                CultureInfo.CurrentUICulture = originalUiCulture;
-            }
+            Assert.AreEqual("Titolo del blog", italianTitle.DisplayName);
+            Assert.AreEqual("Blog title", defaultTitle.DisplayName);
+            Assert.AreEqual("Blog title", explicitPrimaryTitle.DisplayName);
         }
 
         private sealed class TestChillContext : IChillContext
@@ -84,12 +82,14 @@ namespace ChillSharp.Tests
             private readonly string _typePrefix;
             private readonly string _primaryCultureName;
             private readonly string _secondaryCultureName;
+            private readonly string _defaultUserCultureName;
 
-            public TestChillContext(string typePrefix, string primaryCultureName, string secondaryCultureName)
+            public TestChillContext(string typePrefix, string primaryCultureName, string secondaryCultureName, string defaultUserCultureName)
             {
                 _typePrefix = typePrefix;
                 _primaryCultureName = primaryCultureName;
                 _secondaryCultureName = secondaryCultureName;
+                _defaultUserCultureName = defaultUserCultureName;
             }
 
             public string GetChillTypePrefix()
@@ -105,6 +105,11 @@ namespace ChillSharp.Tests
             public string GetSecondaryCultureName()
             {
                 return _secondaryCultureName;
+            }
+
+            public string GetDefaultUserCultureName()
+            {
+                return _defaultUserCultureName;
             }
         }
     }

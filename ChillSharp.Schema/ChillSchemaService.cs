@@ -27,9 +27,11 @@ public class ChillSchemaService : IChillSchemaService
     }
 
     /// <inheritdoc />
-    public async Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, CancellationToken cancellationToken = default)
+    public async Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
     {
-        if (_schemaCache.TryGet(chillType, chillViewCode, out ChillDtoSchema? cachedSchema))
+        var effectiveCultureName = NormalizeCultureName(cultureName);
+
+        if (_schemaCache.TryGet(chillType, chillViewCode, effectiveCultureName, out ChillDtoSchema? cachedSchema))
         {
             return cachedSchema;
         }
@@ -50,7 +52,7 @@ public class ChillSchemaService : IChillSchemaService
         {
             try
             {
-                schema = BuildSchema(chillType, chillViewCode);
+                schema = BuildSchema(chillType, chillViewCode, effectiveCultureName);
             }
             catch
             {
@@ -60,7 +62,7 @@ public class ChillSchemaService : IChillSchemaService
 
         if (schema != null)
         {
-            return _schemaCache.SetSchema(schema);
+            return _schemaCache.SetSchema(schema, effectiveCultureName);
         }
 
         return null;
@@ -93,10 +95,11 @@ public class ChillSchemaService : IChillSchemaService
         row.UpdatedUtc = DateTime.UtcNow;
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
-        return _schemaCache.SetSchema(schema);
+        _schemaCache.InvalidateAll();
+        return _schemaCache.SetSchema(schema, NormalizeCultureName(null));
     }
 
-    private ChillDtoSchema BuildSchema(string chillType, string chillViewCode)
+    private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
     {
         var fullChillType = PrepareFullChillType(chillType);
         var activatedType = _chillContext.GetType().Assembly.CreateInstance(fullChillType)
@@ -104,12 +107,12 @@ public class ChillSchemaService : IChillSchemaService
 
         if (activatedType is IChillEntity chillEntity)
         {
-            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext);
+            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
         }
 
         if (activatedType is IChillQuery<IChillEntity> chillQuery)
         {
-            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext);
+            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
         }
 
         throw new ChillException($"Activated type '{fullChillType}' is not a Chill entity or query.");
@@ -131,6 +134,13 @@ public class ChillSchemaService : IChillSchemaService
     private static string NormalizeKey(string value)
     {
         return string.IsNullOrWhiteSpace(value) ? "default" : value.Trim();
+    }
+
+    private string NormalizeCultureName(string? cultureName)
+    {
+        return string.IsNullOrWhiteSpace(cultureName)
+            ? NormalizeKey(_chillContext.GetDefaultUserCultureName())
+            : NormalizeKey(cultureName);
     }
 
     private static JsonSerializerOptions CreateSerializerOptions()

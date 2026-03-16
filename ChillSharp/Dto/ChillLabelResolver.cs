@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace ChillSharp.Dto;
 
 /// <summary>
@@ -18,15 +16,27 @@ internal static class ChillLabelResolver
     /// <param name="secondaryLabel">The label authored as the secondary language value.</param>
     /// <param name="fallbackLabel">Fallback text used when no authored labels are available.</param>
     /// <param name="context">The active Chill context that defines which cultures map to primary and secondary labels.</param>
+    /// <param name="cultureName">
+    /// Optional explicit culture requested by the caller. When omitted, the resolver falls back to the context's
+    /// default user culture and finally to the primary label.
+    /// </param>
     /// <returns>The label that best matches the active UI culture.</returns>
-    public static string Resolve(string? primaryLabel, string? secondaryLabel, string fallbackLabel, IChillContext? context)
+    public static string Resolve(
+        string? primaryLabel,
+        string? secondaryLabel,
+        string fallbackLabel,
+        IChillContext? context,
+        string? cultureName = null)
     {
         if (context == null)
         {
             return FirstAvailable(primaryLabel, secondaryLabel, fallbackLabel);
         }
 
-        var currentCultureName = CultureInfo.CurrentUICulture.Name;
+        var currentCultureName = string.IsNullOrWhiteSpace(cultureName)
+            ? context.GetDefaultUserCultureName()
+            : cultureName.Trim();
+
         if (MatchesCulture(currentCultureName, context.GetSecondaryCultureName()))
         {
             return FirstAvailable(secondaryLabel, primaryLabel, fallbackLabel);

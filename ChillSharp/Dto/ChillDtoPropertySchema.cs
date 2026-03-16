@@ -42,8 +42,13 @@ namespace ChillSharp.Dto
         /// <param name="propInfo">The reflected property to inspect.</param>
         /// <param name="shrinkTypePrefix">Optional namespace prefix removed from reference Chill types.</param>
         /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <param name="cultureName">Optional explicit culture used to choose between primary and secondary labels.</param>
         /// <returns>A schema description suitable for client metadata.</returns>
-        public static ChillDtoPropertySchema FromPropertyInfo(PropertyInfo propInfo, string shrinkTypePrefix = "", IChillContext? context = null)
+        public static ChillDtoPropertySchema FromPropertyInfo(
+            PropertyInfo propInfo,
+            string shrinkTypePrefix = "",
+            IChillContext? context = null,
+            string? cultureName = null)
         {
             var s = new ChillDtoPropertySchema();
             s.Name = propInfo.Name;
@@ -52,7 +57,8 @@ namespace ChillSharp.Dto
                 chillAttr?.PrimaryLanguageLabel,
                 chillAttr?.SecondaryLanguageLabel,
                 propInfo.Name,
-                context);
+                context,
+                cultureName);
             s.Type = ChillDtoPropertyMapper.Map(propInfo.PropertyType);
 
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
