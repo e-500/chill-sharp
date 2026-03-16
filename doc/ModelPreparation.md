@@ -1,5 +1,7 @@
 # Preparing A Model For ChillSharp
 
+Versione italiana: [Italiano](./it/ModelPreparation.md)
+
 This document describes the model-side requirements for exposing an EF Core domain model through ChillSharp.
 
 ## Goals
@@ -248,3 +250,4 @@ builder.Services.AddChillI18nApi<AppDbContext>();
 - Keep `GetLabel()` and `GetFullTextContent()` cheap enough to run during standard CRUD flows.
 - Return a real request identity from `GetCurrentUserName()` in API hosts.
 - Keep context-specific culture settings on the context, not in static globals.
+

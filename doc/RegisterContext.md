@@ -1,5 +1,7 @@
 # Registering A ChillSharp Context
 
+Versione italiana: [Italiano](./it/RegisterContext.md)
+
 This document shows how to wire ChillSharp modules into an ASP.NET Core host.
 
 ## Minimal Core API
@@ -214,3 +216,4 @@ app.UseSwaggerUI();
 ```
 
 That is the recommended base for generating TypeScript and Python clients from a ChillSharp host.
+

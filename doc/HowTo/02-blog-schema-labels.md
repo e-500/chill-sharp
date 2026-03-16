@@ -1,5 +1,7 @@
 # HOW-TO: Add Schema Labels to Blog and Read Them
 
+Versione italiana: [Italiano](../it/HowTo/02-blog-schema-labels.md)
+
 This example updates the previous `Blog` model by adding schema texts to `ChillEntity` and `ChillProperty`, then shows how to read those labels back.
 
 ## Goal
@@ -135,3 +137,4 @@ public class SchemaDebugService
 - If you later call `SetSchema(...)`, persisted schema values can override the generated defaults for a given `ChillType` and `ChillViewCode`.
 
 Next example: [Use authentication with ChillSharp](03-authentication.md)
+

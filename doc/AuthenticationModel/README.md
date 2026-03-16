@@ -1,5 +1,7 @@
 # ChillSharp Authentication And Authorization
 
+Versione italiana: [Italiano](../it/AuthenticationModel/README.md)
+
 This document covers the auth module at a reference level. For a guided setup, keep using [doc/HowTo/03-authentication.md](../HowTo/03-authentication.md).
 
 ## Module Split
@@ -138,4 +140,5 @@ The exact permission-resolution rules are documented separately in:
 - [PermissionModel/README.md](../PermissionModel/README.md)
 
 Use that document for the precedence and scope model. Use this one for registration and runtime auth flow.
+
 

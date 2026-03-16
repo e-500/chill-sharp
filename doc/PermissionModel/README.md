@@ -1,5 +1,7 @@
 # Permission Model
 
+Versione italiana: [Italiano](../it/PermissionModel/README.md)
+
 This document describes the authorization model implemented by `ChillSharp.Auth`.
 
 ## Purpose
@@ -186,4 +188,5 @@ Management endpoints are exposed through `ChillSharp.Auth`.
 For registration and account flows, see:
 
 - [AuthenticationModel/README.md](../AuthenticationModel/README.md)
+
 
