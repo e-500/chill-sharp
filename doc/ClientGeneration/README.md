@@ -7,6 +7,16 @@ Targets covered here:
 - TypeScript
 - Python
 
+For ready-to-use generic clients already included in this repository, see:
+
+- [../../ext/chill-sharp-ts-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ts-client/README.md)
+- [../../ext/chill-sharp-react-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-react-client/README.md)
+- [../../ext/chill-sharp-vue-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-vue-client/README.md)
+- [../../ext/chill-sharp-ng-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ng-client/README.md)
+- [../../ext/chill-sharp-py-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-py-client/README.md)
+
+Those packages are generic wrappers around the standard ChillSharp HTTP API. The rest of this document covers host-specific client generation from OpenAPI.
+
 ## Important Constraint
 
 ChillSharp does not automatically publish an OpenAPI document by itself.
@@ -121,6 +131,14 @@ Use generated TypeScript or Python clients when:
 - the frontend is browser-based and not .NET
 - you need Python-based automation or integration
 - you want strongly typed clients for non-.NET environments
+
+If you do not need generated, host-specific types, you can also use the generic clients shipped in `ext/`:
+
+- `ext/chill-sharp-ts-client`
+- `ext/chill-sharp-react-client`
+- `ext/chill-sharp-vue-client`
+- `ext/chill-sharp-ng-client`
+- `ext/chill-sharp-py-client`
 
 ## 8. Stability Guidance
 

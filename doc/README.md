@@ -21,6 +21,21 @@ This folder contains the reference documentation for ChillSharp.
 - [ClientGeneration/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
 
+- [../ext/chill-sharp-ts-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ts-client/README.md)
+  Generic TypeScript client for ChillSharp services.
+
+- [../ext/chill-sharp-react-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-react-client/README.md)
+  React provider and hooks built on top of the generic TypeScript client.
+
+- [../ext/chill-sharp-vue-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-vue-client/README.md)
+  Vue plugin and composables built on top of the generic TypeScript client.
+
+- [../ext/chill-sharp-ng-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ng-client/README.md)
+  Angular DI helpers and RxJS service built on top of the generic TypeScript client.
+
+- [../ext/chill-sharp-py-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-py-client/README.md)
+  Generic Python client for ChillSharp services.
+
 ## Main Modules
 
 - `ChillSharp`
@@ -37,6 +52,21 @@ This folder contains the reference documentation for ChillSharp.
 
 - `ChillSharp.Client`
   .NET client for ChillSharp and ChillSharp.Auth endpoints.
+
+- `ext/chill-sharp-ts-client`
+  Generic TypeScript client package.
+
+- `ext/chill-sharp-react-client`
+  React integration package layered on top of the TypeScript client.
+
+- `ext/chill-sharp-vue-client`
+  Vue integration package layered on top of the TypeScript client.
+
+- `ext/chill-sharp-ng-client`
+  Angular integration package layered on top of the TypeScript client.
+
+- `ext/chill-sharp-py-client`
+  Generic Python client package.
 
 ## Core Concepts
 
