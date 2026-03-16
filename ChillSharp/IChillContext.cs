@@ -80,6 +80,17 @@ namespace ChillSharp
         {
             return "it-IT";
         }
+
+        /// <summary>
+        /// Gets the user name associated with the current logical Chill operation.
+        /// </summary>
+        /// <remarks>
+        /// Contexts can override this to provide request-specific or tenant-specific user identity data.
+        /// </remarks>
+        string GetCurrentUserName()
+        {
+            return Environment.UserName;
+        }
         #endregion
     }
 }

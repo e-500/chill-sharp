@@ -55,5 +55,10 @@ namespace ChillSharp.Tests.EF
         {
             return "it-IT"; // We are italian
         }
+
+        public string GetCurrentUserName()
+        {
+            return "dummy-user";
+        }
     }
 }

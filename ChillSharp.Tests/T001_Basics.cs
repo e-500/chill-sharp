@@ -19,6 +19,7 @@
 
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
+using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Tests
 {
@@ -164,6 +165,54 @@ namespace ChillSharp.Tests
             // Call the find endpoint and verify that the entity is returned.
             var entity = cli.Find(e);
             Assert.IsNotNull(entity);
+        }
+
+        /// <summary>
+        /// Verifies that the base entity stores checksum, modifying user, and last-update timestamp.
+        /// </summary>
+        [TestMethod]
+        public async Task Step005_BaseEntityStoresAuditFields()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var postGuid = Guid.NewGuid();
+
+            var createEntity = new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = postGuid
+            };
+            createEntity.Properties.Add("Title", "Audit Title");
+            createEntity.Properties.Add("Author", "Audit Author");
+            var createdEntity = client.Create(createEntity);
+            postGuid = createdEntity.Guid;
+
+            await using var initialContext = TestApiHost.CreateDbContext();
+            var createdPost = await initialContext.Post.FirstAsync(x => x.Guid == postGuid);
+            var initialChecksum = createdPost.Checksum;
+            var initialLastUpdateUtc = createdPost.LastUpdateUtc;
+
+            Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
+            Assert.IsTrue(createdPost.Checksum > 0);
+            Assert.AreNotEqual(default, createdPost.LastUpdateUtc);
+
+            await Task.Delay(20);
+
+            var updateEntity = new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = postGuid
+            };
+            updateEntity.Properties.Add("Title", "Audit Title Changed");
+            client.Update(updateEntity);
+
+            await using var updatedContext = TestApiHost.CreateDbContext();
+            var updatedPost = await updatedContext.Post.FirstAsync(x => x.Guid == postGuid);
+
+            Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
+            Assert.IsTrue(updatedPost.LastUpdateUtc > initialLastUpdateUtc);
+            Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
         }
     }
 }
