@@ -9,11 +9,11 @@ Targets covered here:
 
 For ready-to-use generic clients already included in this repository, see:
 
-- [../../ext/chill-sharp-ts-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ts-client/README.md)
-- [../../ext/chill-sharp-react-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-react-client/README.md)
-- [../../ext/chill-sharp-vue-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-vue-client/README.md)
-- [../../ext/chill-sharp-ng-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ng-client/README.md)
-- [../../ext/chill-sharp-py-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-py-client/README.md)
+- [../../ext/chill-sharp-ts-client/README.md](../../ext/chill-sharp-ts-client/README.md)
+- [../../ext/chill-sharp-react-client/README.md](../../ext/chill-sharp-react-client/README.md)
+- [../../ext/chill-sharp-vue-client/README.md](../../ext/chill-sharp-vue-client/README.md)
+- [../../ext/chill-sharp-ng-client/README.md](../../ext/chill-sharp-ng-client/README.md)
+- [../../ext/chill-sharp-py-client/README.md](../../ext/chill-sharp-py-client/README.md)
 
 Those packages are generic wrappers around the standard ChillSharp HTTP API. The rest of this document covers host-specific client generation from OpenAPI.
 
@@ -148,3 +148,4 @@ If you plan to generate clients regularly:
 - version the API
 - regenerate clients as part of release workflow
 - treat OpenAPI shape changes as public-contract changes
+

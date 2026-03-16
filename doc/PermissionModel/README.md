@@ -185,4 +185,5 @@ Management endpoints are exposed through `ChillSharp.Auth`.
 
 For registration and account flows, see:
 
-- [AuthenticationModel/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/AuthenticationModel/README.md)
+- [AuthenticationModel/README.md](../AuthenticationModel/README.md)
+

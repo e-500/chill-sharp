@@ -6,34 +6,34 @@ This folder contains the reference documentation for ChillSharp.
 
 ## Documentation Map
 
-- [ModelPreparation.md](/c:/source/personal/chill-sharp/chill-sharp/doc/ModelPreparation.md)
+- [ModelPreparation.md](./ModelPreparation.md)
   Prepare an EF Core model so ChillSharp can activate entities, run lifecycle hooks, generate schema metadata, and persist audit fields.
 
-- [RegisterContext.md](/c:/source/personal/chill-sharp/chill-sharp/doc/RegisterContext.md)
+- [RegisterContext.md](./RegisterContext.md)
   Register ChillSharp modules against a host `DbContext` and map the API surface.
 
-- [AuthenticationModel/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/AuthenticationModel/README.md)
+- [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 
-- [PermissionModel/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/PermissionModel/README.md)
+- [PermissionModel/README.md](./PermissionModel/README.md)
   The permission model used by `ChillSharp.Auth`, including precedence, scopes, and how entity/property access is resolved.
 
-- [ClientGeneration/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/ClientGeneration/README.md)
+- [ClientGeneration/README.md](./ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
 
-- [../ext/chill-sharp-ts-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ts-client/README.md)
+- [../ext/chill-sharp-ts-client/README.md](../ext/chill-sharp-ts-client/README.md)
   Generic TypeScript client for ChillSharp services.
 
-- [../ext/chill-sharp-react-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-react-client/README.md)
+- [../ext/chill-sharp-react-client/README.md](../ext/chill-sharp-react-client/README.md)
   React provider and hooks built on top of the generic TypeScript client.
 
-- [../ext/chill-sharp-vue-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-vue-client/README.md)
+- [../ext/chill-sharp-vue-client/README.md](../ext/chill-sharp-vue-client/README.md)
   Vue plugin and composables built on top of the generic TypeScript client.
 
-- [../ext/chill-sharp-ng-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-ng-client/README.md)
+- [../ext/chill-sharp-ng-client/README.md](../ext/chill-sharp-ng-client/README.md)
   Angular DI helpers and RxJS service built on top of the generic TypeScript client.
 
-- [../ext/chill-sharp-py-client/README.md](/c:/source/personal/chill-sharp/chill-sharp/ext/chill-sharp-py-client/README.md)
+- [../ext/chill-sharp-py-client/README.md](../ext/chill-sharp-py-client/README.md)
   Generic Python client for ChillSharp services.
 
 ## Main Modules
@@ -155,8 +155,9 @@ Use this split consistently:
 
 The existing tutorials remain unchanged:
 
-- [HowTo/01-simple-blog-sqlite.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/01-simple-blog-sqlite.md)
-- [HowTo/02-blog-schema-labels.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/02-blog-schema-labels.md)
-- [HowTo/03-authentication.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/03-authentication.md)
-- [HowTo/04-blog-posts-one-to-many.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/04-blog-posts-one-to-many.md)
-- [HowTo/05-docker-env-variables.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/05-docker-env-variables.md)
+- [HowTo/01-simple-blog-sqlite.md](./HowTo/01-simple-blog-sqlite.md)
+- [HowTo/02-blog-schema-labels.md](./HowTo/02-blog-schema-labels.md)
+- [HowTo/03-authentication.md](./HowTo/03-authentication.md)
+- [HowTo/04-blog-posts-one-to-many.md](./HowTo/04-blog-posts-one-to-many.md)
+- [HowTo/05-docker-env-variables.md](./HowTo/05-docker-env-variables.md)
+

@@ -227,4 +227,5 @@ That is intentional:
 - generic object payloads are enough to talk to the standard ChillSharp API
 - model-specific Angular APIs are better generated from OpenAPI for each host application
 
-If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/ClientGeneration/README.md).
+If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+

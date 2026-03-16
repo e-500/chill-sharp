@@ -1,6 +1,6 @@
 # ChillSharp Authentication And Authorization
 
-This document covers the auth module at a reference level. For a guided setup, keep using [doc/HowTo/03-authentication.md](/c:/source/personal/chill-sharp/chill-sharp/doc/HowTo/03-authentication.md).
+This document covers the auth module at a reference level. For a guided setup, keep using [doc/HowTo/03-authentication.md](../HowTo/03-authentication.md).
 
 ## Module Split
 
@@ -135,6 +135,7 @@ If a refresh token is present, the client can renew the access token automatical
 
 The exact permission-resolution rules are documented separately in:
 
-- [PermissionModel/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/PermissionModel/README.md)
+- [PermissionModel/README.md](../PermissionModel/README.md)
 
 Use that document for the precedence and scope model. Use this one for registration and runtime auth flow.
+

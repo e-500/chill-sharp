@@ -302,4 +302,5 @@ That is intentional:
 - the standard Chill API already works well with generic dictionaries
 - a generic client is easier to reuse across many different ChillSharp services
 
-If you need strongly typed Python clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/ClientGeneration/README.md).
+If you need strongly typed Python clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
