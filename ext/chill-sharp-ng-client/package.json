@@ -1,0 +1,42 @@
+{
+  "name": "chill-sharp-ng-client",
+  "version": "0.1.0",
+  "description": "Angular client helpers for generic ChillSharp services",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "chillsharp",
+    "angular",
+    "typescript",
+    "client",
+    "rxjs"
+  ],
+  "author": "Andrea Piovesan",
+  "peerDependencies": {
+    "@angular/core": "^17.0.0 || ^18.0.0 || ^19.0.0",
+    "rxjs": "^7.8.0"
+  },
+  "dependencies": {
+    "chill-sharp-ts-client": "file:../chill-sharp-ts-client"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "name": "chill-sharp-vue-client",
+  "version": "0.1.0",
+  "description": "Vue client helpers for generic ChillSharp services",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "chillsharp",
+    "vue",
+    "typescript",
+    "client",
+    "composables"
+  ],
+  "author": "Andrea Piovesan",
+  "peerDependencies": {
+    "vue": "^3.4.0"
+  },
+  "dependencies": {
+    "chill-sharp-ts-client": "file:../chill-sharp-ts-client"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
