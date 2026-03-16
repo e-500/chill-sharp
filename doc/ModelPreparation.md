@@ -1,290 +1,250 @@
-# Making your DbContext "Chillable" (and use it in ChillSharp)
+# Preparing A Model For ChillSharp
 
-A short guide to preparing your existing EF Core `DbContext` and entity classes so they can be used by ChillSharp's engine and the ChillDto API (query/create/update/delete via DTOs).
+This document describes the model-side requirements for exposing an EF Core domain model through ChillSharp.
 
-> **Goal:** Keep your normal EF Core model and add a small, well-defined surface so the ChillEngine and ChillDtoEngine can activate entities, run queries and fire lifecycle hooks.
+## Goals
 
----
+After preparation, your model can:
 
-## Table of contents
+- be activated dynamically by Chill type name
+- be queried and mutated through Chill DTOs
+- expose schema metadata for clients
+- participate in audit-field maintenance
+- use context-specific label cultures and current-user information
 
-* Overview
-* Requirements
-* Implement `IChillContext`
-* Make your entities Chillable
-  * Required interface(s) & properties
-  * Decorating fields with `ChillFieldAttribute`
-  * Lifecycle methods
-  * Computed metadata (labels / full text)
-* Registering your DbContext with ChillSharp
-* Example: `User` entity
-* Example: `AppDbContext` implementing `IChillContext`
-* Example: Startup / Program registration
-* Notes & tips
-* License
+## 1. Implement `IChillContext`
 
----
+Your `DbContext` must implement `IChillContext`.
 
-## Overview
-
-ChillSharp expects:
-
-* A `DbContext` that exposes the base namespace prefix used to resolve Chill type ids.
-* Entities that conform to the Chill contracts (expose a GUID, implement lifecycle hooks, and have annotated fields).
-* DTO objects (`ChillDtoQuery`, `ChillDtoEntity`) to move data over the wire; ChillDtoEngine handles converting between DTOs and real EF entities.
-
-This lets ChillSharp dynamically instantiate and operate on entities by a short `ChillTypeId` (e.g. `User` or `Module.User`) while keeping your EF Core model intact. ([GitHub][1])
-
----
-
-## Requirements
-
-* .NET 6+ / .NET 7/8 (use the target you already use)
-* Entity Framework Core
-* Add ChillSharp package(s) (the example repo contains sample code) — see repository for exact package details. ([GitHub][1])
-
----
-
-## Implement `IChillContext`
-
-Your `DbContext` must implement `IChillContext`. The key method is:
+Required behavior:
 
 ```csharp
-string GetChillTypeIdPrefix();
-```
-
-This method should return the base namespace prefix that ChillEngine will prepend to short type identifiers. Example: if your entities live in `My.App.Data.Entities`, return `"My.App.Data.Entities"` — then a Chill type id of `"User.Account"` will resolve to `My.App.Data.Entities.User.Account`.
-
-**Why:** ChillSharp activates entities/queries by creating instances via reflection using the combination of prefix + ChillTypeId. ([GitHub][1])
-
----
-
-## Make your entities Chillable
-
-### 1) Interfaces and GUID
-
-ChillSharp works with an entity interface (conceptually `IChillEntity`). At minimum:
-
-* Expose a `Guid? Guid { get; set; }` property (recommended as primary key — helps offline creation & sync).
-* Implement lifecycle hooks (see below).
-* Provide label/full-text methods (optional but recommended for metadata).
-
-Example skeleton interface (conceptual):
-
-```csharp
-public interface IChillEntity
-{
-    Guid? Guid { get; set; }
-
-    // lifecycle hooks
-    void OnCreate(IChillContext ctx);
-    void OnUpdate(IChillContext ctx);
-    void OnAfterUpdate(IChillContext ctx);
-    void OnDelete(IChillContext ctx);
-    void OnAfterDelete(IChillContext ctx);
-    void OnSelect(IChillContext ctx);
-
-    // metadata helpers
-    string GetLabel(IChillContext ctx);
-    string GetShortLabel(IChillContext ctx);
-    string GetFullTextContent(IChillContext ctx);
-}
-```
-
-> Your actual code may use concrete types or additional methods; the example engine calls these lifecycle methods when creating/updating/deleting/selecting entities. Implement them to keep invariants, recalculate computed fields, and populate labels. ([GitHub][1])
-
----
-
-### 2) Decorating entity fields with `ChillFieldAttribute`
-
-To expose properties as part of Chill DTO serialization and mapping, decorate properties with a `ChillFieldAttribute` (or equivalent present in the ChillSharp lib).
-
-Pattern:
-
-```csharp
-public class User : IChillEntity
-{
-    [Key] // EF Core mapping if you want
-    public Guid? Guid { get; set; }
-
-    [ChillField(Type = ChillFieldType.String)]
-    public string FirstName { get; set; }
-
-    [ChillField(Type = ChillFieldType.String)]
-    public string LastName { get; set; }
-
-    [ChillField(Type = ChillFieldType.DateTime)]
-    public DateTime CreatedAt { get; set; }
-
-    // ... lifecycle methods and metadata helpers
-}
-```
-
-**Notes**
-
-* `ChillFieldAttribute` marks which properties get serialized into `ChillDtoField` and used by `ChillDtoQuery`.
-* The `Type` (e.g., `String`, `Int`, `DateTime`) helps the DTO engine perform conversions and validations.
-* Avoid exposing navigation collection properties — ChillDto objects are intentionally lightweight and web-friendly (they omit large collections / navigation lists).
-
----
-
-### 3) Lifecycle methods
-
-Implement lifecycle hooks so ChillEngine can:
-
-* run business logic before/after persistence,
-* compute labels and full text content,
-* validate or normalize fields.
-
-Typical flow (as used by the engine):
-
-* `OnCreate(ctx)` — called before insert
-
-* `OnUpdate(ctx)` — called before save (both for create and update in examples)
-
-* `OnAfterUpdate(ctx)` — called after save to finalize state
-
-* After persistence, ChillEngine updates:
-
-  * `Label = GetLabel(ctx)`
-  * `ShortLabel = GetShortLabel(ctx)`
-  * `FullTextContent = GetFullTextContent(ctx)`
-
-* `OnDelete(ctx)` and `OnAfterDelete(ctx)` for delete lifecycle.
-
-* `OnSelect(ctx)` invoked for each entity after querying (useful to hydrate transient fields).
-
-Implement these methods to maintain domain invariants, compute derived fields and raise events if needed. The ChillEngine calls them automatically. ([GitHub][1])
-
-## Example: `User` entity
-
-```csharp
-using System;
-using System.ComponentModel.DataAnnotations;
-using ChillSharp.EF; 
-
-public class User : IChillEntity
-{
-    [Key]
-    public Guid? Guid { get; set; } = Guid.NewGuid();
-
-    [ChillField(Type = ChillFieldType.String)]
-    public string FirstName { get; set; } = string.Empty;
-
-    [ChillField(Type = ChillFieldType.String)]
-    public string LastName { get; set; } = string.Empty;
-
-    [ChillField(Type = ChillFieldType.DateTime)]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    // Lifecycle hooks
-    public void OnCreate(IChillContext ctx)
-    {
-        CreatedAt = DateTime.UtcNow;
-    }
-
-    public void OnUpdate(IChillContext ctx)
-    {
-        // e.g., update a LastModified time
-    }
-
-    public void OnAfterUpdate(IChillContext ctx) { }
-    public void OnDelete(IChillContext ctx) { }
-    public void OnAfterDelete(IChillContext ctx) { }
-
-    public void OnSelect(IChillContext ctx)
-    {
-        // hydrate computed/transient fields if needed
-    }
-
-    // Metadata helpers
-    public string GetLabel(IChillContext ctx) => $"{FirstName} {LastName}";
-    public string GetShortLabel(IChillContext ctx) => FirstName;
-    public string GetFullTextContent(IChillContext ctx) => $"{FirstName} {LastName} {CreatedAt:O}";
-}
-```
-
----
-
-## Example: `AppDbContext` implementing `IChillContext`
-
-```csharp
-using Microsoft.EntityFrameworkCore;
-
 public class AppDbContext : DbContext, IChillContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    public DbSet<User> Users { get; set; }
-
-    // ChillSharp uses this prefix to resolve Chill type ids
-    public string GetChillTypeIdPrefix()
+    public string GetChillTypePrefix()
     {
-        // Return the assembly namespace where your entity types live, for dynamic activation.
-        // e.g. "My.App.Data.Entities"
-        return typeof(User).Namespace ?? string.Empty;
+        return "MyCompany.MyProduct.Data";
     }
 
-    // Usual EF overrides...
+    public string GetPrimaryCultureName()
+    {
+        return "en-US";
+    }
+
+    public string GetSecondaryCultureName()
+    {
+        return "it-IT";
+    }
+
+    public string GetCurrentUserName()
+    {
+        return Environment.UserName;
+    }
 }
 ```
 
----
+### What each method is used for
 
-## Example usage from a client (teaser)
+- `GetChillTypePrefix()`
+  Expands short Chill type names such as `Model.Blog` into fully qualified CLR types.
 
-To query all users:
+- `GetPrimaryCultureName()`
+  Defines which culture should use `PrimaryLanguageLabel`.
 
-```http
-POST /api/chill/query
-Content-Type: application/json
+- `GetSecondaryCultureName()`
+  Defines which culture should use `SecondaryLanguageLabel`.
 
+- `GetCurrentUserName()`
+  Feeds entity audit tracking.
+
+Each context instance can return different values. This is important in multi-tenant or multi-module hosts where more than one Chill context can exist with different language or user settings.
+
+## 2. Use `ChillEntity` For Exposed Entities
+
+The recommended pattern is to inherit from `ChillSharp.EF.ChillEntity`.
+
+```csharp
+using ChillSharp.Annotations;
+using ChillSharp.EF;
+using System.ComponentModel.DataAnnotations;
+
+[ChillEntity(
+    UniquePropertyKeyString: "4E16F6C0-6B95-4D67-98BC-9F4D0D63EAF1",
+    PrimaryLanguageLabel: "Blog",
+    SecondaryLanguageLabel: "Blog")]
+public class Blog : ChillEntity
 {
-  "ChillTypeId": "User",
-  "Fields": {}
+    [Key]
+    public override Guid Guid { get; set; }
+
+    [ChillProperty(
+        UniquePropertyKeyString: "50B1BB6C-D794-41E4-A85C-D4F9D7A6FA7E",
+        PrimaryLanguageLabel: "Blog title",
+        SecondaryLanguageLabel: "Titolo del blog")]
+    public string Title { get; set; } = string.Empty;
+
+    [ChillProperty(
+        UniquePropertyKeyString: "A18E7754-D8F7-45FE-B8A8-EA762A4EC9E6",
+        PrimaryLanguageLabel: "Blog url",
+        SecondaryLanguageLabel: "Url del blog")]
+    public string Url { get; set; } = string.Empty;
+
+    public override string GetLabel(IChillContext context) => Title;
 }
 ```
 
-The ChillDtoEngine will:
+`ChillEntity` already provides:
 
-1. Activate the `User` query object (if used) or map DTO to entity/filters,
-2. Execute query via `ChillEngine`,
-3. Return results as `ChillDtoEntity` objects (lightweight DTOs).
+- `Guid`
+- `Label`
+- `ShortLabel`
+- `FullTextContent`
+- `Checksum`
+- `LastUpdateUser`
+- `LastUpdateUtc`
 
----
+## 3. Annotate Exposed Properties
 
-## Notes & tips
+ChillSharp only treats properties decorated with `[ChillProperty]` as part of the Chill metadata surface.
 
-* **Prefer GUIDs as PKs** for offline/DTO-friendly behavior. Use EF `[Key]` or configure via Fluent API.
-* **Decorate only scalar properties** with `ChillFieldAttribute` — navigation collections are intentionally excluded from DTOs.
-* **Keep attribute metadata accurate** — field `Type` helps conversions and validation.
-* **Implement lifecycle hooks** to centralize business logic (validations, computed fields).
-* **Use `ChillTypeId` naming convention**: short form (e.g. `User` or `Module.User`) — ChillEngine will append your context’s prefix automatically.
-* **Security:** ChillSharp exposes dynamic endpoints; secure them with authentication/authorization as you would any API.
-* **Licensing:** ChillSharp is published under GPLv3 in the example — ensure you comply with license terms or obtain a commercial license for closed-source use. ([GitHub][1])
+That affects:
 
----
+- DTO mapping
+- schema generation
+- checksum calculation
+- label metadata
 
-## Troubleshooting
+If a property is not marked with `[ChillProperty]`, it is not part of the standard Chill property surface.
 
-* If `ChillEngine` cannot activate a type, verify `GetChillTypeIdPrefix()` and the `ChillTypeId` you pass.
-* If fields are missing from DTOs, ensure properties are annotated with `ChillFieldAttribute`.
-* If lifecycle methods appear not to run, check that ChillEngine is used (i.e., operations go through `ChillEngine.Create/Update/Delete/Query`).
+## 4. Understand Lifecycle Hooks
 
----
+`ChillEngine` drives entity lifecycle methods.
 
-## License
+### Create flow
 
-This README references the ChillSharp example repository. ChillSharp example code is GPLv3 - check the repository's `LICENSE` and README for official licensing info. ([GitHub][1])
+On create, ChillSharp runs:
 
----
+1. `OnCreate(context)`
+2. `OnUpdate(context)`
+3. save
+4. internal audit update + `OnAfterUpdate(context)`
+5. recompute `Label`, `ShortLabel`, `FullTextContent`
+6. save
 
-If you’d like, I can:
+### Update flow
 
-* Generate a **copy-paste README.md file** (I can produce the exact markdown file contents).
-* Create a **“how-to” checklist** that you can include in your example repo as CONTRIBUTING.md.
-* Produce **Swagger example request/response bodies** for the Chill endpoints.
+On update, ChillSharp runs:
 
-Which of these would you like next?
+1. `OnUpdate(context)`
+2. save
+3. internal audit update + `OnAfterUpdate(context)`
+4. recompute `Label`, `ShortLabel`, `FullTextContent`
+5. save
 
-[1]: https://github.com/e-500/chill-sharp/tree/main/ChillSharp.Examples/CustomChillApiService "chill-sharp/ChillSharp.Examples/CustomChillApiService at main · e-500/chill-sharp · GitHub"
+### Delete flow
+
+On delete, ChillSharp runs:
+
+1. `OnDelete(context)`
+2. save delete
+3. `OnAfterDelete(context)`
+4. save
+
+## 5. Audit-Field Behavior
+
+`ChillEntity` automatically maintains:
+
+- `Checksum`
+- `LastUpdateUser`
+- `LastUpdateUtc`
+
+The checksum is computed from all `[ChillProperty]` values except the audit fields themselves.
+
+Notes:
+
+- scalar values are serialized using invariant culture
+- referenced `IChillEntity` values contribute their `Guid`
+- collections are flattened into a deterministic string sequence before summing bytes
+
+### Why overriding `OnAfterUpdate()` is safe
+
+`ChillEntity` uses an explicit interface implementation for `IChillEntity.OnAfterUpdate(...)`.
+
+`ChillEngine` calls `OnAfterUpdate()` through the interface, so the runtime flow is:
+
+1. update audit fields
+2. call the derived class override of `public virtual OnAfterUpdate(...)`
+
+This means derived entities get a clean override surface while the base audit logic cannot be skipped accidentally.
+
+## 6. Labels And Cultures
+
+`PrimaryLanguageLabel` and `SecondaryLanguageLabel` are not just comments. They are interpreted using the active UI culture and the active `IChillContext`.
+
+Current behavior:
+
+- if the current UI culture matches the context secondary culture, ChillSharp prefers `SecondaryLanguageLabel`
+- if it matches the primary culture, ChillSharp prefers `PrimaryLanguageLabel`
+- otherwise it falls back to primary first, then secondary
+
+This logic is used when schema metadata is generated.
+
+## 7. Queries
+
+Queries should implement `IChillQuery<IChillEntity>` and can also be decorated with `ChillEntityAttribute` and `ChillPropertyAttribute`.
+
+That allows query schemas to be generated exactly like entity schemas.
+
+## 8. Schema Persistence Readiness
+
+If you want persisted schema metadata and schema caching, your context must also implement `IChillSchemaDbContext` and include:
+
+```csharp
+modelBuilder.AddChillSchemaModel();
+```
+
+Then register:
+
+```csharp
+builder.Services.AddChillSchema<AppDbContext>();
+```
+
+## 9. Auth Readiness
+
+If you want ChillSharp auth and permissions, your context must implement `IChillAuthDbContext` and include:
+
+```csharp
+modelBuilder.AddChillAuthModel();
+```
+
+Then register one of:
+
+```csharp
+builder.Services.AddChillAuthApi<AppDbContext>();
+builder.Services.AddChillAuthIdentityApi<AppDbContext, IdentityUser>();
+```
+
+## 10. I18n Readiness
+
+If you want localized text storage and lookup, your context must implement `IChillI18nDbContext` and include:
+
+```csharp
+modelBuilder.AddChillI18nModel();
+```
+
+Then register:
+
+```csharp
+builder.Services.AddChillI18nApi<AppDbContext>();
+```
+
+## 11. Recommendations
+
+- Prefer inheriting from `ChillEntity` instead of implementing `IChillEntity` from scratch.
+- Use stable GUIDs in `UniquePropertyKeyString` and `UniqueEntityKeyString`.
+- Mark only the properties you actually want in the Chill DTO/schema surface.
+- Keep `GetLabel()` and `GetFullTextContent()` cheap enough to run during standard CRUD flows.
+- Return a real request identity from `GetCurrentUserName()` in API hosts.
+- Keep context-specific culture settings on the context, not in static globals.

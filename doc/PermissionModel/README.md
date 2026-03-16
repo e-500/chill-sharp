@@ -1,428 +1,188 @@
-# Modular Authorization and Permission Model
+# Permission Model
 
-## Overview
+This document describes the authorization model implemented by `ChillSharp.Auth`.
 
-This document describes a flexible authorization model designed for applications that require fine-grained access control. The model supports permissions at three hierarchical levels:
+## Purpose
 
-1. **Module**
-2. **Entity**
-3. **Property**
+The permission model is designed to answer two questions consistently:
 
-Permissions can be assigned either **directly to users** or **through roles**, with deterministic precedence rules ensuring consistent evaluation.
+- can the current user perform an entity-level operation
+- can the current user see or modify a specific property
 
-The system allows defining what actions a user **can** or **cannot** perform on resources such as database entities and their individual properties.
+The same model supports both:
 
-The primary goals of this model are:
-
-* Flexibility
-* Clear hierarchy
-* Deterministic evaluation
-* Scalability for complex systems
-* UI support for hiding unauthorized actions
-* Strong server-side enforcement
-
----
-
-# Core Concepts
+- server-side enforcement
+- client-side capability filtering
 
 ## Subjects
 
-Permissions apply to **subjects**, which can be:
+Permissions can be assigned to:
 
-* **User** – a specific individual account.
-* **Role** – a group of users that share common permissions.
+- a user
+- a role
 
-A user may belong to **multiple roles**.
+A user can belong to multiple roles.
 
-When permissions are evaluated, **user permissions take precedence over role permissions**.
+## Resource Hierarchy
 
----
+Permissions are evaluated against a three-level hierarchy:
 
-# Resource Hierarchy
-
-Resources are organized in three levels of specificity.
-
-```
-Module → Entity → Property
+```text
+Module -> Entity -> Property
 ```
 
-Each level refines the scope of the permission.
+### Module
 
----
+A module is a logical application area, for example:
 
-## Module
+- `Accounting`
+- `Accounting.General`
+- `Blog`
+- `Blog.Admin`
 
-A **module** represents a functional area of the system.
+Module names can be hierarchical.
 
-Examples:
+### Entity
 
-* `Accounting`
-* `Accounting.General`
-* `Accounting.Payroll`
-* `Sales`
-* `General`
+An entity is a Chill entity name inside a module, for example:
 
-Modules may contain **hierarchical names separated by dots**.
-This allows grouping related entities under a logical structure.
+- `Blog`
+- `Post`
+- `AuthUser`
 
-Example module hierarchy:
+### Property
 
-```
-Accounting
-Accounting.General
-Accounting.Payroll
-Accounting.Tax
-```
+A property is a field on an entity, for example:
 
-A permission assigned at the module level applies to **all entities within that module**, unless overridden by more specific rules.
+- `Title`
+- `Author`
+- `CanManagePermissions`
 
----
+## Actions
 
-## Entity
+### Entity actions
 
-An **entity** represents a logical data structure or table within a module.
+- `Query`
+- `Create`
+- `Update`
+- `Delete`
 
-Examples:
+### Property actions
 
-* `Account`
-* `Invoice`
-* `Customer`
-* `Employee`
+- `See`
+- `Modify`
 
-Entities **must not contain dots**.
+Property permissions refine an already-allowed entity operation. They do not replace entity permissions.
 
-Entities always belong to exactly one module.
+## Effects
 
-Example resource:
+Each rule has one effect:
 
-```
-Module: Accounting.General
-Entity: Account
-```
+- `Allow`
+- `Deny`
 
----
+At the same evaluation level, `Deny` wins over `Allow`.
 
-## Property
+## Precedence
 
-A **property** represents a specific field or column within an entity.
+ChillSharp resolves rules in this order:
 
-Examples:
+1. user property rules
+2. user entity rules
+3. user module rules
+4. role property rules
+5. role entity rules
+6. role module rules
+7. default deny
 
-* `CompanyName`
-* `CreditLimit`
-* `InternalNotes`
-* `Salary`
+This combines two principles:
 
-Properties **must not contain dots**.
+- user rules override role rules
+- more specific rules override broader rules
 
-Example resource:
+## How Operations Are Evaluated
 
-```
-Accounting.General.Account.CompanyName
-```
+### Query
 
----
+To query an entity:
 
-# Permission Scope
+1. the user must have entity `Query`
+2. each returned property must also have `See`
 
-Permissions may apply at one of three scopes:
+If a property is not allowed, the server can remove, null, or mask it depending on the calling surface and implementation.
 
-| Scope    | Applies To                        |
-| -------- | --------------------------------- |
-| Module   | Entire functional module          |
-| Entity   | A specific entity                 |
-| Property | A specific field within an entity |
+### Create
 
-Each deeper scope represents **greater specificity**.
+To create an entity:
 
----
+1. the user must have entity `Create`
+2. each provided property must have `Modify`
 
-# Actions
+### Update
 
-Different actions apply depending on the scope.
+To update an entity:
 
-## Entity Actions
+1. the user must have entity `Update`
+2. each changed property must have `Modify`
 
-Entity actions control operations performed on entire records.
+### Delete
 
-Available actions:
+To delete an entity:
 
-| Action | Description                   |
-| ------ | ----------------------------- |
-| QUERY  | Retrieve data from the entity |
-| CREATE | Create new records            |
-| UPDATE | Modify existing records       |
-| DELETE | Remove records                |
+1. the user must have entity `Delete`
 
-These correspond conceptually to CRUD operations.
+Property rules do not matter for delete.
 
----
+## Default Security Posture
 
-## Property Actions
+The model is default-deny.
 
-Property actions control visibility and modification of individual fields.
+If no rule grants access, access is denied.
 
-| Action | Description                                  |
-| ------ | -------------------------------------------- |
-| SEE    | Allows a property to be visible in responses |
-| MODIFY | Allows a property to be changed              |
+This is intentional. It prevents new entities or properties from becoming visible just because they were added to the model.
 
-These actions only apply when entity-level permissions already allow the operation.
+## Typical Rule Examples
 
----
+Allow querying all blog entities in a module:
 
-# Permission Effects
-
-Each permission has an **effect**:
-
-| Effect | Meaning                       |
-| ------ | ----------------------------- |
-| Allow  | Grants the specified action   |
-| Deny   | Explicitly forbids the action |
-
-Deny rules always override allow rules at the same level.
-
----
-
-# Permission Assignment
-
-Permissions may be assigned to:
-
-* A **user**
-* A **role**
-
-A user may inherit permissions from multiple roles.
-
-Example:
-
-```
-User: Alice
-Roles: Manager, Auditor
+```text
+Allow Query Module=Blog
 ```
 
-Alice receives permissions from both roles.
+Allow updating posts:
 
----
-
-# Permission Specificity
-
-Permissions can exist at three levels of specificity:
-
-1. **Module-level**
-2. **Entity-level**
-3. **Property-level**
-
-Example permissions:
-
-```
-ALLOW QUERY Accounting.General
-ALLOW UPDATE Accounting.General.Account
-DENY MODIFY Accounting.General.Account.CreditLimit
-ALLOW SEE Accounting.General.Account.CompanyName
+```text
+Allow Update Module=Blog Entity=Post
 ```
 
----
+Block edits to a sensitive property while allowing broader updates:
 
-# Permission Evaluation Order
-
-When evaluating permissions, the system resolves rules in the following order:
-
-### 1. Subject Priority
-
-User permissions override role permissions.
-
-```
-User rules → Role rules
+```text
+Allow Update Module=Blog Entity=Post
+Deny Modify Module=Blog Entity=Post Property=InternalNotes
 ```
 
----
+## Why This Matters For Clients
 
-### 2. Specificity Priority
+Clients can use permission-evaluation endpoints to:
 
-More specific permissions override broader ones.
+- disable UI actions
+- hide fields
+- decide which property editors to render
 
-Order of evaluation:
+But the server remains the source of truth. Client filtering is convenience, not security.
 
-```
-Property → Entity → Module
-```
+## Related Runtime Pieces
 
----
+The permission model is backed by:
 
-### 3. Effect Priority
+- `AuthUser`
+- `AuthRole`
+- `AuthUserRole`
+- `AuthPermissionRule`
 
-Within the same specificity level:
+Management endpoints are exposed through `ChillSharp.Auth`.
 
-```
-Deny overrides Allow
-```
+For registration and account flows, see:
 
----
-
-# Final Resolution Order
-
-Combining subject priority and specificity results in the following evaluation sequence:
-
-1. User Property Permissions
-2. User Entity Permissions
-3. User Module Permissions
-4. Role Property Permissions
-5. Role Entity Permissions
-6. Role Module Permissions
-7. Default Deny
-
-If no rule explicitly grants access, the system denies the action.
-
----
-
-# Permission Evaluation by Operation
-
-## Query Operations
-
-To retrieve entity data:
-
-1. The user must have **QUERY permission on the entity**.
-2. Each property returned must also have **SEE permission**.
-
-If a property lacks SEE permission, it must be:
-
-* removed from the response, or
-* returned as null or masked.
-
----
-
-## Update Operations
-
-To modify an entity:
-
-1. The user must have **UPDATE permission on the entity**.
-2. Each property being changed must have **MODIFY permission**.
-
-If the user attempts to modify a property without MODIFY permission, the operation must be rejected or that field ignored.
-
----
-
-## Create Operations
-
-To create a new entity:
-
-1. The user must have **CREATE permission on the entity**.
-2. Each provided property must have **MODIFY permission**.
-
-Setting a property during creation is treated as modifying that property.
-
----
-
-## Delete Operations
-
-To delete a record:
-
-1. The user must have **DELETE permission on the entity**.
-
-Property permissions are irrelevant for delete operations.
-
----
-
-# Module-Level Permissions
-
-Module permissions provide a way to grant broad access.
-
-Example:
-
-```
-ALLOW QUERY Accounting
-```
-
-This allows querying all entities within the `Accounting` module and its submodules.
-
-Example covered entities:
-
-```
-Accounting.General.Account
-Accounting.Payroll.Employee
-Accounting.Tax.Invoice
-```
-
-More specific entity or property permissions may override this access.
-
----
-
-# Property Overrides
-
-Property permissions may override broader entity permissions.
-
-Example:
-
-```
-ALLOW UPDATE Accounting.General.Account
-DENY MODIFY Accounting.General.Account.CreditLimit
-```
-
-Result:
-
-Users may update the account entity but **cannot modify the CreditLimit field**.
-
----
-
-# Wildcard Property Permissions
-
-For convenience, property permissions may apply to all properties of an entity.
-
-Example:
-
-```
-ALLOW SEE Accounting.General.Account.*
-```
-
-This grants visibility to all properties.
-
-Specific properties can still be restricted:
-
-```
-DENY SEE Accounting.General.Account.InternalNotes
-```
-
----
-
-# Default Security Model
-
-The system follows a **default deny** principle.
-
-If no rule explicitly grants permission, access is denied.
-
-This approach ensures that newly added entities or properties are not automatically exposed.
-
----
-
-# Intended Usage
-
-This permission model supports:
-
-* Backend authorization enforcement
-* UI capability filtering
-* Role-based access control
-* Field-level security
-* Multi-module enterprise systems
-
-The model allows building systems where permissions can control:
-
-* which modules users access
-* which entities they can manipulate
-* which fields they can view or modify
-
----
-
-# Summary
-
-This authorization system provides a structured and extensible permission model built on:
-
-* **Modules**
-* **Entities**
-* **Properties**
-* **User and Role inheritance**
-* **Allow and Deny rules**
-* **Deterministic evaluation**
-
-The hierarchy and precedence rules ensure that access control remains predictable even in complex scenarios involving multiple roles, overrides, and field-level restrictions.
-
-The result is a scalable authorization framework suitable for applications that require both **coarse and fine-grained permission control**.
+- [AuthenticationModel/README.md](/c:/source/personal/chill-sharp/chill-sharp/doc/AuthenticationModel/README.md)
