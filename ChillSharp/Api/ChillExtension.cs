@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
  * and turns an existing data model into a fully working REST API with almost no setup.
  * Copyright (C) 2025 Andrea Piovesan
@@ -51,25 +51,17 @@ namespace ChillSharp.Api
         /// </summary>
         /// <typeparam name="TContext">The application's EF Core DbContext type.</typeparam>
         public static IServiceCollection AddChillApi<TContext>(this IServiceCollection services, Action<ChillApiOptions>? configureOptions = null)
-            where TContext : DbContext, IChillContext // Both class and interface checked at compile-time
+            where TContext : DbContext, IChillContext
         {
-            // Configure options
             var options = new ChillApiOptions();
             configureOptions?.Invoke(options);
 
-            // Store options in DI
             services.AddSingleton(options);
 
-            // Set schema cache system
-            services.AddSingleton<IChillDtoSchemaCache, ChillDtoSchemaCache>();
-
-            // Ensure DbContext<TContext> is already registered by the host app
-            // Ensure the controllers from this assembly are available
             services.AddControllers()
                     .AddApplicationPart(Assembly.GetExecutingAssembly())
                     .AddControllersAsServices();
 
-            // Optionally verify that TContext is registered in the DI container
             services.AddScoped<IChillContext>(provider =>
             {
                 var context = provider.GetService<TContext>();
@@ -81,7 +73,6 @@ namespace ChillSharp.Api
                 return context;
             });
 
-            // Register IChillDtoEngine using the provided IChillContext and the IChillDtoSchemaCache singleton
             services.AddScoped<IChillDtoEngine>(provider =>
             {
                 var chillContext = provider.GetRequiredService<IChillContext>();
@@ -109,13 +100,6 @@ namespace ChillSharp.Api
                 chillControllers.RequireAuthorization();
             }
 
-            ///
-            /// This software is using ChillSharp library that is released under the 
-            /// GNU Affero General Public License version 3
-            /// 
-            /// Please do not remove the following endpoint.
-            /// This helps you to comply with the AGPL v3 license terms of this product.
-            /// 
             string year = "2025";
             string authors = "Andrea Piovesan";
             string disclaimer = "This software is using ChillSharp library that is released under the GNU AFFERO GENERAL PUBLIC LICENSE - Version 3";
@@ -126,9 +110,6 @@ namespace ChillSharp.Api
 
             endpoints.MapGet($"/{ApiUrlBasePath}/test", () => "ChillSharp is up and running!");
             endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
-            ///
-            /// If you need a commercial a LGPL license, please ask!
-            /// 
 
             return endpoints;
         }

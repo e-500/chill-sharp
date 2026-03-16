@@ -1,3 +1,4 @@
+using ChillSharp.I18n.Contracts;
 using ChillSharp.I18n.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,6 +33,22 @@ public sealed class I18nController : ControllerBase
             }
 
             return Ok(response);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Creates or updates the localized text for a label guid and culture name.
+    /// </summary>
+    [HttpPut("text")]
+    public async Task<IActionResult> SetText([FromBody] SetTextRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _service.SetTextAsync(request, cancellationToken));
         }
         catch (ArgumentException ex)
         {

@@ -14,12 +14,12 @@ public class ChillSchemaService : IChillSchemaService
 {
     private readonly IChillSchemaDbContext _schemaContext;
     private readonly IChillContext _chillContext;
-    private readonly IChillDtoSchemaCache _schemaCache;
+    private readonly IChillSchemaCache _schemaCache;
 
     /// <summary>
     /// Initializes the schema service.
     /// </summary>
-    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillContext chillContext, IChillDtoSchemaCache schemaCache)
+    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillContext chillContext, IChillSchemaCache schemaCache)
     {
         _schemaContext = schemaContext;
         _chillContext = chillContext;
@@ -60,10 +60,10 @@ public class ChillSchemaService : IChillSchemaService
 
         if (schema != null)
         {
-            _schemaCache.SetSchema(schema);
+            return _schemaCache.SetSchema(schema);
         }
 
-        return schema;
+        return null;
     }
 
     /// <inheritdoc />
@@ -93,8 +93,7 @@ public class ChillSchemaService : IChillSchemaService
         row.UpdatedUtc = DateTime.UtcNow;
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
-        _schemaCache.SetSchema(schema);
-        return schema;
+        return _schemaCache.SetSchema(schema);
     }
 
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode)

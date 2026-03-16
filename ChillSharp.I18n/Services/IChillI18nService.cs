@@ -11,4 +11,9 @@ public interface IChillI18nService
     /// Gets the localized text for the specified label and culture.
     /// </summary>
     Task<GetTextResponse?> GetTextAsync(Guid labelGuid, string cultureName, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Creates or updates the localized text for the specified label and culture.
+    /// </summary>
+    Task<GetTextResponse> SetTextAsync(SetTextRequest request, CancellationToken cancellationToken);
 }
