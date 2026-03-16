@@ -1,14 +1,14 @@
-# HOW-TO: Handle a One-to-Many Blog-Posts Relation
+# HOW-TO: Gestire Una Relazione Blog-Posts Uno-a-Molti
 
-Versione italiana: [Italiano](../it/HowTo/04-blog-posts-one-to-many.md)
+Versione originale in inglese: [English](../../HowTo/04-blog-posts-one-to-many.md)
 
-This example extends the blog model with posts and shows how to load one blog together with its posts in a single `ChillSharpClient.Query(...)` call.
+Questo esempio estende il modello blog con i post e mostra come caricare un blog insieme ai suoi post in una singola chiamata `ChillSharpClient.Query(...)`.
 
-## Goal
+## Obiettivo
 
-Model a `Blog` to `Posts` one-to-many relation and project the nested collection from the ChillSharp client.
+Modellare una relazione uno-a-molti `Blog` -> `Posts` e proiettare la collezione annidata dal client ChillSharp.
 
-## 1. Define the entities
+## 1. Definire Le Entita
 
 ```csharp
 using ChillSharp.Annotations;
@@ -63,7 +63,7 @@ public class Post : ChillEntity
 }
 ```
 
-## 2. Add both sets to the context
+## 2. Aggiungere Entrambi I Set Al Contesto
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -84,7 +84,7 @@ public class BloggingContext : DbContext, IChillContext
 }
 ```
 
-## 3. Define a query for blogs
+## 3. Definire Una Query Per I Blog
 
 ```csharp
 using ChillSharp.Annotations;
@@ -114,9 +114,9 @@ public class BlogQuery : ChillQuery
 }
 ```
 
-## 4. Create a blog and two posts
+## 4. Creare Un Blog E Due Post
 
-The relation is created by sending the parent `Blog` DTO as the `Blog` property of each `Post`.
+La relazione viene creata inviando il DTO padre `Blog` come proprieta `Blog` di ogni `Post`.
 
 ```csharp
 using ChillSharp.Client;
@@ -155,9 +155,9 @@ secondPost.Properties["Blog"] = createdBlog.Mock();
 client.Create(secondPost);
 ```
 
-## 5. Load one blog with its posts in one call
+## 5. Caricare Un Blog Con I Suoi Post In Una Chiamata
 
-This is the part that matters most for a one-to-many relation: the nested projection is described through `ChillDtoProperty.With(...)`, and the returned collection is read with `GetCollection(...)`.
+Questa e la parte piu importante per una relazione uno-a-molti: la proiezione annidata viene descritta tramite `ChillDtoProperty.With(...)`, e la collezione restituita viene letta con `GetCollection(...)`.
 
 ```csharp
 using ChillSharp.Client.Dto;
@@ -184,11 +184,10 @@ foreach (var post in loadedBlog.GetCollection("Posts"))
 }
 ```
 
-## What this gives you
+## Cosa Ti Da Questo
 
-- one HTTP call to load the parent entity and the child collection
-- a strongly-typed projection builder on the client side
-- DTO-based relation handling without writing a dedicated controller for `Blog` or `Post`
+- una chiamata HTTP per caricare l'entita padre e la collezione figlia
+- un builder di proiezione fortemente tipizzato lato client
+- gestione della relazione tramite DTO senza scrivere un controller dedicato per `Blog` o `Post`
 
-Next: [Back to the documentation index](../README.md)
-
+Prossimo: [Torna all'indice della documentazione](../README.md)

@@ -1,14 +1,14 @@
-# HOW-TO: Add Schema Labels to Blog and Read Them
+# HOW-TO: Aggiungere Label Di Schema Al Blog E Leggerle
 
-Versione italiana: [Italiano](../it/HowTo/02-blog-schema-labels.md)
+Versione originale in inglese: [English](../../HowTo/02-blog-schema-labels.md)
 
-This example updates the previous `Blog` model by adding schema texts to `ChillEntity` and `ChillProperty`, then shows how to read those labels back.
+Questo esempio aggiorna il modello `Blog` precedente aggiungendo testi di schema a `ChillEntity` e `ChillProperty`, poi mostra come leggere quelle label.
 
-## Goal
+## Obiettivo
 
-Decorate the model with schema metadata and retrieve it through ChillSharp schema services.
+Decorare il modello con metadati di schema e recuperarli tramite i servizi schema di ChillSharp.
 
-## 1. Add labels to the entity and properties
+## 1. Aggiungere Label A Entita E Proprieta
 
 ```csharp
 using ChillSharp.Annotations;
@@ -42,9 +42,9 @@ public class Blog : ChillEntity
 }
 ```
 
-## 2. Enable schema persistence
+## 2. Abilitare La Persistenza Dello Schema
 
-To expose schema metadata through `get-schema`, the EF Core context must also implement `IChillSchemaDbContext`, add the schema model, and register `AddChillSchema<TContext>()`.
+Per esporre metadati schema tramite `get-schema`, il contesto EF Core deve anche implementare `IChillSchemaDbContext`, aggiungere il modello schema e registrare `AddChillSchema<TContext>()`.
 
 ```csharp
 using ChillSharp.Schema;
@@ -73,7 +73,7 @@ public class BloggingContext : DbContext, IChillContext, IChillSchemaDbContext
 }
 ```
 
-Register the schema service together with the API:
+Registra il servizio schema insieme all'API:
 
 ```csharp
 using ChillSharp.Api;
@@ -89,9 +89,9 @@ builder.Services.AddChillApi<BloggingContext>();
 builder.Services.AddChillSchema<BloggingContext>();
 ```
 
-## 3. Read schema metadata from a client
+## 3. Leggere I Metadati Di Schema Da Un Client
 
-`ChillSharpClient.GetSchema(...)` returns property metadata generated from the decorated model.
+`ChillSharpClient.GetSchema(...)` restituisce metadati proprieta generati dal modello decorato.
 
 ```csharp
 using ChillSharp.Client;
@@ -106,9 +106,9 @@ Console.WriteLine(nameProperty?.DisplayName); // Blog name
 Console.WriteLine(urlProperty?.DisplayName);  // Blog url
 ```
 
-## 4. Read the entity display name in server-side code
+## 4. Leggere Il Nome Visualizzato Dell'Entita Sul Server
 
-The server-side `ChillSharp.Dto.ChillDtoSchema` also carries the entity-level `DisplayName`, which is populated from `ChillEntityAttribute.PrimaryLanguageLabel`.
+La `ChillSharp.Dto.ChillDtoSchema` lato server contiene anche il `DisplayName` dell'entita, popolato da `ChillEntityAttribute.PrimaryLanguageLabel`.
 
 ```csharp
 using ChillSharp;
@@ -130,11 +130,10 @@ public class SchemaDebugService
 }
 ```
 
-## Notes
+## Note
 
-- Property `DisplayName` comes from `ChillPropertyAttribute.PrimaryLanguageLabel`.
-- Entity `DisplayName` comes from `ChillEntityAttribute.PrimaryLanguageLabel`.
-- If you later call `SetSchema(...)`, persisted schema values can override the generated defaults for a given `ChillType` and `ChillViewCode`.
+- `DisplayName` della proprieta viene da `ChillPropertyAttribute.PrimaryLanguageLabel`.
+- `DisplayName` dell'entita viene da `ChillEntityAttribute.PrimaryLanguageLabel`.
+- Se poi chiami `SetSchema(...)`, i valori schema persistiti possono sovrascrivere i default generati per un dato `ChillType` e `ChillViewCode`.
 
-Next example: [Use authentication with ChillSharp](03-authentication.md)
-
+Esempio successivo: [Usare l'autenticazione con ChillSharp](03-authentication.md)

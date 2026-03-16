@@ -1,16 +1,16 @@
-# HOW-TO: Create a Docker Image and Configure It with Environment Variables
+# HOW-TO: Creare Un'Immagine Docker E Configurarla Con Variabili D'Ambiente
 
-Versione italiana: [Italiano](../it/HowTo/05-docker-env-variables.md)
+Versione originale in inglese: [English](../../HowTo/05-docker-env-variables.md)
 
-This example shows how to package a ChillSharp API into a Docker image and configure it at runtime through environment variables instead of hardcoded values.
+Questo esempio mostra come impacchettare una API ChillSharp in un'immagine Docker e configurarla a runtime tramite variabili d'ambiente invece di valori hardcoded.
 
-## Goal
+## Obiettivo
 
-Build one container image that can be reused across environments by changing only environment variables.
+Costruire una sola immagine container riusabile in ambienti diversi cambiando solo le variabili d'ambiente.
 
-## 1. Read configuration from environment-aware `IConfiguration`
+## 1. Leggere La Configurazione Da `IConfiguration`
 
-ASP.NET Core already maps environment variables into `builder.Configuration`. Use that instead of hardcoding the SQLite path or root-user credentials.
+ASP.NET Core mappa gia le variabili d'ambiente in `builder.Configuration`. Usa quello invece di hardcodare il path SQLite o le credenziali root.
 
 ```csharp
 using ChillSharp.Api;
@@ -65,9 +65,9 @@ app.MapChillApi();
 app.Run();
 ```
 
-## 2. Use environment variables for the root user
+## 2. Usare Variabili D'Ambiente Per L'Utente Root
 
-`AddChillAuthIdentityApi(...)` already knows these variables:
+`AddChillAuthIdentityApi(...)` conosce gia queste variabili:
 
 ```text
 CHILLSHARP_AUTH_ROOT_USERNAME
@@ -76,11 +76,11 @@ CHILLSHARP_AUTH_ROOT_EMAIL
 CHILLSHARP_AUTH_ROOT_DISPLAY_NAME
 ```
 
-When `CreateChillAuthUserForRoot = true`, the root `AuthUser` is also created with `CanManagePermissions = true`.
+Quando `CreateChillAuthUserForRoot = true`, viene creato anche l'`AuthUser` root con `CanManagePermissions = true`.
 
-## 3. Create the Dockerfile
+## 3. Creare Il Dockerfile
 
-This image builds the application once and runs it with the ASP.NET Core runtime image.
+Questa immagine compila l'applicazione una volta ed esegue il risultato con l'immagine runtime ASP.NET Core.
 
 ```dockerfile
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
@@ -106,15 +106,15 @@ EXPOSE 8080
 ENTRYPOINT ["dotnet", "MyBlogApp.dll"]
 ```
 
-## 4. Build the image
+## 4. Build Dell'Immagine
 
 ```bash
 docker build -t myblogapp:latest .
 ```
 
-## 5. Run the container with environment variables
+## 5. Avviare Il Container Con Variabili D'Ambiente
 
-This example starts the API, persists SQLite data in a local Docker volume, and creates the root administrator at startup.
+Questo esempio avvia l'API, persiste i dati SQLite in un volume Docker locale e crea l'amministratore root all'avvio.
 
 ```bash
 docker run --rm -p 8080:8080 \
@@ -127,14 +127,14 @@ docker run --rm -p 8080:8080 \
   myblogapp:latest
 ```
 
-The application is then available at:
+L'applicazione sara disponibile a:
 
 ```text
 http://localhost:8080/api/chill
 http://localhost:8080/api/chill-auth
 ```
 
-## 6. Optional `docker compose` example
+## 6. Esempio Facoltativo `docker compose`
 
 ```yaml
 services:
@@ -157,11 +157,10 @@ volumes:
   myblogapp-data:
 ```
 
-## Notes
+## Note
 
-- Keep the image generic and push environment-specific values into runtime configuration.
-- Persist SQLite under a mounted volume, otherwise the database is lost when the container is removed.
-- For production, inject secrets through your container platform or secret manager instead of hardcoding them in `docker run` history or `compose` files.
+- Mantieni l'immagine generica e sposta i valori specifici dell'ambiente nella configurazione runtime.
+- Persisti SQLite sotto un volume montato, altrimenti il database viene perso quando il container viene rimosso.
+- In produzione, inietta i secret tramite piattaforma container o secret manager invece di hardcodarli nella history di `docker run` o nei file `compose`.
 
-Next example: [Handle a one-to-many Blog-Posts relation and fetch it in one client call](05-blog-posts-one-to-many.md)
-
+Esempio successivo: [Gestire una relazione Blog-Posts uno-a-molti e leggerla con una sola chiamata client](04-blog-posts-one-to-many.md)

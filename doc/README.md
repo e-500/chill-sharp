@@ -1,5 +1,7 @@
 # ChillSharp Documentation
 
+Versione italiana: [Italiano](./it/README.md)
+
 This folder contains the reference documentation for ChillSharp.
 
 `doc/HowTo` is intentionally left as the tutorial section. Use it for guided, incremental examples. The rest of this folder is the reference layer: concepts, registration, permissions, auth, and client-generation workflows.
@@ -160,4 +162,5 @@ The existing tutorials remain unchanged:
 - [HowTo/03-authentication.md](./HowTo/03-authentication.md)
 - [HowTo/04-blog-posts-one-to-many.md](./HowTo/04-blog-posts-one-to-many.md)
 - [HowTo/05-docker-env-variables.md](./HowTo/05-docker-env-variables.md)
+
 

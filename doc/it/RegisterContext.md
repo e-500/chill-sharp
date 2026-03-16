@@ -1,12 +1,12 @@
-# Registering A ChillSharp Context
+# Registrare Un Contesto ChillSharp
 
-Versione italiana: [Italiano](./it/RegisterContext.md)
+Versione originale in inglese: [English](../RegisterContext.md)
 
-This document shows how to wire ChillSharp modules into an ASP.NET Core host.
+Questo documento mostra come collegare i moduli ChillSharp dentro un host ASP.NET Core.
 
-## Minimal Core API
+## API Core Minima
 
-For the core Chill API only:
+Per usare solo la Chill API core:
 
 ```csharp
 using ChillSharp.Api;
@@ -24,23 +24,23 @@ app.MapChillApi();
 app.Run();
 ```
 
-Requirements:
+Requisiti:
 
-- `AppDbContext` must inherit `DbContext`
-- `AppDbContext` must implement `IChillContext`
+- `AppDbContext` deve ereditare `DbContext`
+- `AppDbContext` deve implementare `IChillContext`
 
-## What `AddChillApi<TContext>()` Registers
+## Cosa Registra `AddChillApi<TContext>()`
 
-The core registration sets up:
+La registrazione core configura:
 
-- ChillSharp controllers
-- `IChillContext` resolution from your host context
+- controller ChillSharp
+- risoluzione di `IChillContext` dal contesto host
 - `IChillDtoEngine`
-- optional protected API behavior through `ChillApiOptions`
+- comportamento opzionale di API protetta tramite `ChillApiOptions`
 
-## Protecting The Core API
+## Proteggere La Core API
 
-If the host already configures authentication and authorization, you can require auth on the Chill API:
+Se l'host configura gia autenticazione e autorizzazione, puoi richiedere auth sulla Chill API:
 
 ```csharp
 builder.Services.AddChillApi<AppDbContext>(options =>
@@ -49,7 +49,7 @@ builder.Services.AddChillApi<AppDbContext>(options =>
 });
 ```
 
-Then use the standard ASP.NET Core middleware:
+Poi usa il middleware standard ASP.NET Core:
 
 ```csharp
 app.UseAuthentication();
@@ -57,9 +57,9 @@ app.UseAuthorization();
 app.MapChillApi();
 ```
 
-## Adding Schema Services
+## Aggiungere Servizi Schema
 
-To persist and serve schema metadata:
+Per persistere e servire metadati di schema:
 
 ```csharp
 using ChillSharp.Schema;
@@ -67,16 +67,16 @@ using ChillSharp.Schema;
 builder.Services.AddChillSchema<AppDbContext>();
 ```
 
-Context requirements:
+Requisiti del contesto:
 
 - `AppDbContext : IChillSchemaDbContext`
 - `modelBuilder.AddChillSchemaModel()`
 
-`ChillSharp.Schema` also owns the schema cache registration.
+`ChillSharp.Schema` possiede anche la registrazione della schema cache.
 
-## Adding Auth Management
+## Aggiungere Gestione Auth
 
-To expose auth-management endpoints without ASP.NET Core Identity account flows:
+Per esporre gli endpoint di gestione auth senza i flussi account di ASP.NET Core Identity:
 
 ```csharp
 using ChillSharp.Auth.Api;
@@ -84,22 +84,22 @@ using ChillSharp.Auth.Api;
 builder.Services.AddChillAuthApi<AppDbContext>();
 ```
 
-Context requirements:
+Requisiti del contesto:
 
 - `AppDbContext : IChillAuthDbContext`
 - `modelBuilder.AddChillAuthModel()`
 
-This adds endpoints for:
+Questo aggiunge endpoint per:
 
 - auth users
-- roles
-- user-role assignments
-- permission rules
-- permission evaluation
+- ruoli
+- assegnazioni utente-ruolo
+- regole di permesso
+- valutazione dei permessi
 
-## Adding Identity Account Flows
+## Aggiungere I Flussi Account Identity
 
-To expose account registration, login, refresh tokens, password change, and password reset:
+Per esporre registrazione account, login, refresh token, cambio password e reset password:
 
 ```csharp
 using ChillSharp.Auth;
@@ -119,11 +119,11 @@ builder.Services.AddAuthorization();
 builder.Services.AddChillAuthIdentityApi<AppDbContext, IdentityUser>();
 ```
 
-This builds on `AddChillAuthApi<TContext>()`.
+Questo si appoggia a `AddChillAuthApi<TContext>()`.
 
-## Adding I18n Services
+## Aggiungere I Servizi I18n
 
-To expose i18n endpoints:
+Per esporre endpoint i18n:
 
 ```csharp
 using ChillSharp.I18n.Api;
@@ -131,17 +131,17 @@ using ChillSharp.I18n.Api;
 builder.Services.AddChillI18nApi<AppDbContext>();
 ```
 
-Context requirements:
+Requisiti del contesto:
 
 - `AppDbContext : IChillI18nDbContext`
 - `modelBuilder.AddChillI18nModel()`
 
-The module currently exposes:
+Il modulo attualmente espone:
 
 - `GET /api/chill-i18n/text/{labelGuid}/{cultureName}`
 - `PUT /api/chill-i18n/text`
 
-## Full Host Example
+## Esempio Completo Di Host
 
 ```csharp
 using ChillSharp.Api;
@@ -182,29 +182,29 @@ app.MapChillApi();
 app.Run();
 ```
 
-## Mapping Behavior
+## Comportamento Del Mapping
 
-`app.MapChillApi()` maps the ChillSharp controllers and helper endpoints. It does not replace standard ASP.NET Core middleware setup. You still need:
+`app.MapChillApi()` mappa i controller ChillSharp e gli endpoint di supporto. Non sostituisce il setup standard del middleware ASP.NET Core. Ti servono comunque:
 
-- `UseAuthentication()` if auth is enabled
-- `UseAuthorization()` if authorization is enabled
+- `UseAuthentication()` se auth e abilitata
+- `UseAuthorization()` se authorization e abilitata
 
-I18n and auth controllers are added through controller discovery when their modules are registered.
+I controller i18n e auth vengono aggiunti tramite controller discovery quando i relativi moduli sono registrati.
 
-## Recommended Startup Order
+## Ordine Di Startup Consigliato
 
-1. register the EF Core context
-2. register Identity if needed
-3. register authentication and authorization if needed
-4. register `AddChillApi<TContext>()`
-5. register optional modules (`Schema`, `Auth`, `I18n`)
-6. build app
-7. apply middleware
-8. map Chill API
+1. registrare il contesto EF Core
+2. registrare Identity se necessario
+3. registrare authentication e authorization se necessario
+4. registrare `AddChillApi<TContext>()`
+5. registrare i moduli opzionali (`Schema`, `Auth`, `I18n`)
+6. build dell'app
+7. applicare il middleware
+8. mappare la Chill API
 
 ## OpenAPI / Swagger
 
-ChillSharp itself does not force Swagger into your host. If you want OpenAPI output for documentation or client generation, add it in the host application:
+ChillSharp non forza Swagger nel tuo host. Se vuoi output OpenAPI per documentazione o generazione client, aggiungilo nell'app host:
 
 ```csharp
 builder.Services.AddEndpointsApiExplorer();
@@ -215,5 +215,4 @@ app.UseSwagger();
 app.UseSwaggerUI();
 ```
 
-That is the recommended base for generating TypeScript and Python clients from a ChillSharp host.
-
+Questa e la base consigliata per generare client TypeScript e Python da un host ChillSharp.

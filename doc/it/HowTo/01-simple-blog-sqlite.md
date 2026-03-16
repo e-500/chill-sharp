@@ -1,16 +1,16 @@
-# HOW-TO: Simple Blog API on SQLite
+# HOW-TO: API Blog Semplice Su SQLite
 
-Versione italiana: [Italiano](../it/HowTo/01-simple-blog-sqlite.md)
+Versione originale in inglese: [English](../../HowTo/01-simple-blog-sqlite.md)
 
-This example shows the smallest useful ChillSharp setup: one `Blog` entity, one EF Core SQLite context, and a ChillSharp API with no schema label texts in `ChillEntity` or `ChillProperty` attributes.
+Questo esempio mostra la configurazione ChillSharp minima ma utile: una entita `Blog`, un contesto EF Core SQLite e una API ChillSharp senza testi label di schema negli attributi `ChillEntity` o `ChillProperty`.
 
-## Goal
+## Obiettivo
 
-Build a minimal API that can create and read `Blog` entities through ChillSharp.
+Costruire una API minima che possa creare e leggere entita `Blog` tramite ChillSharp.
 
-## 1. Define the entity
+## 1. Definire L'Entita
 
-Use the parameterless versions of `ChillEntity` and `ChillProperty` when you do not want to provide schema texts yet.
+Usa le versioni senza parametri di `ChillEntity` e `ChillProperty` quando non vuoi ancora fornire testi di schema.
 
 ```csharp
 using ChillSharp.Annotations;
@@ -35,9 +35,9 @@ public class Blog : ChillEntity
 }
 ```
 
-## 2. Define a query
+## 2. Definire Una Query
 
-`Find` is enough to load one entity by `Guid`, but a query type is still useful when you want normal filtering and projections.
+`Find` basta per caricare una sola entita tramite `Guid`, ma un tipo query resta utile quando vuoi filtri e proiezioni normali.
 
 ```csharp
 using ChillSharp.Annotations;
@@ -67,9 +67,9 @@ public class BlogQuery : ChillQuery
 }
 ```
 
-## 3. Create the SQLite context
+## 3. Creare Il Contesto SQLite
 
-The context must implement `IChillContext` and return the namespace prefix used by your model and query types.
+Il contesto deve implementare `IChillContext` e restituire il prefisso namespace usato dai tipi model e query.
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -89,7 +89,7 @@ public class BloggingContext : DbContext, IChillContext
 }
 ```
 
-## 4. Register ChillSharp
+## 4. Registrare ChillSharp
 
 ```csharp
 using ChillSharp.Api;
@@ -114,7 +114,7 @@ app.MapChillApi();
 app.Run();
 ```
 
-## 5. Create and read a blog with `ChillSharpClient`
+## 5. Creare E Leggere Un Blog Con `ChillSharpClient`
 
 ```csharp
 using ChillSharp.Client;
@@ -144,10 +144,9 @@ var loadedBlog = result.Results.Single();
 Console.WriteLine($"{loadedBlog.GetString("Name")} -> {loadedBlog.GetString("Url")}");
 ```
 
-## Notes
+## Note
 
-- `Model.Blog` and `Query.BlogQuery` are short type names. ChillSharp expands them using `GetChillTypePrefix()`.
-- With parameterless attributes, schema metadata falls back to the CLR type and property names.
+- `Model.Blog` e `Query.BlogQuery` sono nomi tipo brevi. ChillSharp li espande usando `GetChillTypePrefix()`.
+- Con attributi senza parametri, i metadati schema fanno fallback ai nomi CLR di tipo e proprieta.
 
-Next example: [Add schema labels and read them through ChillSharp](02-blog-schema-labels.md)
-
+Esempio successivo: [Aggiungere label di schema e leggerle tramite ChillSharp](02-blog-schema-labels.md)

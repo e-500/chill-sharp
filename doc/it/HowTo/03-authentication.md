@@ -1,16 +1,16 @@
-# HOW-TO: Use Authentication with ChillSharp
+# HOW-TO: Usare L'Autenticazione Con ChillSharp
 
-Versione italiana: [Italiano](../it/HowTo/03-authentication.md)
+Versione originale in inglese: [English](../../HowTo/03-authentication.md)
 
-This example shows the smallest useful authentication setup for a ChillSharp API: protect the API, enable the auth module, register an account, log in, and let `ChillSharpClient` reuse and refresh tokens automatically.
+Questo esempio mostra la configurazione di autenticazione minima ma utile per una API ChillSharp: proteggere l'API, abilitare il modulo auth, registrare un account, fare login e lasciare che `ChillSharpClient` riusi e rinnovi i token automaticamente.
 
-## Goal
+## Obiettivo
 
-Expose a protected ChillSharp API backed by ASP.NET Core Identity and authenticate with `ChillSharpClient`.
+Esporre una API ChillSharp protetta basata su ASP.NET Core Identity e autenticarsi con `ChillSharpClient`.
 
-## 1. Use a context that supports Identity and ChillSharp auth
+## 1. Usare Un Contesto Che Supporti Identity E ChillSharp Auth
 
-The context must support your normal ChillSharp model and the auth tables.
+Il contesto deve supportare il normale modello ChillSharp e le tabelle auth.
 
 ```csharp
 using ChillSharp;
@@ -37,9 +37,9 @@ public class BloggingContext : IdentityDbContext<IdentityUser>, IChillContext, I
 }
 ```
 
-## 2. Register Identity, authentication, and ChillSharp auth services
+## 2. Registrare Identity, Authentication E I Servizi Auth ChillSharp
 
-Protect the normal ChillSharp API and add the auth endpoints on top of it.
+Proteggi la normale ChillSharp API e aggiungi sopra gli endpoint auth.
 
 ```csharp
 using ChillSharp.Api;
@@ -80,9 +80,9 @@ builder.Services.AddChillAuthIdentityApi<BloggingContext, IdentityUser>(options 
 });
 ```
 
-When `CreateChillAuthUserForRoot = true`, startup also creates the linked ChillSharp `AuthUser` and sets `CanManagePermissions = true` for that root user.
+Quando `CreateChillAuthUserForRoot = true`, all'avvio viene creato anche il relativo `AuthUser` ChillSharp e `CanManagePermissions = true` viene impostato per quell'utente root.
 
-You can also provide the same bootstrap values through environment variables instead of hardcoding them:
+Puoi fornire gli stessi valori di bootstrap anche tramite variabili d'ambiente invece di hardcodarli:
 
 ```text
 CHILLSHARP_AUTH_ROOT_USERNAME=root
@@ -91,9 +91,9 @@ CHILLSHARP_AUTH_ROOT_EMAIL=root@example.com
 CHILLSHARP_AUTH_ROOT_DISPLAY_NAME=Root Administrator
 ```
 
-## 3. Enable middleware and map the API
+## 3. Abilitare Il Middleware E Mappare L'API
 
-`MapChillApi()` exposes both the normal ChillSharp endpoints and the auth endpoints once the auth services are registered.
+`MapChillApi()` espone sia gli endpoint normali ChillSharp sia quelli auth una volta registrati i servizi auth.
 
 ```csharp
 var app = builder.Build();
@@ -111,9 +111,9 @@ app.MapChillApi();
 app.Run();
 ```
 
-## 4. Use the root user to manage permissions
+## 4. Usare L'Utente Root Per Gestire I Permessi
 
-The root-user initializer is the easiest bootstrap path for a new protected system because the linked ChillSharp auth user is created with permission-management enabled.
+L'inizializzatore root-user e la via piu semplice di bootstrap per un sistema protetto nuovo, perche l'utente auth ChillSharp collegato viene creato con la gestione permessi abilitata.
 
 ```csharp
 var rootClient = new ChillSharpClient("http://localhost:5000/api/chill");
@@ -128,11 +128,11 @@ var authUsers = rootClient.GetAuthUsers();
 Console.WriteLine(authUsers.Count);
 ```
 
-That login can call auth-management endpoints such as users, roles, and permission rules because the generated root `AuthUser` has `CanManagePermissions = true`.
+Quel login puo chiamare endpoint di gestione auth come utenti, ruoli e regole di permesso perche l'`AuthUser` root generato ha `CanManagePermissions = true`.
 
-## 5. Register the first normal account
+## 5. Registrare Il Primo Account Normale
 
-Create the client with the normal Chill base URL. Auth calls automatically switch from `/api/chill` to `/api/chill-auth`.
+Crea il client con il normale Chill base URL. Le chiamate auth passano automaticamente da `/api/chill` a `/api/chill-auth`.
 
 ```csharp
 using ChillSharp.Auth.Contracts;
@@ -150,11 +150,11 @@ var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityReques
 });
 ```
 
-After a successful registration, the client stores the returned access token and refresh token internally.
+Dopo una registrazione riuscita, il client salva internamente access token e refresh token restituiti.
 
-## 6. Log in explicitly
+## 6. Fare Login Esplicito
 
-If the account already exists, log in with the same `ChillSharpClient`.
+Se l'account esiste gia, fai login con lo stesso `ChillSharpClient`.
 
 ```csharp
 var loginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
@@ -164,9 +164,9 @@ var loginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
 });
 ```
 
-## 7. Call protected endpoints
+## 7. Chiamare Endpoint Protetti
 
-Once authenticated, the same client can call protected ChillSharp endpoints.
+Una volta autenticato, lo stesso client puo chiamare gli endpoint ChillSharp protetti.
 
 ```csharp
 using ChillSharp.Client.Dto;
@@ -181,26 +181,25 @@ var result = client.Query(query);
 Console.WriteLine(result.Results.Count);
 ```
 
-## 8. Let the client refresh tokens automatically
+## 8. Lasciare Che Il Client Rinnovi I Token Automaticamente
 
-You do not need to manually attach bearer tokens on every request. If the client already has a refresh token, authenticated calls renew the access token when needed.
+Non devi allegare manualmente il bearer token a ogni richiesta. Se il client ha gia un refresh token, le chiamate autenticate rinnovano l'access token quando serve.
 
 ```csharp
 var roles = client.GetAuthRoles();
 ```
 
-You can also refresh explicitly:
+Puoi anche fare refresh esplicito:
 
 ```csharp
 var refreshed = client.RefreshAuthAccount();
 ```
 
-## Notes
+## Note
 
-- Use `options.ProtectedApi = true` on `AddChillApi<TContext>(...)` if your ChillSharp endpoints must require authentication.
-- The root user created by `AddChillAuthIdentityApi(...)` is the bootstrap administrator path. When `CreateChillAuthUserForRoot = true`, the linked ChillSharp `AuthUser` is created with `CanManagePermissions = true`.
-- `CreateChillAuthUser = true` creates the linked ChillSharp `AuthUser`, but it does not automatically grant admin permissions.
-- For production, bootstrap the first administrator deliberately, for example through root-user initialization or a trusted install-time flow.
+- Usa `options.ProtectedApi = true` su `AddChillApi<TContext>(...)` se gli endpoint ChillSharp devono richiedere autenticazione.
+- L'utente root creato da `AddChillAuthIdentityApi(...)` e il percorso bootstrap amministrativo. Quando `CreateChillAuthUserForRoot = true`, il relativo `AuthUser` ChillSharp viene creato con `CanManagePermissions = true`.
+- `CreateChillAuthUser = true` crea l'`AuthUser` ChillSharp collegato, ma non concede automaticamente permessi amministrativi.
+- In produzione, inizializza il primo amministratore in modo deliberato, ad esempio con root-user initialization o un flusso trusted in fase di installazione.
 
-Next example: [Create a Docker image and configure it with environment variables](04-docker-env-variables.md)
-
+Esempio successivo: [Creare un'immagine Docker e configurarla con variabili d'ambiente](05-docker-env-variables.md)

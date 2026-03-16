@@ -1,25 +1,25 @@
-Versione italiana: [Italiano](../it/AuthenticationModel/how-to-integreate-auth-minimal-api.md)
+Versione originale in inglese: [English](../../AuthenticationModel/how-to-integreate-auth-minimal-api.md)
 
-Sure. Here’s the updated, correct, modern version of the setup using **Microsoft.IdentityModel.JsonWebTokens**, because Microsoft decided the old JWT library needed to be “legacy” for fun.
+Certo. Qui trovi la versione aggiornata, corretta e moderna della configurazione con **Microsoft.IdentityModel.JsonWebTokens**, perche Microsoft ha deciso che la vecchia libreria JWT dovesse diventare "legacy".
 
-This is the clean way to do:
+Questo e il modo pulito per avere:
 
-✅ Identity user store
-✅ Minimal API login/register
-✅ JWT Bearer tokens
-✅ No cookies
-✅ No UI
-✅ No outdated JwtSecurityTokenHandler
-
----
-
-# ✅ ASP.NET Core Minimal Identity API + JWT (Modern JsonWebTokenHandler)
+✅ store utenti Identity
+✅ login/register Minimal API
+✅ token JWT Bearer
+✅ niente cookie
+✅ niente UI
+✅ niente `JwtSecurityTokenHandler` obsoleto
 
 ---
 
-# ✅ 1. Install Packages
+# ✅ Minimal Identity API ASP.NET Core + JWT (JsonWebTokenHandler moderno)
 
-Run:
+---
+
+# ✅ 1. Installare I Pacchetti
+
+Esegui:
 
 ```bash
 dotnet add package Microsoft.AspNetCore.Identity.EntityFrameworkCore
@@ -28,11 +28,11 @@ dotnet add package Microsoft.EntityFrameworkCore.SqlServer
 dotnet add package Microsoft.IdentityModel.JsonWebTokens
 ```
 
-No `System.IdentityModel.Tokens.Jwt`. We are enlightened now.
+Niente `System.IdentityModel.Tokens.Jwt`.
 
 ---
 
-# ✅ 2. Create Identity DbContext
+# ✅ 2. Creare L'Identity DbContext
 
 ```csharp
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -47,7 +47,7 @@ public class AppDbContext : IdentityDbContext
 
 ---
 
-# ✅ 3. Configure Database + IdentityCore
+# ✅ 3. Configurare Database + IdentityCore
 
 In `Program.cs`:
 
@@ -56,7 +56,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 ```
 
-Now add Identity:
+Poi aggiungi Identity:
 
 ```csharp
 builder.Services.AddIdentityCore<IdentityUser>()
@@ -64,15 +64,15 @@ builder.Services.AddIdentityCore<IdentityUser>()
     .AddDefaultTokenProviders();
 ```
 
-✅ No UI
-✅ No Razor
-✅ No cookie circus
+✅ Niente UI  
+✅ Niente Razor  
+✅ Niente circo dei cookie
 
 ---
 
-# ✅ 4. Configure JWT Authentication (Bearer)
+# ✅ 4. Configurare L'Autenticazione JWT (Bearer)
 
-Add imports:
+Aggiungi gli import:
 
 ```csharp
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -80,14 +80,14 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 ```
 
-Then:
+Poi:
 
 ```csharp
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
 ```
 
-Now configure:
+Ora configura:
 
 ```csharp
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -111,7 +111,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 ---
 
-# ✅ 5. Enable Authorization
+# ✅ 5. Abilitare L'Autorizzazione
 
 ```csharp
 builder.Services.AddAuthorization();
@@ -119,29 +119,29 @@ builder.Services.AddAuthorization();
 
 ---
 
-# ✅ 6. Add Middleware
+# ✅ 6. Aggiungere Il Middleware
 
-After `var app = builder.Build();`
+Dopo `var app = builder.Build();`
 
 ```csharp
 app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-If you skip this, nothing works and you’ll blame yourself, incorrectly.
+Se salti questo passaggio, non funziona niente.
 
 ---
 
-# ✅ 7. Generate JWT Token (Modern JsonWebTokenHandler)
+# ✅ 7. Generare Un Token JWT (JsonWebTokenHandler moderno)
 
-Add imports:
+Aggiungi gli import:
 
 ```csharp
 using Microsoft.IdentityModel.JsonWebTokens;
 using System.Security.Claims;
 ```
 
-Now define:
+Poi definisci:
 
 ```csharp
 string GenerateJwtToken(IdentityUser user)
@@ -173,11 +173,11 @@ string GenerateJwtToken(IdentityUser user)
 }
 ```
 
-✅ This is the replacement for the old JwtSecurityTokenHandler.
+✅ Questo sostituisce il vecchio `JwtSecurityTokenHandler`.
 
 ---
 
-# ✅ 8. Register Endpoint (Minimal API)
+# ✅ 8. Endpoint Di Registrazione (Minimal API)
 
 ```csharp
 app.MapPost("/register", async (
@@ -201,7 +201,7 @@ app.MapPost("/register", async (
 
 ---
 
-# ✅ 9. Login Endpoint (Returns JWT)
+# ✅ 9. Endpoint Di Login (ritorna JWT)
 
 ```csharp
 app.MapPost("/login", async (
@@ -226,7 +226,7 @@ app.MapPost("/login", async (
 
 ---
 
-# ✅ 10. Protect an Endpoint
+# ✅ 10. Proteggere Un Endpoint
 
 ```csharp
 app.MapGet("/me", (ClaimsPrincipal user) =>
@@ -240,7 +240,7 @@ app.MapGet("/me", (ClaimsPrincipal user) =>
 
 ---
 
-# ✅ 11. Add Request Models
+# ✅ 11. Aggiungere I Modelli Request
 
 ```csharp
 public record RegisterRequest(string Email, string Password);
@@ -250,7 +250,7 @@ public record LoginRequest(string Email, string Password);
 
 ---
 
-# ✅ 12. Configure appsettings.json
+# ✅ 12. Configurare `appsettings.json`
 
 ```json
 "Jwt": {
@@ -259,35 +259,34 @@ public record LoginRequest(string Email, string Password);
 }
 ```
 
-Make the key long and random, unless you want attackers logging in as you for sport.
+Usa una chiave lunga e casuale.
 
 ---
 
-# ✅ Result
+# ✅ Risultato
 
-Now you have:
+Ora hai:
 
-✅ `/register`
-✅ `/login` → returns JWT
-✅ Protected endpoints with Bearer token
-✅ Identity user store in SQL
-✅ No cookies
-✅ No UI
-✅ No legacy JWT handler
+✅ `/register`  
+✅ `/login` -> ritorna JWT  
+✅ endpoint protetti con Bearer token  
+✅ store utenti Identity in SQL  
+✅ niente cookie  
+✅ niente UI  
+✅ niente handler JWT legacy
 
 ---
 
-# If You Want Next Steps
+# Se Vuoi Gli Step Successivi
 
-The moment you want:
+Quando vorrai:
 
-* Refresh tokens
-* Roles + claims
-* Password reset endpoints
-* Email confirmation
-* `/logout` with JWT invalidation (annoying)
+* refresh token
+* ruoli + claim
+* endpoint per reset password
+* conferma email
+* `/logout` con invalidazione JWT
 
-Then authentication becomes a *real* system, not a demo.
+allora l'autenticazione diventa un sistema vero, non una demo.
 
-Still, this setup is the clean foundation Microsoft should’ve shipped by default.
-
+Resta comunque una base pulita e moderna.

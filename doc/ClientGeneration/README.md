@@ -1,5 +1,7 @@
 # Generating Client Libraries
 
+Versione italiana: [Italiano](../it/ClientGeneration/README.md)
+
 This section explains how to generate non-.NET client libraries for a ChillSharp host.
 
 Targets covered here:
@@ -148,4 +150,5 @@ If you plan to generate clients regularly:
 - version the API
 - regenerate clients as part of release workflow
 - treat OpenAPI shape changes as public-contract changes
+
 
