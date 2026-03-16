@@ -31,32 +31,30 @@ namespace ChillSharp.Dto
     /// </summary>
     public class ChillDtoPropertySchema
     {
+        /// <summary>
+        /// Initializes an empty property schema instance.
+        /// </summary>
         public ChillDtoPropertySchema() { }
 
         /// <summary>
-        /// Creates a new instance of <see cref="ChillDtoPropertySchema"/> based on the metadata of the specified
-        /// property.
+        /// Builds a DTO property schema from a reflected property definition.
         /// </summary>
-        /// <remarks>If the property represents a Chill entity, query, or entity collection, the <paramref
-        /// name="shrinkTypePrefix"/> is used to remove a prefix from the reference type name. The display name is set
-        /// from the <see cref="ChillPropertyAttribute.PrimaryLanguageLabel"/> if available; otherwise, it defaults to
-        /// the property name.</remarks>
-        /// <param name="propInfo">The <see cref="PropertyInfo"/> object representing the property to map. Must not be <see langword="null"/>.</param>
-        /// <param name="shrinkTypePrefix">An optional type prefix to remove from the property's type name when setting reference type information. If
-        /// not specified, no prefix is removed.</param>
-        /// <returns>A <see cref="ChillDtoPropertySchema"/> populated with information derived from the provided property
-        /// metadata.</returns>
-        public static ChillDtoPropertySchema FromPropertyInfo(PropertyInfo propInfo, string shrinkTypePrefix = "")
+        /// <param name="propInfo">The reflected property to inspect.</param>
+        /// <param name="shrinkTypePrefix">Optional namespace prefix removed from reference Chill types.</param>
+        /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <returns>A schema description suitable for client metadata.</returns>
+        public static ChillDtoPropertySchema FromPropertyInfo(PropertyInfo propInfo, string shrinkTypePrefix = "", IChillContext? context = null)
         {
             var s = new ChillDtoPropertySchema();
             s.Name = propInfo.Name;
             var chillAttr = propInfo.GetCustomAttribute<ChillPropertyAttribute>();
-            s.DisplayName = !string.IsNullOrWhiteSpace(chillAttr?.PrimaryLanguageLabel)
-                ? chillAttr.PrimaryLanguageLabel!
-                : propInfo.Name;
+            s.DisplayName = ChillLabelResolver.Resolve(
+                chillAttr?.PrimaryLanguageLabel,
+                chillAttr?.SecondaryLanguageLabel,
+                propInfo.Name,
+                context);
             s.Type = ChillDtoPropertyMapper.Map(propInfo.PropertyType);
 
-            // Shrink type prefix according to ChillContext settings GetChillTypePrefix()
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
 
@@ -100,77 +98,77 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Detailed description of the property type (replaces the prior enum-based Kind).
+        /// Detailed description of the property's logical Chill type.
         /// </summary>
         public ChillDtoPropertyType Type { get; set; } = new ChillDtoPropertyType();
 
         /// <summary>
-        /// Property name
+        /// CLR property name.
         /// </summary>
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// Human-friendly label for UI display.
+        /// Human-friendly label chosen from Chill metadata or the property name fallback.
         /// </summary>
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Whether the property can be null (null = unknown).
+        /// Whether the value can be null when known.
         /// </summary>
         public bool? IsNullable { get; set; }
 
         /// <summary>
-        /// Whether the property is read-only from the API perspective.
+        /// Whether the property should be treated as read-only by clients.
         /// </summary>
         public bool? IsReadOnly { get; set; }
 
         /// <summary>
-        /// Maximum length for string-like properties (where applicable).
+        /// Maximum string length when applicable.
         /// </summary>
         public int? MaxLength { get; set; }
 
         /// <summary>
-        /// Number of decimal places to display for decimal numbers.
+        /// Preferred number of decimal places for decimal-like values.
         /// </summary>
         public int? DecimalPlaces { get; set; }
 
         /// <summary>
-        /// Precision (total digits) for decimal numbers where relevant.
+        /// Total precision for decimal-like values.
         /// </summary>
         public int? Precision { get; set; }
 
         /// <summary>
-        /// Scale for decimals (digits to the right of the decimal point).
+        /// Decimal scale for decimal-like values.
         /// </summary>
         public int? Scale { get; set; }
 
         /// <summary>
-        /// Preferred date/time format string (e.g. "yyyy-MM-dd", "o", or a culture-specific pattern).
+        /// Preferred date or time display format.
         /// </summary>
         public string DateFormat { get; set; } = string.Empty;
 
         /// <summary>
-        /// For reference/navigation properties, the referenced entity type name.
+        /// Referenced Chill type for entity, query, or collection relationships.
         /// </summary>
         public string ReferenceChillType { get; set; } = string.Empty;
 
         /// <summary>
-        /// Values for enum types (ordered).
+        /// Ordered values for enum-like properties.
         /// </summary>
         public List<string> EnumValues { get; set; } = new();
 
         /// <summary>
-        /// Arbitrary string metadata useful for front-end renderers.
+        /// Additional metadata for custom client renderers.
         /// </summary>
         public Dictionary<string, string> Metadata { get; set; } = new();
 
         /// <summary>
-        /// Generic custom format string for display (when more specific fields are not enough).
+        /// Generic custom format hint for UI consumers.
         /// </summary>
         public string CustomFormat { get; set; } = string.Empty;
 
         /// <summary>
-        /// Helper for decimal types.
+        /// Creates a schema preconfigured for decimal values.
         /// </summary>
         public static ChillDtoPropertySchema ForDecimal(int? decimalPlaces = null, int? precision = null, int? scale = null)
         {
@@ -183,7 +181,7 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Helper for date/time types with an optional format.
+        /// Creates a schema preconfigured for date or time values.
         /// </summary>
         public static ChillDtoPropertySchema ForDateTime(string? dateFormat = null)
         {
@@ -194,7 +192,7 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Helper for string types.
+        /// Creates a schema preconfigured for string values.
         /// </summary>
         public static ChillDtoPropertySchema ForString(int? maxLength = null)
         {
@@ -205,7 +203,7 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Helper for enum types.
+        /// Creates a schema preconfigured for enum values.
         /// </summary>
         public static ChillDtoPropertySchema ForEnum(IEnumerable<string> values)
         {
@@ -216,7 +214,7 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Helper for reference/navigation types.
+        /// Creates a schema preconfigured for a single reference relationship.
         /// </summary>
         public static ChillDtoPropertySchema ForReference(string referenceType)
         {
@@ -227,7 +225,7 @@ namespace ChillSharp.Dto
         }
 
         /// <summary>
-        /// Helper for collection types.
+        /// Creates a schema preconfigured for a collection relationship.
         /// </summary>
         public static ChillDtoPropertySchema ForCollection(string referenceType)
         {

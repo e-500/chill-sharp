@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
  * and turns an existing data model into a fully working REST API with almost no setup.
  * Copyright (C) 2025 Andrea Piovesan
@@ -38,7 +38,7 @@ namespace ChillSharp.Examples.BloggingApiService
             DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService", "blogging.db");
         }
 
-        public BloggingContext(DbContextOptions<BloggingContext> options) : base(options) 
+        public BloggingContext(DbContextOptions<BloggingContext> options) : base(options)
         {
             var folder = Environment.SpecialFolder.LocalApplicationData;
             var path = Environment.GetFolderPath(folder);
@@ -46,18 +46,27 @@ namespace ChillSharp.Examples.BloggingApiService
             Directory.CreateDirectory(DbPath);
             DbPath = System.IO.Path.Join(path, "ChillSharp.Examples.BloggingApiService", "blogging.db");
         }
-
         // The following configures EF to create a Sqlite database file in the
         // special "local" folder for your platform.
+        // Set also culture name bindings
         protected override void OnConfiguring(DbContextOptionsBuilder options)
-        { 
-            //SetInitializer(new MigrateDatabaseToLatestVersion<MyContext, MigrateDBConfiguration>());
+        {
             options.UseSqlite($"Data Source={DbPath}");
         }
 
         public string GetChillTypePrefix()
         {
             return "ChillSharp.Examples.BloggingApiService";
+        }
+
+        public string GetPrimaryCultureName()
+        {
+            return "en-GB";
+        }
+
+        public string GetSecondaryCultureName()
+        {
+            return "it-IT";
         }
     }
 }

@@ -35,112 +35,93 @@ namespace ChillSharp.Dto
     public class ChillDtoSchema
     {
         /// <summary>
-        /// Short chill type identifier (same as used by DTO APIs).
+        /// Short Chill type identifier exposed to clients.
         /// </summary>
         public string ChillType { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the code used to identify or represent the ChillView configuration.
+        /// View code identifying the schema variant.
         /// </summary>
         public string ChillViewCode { get; set; } = string.Empty;
 
         /// <summary>
-        /// Human-friendly label for UI display.
+        /// Human-friendly label for the entity or query type.
         /// </summary>
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Map of property name -> mapped frontend property type.
+        /// Property schemas exposed for the type.
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
 
         /// <summary>
-        /// Create a ChillDtoPropertySchema representation for an IChillEntity instance.
-        /// This method attempts to extract a display name from ChillEntityAttribute applied
-        /// to the entity type, falling back to DisplayNameAttribute or the type name.
+        /// Builds schema metadata from an entity instance.
         /// </summary>
         /// <param name="chillEntity">The entity instance to inspect.</param>
-        /// <param name="ChillViewCode">Optional view code.</param>
-        /// <param name="shrinkTypePrefix">Optional shrink prefix (preserved for compatibility).</param>
-        /// <returns>A ChillDtoPropertySchema with best-effort display metadata populated.</returns>
-        public static ChillDtoSchema FromIChillEntity(IChillEntity chillEntity, string ChillViewCode = "default", string shrinkTypePrefix = "")
+        /// <param name="ChillViewCode">The view code attached to the generated schema.</param>
+        /// <param name="shrinkTypePrefix">Optional namespace prefix removed from generated Chill type names.</param>
+        /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <returns>A schema representation of the entity.</returns>
+        public static ChillDtoSchema FromIChillEntity(IChillEntity chillEntity, string ChillViewCode = "default", string shrinkTypePrefix = "", IChillContext? context = null)
         {
             if (chillEntity == null)
                 throw new ArgumentNullException(nameof(chillEntity));
 
             Type type = chillEntity.GetType();
-
-            // Try to get the custom ChillEntityAttribute on the type.
             ChillEntityAttribute? chillAttr = type.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
 
-            // Resolve display name with fallbacks.
-            string? displayName = !string.IsNullOrWhiteSpace(chillAttr?.PrimaryLanguageLabel)
-                ? chillAttr.PrimaryLanguageLabel!
-                : type.Name;
+            string displayName = ChillLabelResolver.Resolve(
+                chillAttr?.PrimaryLanguageLabel,
+                chillAttr?.SecondaryLanguageLabel,
+                type.Name,
+                context);
 
-            // Create schema instance and set fields via reflection if present.
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
-            // Shrink type prefix according to ChillContext settings GetChillTypePrefix()
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
             schema.ChillType = type.FullName!.Replace(shrinkTypePrefix, string.Empty);
             schema.ChillViewCode = ChillViewCode;
 
-            // All chill properties matching the list
-            // or all chill properties if list is null
-            // No fields if list is empty.
             var ef_props = chillEntity.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix)).ToList();
+            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context)).ToList();
 
             return schema;
         }
 
         /// <summary>
-        /// Creates a new instance of <see cref="ChillDtoSchema"/> based on the specified <see
-        /// cref="IChillQuery{IChillEntity}"/> and its associated metadata.
+        /// Builds schema metadata from a query instance.
         /// </summary>
-        /// <remarks>The returned schema includes display name, type code, view code, and a list of
-        /// properties extracted from the query's type metadata. Only properties marked with <see
-        /// cref="ChillPropertyAttribute"/> are included in the schema.</remarks>
-        /// <param name="chillQuery">The query object representing the Chill entity. Must not be <see langword="null"/>.</param>
-        /// <param name="ChillViewCode">The code identifying the Chill view to associate with the schema. If not specified, defaults to "default".</param>
-        /// <param name="shrinkTypePrefix">An optional prefix to apply to property type names when generating property schemas. If not specified, no
-        /// prefix is applied.</param>
-        /// <returns>A <see cref="ChillDtoSchema"/> instance populated with metadata and property schemas derived from the
-        /// provided query.</returns>
-        /// <exception cref="ArgumentNullException">Thrown if <paramref name="chillQuery"/> is <see langword="null"/>.</exception>
-        public static ChillDtoSchema FromIChillQuery(IChillQuery<IChillEntity> chillQuery, string ChillViewCode = "default", string shrinkTypePrefix = "")
+        /// <param name="chillQuery">The query instance to inspect.</param>
+        /// <param name="ChillViewCode">The view code attached to the generated schema.</param>
+        /// <param name="shrinkTypePrefix">Optional namespace prefix removed from generated Chill type names.</param>
+        /// <param name="context">Optional Chill context used to resolve localized labels.</param>
+        /// <returns>A schema representation of the query.</returns>
+        public static ChillDtoSchema FromIChillQuery(IChillQuery<IChillEntity> chillQuery, string ChillViewCode = "default", string shrinkTypePrefix = "", IChillContext? context = null)
         {
             if (chillQuery == null)
                 throw new ArgumentNullException(nameof(chillQuery));
 
             Type type = chillQuery.GetType();
-
-            // Try to get the custom ChillEntityAttribute on the type.
             ChillEntityAttribute? chillAttr = type.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
 
-            // Resolve display name with fallbacks.
-            string? displayName = !string.IsNullOrWhiteSpace(chillAttr?.PrimaryLanguageLabel)
-                ? chillAttr.PrimaryLanguageLabel!
-                : type.Name;
+            string displayName = ChillLabelResolver.Resolve(
+                chillAttr?.PrimaryLanguageLabel,
+                chillAttr?.SecondaryLanguageLabel,
+                type.Name,
+                context);
 
-            // Create schema instance and set fields via reflection if present.
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
-            // Shrink type prefix according to ChillContext settings GetChillTypePrefix()
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
             schema.ChillType = type.FullName!.Replace(shrinkTypePrefix, string.Empty);
             schema.ChillViewCode = ChillViewCode;
 
-            // All chill properties matching the list
-            // or all chill properties if list is null
-            // No fields if list is empty.
             var ef_props = chillQuery.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix)).ToList();
+            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context)).ToList();
 
             return schema;
         }

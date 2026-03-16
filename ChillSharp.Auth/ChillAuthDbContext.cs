@@ -63,10 +63,25 @@ public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
     /// <summary>
     /// Returns the namespace prefix used by ChillSharp to resolve auth entity types dynamically.
     /// </summary>
-    /// <returns>The model namespace prefix.</returns>
     public string GetChillTypePrefix()
     {
         return "ChillSharp.Auth.Model";
+    }
+
+    /// <summary>
+    /// Returns the culture name associated with PrimaryLanguageLabel metadata.
+    /// </summary>
+    public string GetPrimaryCultureName()
+    {
+        return "en-GB";
+    }
+
+    /// <summary>
+    /// Returns the culture name associated with SecondaryLanguageLabel metadata.
+    /// </summary>
+    public string GetSecondaryCultureName()
+    {
+        return "it-IT";
     }
 
     /// <summary>

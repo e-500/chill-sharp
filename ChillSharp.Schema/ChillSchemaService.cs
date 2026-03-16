@@ -104,12 +104,12 @@ public class ChillSchemaService : IChillSchemaService
 
         if (activatedType is IChillEntity chillEntity)
         {
-            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix());
+            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext);
         }
 
         if (activatedType is IChillQuery<IChillEntity> chillQuery)
         {
-            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix());
+            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext);
         }
 
         throw new ChillException($"Activated type '{fullChillType}' is not a Chill entity or query.");
@@ -142,3 +142,4 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
+

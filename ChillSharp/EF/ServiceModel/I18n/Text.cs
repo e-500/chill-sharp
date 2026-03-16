@@ -52,7 +52,7 @@ namespace ChillSharp.EF.ServiceModel.I18n
         /// Gets or sets the culture code associated with the item, typically used to specify language or regional
         /// formatting.
         /// </summary>
-        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-US" for U.S. English). This
+        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-GB" for U.S. English). This
         /// property can be used to localize content or control formatting based on cultural preferences.</remarks>
         [ChillProperty(
             UniquePropertyKeyString: "AF8190BF-57D5-4E5A-AADA-4BA41BDFB322",

@@ -1,4 +1,4 @@
-﻿using ChillSharp.Tests.EF.Model;
+using ChillSharp.Tests.EF.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +32,7 @@ namespace ChillSharp.Tests.EF
 
         // The following configures EF to create a Sqlite database file in the
         // special "local" folder for your platform.
+        // Set also culture name bindings
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
             if (!options.IsConfigured)
@@ -43,6 +44,16 @@ namespace ChillSharp.Tests.EF
         public string GetChillTypePrefix()
         {
             return "ChillSharp.Tests.EF";
+        }
+
+        public string GetPrimaryCultureName()
+        {
+            return "en-GB"; // We prefer DD/MM/YYYY date format
+        }
+
+        public string GetSecondaryCultureName()
+        {
+            return "it-IT"; // We are italian
         }
     }
 }

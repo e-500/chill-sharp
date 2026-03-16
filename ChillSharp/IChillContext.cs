@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
  * and turns an existing data model into a fully working REST API with almost no setup.
  * Copyright (C) 2025 Andrea Piovesan
@@ -56,6 +56,30 @@ namespace ChillSharp
         /// </summary>
         /// <returns>The namespace prefix for ChillSharp entity type identifiers.</returns>
         string GetChillTypePrefix();
+
+        /// <summary>
+        /// Gets the culture name associated with labels written as <c>PrimaryLanguageLabel</c>.
+        /// </summary>
+        /// <remarks>
+        /// Different contexts can return different values, allowing multiple Chill contexts to coexist
+        /// with their own language conventions inside the same host process.
+        /// </remarks>
+        string GetPrimaryCultureName()
+        {
+            return "en-GB";
+        }
+
+        /// <summary>
+        /// Gets the culture name associated with labels written as <c>SecondaryLanguageLabel</c>.
+        /// </summary>
+        /// <remarks>
+        /// Different contexts can return different values, allowing multiple Chill contexts to coexist
+        /// with their own language conventions inside the same host process.
+        /// </remarks>
+        string GetSecondaryCultureName()
+        {
+            return "it-IT";
+        }
         #endregion
     }
 }
