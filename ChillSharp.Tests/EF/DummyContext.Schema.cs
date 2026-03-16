@@ -1,5 +1,6 @@
 using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
+using ChillSharp.I18n;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Tests.EF
@@ -11,6 +12,7 @@ namespace ChillSharp.Tests.EF
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
             modelBuilder.AddChillSchemaModel();
+            modelBuilder.AddChillI18nModel();
         }
     }
 }
