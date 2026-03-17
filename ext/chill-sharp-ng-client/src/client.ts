@@ -34,6 +34,10 @@ export class ChillSharpNgClient {
     return from(this.client.chunk(operations));
   }
 
+  test(): Observable<string> {
+    return from(this.client.test());
+  }
+
   getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<JsonObject | null> {
     return from(this.client.getSchema(chillType, chillViewCode, cultureName));
   }

@@ -89,6 +89,40 @@ export function useText(labelGuid: string, cultureName: string): UseChillAsyncSt
   };
 }
 
+export function useTest(): UseChillAsyncState<string> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const load = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.test();
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [client]);
+
+  return {
+    data,
+    error,
+    isLoading,
+    reload: load
+  };
+}
+
 export function useQueryMutation(): UseChillMutationState<JsonObject> {
   const client = useChillSharpClient();
   const [data, setData] = useState<JsonObject | null>(null);

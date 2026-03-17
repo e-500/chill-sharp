@@ -96,6 +96,40 @@ export function useText(
   };
 }
 
+export function useTest(): UseChillAsyncState<string> {
+  const client = useChillSharpClient();
+  const data = ref<string | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(true);
+
+  const load = async () => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.test();
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  watchEffect(() => {
+    void load();
+  });
+
+  return {
+    data: readonly(data),
+    error: readonly(error),
+    isLoading: readonly(isLoading),
+    reload: load
+  };
+}
+
 export function useQueryMutation(): UseChillMutationState<JsonObject> {
   const client = useChillSharpClient();
   const data = ref<JsonObject | null>(null);

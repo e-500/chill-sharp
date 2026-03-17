@@ -8,6 +8,7 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - `useChillSharpClient()` to access the raw client
 - `useSchema()` for localized schema loading
 - `useText()` for i18n label lookups
+- `useTest()` for endpoint health checks
 - `useQueryMutation()` and `useEntityMutation()` for generic API actions
 
 It stays generic on purpose. Payloads are plain objects so the same package can work against arbitrary ChillSharp models.
@@ -133,6 +134,14 @@ const { data, isLoading } = useText(
   "it-IT"
 );
 ```
+
+### `useTest()`
+
+```tsx
+const { data, isLoading, reload } = useTest();
+```
+
+`useTest()` calls `GET /api/chill/test` and returns the plain-text service status.
 
 ### `useQueryMutation()`
 

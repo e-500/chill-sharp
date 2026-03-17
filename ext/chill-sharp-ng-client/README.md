@@ -109,6 +109,7 @@ providers: [
 - `update()`
 - `delete()`
 - `chunk()`
+- `test()`
 - `getSchema()`
 - `setSchema()`
 - `getText()`
@@ -144,6 +145,12 @@ this.chill.create({
     Author: "Grace Hopper"
   }
 }).subscribe();
+```
+
+### Test endpoint
+
+```ts
+readonly status$ = this.chill.test();
 ```
 
 ### Get localized schema

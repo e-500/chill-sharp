@@ -71,6 +71,10 @@ export class ChillSharpClient {
     return this.sendJson<JsonObject[]>("POST", this.buildChillUrl("chunk"), operations);
   }
 
+  test(): Promise<string> {
+    return this.sendText("GET", this.buildChillUrl("test"), true);
+  }
+
   getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<JsonObject | null> {
     const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
     const encodedView = encodeURIComponent(this.normalizeRequiredValue(chillViewCode, "chillViewCode"));
@@ -144,6 +148,36 @@ export class ChillSharpClient {
     allowAnonymous = false,
     allowRetry = true
   ): Promise<T> {
+    const response = await this.sendRequest(method, url, payload, allowAnonymous, allowRetry);
+    if (!expectResponseBody) {
+      return null as T;
+    }
+
+    const text = await response.text();
+    if (!text.trim()) {
+      return null as T;
+    }
+
+    return JSON.parse(text) as T;
+  }
+
+  private async sendText(
+    method: string,
+    url: string,
+    allowAnonymous = false,
+    allowRetry = true
+  ): Promise<string> {
+    const response = await this.sendRequest(method, url, undefined, allowAnonymous, allowRetry);
+    return await response.text();
+  }
+
+  private async sendRequest(
+    method: string,
+    url: string,
+    payload?: JsonValue,
+    allowAnonymous = false,
+    allowRetry = true
+  ): Promise<Response> {
     try {
       if (!allowAnonymous && this.canUseAuthentication()) {
         await this.getAuthTokenIfNecessary();
@@ -164,7 +198,7 @@ export class ChillSharpClient {
       });
 
       if ((response.status === 401 || response.status === 403) && !allowAnonymous && allowRetry && await this.tryRefreshAuthentication()) {
-        return this.sendJson<T>(method, url, payload, expectResponseBody, allowAnonymous, false);
+        return this.sendRequest(method, url, payload, allowAnonymous, false);
       }
 
       if (!response.ok) {
@@ -175,16 +209,7 @@ export class ChillSharpClient {
         );
       }
 
-      if (!expectResponseBody) {
-        return null as T;
-      }
-
-      const text = await response.text();
-      if (!text.trim()) {
-        return null as T;
-      }
-
-      return JSON.parse(text) as T;
+      return response;
     } catch (error) {
       if (error instanceof ChillSharpClientError) {
         throw error;

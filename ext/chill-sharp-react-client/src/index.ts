@@ -1,5 +1,5 @@
 export { ChillSharpProvider, useChillSharpClient } from "./context.js";
-export { useEntityMutation, useQueryMutation, useSchema, useText } from "./hooks.js";
+export { useEntityMutation, useQueryMutation, useSchema, useTest, useText } from "./hooks.js";
 export type {
   ChillSharpProviderProps
 } from "./context.js";

@@ -167,6 +167,15 @@ const operations = await client.chunk([
 ]);
 ```
 
+### Test
+
+```ts
+const status = await client.test();
+// "ChillSharp is up and running!"
+```
+
+Use this to verify the Chill endpoint is reachable before sending API payloads.
+
 ## Schema Operations
 
 ### Get schema
