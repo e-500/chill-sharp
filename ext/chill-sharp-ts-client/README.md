@@ -28,6 +28,21 @@ npm install ../ext/chill-sharp-ts-client
 
 The client uses the runtime `fetch` API available in modern browsers and Node.js 18+.
 
+## Local Linking
+
+This package now builds automatically on `npm install`, `npm pack`, and `npm link` through the `prepare` and `prepack` scripts.
+
+Example local workflow:
+
+```bash
+cd ext/chill-sharp-ts-client
+npm install
+npm link
+
+cd path/to/your-app
+npm link chill-sharp-ts-client
+```
+
 ## Quick Start
 
 ```ts

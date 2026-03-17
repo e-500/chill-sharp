@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "tsc -p tsconfig.json --noEmit"
+    "check": "tsc -p tsconfig.json --noEmit",
+    "prepare": "npm run build",
+    "prepack": "npm run build"
   },
   "keywords": [
     "chillsharp",
@@ -30,12 +32,11 @@
   ],
   "author": "Andrea Piovesan",
   "peerDependencies": {
-    "vue": "^3.4.0"
-  },
-  "dependencies": {
-    "chill-sharp-ts-client": "file:../chill-sharp-ts-client"
+    "vue": "^3.4.0",
+    "chill-sharp-ts-client": "^0.1.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "chill-sharp-ts-client": "file:../chill-sharp-ts-client"
   }
 }

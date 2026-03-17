@@ -25,8 +25,27 @@ npm install
 This package expects:
 
 - `react` 18 or 19
-- the sibling `chill-sharp-ts-client` package
+- `chill-sharp-ts-client`
 - a runtime `fetch` implementation, which modern browsers and Node.js 18+ already provide
+
+## Local Linking
+
+The package builds automatically on `npm install`, `npm pack`, and `npm link`.
+Link `chill-sharp-ts-client` first, then this package:
+
+```bash
+cd ext/chill-sharp-ts-client
+npm install
+npm link
+
+cd ../chill-sharp-react-client
+npm install
+npm link
+
+cd path/to/your-react-app
+npm link chill-sharp-ts-client
+npm link chill-sharp-react-client
+```
 
 ## Quick Start
 

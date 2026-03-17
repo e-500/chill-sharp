@@ -25,8 +25,27 @@ npm install
 This package expects:
 
 - `vue` 3
-- the sibling `chill-sharp-ts-client` package
+- `chill-sharp-ts-client`
 - a runtime `fetch` implementation, which modern browsers and Node.js 18+ already provide
+
+## Local Linking
+
+The package builds automatically on `npm install`, `npm pack`, and `npm link`.
+Link `chill-sharp-ts-client` first, then this package:
+
+```bash
+cd ext/chill-sharp-ts-client
+npm install
+npm link
+
+cd ../chill-sharp-vue-client
+npm install
+npm link
+
+cd path/to/your-vue-app
+npm link chill-sharp-ts-client
+npm link chill-sharp-vue-client
+```
 
 ## Quick Start
 
