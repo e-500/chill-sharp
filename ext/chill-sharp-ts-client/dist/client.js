@@ -59,10 +59,14 @@ export class ChillSharpClient {
     setSchema(schema) {
         return this.sendJson("POST", this.buildChillUrl("set-schema"), schema);
     }
-    getText(labelGuid, cultureName) {
-        const encodedGuid = encodeURIComponent(this.normalizeRequiredValue(labelGuid, "labelGuid"));
-        const encodedCulture = encodeURIComponent(this.normalizeRequiredValue(cultureName, "cultureName"));
-        return this.sendJson("GET", this.buildI18nUrl(`text/${encodedGuid}/${encodedCulture}`));
+    getText(request) {
+        return this.sendJson("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
+    }
+    getTexts(requests) {
+        if (!Array.isArray(requests)) {
+            throw new Error("requests is required.");
+        }
+        return this.sendJson("POST", this.buildI18nUrl("text/get-multiple"), requests.map((request) => this.prepareGetTextRequest(request)));
     }
     setText(payload) {
         return this.sendJson("PUT", this.buildI18nUrl("text"), payload);
@@ -88,6 +92,23 @@ export class ChillSharpClient {
     }
     resetAuthPassword(payload) {
         return this.sendAuthJson("POST", "account/reset-password", payload, true, true);
+    }
+    prepareGetTextRequest(request) {
+        if (!request || typeof request !== "object") {
+            throw new Error("request is required.");
+        }
+        const effectiveCultureName = this.normalizeOptionalValue(request.CultureName) ?? this.cultureName;
+        if (!effectiveCultureName) {
+            throw new Error("CultureName is required.");
+        }
+        return {
+            LabelGuid: this.normalizeRequiredValue(request.LabelGuid, "LabelGuid"),
+            CultureName: effectiveCultureName,
+            PrimaryCultureName: request.PrimaryCultureName ?? "",
+            PrimaryDefaultText: request.PrimaryDefaultText ?? "",
+            SecondaryCultureName: request.SecondaryCultureName ?? "",
+            SecondaryDefaultText: request.SecondaryDefaultText ?? ""
+        };
     }
     sendAuthJson(method, relativeUrl, payload, expectResponseBody = true, allowAnonymous = false) {
         return this.sendJson(method, this.buildAuthUrl(relativeUrl), payload, expectResponseBody, allowAnonymous);

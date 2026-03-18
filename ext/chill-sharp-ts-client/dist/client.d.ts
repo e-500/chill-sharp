@@ -3,6 +3,19 @@ export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export interface JsonObject {
     [key: string]: JsonValue;
 }
+export interface GetTextRequest extends JsonObject {
+    LabelGuid: string;
+    CultureName: string;
+    PrimaryCultureName: string;
+    PrimaryDefaultText: string;
+    SecondaryCultureName: string;
+    SecondaryDefaultText: string;
+}
+export interface GetTextResponse extends JsonObject {
+    LabelGuid: string;
+    CultureName: string;
+    Value: string;
+}
 export interface ChillSharpClientOptions {
     accessToken?: string;
     username?: string;
@@ -29,14 +42,16 @@ export declare class ChillSharpClient {
     test(): Promise<string>;
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<JsonObject | null>;
     setSchema(schema: JsonObject): Promise<JsonObject | null>;
-    getText(labelGuid: string, cultureName: string): Promise<JsonObject | null>;
-    setText(payload: JsonObject): Promise<JsonObject>;
+    getText(request: GetTextRequest): Promise<GetTextResponse | null>;
+    getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>>;
+    setText(payload: JsonObject): Promise<GetTextResponse>;
     registerAuthAccount(payload: JsonObject): Promise<JsonObject>;
     loginAuthAccount(payload: JsonObject): Promise<JsonObject>;
     refreshAuthAccount(): Promise<JsonObject>;
     changeAuthPassword(payload: JsonObject): Promise<JsonObject>;
     requestAuthPasswordReset(payload: JsonObject): Promise<JsonObject>;
     resetAuthPassword(payload: JsonObject): Promise<JsonObject>;
+    private prepareGetTextRequest;
     private sendAuthJson;
     private sendJson;
     private sendText;

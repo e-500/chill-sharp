@@ -7,6 +7,21 @@ export interface JsonObject {
   [key: string]: JsonValue;
 }
 
+export interface GetTextRequest extends JsonObject {
+  LabelGuid: string;
+  CultureName: string;
+  PrimaryCultureName: string;
+  PrimaryDefaultText: string;
+  SecondaryCultureName: string;
+  SecondaryDefaultText: string;
+}
+
+export interface GetTextResponse extends JsonObject {
+  LabelGuid: string;
+  CultureName: string;
+  Value: string;
+}
+
 export interface ChillSharpClientOptions {
   accessToken?: string;
   username?: string;
@@ -97,14 +112,24 @@ export class ChillSharpClient {
     return this.sendJson<JsonObject | null>("POST", this.buildChillUrl("set-schema"), schema);
   }
 
-  getText(labelGuid: string, cultureName: string): Promise<JsonObject | null> {
-    const encodedGuid = encodeURIComponent(this.normalizeRequiredValue(labelGuid, "labelGuid"));
-    const encodedCulture = encodeURIComponent(this.normalizeRequiredValue(cultureName, "cultureName"));
-    return this.sendJson<JsonObject | null>("GET", this.buildI18nUrl(`text/${encodedGuid}/${encodedCulture}`));
+  getText(request: GetTextRequest): Promise<GetTextResponse | null> {
+    return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
   }
 
-  setText(payload: JsonObject): Promise<JsonObject> {
-    return this.sendJson<JsonObject>("PUT", this.buildI18nUrl("text"), payload);
+  getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>> {
+    if (!Array.isArray(requests)) {
+      throw new Error("requests is required.");
+    }
+
+    return this.sendJson<Array<GetTextResponse | null>>(
+      "POST",
+      this.buildI18nUrl("text/get-multiple"),
+      requests.map((request) => this.prepareGetTextRequest(request))
+    );
+  }
+
+  setText(payload: JsonObject): Promise<GetTextResponse> {
+    return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("text"), payload);
   }
 
   async registerAuthAccount(payload: JsonObject): Promise<JsonObject> {
@@ -133,6 +158,26 @@ export class ChillSharpClient {
 
   resetAuthPassword(payload: JsonObject): Promise<JsonObject> {
     return this.sendAuthJson<JsonObject>("POST", "account/reset-password", payload, true, true);
+  }
+
+  private prepareGetTextRequest(request: GetTextRequest): GetTextRequest {
+    if (!request || typeof request !== "object") {
+      throw new Error("request is required.");
+    }
+
+    const effectiveCultureName = this.normalizeOptionalValue(request.CultureName) ?? this.cultureName;
+    if (!effectiveCultureName) {
+      throw new Error("CultureName is required.");
+    }
+
+    return {
+      LabelGuid: this.normalizeRequiredValue(request.LabelGuid, "LabelGuid"),
+      CultureName: effectiveCultureName,
+      PrimaryCultureName: request.PrimaryCultureName ?? "",
+      PrimaryDefaultText: request.PrimaryDefaultText ?? "",
+      SecondaryCultureName: request.SecondaryCultureName ?? "",
+      SecondaryDefaultText: request.SecondaryDefaultText ?? ""
+    };
   }
 
   private sendAuthJson<T extends JsonValue | null>(

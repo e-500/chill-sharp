@@ -10,6 +10,7 @@ import requests
 from .exceptions import ChillSharpClientError
 
 
+CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
 JsonDict = dict[str, Any]
 
 
@@ -68,6 +69,14 @@ class ChillSharpClient:
         """Submit a batch of operations in one request."""
         return self._send_json("POST", self._build_chill_url("chunk"), operations)
 
+    def version(self) -> str:
+        """Return the Python client library version."""
+        return CHILL_SHARP_PY_CLIENT_VERSION
+
+    def test(self) -> str:
+        """Call the Chill test endpoint and return the raw response text."""
+        return self._send_text("GET", self._build_chill_url("test"), allow_anonymous=True)
+
     def get_schema(self, chill_type: str, chill_view_code: str, culture_name: str | None = None) -> JsonDict | None:
         """Retrieve schema metadata for a type and view."""
         encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
@@ -82,11 +91,9 @@ class ChillSharpClient:
         """Persist schema metadata through the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("set-schema"), schema)
 
-    def get_text(self, label_guid: str, culture_name: str) -> JsonDict | None:
-        """Retrieve an i18n text entry by label and culture."""
-        encoded_guid = quote(self._normalize_required_value(label_guid, "label_guid"))
-        encoded_culture = quote(self._normalize_required_value(culture_name, "culture_name"))
-        return self._send_json("GET", self._build_i18n_url(f"text/{encoded_guid}/{encoded_culture}"))
+    def get_text(self, request: JsonDict) -> JsonDict | None:
+        """Retrieve an i18n text entry using a request payload."""
+        return self._send_json("POST", self._build_i18n_url("text/get"), self._prepare_get_text_request(request), allow_anonymous=True)
 
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""
@@ -120,6 +127,24 @@ class ChillSharpClient:
         """Complete the password reset flow with a reset payload."""
         return self._send_auth_json("POST", "account/reset-password", payload, allow_anonymous=True)
 
+    def _prepare_get_text_request(self, request: JsonDict) -> JsonDict:
+        """Normalize a get-text request and apply the client default culture when needed."""
+        if request is None:
+            raise ValueError("request is required.")
+
+        label_guid = self._normalize_required_value(str(request.get("LabelGuid") or ""), "LabelGuid")
+        culture_name = request.get("CultureName") or self._culture_name or ""
+        normalized_culture_name = self._normalize_required_value(str(culture_name), "CultureName")
+
+        return {
+            "LabelGuid": label_guid,
+            "CultureName": normalized_culture_name,
+            "PrimaryCultureName": str(request.get("PrimaryCultureName") or ""),
+            "PrimaryDefaultText": str(request.get("PrimaryDefaultText") or ""),
+            "SecondaryCultureName": str(request.get("SecondaryCultureName") or ""),
+            "SecondaryDefaultText": str(request.get("SecondaryDefaultText") or ""),
+        }
+
     def _send_auth_json(
         self,
         method: str,
@@ -147,6 +172,52 @@ class ChillSharpClient:
         allow_retry: bool = True,
     ) -> Any:
         """Send a JSON request and normalize the HTTP response handling."""
+        response = self._send_request(
+            method,
+            url,
+            payload,
+            allow_anonymous=allow_anonymous,
+            allow_retry=allow_retry,
+        )
+
+        if not expect_response_body or not response.text.strip():
+            return None
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise ChillSharpClientError(
+                f"Invalid JSON response from {method} {url}",
+                status_code=response.status_code,
+                response_text=response.text,
+            ) from exc
+
+    def _send_text(
+        self,
+        method: str,
+        url: str,
+        allow_anonymous: bool = False,
+        allow_retry: bool = True,
+    ) -> str:
+        """Send a request and return the raw response text."""
+        response = self._send_request(
+            method,
+            url,
+            None,
+            allow_anonymous=allow_anonymous,
+            allow_retry=allow_retry,
+        )
+        return response.text
+
+    def _send_request(
+        self,
+        method: str,
+        url: str,
+        payload: Any = None,
+        allow_anonymous: bool = False,
+        allow_retry: bool = True,
+    ) -> requests.Response:
+        """Send an HTTP request and normalize auth and retry behavior."""
         if not allow_anonymous and self._can_use_authentication():
             self._get_auth_token_if_necessary()
 
@@ -163,11 +234,10 @@ class ChillSharpClient:
         )
 
         if response.status_code in (401, 403) and not allow_anonymous and allow_retry and self._try_refresh_authentication():
-            return self._send_json(
+            return self._send_request(
                 method,
                 url,
                 payload,
-                expect_response_body=expect_response_body,
                 allow_anonymous=allow_anonymous,
                 allow_retry=False,
             )
@@ -179,17 +249,7 @@ class ChillSharpClient:
                 response_text=response.text,
             )
 
-        if not expect_response_body or not response.text.strip():
-            return None
-
-        try:
-            return response.json()
-        except ValueError as exc:
-            raise ChillSharpClientError(
-                f"Invalid JSON response from {method} {url}",
-                status_code=response.status_code,
-                response_text=response.text,
-            ) from exc
+        return response
 
     def _get_auth_token_if_necessary(self, force_refresh: bool = False) -> JsonDict:
         """Return a valid auth token, refreshing or logging in when needed."""
@@ -364,7 +424,6 @@ class ChillSharpClient:
         if key in payload:
             return payload[key]
 
-        # Auth endpoints may return either PascalCase or camelCase field names.
         camel_key = key[0].lower() + key[1:]
         if camel_key in payload:
             return payload[camel_key]

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
-import type { JsonObject } from "chill-sharp-ts-client";
+import type { GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: TData | null;
@@ -56,9 +56,9 @@ export function useSchema(
   };
 }
 
-export function useText(labelGuid: string, cultureName: string): UseChillAsyncState<JsonObject> {
+export function useText(request: GetTextRequest): UseChillAsyncState<GetTextResponse> {
   const client = useChillSharpClient();
-  const [data, setData] = useState<JsonObject | null>(null);
+  const [data, setData] = useState<GetTextResponse | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -67,7 +67,7 @@ export function useText(labelGuid: string, cultureName: string): UseChillAsyncSt
     setError(null);
 
     try {
-      const response = await client.getText(labelGuid, cultureName);
+      const response = await client.getText(request);
       setData(response);
       return response;
     } catch (err) {
@@ -80,7 +80,41 @@ export function useText(labelGuid: string, cultureName: string): UseChillAsyncSt
 
   useEffect(() => {
     void load();
-  }, [client, labelGuid, cultureName]);
+  }, [client, request]);
+
+  return {
+    data,
+    error,
+    isLoading,
+    reload: load
+  };
+}
+
+export function useTexts(requests: GetTextRequest[]): UseChillAsyncState<Array<GetTextResponse | null>> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<Array<GetTextResponse | null> | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const load = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.getTexts(requests);
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [client, requests]);
 
   return {
     data,

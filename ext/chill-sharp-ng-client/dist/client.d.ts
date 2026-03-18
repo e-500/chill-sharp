@@ -1,6 +1,6 @@
 import { type Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { JsonObject } from "chill-sharp-ts-client";
+import type { GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -14,8 +14,9 @@ export declare class ChillSharpNgClient {
     test(): Observable<string>;
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<JsonObject | null>;
     setSchema(schema: JsonObject): Observable<JsonObject | null>;
-    getText(labelGuid: string, cultureName: string): Observable<JsonObject | null>;
-    setText(payload: JsonObject): Observable<JsonObject>;
+    getText(request: GetTextRequest): Observable<GetTextResponse | null>;
+    getTexts(requests: GetTextRequest[]): Observable<Array<GetTextResponse | null>>;
+    setText(payload: JsonObject): Observable<GetTextResponse>;
     registerAuthAccount(payload: JsonObject): Observable<JsonObject>;
     loginAuthAccount(payload: JsonObject): Observable<JsonObject>;
     refreshAuthAccount(): Observable<JsonObject>;

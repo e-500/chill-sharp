@@ -32,7 +32,7 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         reload: load
     };
 }
-export function useText(labelGuid, cultureName) {
+export function useText(request) {
     const client = useChillSharpClient();
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
@@ -41,7 +41,7 @@ export function useText(labelGuid, cultureName) {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await client.getText(labelGuid, cultureName);
+            const response = await client.getText(request);
             setData(response);
             return response;
         }
@@ -55,7 +55,38 @@ export function useText(labelGuid, cultureName) {
     };
     useEffect(() => {
         void load();
-    }, [client, labelGuid, cultureName]);
+    }, [client, request]);
+    return {
+        data,
+        error,
+        isLoading,
+        reload: load
+    };
+}
+export function useTexts(requests) {
+    const client = useChillSharpClient();
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const load = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await client.getTexts(requests);
+            setData(response);
+            return response;
+        }
+        catch (err) {
+            setError(err);
+            throw err;
+        }
+        finally {
+            setIsLoading(false);
+        }
+    };
+    useEffect(() => {
+        void load();
+    }, [client, requests]);
     return {
         data,
         error,

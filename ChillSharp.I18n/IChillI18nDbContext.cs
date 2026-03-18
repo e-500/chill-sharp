@@ -6,7 +6,7 @@ namespace ChillSharp.I18n;
 /// <summary>
 /// Defines the persistence contract required by the ChillSharp i18n service.
 /// </summary>
-public interface IChillI18nDbContext
+public interface IChillI18nDbContext : IChillContext
 {
     /// <summary>
     /// Gets the persisted localized texts.

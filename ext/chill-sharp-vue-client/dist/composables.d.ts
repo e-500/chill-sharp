@@ -14,7 +14,8 @@ export interface UseChillMutationState<TData> {
     reset: () => void;
 }
 export declare function useSchema(chillType: Ref<string> | string, chillViewCode?: Ref<string> | string, cultureName?: Ref<string | undefined> | string): UseChillAsyncState<JsonObject>;
-export declare function useText(labelGuid: Ref<string> | string, cultureName: Ref<string> | string): UseChillAsyncState<JsonObject>;
+export declare function useText(request: Ref<JsonObject> | JsonObject): UseChillAsyncState<JsonObject>;
+export declare function useTexts(requests: Ref<JsonObject[]> | JsonObject[]): UseChillAsyncState<Array<JsonObject | null>>;
 export declare function useVersion(): string;
 export declare function useTest(): UseChillAsyncState<string>;
 export declare function useQueryMutation(): UseChillMutationState<JsonObject>;

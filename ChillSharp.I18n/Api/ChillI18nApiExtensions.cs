@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Reflection;
+using Microsoft.AspNetCore.Http;
 
 namespace ChillSharp.I18n.Api;
 
@@ -22,6 +23,7 @@ public static class ChillI18nApiExtensions
             .AddControllersAsServices();
 
         services.TryAddSingleton<IChillI18nCache, ChillI18nCache>();
+        services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 
         services.AddScoped<IChillI18nDbContext>(provider =>
         {

@@ -5,6 +5,8 @@ export { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 export { ChillSharpClient, ChillSharpClientError } from "chill-sharp-ts-client";
 export type {
   ChillSharpClientOptions,
+  GetTextRequest,
+  GetTextResponse,
   JsonObject,
   JsonPrimitive,
   JsonValue

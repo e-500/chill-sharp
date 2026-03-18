@@ -1,7 +1,7 @@
 import { ref, watchEffect, type Ref } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
-import type { JsonObject } from "chill-sharp-ts-client";
+import type { GetTextRequest, JsonObject } from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: ReadonlyRef<TData | null>;
@@ -60,10 +60,7 @@ export function useSchema(
   };
 }
 
-export function useText(
-  labelGuid: Ref<string> | string,
-  cultureName: Ref<string> | string
-): UseChillAsyncState<JsonObject> {
+export function useText(request: Ref<JsonObject> | JsonObject): UseChillAsyncState<JsonObject> {
   const client = useChillSharpClient();
   const data = ref<JsonObject | null>(null);
   const error = ref<unknown>(null);
@@ -74,7 +71,41 @@ export function useText(
     error.value = null;
 
     try {
-      const response = await client.getText(readRef(labelGuid), readRef(cultureName));
+      const response = await client.getText(readRef(request) as GetTextRequest);
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  watchEffect(() => {
+    void load();
+  });
+
+  return {
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
+    reload: load
+  };
+}
+
+export function useTexts(requests: Ref<JsonObject[]> | JsonObject[]): UseChillAsyncState<Array<JsonObject | null>> {
+  const client = useChillSharpClient();
+  const data = ref<Array<JsonObject | null> | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(true);
+
+  const load = async () => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.getTexts(readRef(requests) as GetTextRequest[]) as Array<JsonObject | null>;
       data.value = response;
       return response;
     } catch (err) {

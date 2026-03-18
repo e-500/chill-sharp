@@ -46,8 +46,11 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     setSchema(schema) {
         return from(this.client.setSchema(schema));
     }
-    getText(labelGuid, cultureName) {
-        return from(this.client.getText(labelGuid, cultureName));
+    getText(request) {
+        return from(this.client.getText(request));
+    }
+    getTexts(requests) {
+        return from(this.client.getTexts(requests));
     }
     setText(payload) {
         return from(this.client.setText(payload));
