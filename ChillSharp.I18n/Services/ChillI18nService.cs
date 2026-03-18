@@ -84,11 +84,79 @@ public sealed class ChillI18nService : IChillI18nService
         }
 
         var materializedRequests = requests as IList<GetTextRequest> ?? requests.ToList();
-        var responses = new List<GetTextResponse?>(materializedRequests.Count);
+        if (materializedRequests.Count == 0)
+        {
+            return Array.Empty<GetTextResponse?>();
+        }
+
+        var requestEntries = new List<(GetTextRequest Request, string CultureName, GetTextResponse? Response)>(materializedRequests.Count);
+        var requestedLabelGuids = new HashSet<Guid>();
+        var requestedCultureNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var request in materializedRequests)
         {
-            responses.Add(await GetTextAsync(request, cancellationToken));
+            if (request is null)
+            {
+                throw new ArgumentNullException(nameof(requests), "Requests cannot contain null items.");
+            }
+
+            var normalizedCultureName = NormalizeCultureName(request.CultureName);
+            ValidateLabelGuid(request.LabelGuid);
+
+            if (_cache.TryGet(request.LabelGuid, normalizedCultureName, out var cachedResponse))
+            {
+                requestEntries.Add((request, normalizedCultureName, cachedResponse));
+                continue;
+            }
+
+            requestEntries.Add((request, normalizedCultureName, null));
+            requestedLabelGuids.Add(request.LabelGuid);
+            requestedCultureNames.Add(normalizedCultureName);
+        }
+
+        var dbResponses = new Dictionary<string, GetTextResponse>(StringComparer.OrdinalIgnoreCase);
+        if (requestedLabelGuids.Count > 0)
+        {
+            var texts = await _context.Texts
+                .AsNoTracking()
+                .Where(x => requestedLabelGuids.Contains(x.LabelGuid) && requestedCultureNames.Contains(x.CultureCode))
+                .ToListAsync(cancellationToken);
+
+            foreach (var text in texts)
+            {
+                var response = MapResponse(text.LabelGuid, text.CultureCode, text.Value);
+                dbResponses[BuildTextLookupKey(text.LabelGuid, text.CultureCode)] = _cache.SetText(response);
+            }
+        }
+
+        var responses = new List<GetTextResponse?>(requestEntries.Count);
+        foreach (var entry in requestEntries)
+        {
+            if (entry.Response is not null)
+            {
+                responses.Add(entry.Response);
+                continue;
+            }
+
+            if (dbResponses.TryGetValue(BuildTextLookupKey(entry.Request.LabelGuid, entry.CultureName), out var response))
+            {
+                responses.Add(response);
+                continue;
+            }
+
+            if (!CanPersistMissingTexts())
+            {
+                responses.Add(BuildDefaultResponse(entry.Request, entry.CultureName));
+                continue;
+            }
+
+            if (!CanSeedDefaults(entry.Request.PrimaryCultureName, entry.Request.SecondaryCultureName))
+            {
+                responses.Add(null);
+                continue;
+            }
+
+            responses.Add(await GetTextAsync(entry.Request, cancellationToken));
         }
 
         return responses;
@@ -124,6 +192,11 @@ public sealed class ChillI18nService : IChillI18nService
         await _context.SaveChangesAsync(cancellationToken);
 
         return _cache.SetText(MapResponse(text.LabelGuid, text.CultureCode, text.Value));
+    }
+
+    private static string BuildTextLookupKey(Guid labelGuid, string cultureName)
+    {
+        return $"{labelGuid:N}|{cultureName.Trim()}";
     }
 
     private bool CanPersistMissingTexts()
