@@ -1,4 +1,5 @@
 import { ChillSharpClientError } from "./errors.js";
+import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
@@ -69,6 +70,10 @@ export class ChillSharpClient {
 
   chunk(operations: JsonObject[]): Promise<JsonObject[]> {
     return this.sendJson<JsonObject[]>("POST", this.buildChillUrl("chunk"), operations);
+  }
+
+  version(): string {
+    return CHILL_SHARP_TS_CLIENT_VERSION;
   }
 
   test(): Promise<string> {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
 import type { JsonObject } from "chill-sharp-ts-client";
 
@@ -87,6 +88,10 @@ export function useText(labelGuid: string, cultureName: string): UseChillAsyncSt
     isLoading,
     reload: load
   };
+}
+
+export function useVersion(): string {
+  return CHILL_SHARP_REACT_CLIENT_VERSION;
 }
 
 export function useTest(): UseChillAsyncState<string> {

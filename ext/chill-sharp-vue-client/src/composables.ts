@@ -1,18 +1,19 @@
-import { readonly, ref, watchEffect, type Ref } from "vue";
+import { ref, watchEffect, type Ref } from "vue";
+import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 import type { JsonObject } from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
-  data: Readonly<Ref<TData | null>>;
-  error: Readonly<Ref<unknown>>;
-  isLoading: Readonly<Ref<boolean>>;
+  data: ReadonlyRef<TData | null>;
+  error: ReadonlyRef<unknown>;
+  isLoading: ReadonlyRef<boolean>;
   reload: () => Promise<TData | null>;
 }
 
 export interface UseChillMutationState<TData> {
-  data: Readonly<Ref<TData | null>>;
-  error: Readonly<Ref<unknown>>;
-  isLoading: Readonly<Ref<boolean>>;
+  data: ReadonlyRef<TData | null>;
+  error: ReadonlyRef<unknown>;
+  isLoading: ReadonlyRef<boolean>;
   execute: (...args: unknown[]) => Promise<TData>;
   reset: () => void;
 }
@@ -52,9 +53,9 @@ export function useSchema(
   });
 
   return {
-    data: readonly(data),
-    error: readonly(error),
-    isLoading: readonly(isLoading),
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
     reload: load
   };
 }
@@ -89,11 +90,15 @@ export function useText(
   });
 
   return {
-    data: readonly(data),
-    error: readonly(error),
-    isLoading: readonly(isLoading),
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
     reload: load
   };
+}
+
+export function useVersion(): string {
+  return CHILL_SHARP_VUE_CLIENT_VERSION;
 }
 
 export function useTest(): UseChillAsyncState<string> {
@@ -123,9 +128,9 @@ export function useTest(): UseChillAsyncState<string> {
   });
 
   return {
-    data: readonly(data),
-    error: readonly(error),
-    isLoading: readonly(isLoading),
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
     reload: load
   };
 }
@@ -154,9 +159,9 @@ export function useQueryMutation(): UseChillMutationState<JsonObject> {
   };
 
   return {
-    data: readonly(data),
-    error: readonly(error),
-    isLoading: readonly(isLoading),
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
     execute,
     reset: () => {
       data.value = null;
@@ -206,9 +211,9 @@ export function useEntityMutation(action: "find" | "create" | "update" | "delete
   };
 
   return {
-    data: readonly(data),
-    error: readonly(error),
-    isLoading: readonly(isLoading),
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
     execute,
     reset: () => {
       data.value = null;
@@ -216,6 +221,12 @@ export function useEntityMutation(action: "find" | "create" | "update" | "delete
       isLoading.value = false;
     }
   };
+}
+
+type ReadonlyRef<T> = Ref<T>;
+
+function asReadonlyRef<T>(value: Ref<T>): ReadonlyRef<T> {
+  return value;
 }
 
 function readRef<T>(value: Ref<T> | T): T {
