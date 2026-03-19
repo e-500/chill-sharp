@@ -7,7 +7,8 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - `createChillSharpPlugin()` for app-wide client injection
 - `useChillSharpClient()` to access the raw client
 - `useSchema()` for localized schema loading
-- `useText()` for i18n label lookups
+- `useSchemaList()` for registered type discovery
+- `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
 - `useQueryMutation()` and `useEntityMutation()` for generic API actions
 
@@ -51,7 +52,7 @@ npm link chill-sharp-vue-client
 
 ```ts
 import { createApp, defineComponent } from "vue";
-import { createChillSharpPlugin, useSchema } from "chill-sharp-vue-client";
+import { createChillSharpPlugin, useSchema, useSchemaList, useText, useTexts } from "chill-sharp-vue-client";
 
 const BlogSchemaName = defineComponent({
   setup() {
@@ -155,13 +156,47 @@ const chillType = ref("Model.Post");
 const schema = useSchema(chillType, "default");
 ```
 
+### `useSchemaList()`
+
+```ts
+const schemaListState = useSchemaList();
+const englishSchemaListState = useSchemaList("en-GB");
+```
+
 ### `useText()`
 
 ```ts
-const textState = useText(
-  "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
-  "it-IT"
-);
+const textState = useText({
+  LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+  CultureName: "it-IT",
+  PrimaryCultureName: "en-GB",
+  PrimaryDefaultText: "Blog title",
+  SecondaryCultureName: "it-IT",
+  SecondaryDefaultText: "Titolo del blog"
+});
+```
+
+### `useTexts()`
+
+```ts
+const textsState = useTexts([
+  {
+    LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog title",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Titolo del blog"
+  },
+  {
+    LabelGuid: "2f6ef6f7-b0a9-44f8-bfd2-a3b3ed5b9a81",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog url",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Url del blog"
+  }
+]);
 ```
 
 ### `useTest()`

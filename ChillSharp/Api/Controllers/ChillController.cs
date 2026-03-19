@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Dto;
+using ChillSharp.EF;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -212,6 +213,18 @@ namespace ChillSharp.Api.Controllers
         }
 
         /// <summary>
+        /// Returns the list of registered Chill entity and query types available in the current context assembly.
+        /// </summary>
+        /// <param name="CultureName">Optional explicit culture used to localize labels. When omitted, the context default user culture is used.</param>
+        /// <returns>A collection of schema list items describing registered entities and queries.</returns>
+        [HttpGet]
+        [Route("get-schema-list")]
+        public IActionResult GetSchemaList(string? CultureName = null)
+        {
+            return Ok(BuildSchemaList(CultureName));
+        }
+
+        /// <summary>
         /// Persists the provided schema information for a specific chill type and view code.
         /// </summary>
         /// <param name="Schema">The <see cref="ChillDtoSchema"/> containing the schema metadata, field definitions and view-specific configuration to be stored or updated.
@@ -314,19 +327,14 @@ namespace ChillSharp.Api.Controllers
         /// <returns>The logical module and entity name inferred from the query generic argument.</returns>
         private (string Module, string EntityName) ResolveQueryResource(string chillType)
         {
-            var fullType = PrepareFullChillType(chillType);
-            var queryType = _context.GetType().Assembly.GetType(fullType)
-                ?? throw new ChillException($"Query type '{fullType}' could not be resolved for ACL evaluation.");
+            var queryType = ChillTypeResolver.ResolveType(_context.GetType().Assembly, chillType, _context.GetChillTypePrefix());
 
-            var queryInterface = queryType.GetInterfaces()
-                .FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(EF.IChillQuery<>));
-
-            if (queryInterface == null)
+            var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(queryType);
+            if (entityType == null)
             {
                 return ResolveEntityResource(chillType);
             }
 
-            var entityType = queryInterface.GetGenericArguments()[0];
             var prefix = _context.GetChillTypePrefix().TrimEnd('.');
             var entityFullName = entityType.FullName ?? entityType.Name;
             var shortType = entityFullName.StartsWith(prefix + ".", StringComparison.Ordinal) ? entityFullName.Substring(prefix.Length + 1) : entityFullName;
@@ -346,14 +354,46 @@ namespace ChillSharp.Api.Controllers
         /// <returns>The normalized fully qualified type name.</returns>
         private string PrepareFullChillType(string chillType)
         {
-            var prefix = _context.GetChillTypePrefix().TrimEnd('.');
-            var normalized = chillType.Trim().Trim('.');
-            if (string.IsNullOrWhiteSpace(normalized))
-            {
-                throw new ChillException("ChillType is required for ACL evaluation.");
-            }
+            return ChillTypeResolver.PrepareFullChillType(chillType, _context.GetChillTypePrefix());
+        }
 
-            return normalized.StartsWith(prefix + ".", StringComparison.Ordinal) ? normalized : $"{prefix}.{normalized}";
+        private List<ChillDtoSchemaListItem> BuildSchemaList(string? cultureName)
+        {
+            var assembly = _context.GetType().Assembly;
+            var shrinkTypePrefix = _context.GetChillTypePrefix();
+
+            var entityItems = assembly
+                .GetTypes()
+                .Where(IsRegisteredEntityType)
+                .Select(type => ChillDtoSchemaListItem.FromEntityType(type, shrinkTypePrefix, _context, cultureName));
+
+            var queryItems = assembly
+                .GetTypes()
+                .Where(IsRegisteredQueryType)
+                .Select(type => ChillDtoSchemaListItem.FromQueryType(type, shrinkTypePrefix, _context, cultureName));
+
+            return entityItems
+                .Concat(queryItems)
+                .OrderBy(x => x.Type, StringComparer.Ordinal)
+                .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(x => x.ChillType, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool IsRegisteredEntityType(Type type)
+        {
+            return (type.IsPublic || type.IsNestedPublic)
+                && type.IsClass
+                && !type.IsAbstract
+                && typeof(IChillEntity).IsAssignableFrom(type);
+        }
+
+        private static bool IsRegisteredQueryType(Type type)
+        {
+            return (type.IsPublic || type.IsNestedPublic)
+                && type.IsClass
+                && !type.IsAbstract
+                && typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type);
         }
     }
 }

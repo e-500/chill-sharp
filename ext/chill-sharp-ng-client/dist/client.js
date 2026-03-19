@@ -43,6 +43,9 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     getSchema(chillType, chillViewCode, cultureName) {
         return from(this.client.getSchema(chillType, chillViewCode, cultureName));
     }
+    getSchemaList(cultureName) {
+        return from(this.client.getSchemaList(cultureName));
+    }
     setSchema(schema) {
         return from(this.client.setSchema(schema));
     }

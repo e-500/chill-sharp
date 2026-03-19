@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using ChillSharp.I18n.Api;
 
 namespace ChillSharp.Tests;
 

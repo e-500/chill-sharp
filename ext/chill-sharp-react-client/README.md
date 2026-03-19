@@ -7,7 +7,8 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - a `ChillSharpProvider`
 - `useChillSharpClient()` to access the raw client
 - `useSchema()` for localized schema loading
-- `useText()` for i18n label lookups
+- `useSchemaList()` for registered type discovery
+- `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
 - `useQueryMutation()` and `useEntityMutation()` for generic API actions
 
@@ -50,7 +51,7 @@ npm link chill-sharp-react-client
 ## Quick Start
 
 ```tsx
-import { ChillSharpProvider, useSchema } from "chill-sharp-react-client";
+import { ChillSharpProvider, useSchema, useSchemaList, useText, useTexts } from "chill-sharp-react-client";
 
 function BlogSchemaName() {
   const { data, isLoading, error } = useSchema("Model.Blog", "default");
@@ -145,13 +146,47 @@ You can override the provider culture for one call:
 const englishSchema = useSchema("Model.Post", "default", "en-GB");
 ```
 
+### `useSchemaList()`
+
+```tsx
+const { data, isLoading, error, reload } = useSchemaList();
+const englishSchemaList = useSchemaList("en-GB");
+```
+
 ### `useText()`
 
 ```tsx
-const { data, isLoading } = useText(
-  "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
-  "it-IT"
-);
+const { data, isLoading } = useText({
+  LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+  CultureName: "it-IT",
+  PrimaryCultureName: "en-GB",
+  PrimaryDefaultText: "Blog title",
+  SecondaryCultureName: "it-IT",
+  SecondaryDefaultText: "Titolo del blog"
+});
+```
+
+### `useTexts()`
+
+```tsx
+const { data: texts, isLoading: isTextsLoading } = useTexts([
+  {
+    LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog title",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Titolo del blog"
+  },
+  {
+    LabelGuid: "2f6ef6f7-b0a9-44f8-bfd2-a3b3ed5b9a81",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog url",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Url del blog"
+  }
+]);
 ```
 
 ### `useTest()`

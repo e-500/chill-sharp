@@ -173,6 +173,13 @@ schema = client.get_schema("Model.Post", "default")
 english_schema = client.get_schema("Model.Post", "default", culture_name="en-GB")
 ```
 
+### Get schema list
+
+```python
+schema_list = client.get_schema_list()
+english_schema_list = client.get_schema_list(culture_name="en-GB")
+```
+
 ### Set schema
 
 ```python
@@ -194,10 +201,14 @@ client.set_schema({
 ### Get text
 
 ```python
-text = client.get_text(
-    label_guid="4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
-    culture_name="it-IT",
-)
+text = client.get_text({
+    "LabelGuid": "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+    "CultureName": "it-IT",
+    "PrimaryCultureName": "en-GB",
+    "PrimaryDefaultText": "Blog title",
+    "SecondaryCultureName": "it-IT",
+    "SecondaryDefaultText": "Titolo del blog",
+})
 ```
 
 ### Set text

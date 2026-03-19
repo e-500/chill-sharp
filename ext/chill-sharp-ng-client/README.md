@@ -130,8 +130,10 @@ providers: [
 - `chunk()`
 - `test()`
 - `getSchema()`
+- `getSchemaList()`
 - `setSchema()`
 - `getText()`
+- `getTexts()`
 - `setText()`
 - auth helpers like `loginAuthAccount()` and `refreshAuthAccount()`
 
@@ -179,13 +181,47 @@ readonly schema$ = this.chill.getSchema("Model.Post", "default");
 readonly englishSchema$ = this.chill.getSchema("Model.Post", "default", "en-GB");
 ```
 
+### Get schema list
+
+```ts
+readonly schemaList$ = this.chill.getSchemaList();
+readonly englishSchemaList$ = this.chill.getSchemaList("en-GB");
+```
+
 ### Get text
 
 ```ts
-readonly text$ = this.chill.getText(
-  "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
-  "it-IT"
-);
+readonly text$ = this.chill.getText({
+  LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+  CultureName: "it-IT",
+  PrimaryCultureName: "en-GB",
+  PrimaryDefaultText: "Blog title",
+  SecondaryCultureName: "it-IT",
+  SecondaryDefaultText: "Titolo del blog"
+});
+```
+
+### Get texts
+
+```ts
+readonly texts$ = this.chill.getTexts([
+  {
+    LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog title",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Titolo del blog"
+  },
+  {
+    LabelGuid: "2f6ef6f7-b0a9-44f8-bfd2-a3b3ed5b9a81",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog url",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Url del blog"
+  }
+]);
 ```
 
 ## Raw client access

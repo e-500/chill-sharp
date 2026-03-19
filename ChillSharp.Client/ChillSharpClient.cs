@@ -185,6 +185,24 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Retrieves the list of registered Chill entity and query types from the remote service.
+        /// </summary>
+        /// <param name="cultureName">Optional explicit culture used to localize labels.</param>
+        /// <returns>A list describing registered Chill entity and query types.</returns>
+        public List<ChillDtoSchemaListItem> GetSchemaList(string? cultureName = null)
+        {
+            var effectiveCultureName = NormalizeOptionalValue(cultureName) ?? _CultureName;
+            var relativeUrl = "get-schema-list";
+            if (!string.IsNullOrWhiteSpace(effectiveCultureName))
+            {
+                relativeUrl += $"?cultureName={Uri.EscapeDataString(effectiveCultureName)}";
+            }
+
+            return SendJson<List<ChillDtoSchemaListItem>>(HttpMethod.Get, BuildChillUrl(relativeUrl), payload: null)
+                ?? new List<ChillDtoSchemaListItem>();
+        }
+
+        /// <summary>
         /// Sends a schema definition to the remote service.
         /// </summary>
         /// <param name="schema">

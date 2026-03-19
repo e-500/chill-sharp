@@ -32,6 +32,37 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         reload: load
     };
 }
+export function useSchemaList(cultureName) {
+    const client = useChillSharpClient();
+    const data = ref(null);
+    const error = ref(null);
+    const isLoading = ref(true);
+    const load = async () => {
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const response = await client.getSchemaList(cultureName === undefined ? undefined : readRef(cultureName));
+            data.value = response;
+            return response;
+        }
+        catch (err) {
+            error.value = err;
+            throw err;
+        }
+        finally {
+            isLoading.value = false;
+        }
+    };
+    watchEffect(() => {
+        void load();
+    });
+    return {
+        data: asReadonlyRef(data),
+        error: asReadonlyRef(error),
+        isLoading: asReadonlyRef(isLoading),
+        reload: load
+    };
+}
 export function useText(request) {
     const client = useChillSharpClient();
     const data = ref(null);

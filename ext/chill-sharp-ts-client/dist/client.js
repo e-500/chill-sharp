@@ -56,6 +56,14 @@ export class ChillSharpClient {
         }
         return this.sendJson("GET", this.buildChillUrl(relativeUrl));
     }
+    getSchemaList(cultureName) {
+        const effectiveCultureName = this.normalizeOptionalValue(cultureName) ?? this.cultureName;
+        let relativeUrl = "get-schema-list";
+        if (effectiveCultureName) {
+            relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
+        }
+        return this.sendJson("GET", this.buildChillUrl(relativeUrl));
+    }
     setSchema(schema) {
         return this.sendJson("POST", this.buildChillUrl("set-schema"), schema);
     }
@@ -97,17 +105,17 @@ export class ChillSharpClient {
         if (!request || typeof request !== "object") {
             throw new Error("request is required.");
         }
-        const effectiveCultureName = this.normalizeOptionalValue(request.CultureName) ?? this.cultureName;
+        const effectiveCultureName = this.normalizeOptionalValue(this.readString(request, "cultureName")) ?? this.cultureName;
         if (!effectiveCultureName) {
-            throw new Error("CultureName is required.");
+            throw new Error("cultureName is required.");
         }
         return {
-            LabelGuid: this.normalizeRequiredValue(request.LabelGuid, "LabelGuid"),
-            CultureName: effectiveCultureName,
-            PrimaryCultureName: request.PrimaryCultureName ?? "",
-            PrimaryDefaultText: request.PrimaryDefaultText ?? "",
-            SecondaryCultureName: request.SecondaryCultureName ?? "",
-            SecondaryDefaultText: request.SecondaryDefaultText ?? ""
+            labelGuid: this.normalizeRequiredValue(this.readString(request, "labelGuid"), "labelGuid"),
+            cultureName: effectiveCultureName,
+            primaryCultureName: this.readString(request, "primaryCultureName") ?? "",
+            primaryDefaultText: this.readString(request, "primaryDefaultText") ?? "",
+            secondaryCultureName: this.readString(request, "secondaryCultureName") ?? "",
+            secondaryDefaultText: this.readString(request, "secondaryDefaultText") ?? ""
         };
     }
     sendAuthJson(method, relativeUrl, payload, expectResponseBody = true, allowAnonymous = false) {
@@ -178,7 +186,7 @@ export class ChillSharpClient {
         }
         if (this.tokenState.refreshToken && (!forceRefresh || !this.password)) {
             try {
-                const refreshed = await this.sendAuthJson("POST", "account/refresh", { RefreshToken: this.tokenState.refreshToken }, true, true);
+                const refreshed = await this.sendAuthJson("POST", "account/refresh", { refreshToken: this.tokenState.refreshToken }, true, true);
                 this.applyAuthToken(refreshed, true);
                 return refreshed;
             }
@@ -192,8 +200,8 @@ export class ChillSharpClient {
         }
         if (this.username && this.password) {
             const token = await this.sendAuthJson("POST", "account/login", {
-                UserNameOrEmail: this.username,
-                Password: this.password
+                userNameOrEmail: this.username,
+                password: this.password
             }, true, true);
             this.applyAuthToken(token, true);
             return token;
@@ -204,12 +212,12 @@ export class ChillSharpClient {
         throw new ChillSharpClientError("No auth token is available and the client cannot obtain a new one.");
     }
     applyAuthToken(payload, forgetPassword) {
-        this.tokenState.accessToken = this.readString(payload, "AccessToken");
-        this.tokenState.accessTokenIssuedUtc = this.parseDate(payload["AccessTokenIssuedUtc"]);
-        this.tokenState.accessTokenExpiresUtc = this.parseDate(payload["AccessTokenExpiresUtc"]);
-        this.tokenState.refreshToken = this.readString(payload, "RefreshToken");
-        this.tokenState.refreshTokenExpiresUtc = this.parseDate(payload["RefreshTokenExpiresUtc"]);
-        const userName = this.readString(payload, "UserName");
+        this.tokenState.accessToken = this.readString(payload, "accessToken");
+        this.tokenState.accessTokenIssuedUtc = this.readDate(payload, "accessTokenIssuedUtc");
+        this.tokenState.accessTokenExpiresUtc = this.readDate(payload, "accessTokenExpiresUtc");
+        this.tokenState.refreshToken = this.readString(payload, "refreshToken");
+        this.tokenState.refreshTokenExpiresUtc = this.readDate(payload, "refreshTokenExpiresUtc");
+        const userName = this.readString(payload, "userName");
         if (userName) {
             this.username = userName;
         }
@@ -258,12 +266,12 @@ export class ChillSharpClient {
     }
     createCurrentTokenResponse() {
         return {
-            AccessToken: this.tokenState.accessToken ?? "",
-            AccessTokenIssuedUtc: this.formatDate(this.tokenState.accessTokenIssuedUtc),
-            AccessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
-            RefreshToken: this.tokenState.refreshToken ?? "",
-            RefreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
-            UserName: this.username ?? ""
+            accessToken: this.tokenState.accessToken ?? "",
+            accessTokenIssuedUtc: this.formatDate(this.tokenState.accessTokenIssuedUtc),
+            accessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
+            refreshToken: this.tokenState.refreshToken ?? "",
+            refreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
+            userName: this.username ?? ""
         };
     }
     buildChillUrl(relativeUrl) {
@@ -301,8 +309,24 @@ export class ChillSharpClient {
         return normalized ? normalized : null;
     }
     readString(payload, key) {
-        const value = payload[key];
+        const value = this.readValue(payload, key);
         return typeof value === "string" && value.trim() ? value.trim() : null;
+    }
+    readDate(payload, key) {
+        return this.parseDate(this.readValue(payload, key));
+    }
+    readValue(payload, key) {
+        if (key in payload) {
+            return payload[key];
+        }
+        const pascalKey = key.length > 1
+            ? `${key[0].toUpperCase()}${key.slice(1)}`
+            : key.toUpperCase();
+        if (pascalKey in payload) {
+            return payload[pascalKey];
+        }
+        const matchedKey = Object.keys(payload).find((candidate) => candidate.toLowerCase() === key.toLowerCase());
+        return matchedKey ? payload[matchedKey] : undefined;
     }
     parseDate(value) {
         if (typeof value !== "string" || !value.trim()) {

@@ -39,6 +39,17 @@ namespace ChillSharp.Client.Dto
         public string ChillViewCode { get; set; } = string.Empty;
 
         /// <summary>
+        /// Human-friendly label for the entity or query type.
+        /// </summary>
+        public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Chill type of the entity targeted by a query schema.
+        /// Empty for entity schemas.
+        /// </summary>
+        public string? QueryRelatedChillType { get; set; }
+
+        /// <summary>
         /// Map of property name -> mapped frontend property type.
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();

@@ -32,6 +32,37 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         reload: load
     };
 }
+export function useSchemaList(cultureName) {
+    const client = useChillSharpClient();
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const load = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await client.getSchemaList(cultureName);
+            setData(response);
+            return response;
+        }
+        catch (err) {
+            setError(err);
+            throw err;
+        }
+        finally {
+            setIsLoading(false);
+        }
+    };
+    useEffect(() => {
+        void load();
+    }, [client, cultureName]);
+    return {
+        data,
+        error,
+        isLoading,
+        reload: load
+    };
+}
 export function useText(request) {
     const client = useChillSharpClient();
     const [data, setData] = useState(null);

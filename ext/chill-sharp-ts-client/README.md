@@ -202,6 +202,13 @@ const schema = await client.getSchema("Model.Post", "default");
 const englishSchema = await client.getSchema("Model.Post", "default", "en-GB");
 ```
 
+### Get schema list
+
+```ts
+const schemaList = await client.getSchemaList();
+const englishSchemaList = await client.getSchemaList("en-GB");
+```
+
 ### Set schema
 
 ```ts
@@ -223,10 +230,37 @@ await client.setSchema({
 ### Get text
 
 ```ts
-const text = await client.getText(
-  "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
-  "it-IT"
-);
+const text = await client.getText({
+  LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+  CultureName: "it-IT",
+  PrimaryCultureName: "en-GB",
+  PrimaryDefaultText: "Blog title",
+  SecondaryCultureName: "it-IT",
+  SecondaryDefaultText: "Titolo del blog"
+});
+```
+
+### Get texts
+
+```ts
+const texts = await client.getTexts([
+  {
+    LabelGuid: "4e16f6c0-6b95-4d67-98bc-9f4d0d63eaf1",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog title",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Titolo del blog"
+  },
+  {
+    LabelGuid: "2f6ef6f7-b0a9-44f8-bfd2-a3b3ed5b9a81",
+    CultureName: "it-IT",
+    PrimaryCultureName: "en-GB",
+    PrimaryDefaultText: "Blog url",
+    SecondaryCultureName: "it-IT",
+    SecondaryDefaultText: "Url del blog"
+  }
+]);
 ```
 
 ### Set text

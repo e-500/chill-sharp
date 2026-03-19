@@ -50,6 +50,12 @@ namespace ChillSharp.Dto
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Chill type of the entity targeted by a query schema.
+        /// Empty for entity schemas.
+        /// </summary>
+        public string? QueryRelatedChillType { get; set; }
+
+        /// <summary>
         /// Property schemas exposed for the type.
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
@@ -85,9 +91,7 @@ namespace ChillSharp.Dto
 
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
-            if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
-                shrinkTypePrefix += ".";
-            schema.ChillType = type.FullName!.Replace(shrinkTypePrefix, string.Empty);
+            schema.ChillType = ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix);
             schema.ChillViewCode = ChillViewCode;
 
             var ef_props = chillEntity.GetType().GetProperties().Where(prop =>
@@ -128,16 +132,27 @@ namespace ChillSharp.Dto
 
             var schema = new ChillDtoSchema();
             schema.DisplayName = displayName;
-            if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
-                shrinkTypePrefix += ".";
-            schema.ChillType = type.FullName!.Replace(shrinkTypePrefix, string.Empty);
+            schema.ChillType = ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix);
             schema.ChillViewCode = ChillViewCode;
+            schema.QueryRelatedChillType = ResolveQueryRelatedChillType(type, shrinkTypePrefix);
 
             var ef_props = chillQuery.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
             schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
 
             return schema;
+        }
+
+        private static string? ResolveQueryRelatedChillType(Type queryType, string shrinkTypePrefix)
+        {
+            var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(queryType);
+
+            if (entityType == null)
+            {
+                return null;
+            }
+
+            return ChillTypeResolver.NormalizeChillType(entityType, shrinkTypePrefix);
         }
     }
 }

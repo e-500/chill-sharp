@@ -1,7 +1,7 @@
 import { ref, watchEffect, type Ref } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
-import type { GetTextRequest, JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, JsonObject } from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: ReadonlyRef<TData | null>;
@@ -38,6 +38,42 @@ export function useSchema(
         readRef(chillViewCode),
         cultureName === undefined ? undefined : readRef(cultureName)
       );
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  watchEffect(() => {
+    void load();
+  });
+
+  return {
+    data: asReadonlyRef(data),
+    error: asReadonlyRef(error),
+    isLoading: asReadonlyRef(isLoading),
+    reload: load
+  };
+}
+
+export function useSchemaList(
+  cultureName?: Ref<string | undefined> | string
+): UseChillAsyncState<ChillDtoSchemaListItem[]> {
+  const client = useChillSharpClient();
+  const data = ref<ChillDtoSchemaListItem[] | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(true);
+
+  const load = async () => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.getSchemaList(cultureName === undefined ? undefined : readRef(cultureName));
       data.value = response;
       return response;
     } catch (err) {

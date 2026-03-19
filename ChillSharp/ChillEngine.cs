@@ -308,12 +308,7 @@ namespace ChillSharp
         /// </exception>
         public IChillEntity ActivateDetachedChillEntity(string ChillType)
         {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-
+            var res = ChillTypeResolver.ActivateType(_GetContextAssembly(), ChillType, _Context.GetChillTypePrefix());
             return (IChillEntity)res;
         }
 
@@ -335,12 +330,7 @@ namespace ChillSharp
         /// </exception>
         public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
         {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-
+            var res = ChillTypeResolver.ActivateType(_GetContextAssembly(), ChillType, _Context.GetChillTypePrefix());
             return (IChillQuery<IChillEntity>)res;
         }
 
@@ -356,12 +346,7 @@ namespace ChillSharp
         /// <exception cref="ChillException">Thrown if the specified chill type cannot be instantiated using the current context assembly.</exception>
         private object ActivateGenericChillType(string ChillType)
         {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-            return res;
+            return ChillTypeResolver.ActivateType(_GetContextAssembly(), ChillType, _Context.GetChillTypePrefix());
         }
 
         #endregion
@@ -385,19 +370,7 @@ namespace ChillSharp
         /// <exception cref="ChillException"></exception>
         private string _PrepareFullChillType(string ChillType)
         {
-            var chillTypePrefixWithDot = _Context.GetChillTypePrefix();
-            if (!string.IsNullOrEmpty(chillTypePrefixWithDot) && !chillTypePrefixWithDot.EndsWith("."))
-                chillTypePrefixWithDot += ".";
-            if (string.IsNullOrEmpty(ChillType))
-                throw new ChillException($"Entity type full name ({ChillType}) is invalid");
-            if (ChillType.StartsWith("."))
-                ChillType = ChillType.Substring(1);
-            if (ChillType.EndsWith("."))
-                ChillType = ChillType.Substring(ChillType.Length - 1);
-
-            if (!ChillType.StartsWith(chillTypePrefixWithDot))
-                ChillType = $"{chillTypePrefixWithDot}{ChillType}";
-            return ChillType;
+            return ChillTypeResolver.PrepareFullChillType(ChillType, _Context.GetChillTypePrefix());
         }
 
         /// <summary>

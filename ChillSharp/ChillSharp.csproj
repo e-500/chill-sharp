@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 	
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -16,8 +16,9 @@
         <IsPackable>true</IsPackable>
         <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
         <Description>ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
-        <Version>1.0.7</Version>
+        <Version>1.0.13</Version>
         <Authors>Andrea Piovesan</Authors>
+        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBuiltinModuleOutputs</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
 
     <ItemGroup>
@@ -39,5 +40,20 @@
 	    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
 	    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     </ItemGroup>
+
+    <Target Name="BuildBuiltinModuleProjects">
+        <MSBuild
+            Projects="..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj"
+            Targets="Build"
+            Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+    </Target>
+
+    <Target Name="IncludeBuiltinModuleOutputs" DependsOnTargets="BuildBuiltinModuleProjects">
+        <ItemGroup>
+            <BuildOutputInPackage Include="..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
+            <BuildOutputInPackage Include="..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
+            <BuildOutputInPackage Include="..\ChillSharp.Schema\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.dll" />
+        </ItemGroup>
+    </Target>
 
 </Project>

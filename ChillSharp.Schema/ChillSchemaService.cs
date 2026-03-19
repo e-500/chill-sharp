@@ -101,9 +101,8 @@ public class ChillSchemaService : IChillSchemaService
 
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
     {
+        var activatedType = ChillTypeResolver.ActivateType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
         var fullChillType = PrepareFullChillType(chillType);
-        var activatedType = _chillContext.GetType().Assembly.CreateInstance(fullChillType)
-            ?? throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
 
         if (activatedType is IChillEntity chillEntity)
         {
@@ -120,15 +119,7 @@ public class ChillSchemaService : IChillSchemaService
 
     private string PrepareFullChillType(string chillType)
     {
-        var prefix = _chillContext.GetChillTypePrefix();
-        if (!string.IsNullOrEmpty(prefix) && !prefix.EndsWith("."))
-            prefix += ".";
-
-        var normalized = chillType?.Trim().Trim('.') ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(normalized))
-            throw new ChillException("ChillType is required to build a schema.");
-
-        return normalized.StartsWith(prefix, StringComparison.Ordinal) ? normalized : $"{prefix}{normalized}";
+        return ChillTypeResolver.PrepareFullChillType(chillType, _chillContext.GetChillTypePrefix());
     }
 
     private static string NormalizeKey(string value)
@@ -152,4 +143,6 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
+
+
 

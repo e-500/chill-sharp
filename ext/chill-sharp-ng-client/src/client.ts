@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@angular/core";
 import { from, type Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 
@@ -43,11 +43,15 @@ export class ChillSharpNgClient {
     return from(this.client.test());
   }
 
-  getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<JsonObject | null> {
+  getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<ChillDtoSchema | null> {
     return from(this.client.getSchema(chillType, chillViewCode, cultureName));
   }
 
-  setSchema(schema: JsonObject): Observable<JsonObject | null> {
+  getSchemaList(cultureName?: string): Observable<ChillDtoSchemaListItem[]> {
+    return from(this.client.getSchemaList(cultureName));
+  }
+
+  setSchema(schema: ChillDtoSchema): Observable<ChillDtoSchema | null> {
     return from(this.client.setSchema(schema));
   }
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
-import type { GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: TData | null;
@@ -22,9 +22,9 @@ export function useSchema(
   chillType: string,
   chillViewCode = "default",
   cultureName?: string
-): UseChillAsyncState<JsonObject> {
+): UseChillAsyncState<ChillDtoSchema> {
   const client = useChillSharpClient();
-  const [data, setData] = useState<JsonObject | null>(null);
+  const [data, setData] = useState<ChillDtoSchema | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -47,6 +47,40 @@ export function useSchema(
   useEffect(() => {
     void load();
   }, [client, chillType, chillViewCode, cultureName]);
+
+  return {
+    data,
+    error,
+    isLoading,
+    reload: load
+  };
+}
+
+export function useSchemaList(cultureName?: string): UseChillAsyncState<ChillDtoSchemaListItem[]> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<ChillDtoSchemaListItem[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const load = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.getSchemaList(cultureName);
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, [client, cultureName]);
 
   return {
     data,

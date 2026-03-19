@@ -91,9 +91,23 @@ class ChillSharpClient:
         """Persist schema metadata through the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("set-schema"), schema)
 
+    def get_schema_list(self, culture_name: str | None = None) -> list[JsonDict]:
+        """Retrieve the list of registered entities and queries."""
+        effective_culture_name = culture_name.strip() if culture_name else self._culture_name
+        url = self._build_chill_url("get-schema-list")
+        if effective_culture_name:
+            url += f"?cultureName={quote(effective_culture_name)}"
+        response = self._send_json("GET", url)
+        return response if isinstance(response, list) else []
+
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
-        return self._send_json("POST", self._build_i18n_url("text/get"), self._prepare_get_text_request(request))
+        return self._send_json(
+            "POST",
+            self._build_i18n_url("text/get"),
+            self._prepare_get_text_request(request),
+            allow_anonymous=True,
+        )
 
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""
@@ -132,17 +146,20 @@ class ChillSharpClient:
         if request is None:
             raise ValueError("request is required.")
 
-        label_guid = self._normalize_required_value(str(request.get("LabelGuid") or ""), "LabelGuid")
-        culture_name = request.get("CultureName") or self._culture_name or ""
-        normalized_culture_name = self._normalize_required_value(str(culture_name), "CultureName")
+        label_guid = self._normalize_required_value(
+            self._coerce_string(self._get_payload_value(request, "labelGuid")),
+            "labelGuid",
+        )
+        culture_name = self._coerce_string(self._get_payload_value(request, "cultureName")) or self._culture_name or ""
+        normalized_culture_name = self._normalize_required_value(culture_name, "cultureName")
 
         return {
-            "LabelGuid": label_guid,
-            "CultureName": normalized_culture_name,
-            "PrimaryCultureName": str(request.get("PrimaryCultureName") or ""),
-            "PrimaryDefaultText": str(request.get("PrimaryDefaultText") or ""),
-            "SecondaryCultureName": str(request.get("SecondaryCultureName") or ""),
-            "SecondaryDefaultText": str(request.get("SecondaryDefaultText") or ""),
+            "labelGuid": label_guid,
+            "cultureName": normalized_culture_name,
+            "primaryCultureName": self._coerce_string(self._get_payload_value(request, "primaryCultureName")),
+            "primaryDefaultText": self._coerce_string(self._get_payload_value(request, "primaryDefaultText")),
+            "secondaryCultureName": self._coerce_string(self._get_payload_value(request, "secondaryCultureName")),
+            "secondaryDefaultText": self._coerce_string(self._get_payload_value(request, "secondaryDefaultText")),
         }
 
     def _send_auth_json(
@@ -261,7 +278,7 @@ class ChillSharpClient:
                 refreshed = self._send_auth_json(
                     "POST",
                     "account/refresh",
-                    {"RefreshToken": self._token_state.refresh_token},
+                    {"refreshToken": self._token_state.refresh_token},
                     allow_anonymous=True,
                 )
                 self._apply_auth_token(refreshed, forget_password=True)
@@ -275,8 +292,8 @@ class ChillSharpClient:
                 "POST",
                 "account/login",
                 {
-                    "UserNameOrEmail": self._username,
-                    "Password": self._password,
+                    "userNameOrEmail": self._username,
+                    "password": self._password,
                 },
                 allow_anonymous=True,
             )
@@ -290,21 +307,21 @@ class ChillSharpClient:
 
     def _apply_auth_token(self, payload: JsonDict, forget_password: bool) -> None:
         """Copy auth token fields from a response payload into local state."""
-        self._token_state.access_token = self._get_payload_value(payload, "AccessToken")
+        self._token_state.access_token = self._coerce_string(self._get_payload_value(payload, "accessToken")) or None
         self._token_state.access_token_issued_utc = self._parse_datetime(
-            self._get_payload_value(payload, "AccessTokenIssuedUtc")
+            self._get_payload_value(payload, "accessTokenIssuedUtc")
         )
         self._token_state.access_token_expires_utc = self._parse_datetime(
-            self._get_payload_value(payload, "AccessTokenExpiresUtc")
+            self._get_payload_value(payload, "accessTokenExpiresUtc")
         )
-        self._token_state.refresh_token = self._get_payload_value(payload, "RefreshToken")
+        self._token_state.refresh_token = self._coerce_string(self._get_payload_value(payload, "refreshToken")) or None
         self._token_state.refresh_token_expires_utc = self._parse_datetime(
-            self._get_payload_value(payload, "RefreshTokenExpiresUtc")
+            self._get_payload_value(payload, "refreshTokenExpiresUtc")
         )
 
-        user_name = self._get_payload_value(payload, "UserName")
+        user_name = self._coerce_string(self._get_payload_value(payload, "userName"))
         if user_name:
-            self._username = str(user_name).strip()
+            self._username = user_name
 
         if forget_password:
             self._password = None
@@ -354,12 +371,12 @@ class ChillSharpClient:
     def _create_current_token_response(self) -> JsonDict:
         """Build a token payload from the current local auth state."""
         return {
-            "AccessToken": self._token_state.access_token or "",
-            "AccessTokenIssuedUtc": self._format_datetime(self._token_state.access_token_issued_utc),
-            "AccessTokenExpiresUtc": self._format_datetime(self._token_state.access_token_expires_utc),
-            "RefreshToken": self._token_state.refresh_token or "",
-            "RefreshTokenExpiresUtc": self._format_datetime(self._token_state.refresh_token_expires_utc),
-            "UserName": self._username or "",
+            "accessToken": self._token_state.access_token or "",
+            "accessTokenIssuedUtc": self._format_datetime(self._token_state.access_token_issued_utc),
+            "accessTokenExpiresUtc": self._format_datetime(self._token_state.access_token_expires_utc),
+            "refreshToken": self._token_state.refresh_token or "",
+            "refreshTokenExpiresUtc": self._format_datetime(self._token_state.refresh_token_expires_utc),
+            "userName": self._username or "",
         }
 
     def _build_chill_url(self, relative_url: str) -> str:
@@ -397,6 +414,13 @@ class ChillSharpClient:
         return normalized
 
     @staticmethod
+    def _coerce_string(value: Any) -> str:
+        """Normalize arbitrary values into trimmed strings for endpoint payloads."""
+        if value is None:
+            return ""
+        return str(value).strip()
+
+    @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:
         """Parse an ISO datetime value and normalize it to UTC."""
         if not value:
@@ -420,12 +444,16 @@ class ChillSharpClient:
 
     @staticmethod
     def _get_payload_value(payload: JsonDict, key: str) -> Any:
-        """Read a payload field using PascalCase or camelCase keys."""
+        """Read a payload field using camelCase or PascalCase keys."""
         if key in payload:
             return payload[key]
 
-        camel_key = key[0].lower() + key[1:]
-        if camel_key in payload:
-            return payload[camel_key]
+        pascal_key = key[0].upper() + key[1:]
+        if pascal_key in payload:
+            return payload[pascal_key]
+
+        for candidate_key, value in payload.items():
+            if candidate_key.lower() == key.lower():
+                return value
 
         return None

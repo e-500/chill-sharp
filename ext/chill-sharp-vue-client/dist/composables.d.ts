@@ -1,5 +1,5 @@
 import { type Ref } from "vue";
-import type { JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchemaListItem, JsonObject } from "chill-sharp-ts-client";
 export interface UseChillAsyncState<TData> {
     data: ReadonlyRef<TData | null>;
     error: ReadonlyRef<unknown>;
@@ -14,6 +14,7 @@ export interface UseChillMutationState<TData> {
     reset: () => void;
 }
 export declare function useSchema(chillType: Ref<string> | string, chillViewCode?: Ref<string> | string, cultureName?: Ref<string | undefined> | string): UseChillAsyncState<JsonObject>;
+export declare function useSchemaList(cultureName?: Ref<string | undefined> | string): UseChillAsyncState<ChillDtoSchemaListItem[]>;
 export declare function useText(request: Ref<JsonObject> | JsonObject): UseChillAsyncState<JsonObject>;
 export declare function useTexts(requests: Ref<JsonObject[]> | JsonObject[]): UseChillAsyncState<Array<JsonObject | null>>;
 export declare function useVersion(): string;

@@ -8,18 +8,40 @@ export interface JsonObject {
 }
 
 export interface GetTextRequest extends JsonObject {
-  LabelGuid: string;
-  CultureName: string;
-  PrimaryCultureName: string;
-  PrimaryDefaultText: string;
-  SecondaryCultureName: string;
-  SecondaryDefaultText: string;
+  labelGuid: string;
+  cultureName: string;
+  primaryCultureName: string;
+  primaryDefaultText: string;
+  secondaryCultureName: string;
+  secondaryDefaultText: string;
 }
 
 export interface GetTextResponse extends JsonObject {
-  LabelGuid: string;
-  CultureName: string;
-  Value: string;
+  labelGuid: string;
+  cultureName: string;
+  value: string;
+}
+
+export interface ChillDtoPropertySchema extends JsonObject {
+  name: string;
+  displayName: string;
+  propertyType: number;
+  chillType: string | null;
+}
+
+export interface ChillDtoSchema extends JsonObject {
+  chillType: string;
+  chillViewCode: string;
+  displayName: string;
+  queryRelatedChillType: string | null;
+  properties: ChillDtoPropertySchema[];
+}
+
+export interface ChillDtoSchemaListItem extends JsonObject {
+  name: string;
+  chillType: string;
+  type: string;
+  relatedChillType: string | null;
 }
 
 export interface ChillSharpClientOptions {
@@ -95,7 +117,7 @@ export class ChillSharpClient {
     return this.sendText("GET", this.buildChillUrl("test"), true);
   }
 
-  getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<JsonObject | null> {
+  getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null> {
     const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
     const encodedView = encodeURIComponent(this.normalizeRequiredValue(chillViewCode, "chillViewCode"));
     const effectiveCultureName = this.normalizeOptionalValue(cultureName) ?? this.cultureName;
@@ -105,11 +127,21 @@ export class ChillSharpClient {
       relativeUrl += `&cultureName=${encodeURIComponent(effectiveCultureName)}`;
     }
 
-    return this.sendJson<JsonObject | null>("GET", this.buildChillUrl(relativeUrl));
+    return this.sendJson<ChillDtoSchema | null>("GET", this.buildChillUrl(relativeUrl));
   }
 
-  setSchema(schema: JsonObject): Promise<JsonObject | null> {
-    return this.sendJson<JsonObject | null>("POST", this.buildChillUrl("set-schema"), schema);
+  getSchemaList(cultureName?: string): Promise<ChillDtoSchemaListItem[]> {
+    const effectiveCultureName = this.normalizeOptionalValue(cultureName) ?? this.cultureName;
+    let relativeUrl = "get-schema-list";
+    if (effectiveCultureName) {
+      relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
+    }
+
+    return this.sendJson<ChillDtoSchemaListItem[]>("GET", this.buildChillUrl(relativeUrl));
+  }
+
+  setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null> {
+    return this.sendJson<ChillDtoSchema | null>("POST", this.buildChillUrl("set-schema"), schema);
   }
 
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
@@ -165,18 +197,18 @@ export class ChillSharpClient {
       throw new Error("request is required.");
     }
 
-    const effectiveCultureName = this.normalizeOptionalValue(request.CultureName) ?? this.cultureName;
+    const effectiveCultureName = this.normalizeOptionalValue(this.readString(request, "cultureName")) ?? this.cultureName;
     if (!effectiveCultureName) {
-      throw new Error("CultureName is required.");
+      throw new Error("cultureName is required.");
     }
 
     return {
-      LabelGuid: this.normalizeRequiredValue(request.LabelGuid, "LabelGuid"),
-      CultureName: effectiveCultureName,
-      PrimaryCultureName: request.PrimaryCultureName ?? "",
-      PrimaryDefaultText: request.PrimaryDefaultText ?? "",
-      SecondaryCultureName: request.SecondaryCultureName ?? "",
-      SecondaryDefaultText: request.SecondaryDefaultText ?? ""
+      labelGuid: this.normalizeRequiredValue(this.readString(request, "labelGuid"), "labelGuid"),
+      cultureName: effectiveCultureName,
+      primaryCultureName: this.readString(request, "primaryCultureName") ?? "",
+      primaryDefaultText: this.readString(request, "primaryDefaultText") ?? "",
+      secondaryCultureName: this.readString(request, "secondaryCultureName") ?? "",
+      secondaryDefaultText: this.readString(request, "secondaryDefaultText") ?? ""
     };
   }
 
@@ -292,7 +324,7 @@ export class ChillSharpClient {
         const refreshed = await this.sendAuthJson<JsonObject>(
           "POST",
           "account/refresh",
-          { RefreshToken: this.tokenState.refreshToken },
+          { refreshToken: this.tokenState.refreshToken },
           true,
           true
         );
@@ -314,8 +346,8 @@ export class ChillSharpClient {
         "POST",
         "account/login",
         {
-          UserNameOrEmail: this.username,
-          Password: this.password
+          userNameOrEmail: this.username,
+          password: this.password
         },
         true,
         true
@@ -333,13 +365,13 @@ export class ChillSharpClient {
   }
 
   private applyAuthToken(payload: JsonObject, forgetPassword: boolean): void {
-    this.tokenState.accessToken = this.readString(payload, "AccessToken");
-    this.tokenState.accessTokenIssuedUtc = this.parseDate(payload["AccessTokenIssuedUtc"]);
-    this.tokenState.accessTokenExpiresUtc = this.parseDate(payload["AccessTokenExpiresUtc"]);
-    this.tokenState.refreshToken = this.readString(payload, "RefreshToken");
-    this.tokenState.refreshTokenExpiresUtc = this.parseDate(payload["RefreshTokenExpiresUtc"]);
+    this.tokenState.accessToken = this.readString(payload, "accessToken");
+    this.tokenState.accessTokenIssuedUtc = this.readDate(payload, "accessTokenIssuedUtc");
+    this.tokenState.accessTokenExpiresUtc = this.readDate(payload, "accessTokenExpiresUtc");
+    this.tokenState.refreshToken = this.readString(payload, "refreshToken");
+    this.tokenState.refreshTokenExpiresUtc = this.readDate(payload, "refreshTokenExpiresUtc");
 
-    const userName = this.readString(payload, "UserName");
+    const userName = this.readString(payload, "userName");
     if (userName) {
       this.username = userName;
     }
@@ -400,12 +432,12 @@ export class ChillSharpClient {
 
   private createCurrentTokenResponse(): JsonObject {
     return {
-      AccessToken: this.tokenState.accessToken ?? "",
-      AccessTokenIssuedUtc: this.formatDate(this.tokenState.accessTokenIssuedUtc),
-      AccessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
-      RefreshToken: this.tokenState.refreshToken ?? "",
-      RefreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
-      UserName: this.username ?? ""
+      accessToken: this.tokenState.accessToken ?? "",
+      accessTokenIssuedUtc: this.formatDate(this.tokenState.accessTokenIssuedUtc),
+      accessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
+      refreshToken: this.tokenState.refreshToken ?? "",
+      refreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
+      userName: this.username ?? ""
     };
   }
 
@@ -439,7 +471,7 @@ export class ChillSharpClient {
     return `${this.baseUrl.replace(/\/$/, "")}-i18n`;
   }
 
-  private normalizeRequiredValue(value: string, argumentName: string): string {
+  private normalizeRequiredValue(value: string | null | undefined, argumentName: string): string {
     const normalized = this.normalizeOptionalValue(value);
     if (!normalized) {
       throw new Error(`${argumentName} is required.`);
@@ -454,8 +486,29 @@ export class ChillSharpClient {
   }
 
   private readString(payload: JsonObject, key: string): string | null {
-    const value = payload[key];
+    const value = this.readValue(payload, key);
     return typeof value === "string" && value.trim() ? value.trim() : null;
+  }
+
+  private readDate(payload: JsonObject, key: string): Date | null {
+    return this.parseDate(this.readValue(payload, key));
+  }
+
+  private readValue(payload: JsonObject, key: string): JsonValue | undefined {
+    if (key in payload) {
+      return payload[key];
+    }
+
+    const pascalKey = key.length > 1
+      ? `${key[0].toUpperCase()}${key.slice(1)}`
+      : key.toUpperCase();
+
+    if (pascalKey in payload) {
+      return payload[pascalKey];
+    }
+
+    const matchedKey = Object.keys(payload).find((candidate) => candidate.toLowerCase() === key.toLowerCase());
+    return matchedKey ? payload[matchedKey] : undefined;
   }
 
   private parseDate(value: JsonValue | undefined): Date | null {
