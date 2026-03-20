@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
 export function useSchema(chillType, chillViewCode = "default", cultureName) {
@@ -240,5 +240,51 @@ export function useEntityMutation(action) {
             setError(null);
             setIsLoading(false);
         }
+    };
+}
+export function useEntityChanges(chillType, onChanges, guid) {
+    const client = useChillSharpClient();
+    const onChangesRef = useRef(onChanges);
+    const unsubscribeRef = useRef(null);
+    const [error, setError] = useState(null);
+    const [isSubscribed, setIsSubscribed] = useState(false);
+    useEffect(() => {
+        onChangesRef.current = onChanges;
+    }, [onChanges]);
+    useEffect(() => {
+        let isDisposed = false;
+        setError(null);
+        setIsSubscribed(false);
+        unsubscribeRef.current = null;
+        void client
+            .subscribeToEntityChanges(chillType, async (changes) => {
+            await onChangesRef.current(changes);
+        }, guid)
+            .then((subscription) => {
+            if (isDisposed) {
+                void subscription.unsubscribe();
+                return;
+            }
+            unsubscribeRef.current = () => subscription.unsubscribe();
+            setIsSubscribed(true);
+        })
+            .catch((err) => {
+            if (!isDisposed) {
+                setError(err);
+                setIsSubscribed(false);
+            }
+        });
+        return () => {
+            isDisposed = true;
+            setIsSubscribed(false);
+            if (unsubscribeRef.current) {
+                void unsubscribeRef.current();
+                unsubscribeRef.current = null;
+            }
+        };
+    }, [client, chillType, guid]);
+    return {
+        error,
+        isSubscribed
     };
 }

@@ -1,3 +1,4 @@
+import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 export class ChillSharpClient {
@@ -8,6 +9,10 @@ export class ChillSharpClient {
     password;
     refreshPromise = null;
     tokenState;
+    notificationConnection = null;
+    entityChangeSubscriptions = new Map();
+    entityChangeRegistrationCounts = new Map();
+    entityChangeSubscriptionSequence = 0;
     constructor(baseUrl, options = {}) {
         this.baseUrl = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/$/, "");
         this.fetchImpl = options.fetchImpl ?? fetch;
@@ -78,6 +83,44 @@ export class ChillSharpClient {
     }
     setText(payload) {
         return this.sendJson("PUT", this.buildI18nUrl("text"), payload);
+    }
+    async subscribeToEntityChanges(chillType, callback, guid) {
+        if (typeof callback !== "function") {
+            throw new Error("callback is required.");
+        }
+        const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+        const normalizedGuid = this.normalizeOptionalValue(guid);
+        const connection = await this.ensureNotificationConnection();
+        const registrationKey = this.buildEntityChangeRegistrationKey(normalizedChillType, normalizedGuid);
+        const registrationCount = this.entityChangeRegistrationCounts.get(registrationKey) ?? 0;
+        if (registrationCount === 0) {
+            await connection.invoke("Register", normalizedChillType, normalizedGuid);
+        }
+        this.entityChangeRegistrationCounts.set(registrationKey, registrationCount + 1);
+        const subscriptionId = `entity-change-${++this.entityChangeSubscriptionSequence}`;
+        this.entityChangeSubscriptions.set(subscriptionId, {
+            id: subscriptionId,
+            chillType: normalizedChillType,
+            guid: normalizedGuid,
+            callback
+        });
+        return {
+            chillType: normalizedChillType,
+            guid: normalizedGuid,
+            unsubscribe: async () => {
+                await this.unsubscribeFromEntityChanges(subscriptionId);
+            }
+        };
+    }
+    async disconnectEntityChanges() {
+        this.entityChangeSubscriptions.clear();
+        this.entityChangeRegistrationCounts.clear();
+        if (!this.notificationConnection) {
+            return;
+        }
+        const connection = this.notificationConnection;
+        this.notificationConnection = null;
+        await connection.stop();
     }
     async registerAuthAccount(payload) {
         const response = await this.sendAuthJson("POST", "account/register", payload, true, true);
@@ -277,6 +320,9 @@ export class ChillSharpClient {
     buildChillUrl(relativeUrl) {
         return `${this.baseUrl}/${relativeUrl.replace(/^\/+/, "")}`;
     }
+    buildNotifyUrl() {
+        return `${this.baseUrl.replace(/\/$/, "")}/notify`;
+    }
     buildAuthUrl(relativeUrl) {
         return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
@@ -337,5 +383,105 @@ export class ChillSharpClient {
     }
     formatDate(value) {
         return value ? value.toISOString() : "";
+    }
+    async ensureNotificationConnection() {
+        if (this.notificationConnection) {
+            if (this.notificationConnection.state === HubConnectionState.Disconnected) {
+                await this.notificationConnection.start();
+            }
+            return this.notificationConnection;
+        }
+        const connection = new HubConnectionBuilder()
+            .withUrl(this.buildNotifyUrl(), {
+            accessTokenFactory: async () => {
+                if (this.canUseAuthentication()) {
+                    await this.getAuthTokenIfNecessary();
+                }
+                return this.tokenState.accessToken ?? "";
+            }
+        })
+            .withAutomaticReconnect()
+            .build();
+        connection.on("EntitiesChanged", (payload) => {
+            void this.dispatchEntityChangeNotifications(payload);
+        });
+        connection.onreconnected(async () => {
+            await this.reregisterEntityChangeSubscriptions();
+        });
+        await connection.start();
+        this.notificationConnection = connection;
+        return connection;
+    }
+    async unsubscribeFromEntityChanges(subscriptionId) {
+        const subscription = this.entityChangeSubscriptions.get(subscriptionId);
+        if (!subscription) {
+            return;
+        }
+        this.entityChangeSubscriptions.delete(subscriptionId);
+        const registrationKey = this.buildEntityChangeRegistrationKey(subscription.chillType, subscription.guid);
+        const registrationCount = this.entityChangeRegistrationCounts.get(registrationKey) ?? 0;
+        if (registrationCount <= 1) {
+            this.entityChangeRegistrationCounts.delete(registrationKey);
+            const connection = this.notificationConnection;
+            if (connection && connection.state === HubConnectionState.Connected) {
+                await connection.invoke("Unregister", subscription.chillType, subscription.guid);
+            }
+        }
+        else {
+            this.entityChangeRegistrationCounts.set(registrationKey, registrationCount - 1);
+        }
+    }
+    async dispatchEntityChangeNotifications(payload) {
+        const notifications = this.normalizeEntityChangeNotifications(payload);
+        if (notifications.length === 0) {
+            return;
+        }
+        for (const subscription of this.entityChangeSubscriptions.values()) {
+            const matchingChanges = notifications.filter((change) => change.chillType === subscription.chillType &&
+                (!subscription.guid || change.guid === subscription.guid));
+            if (matchingChanges.length === 0) {
+                continue;
+            }
+            await subscription.callback(matchingChanges);
+        }
+    }
+    normalizeEntityChangeNotifications(payload) {
+        if (!Array.isArray(payload)) {
+            return [];
+        }
+        return payload
+            .filter((entry) => !!entry && typeof entry === "object" && !Array.isArray(entry))
+            .map((entry) => {
+            const chillType = this.readString(entry, "chillType");
+            const guid = this.readString(entry, "guid");
+            const action = this.readString(entry, "action");
+            if (!chillType || !guid || !this.isEntityChangeAction(action)) {
+                return null;
+            }
+            return {
+                chillType,
+                guid,
+                action
+            };
+        })
+            .filter((entry) => entry !== null);
+    }
+    isEntityChangeAction(value) {
+        return value === "CREATED" || value === "UPDATED" || value === "DELETED";
+    }
+    async reregisterEntityChangeSubscriptions() {
+        const connection = this.notificationConnection;
+        if (!connection || connection.state !== HubConnectionState.Connected) {
+            return;
+        }
+        for (const registrationKey of this.entityChangeRegistrationCounts.keys()) {
+            const separatorIndex = registrationKey.indexOf("|");
+            const chillType = separatorIndex >= 0 ? registrationKey.slice(0, separatorIndex) : registrationKey;
+            const guid = separatorIndex >= 0 ? registrationKey.slice(separatorIndex + 1) : "";
+            await connection.invoke("Register", chillType, guid || null);
+        }
+    }
+    buildEntityChangeRegistrationKey(chillType, guid) {
+        return `${chillType}|${guid ?? ""}`;
     }
 }

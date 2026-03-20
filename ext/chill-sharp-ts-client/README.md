@@ -7,6 +7,7 @@ This package targets the standard ChillSharp HTTP surface:
 - core Chill API at `/api/chill`
 - auth API at `/api/chill-auth`
 - i18n API at `/api/chill-i18n`
+- entity-change notifications at `/api/chill/notify`
 
 It is intentionally lightweight. Payloads are plain JavaScript objects so the client can work against arbitrary ChillSharp models without code generation.
 
@@ -191,6 +192,54 @@ const status = await client.test();
 
 Use this to verify the Chill endpoint is reachable before sending API payloads.
 
+## Notification Operations
+
+### Subscribe to all changes for a chill type
+
+```ts
+const subscription = await client.subscribeToEntityChanges("Model.Post", (changes) => {
+  for (const change of changes) {
+    console.log(change.chillType, change.guid, change.action);
+  }
+});
+```
+
+### Subscribe to one entity only
+
+```ts
+const subscription = await client.subscribeToEntityChanges(
+  "Model.Post",
+  (changes) => {
+    console.log("single entity changed", changes);
+  },
+  "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11"
+);
+```
+
+### Unsubscribe
+
+```ts
+await subscription.unsubscribe();
+```
+
+### Close the shared notification connection
+
+```ts
+await client.disconnectEntityChanges();
+```
+
+The notification callback receives arrays shaped like:
+
+```ts
+[
+  {
+    chillType: "Model.Post",
+    guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+    action: "UPDATED"
+  }
+]
+```
+
 ## Schema Operations
 
 ### Get schema
@@ -373,4 +422,3 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed TypeScript clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
-

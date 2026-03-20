@@ -1,0 +1,179 @@
+using System.Collections.Concurrent;
+using ChillSharp.Api;
+using ChillSharp.Client;
+using ChillSharp.Client.Dto;
+using Microsoft.AspNetCore.SignalR.Client;
+
+namespace ChillSharp.Tests
+{
+    [TestClass]
+    [DoNotParallelize]
+    public sealed class SignalRNotifications
+    {
+        [TestMethod]
+        public async Task Step001_TypeSubscriptionReceivesCreateUpdateDeleteNotifications()
+        {
+            TestApiHost.EnsureStarted();
+
+            var connection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5000/api/chill/notify")
+                .Build();
+
+            var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
+            var notificationSignal = new SemaphoreSlim(0);
+
+            connection.On<ChillEntityChangeNotification[]>(
+                ChillEntityChangeHub.NotificationMethodName,
+                changes =>
+                {
+                    receivedChanges.Enqueue(changes);
+                    notificationSignal.Release();
+                });
+
+            await connection.StartAsync();
+            await connection.InvokeAsync("Register", "Model.Post", (Guid?)null);
+
+            try
+            {
+                var client = new ChillSharpClient("http://localhost:5000/api/chill");
+                var postGuid = Guid.NewGuid();
+
+                var createEntity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = postGuid
+                };
+                createEntity.Properties.Add("Title", "SignalR create");
+                createEntity.Properties.Add("Author", "SignalR create");
+                var createdEntity = client.Create(createEntity);
+                postGuid = createdEntity.Guid;
+
+                var createChanges = await WaitForNotificationAsync(receivedChanges, notificationSignal);
+                CollectionAssert.AreEqual(new[] { "Model.Post" }, createChanges.Select(x => x.ChillType).ToArray());
+                CollectionAssert.AreEqual(new[] { postGuid }, createChanges.Select(x => x.Guid).ToArray());
+                CollectionAssert.AreEqual(new[] { ChillEntityChangeNotification.CreatedAction }, createChanges.Select(x => x.Action).ToArray());
+
+                var updateEntity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = postGuid
+                };
+                updateEntity.Properties.Add("Title", "SignalR update");
+                client.Update(updateEntity);
+
+                var updateChanges = await WaitForNotificationAsync(receivedChanges, notificationSignal);
+                CollectionAssert.AreEqual(new[] { "Model.Post" }, updateChanges.Select(x => x.ChillType).ToArray());
+                CollectionAssert.AreEqual(new[] { postGuid }, updateChanges.Select(x => x.Guid).ToArray());
+                CollectionAssert.AreEqual(new[] { ChillEntityChangeNotification.UpdatedAction }, updateChanges.Select(x => x.Action).ToArray());
+
+                client.Delete(new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = postGuid
+                });
+
+                var deleteChanges = await WaitForNotificationAsync(receivedChanges, notificationSignal);
+                CollectionAssert.AreEqual(new[] { "Model.Post" }, deleteChanges.Select(x => x.ChillType).ToArray());
+                CollectionAssert.AreEqual(new[] { postGuid }, deleteChanges.Select(x => x.Guid).ToArray());
+                CollectionAssert.AreEqual(new[] { ChillEntityChangeNotification.DeletedAction }, deleteChanges.Select(x => x.Action).ToArray());
+            }
+            finally
+            {
+                await connection.InvokeAsync("Unregister", "Model.Post", (Guid?)null);
+                await connection.DisposeAsync();
+            }
+        }
+
+        [TestMethod]
+        public async Task Step002_EntitySubscriptionOnlyReceivesTheRegisteredEntity()
+        {
+            TestApiHost.EnsureStarted();
+
+            var connection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5000/api/chill/notify")
+                .Build();
+
+            var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
+            var notificationSignal = new SemaphoreSlim(0);
+
+            connection.On<ChillEntityChangeNotification[]>(
+                ChillEntityChangeHub.NotificationMethodName,
+                changes =>
+                {
+                    receivedChanges.Enqueue(changes);
+                    notificationSignal.Release();
+                });
+
+            await connection.StartAsync();
+
+            try
+            {
+                var client = new ChillSharpClient("http://localhost:5000/api/chill");
+                var targetPost = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = Guid.NewGuid()
+                };
+                targetPost.Properties.Add("Title", "Target");
+                targetPost.Properties.Add("Author", "Target");
+                var createdTargetPost = client.Create(targetPost);
+
+                var subscribedGuid = createdTargetPost.Guid;
+                await connection.InvokeAsync("Register", "Model.Post", subscribedGuid);
+
+                var otherPost = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = Guid.NewGuid()
+                };
+                otherPost.Properties.Add("Title", "Other");
+                otherPost.Properties.Add("Author", "Other");
+                client.Create(otherPost);
+
+                Assert.IsFalse(await TryWaitForNotificationAsync(receivedChanges, notificationSignal, 500));
+
+                var subscribedPost = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = subscribedGuid
+                };
+                subscribedPost.Properties.Add("Title", "Target updated");
+                client.Update(subscribedPost);
+
+                var createChanges = await WaitForNotificationAsync(receivedChanges, notificationSignal);
+                CollectionAssert.AreEqual(new[] { "Model.Post" }, createChanges.Select(x => x.ChillType).ToArray());
+                CollectionAssert.AreEqual(new[] { subscribedGuid }, createChanges.Select(x => x.Guid).ToArray());
+                CollectionAssert.AreEqual(new[] { ChillEntityChangeNotification.UpdatedAction }, createChanges.Select(x => x.Action).ToArray());
+            }
+            finally
+            {
+                await connection.DisposeAsync();
+            }
+        }
+
+        private static async Task<ChillEntityChangeNotification[]> WaitForNotificationAsync(
+            ConcurrentQueue<ChillEntityChangeNotification[]> receivedChanges,
+            SemaphoreSlim notificationSignal,
+            int timeoutMs = 5000)
+        {
+            var hasNotification = await notificationSignal.WaitAsync(timeoutMs);
+            Assert.IsTrue(hasNotification, "Expected a SignalR notification but none was received.");
+            Assert.IsTrue(receivedChanges.TryDequeue(out var changes));
+            Assert.IsNotNull(changes);
+            return changes;
+        }
+
+        private static async Task<bool> TryWaitForNotificationAsync(
+            ConcurrentQueue<ChillEntityChangeNotification[]> receivedChanges,
+            SemaphoreSlim notificationSignal,
+            int timeoutMs)
+        {
+            var hasNotification = await notificationSignal.WaitAsync(timeoutMs);
+            if (!hasNotification)
+                return false;
+
+            receivedChanges.TryDequeue(out _);
+            return true;
+        }
+    }
+}

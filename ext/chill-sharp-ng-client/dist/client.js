@@ -8,7 +8,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 import { Inject, Injectable } from "@angular/core";
-import { from } from "rxjs";
+import { from, Observable } from "rxjs";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 let ChillSharpNgClient = class ChillSharpNgClient {
@@ -57,6 +57,34 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     }
     setText(payload) {
         return from(this.client.setText(payload));
+    }
+    watchEntityChanges(chillType, guid) {
+        return new Observable((subscriber) => {
+            let remoteSubscription = null;
+            let isClosed = false;
+            void this.client
+                .subscribeToEntityChanges(chillType, async (changes) => {
+                subscriber.next(changes);
+            }, guid)
+                .then(async (subscription) => {
+                remoteSubscription = subscription;
+                if (isClosed) {
+                    await subscription.unsubscribe();
+                }
+            })
+                .catch((error) => {
+                subscriber.error(error);
+            });
+            return () => {
+                isClosed = true;
+                if (remoteSubscription) {
+                    void remoteSubscription.unsubscribe();
+                }
+            };
+        });
+    }
+    disconnectEntityChanges() {
+        return from(this.client.disconnectEntityChanges());
     }
     registerAuthAccount(payload) {
         return from(this.client.registerAuthAccount(payload));

@@ -1,7 +1,15 @@
 import { Inject, Injectable } from "@angular/core";
-import { from, type Observable } from "rxjs";
+import { from, Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type {
+  ChillDtoSchema,
+  ChillDtoSchemaListItem,
+  ChillEntityChangeNotification,
+  ChillEntityChangeSubscription,
+  GetTextRequest,
+  GetTextResponse,
+  JsonObject
+} from "chill-sharp-ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 
@@ -65,6 +73,42 @@ export class ChillSharpNgClient {
 
   setText(payload: JsonObject): Observable<GetTextResponse> {
     return from(this.client.setText(payload));
+  }
+
+  watchEntityChanges(chillType: string, guid?: string | null): Observable<ChillEntityChangeNotification[]> {
+    return new Observable<ChillEntityChangeNotification[]>((subscriber) => {
+      let remoteSubscription: ChillEntityChangeSubscription | null = null;
+      let isClosed = false;
+
+      void this.client
+        .subscribeToEntityChanges(
+          chillType,
+          async (changes) => {
+            subscriber.next(changes);
+          },
+          guid
+        )
+        .then(async (subscription) => {
+          remoteSubscription = subscription;
+          if (isClosed) {
+            await subscription.unsubscribe();
+          }
+        })
+        .catch((error) => {
+          subscriber.error(error);
+        });
+
+      return () => {
+        isClosed = true;
+        if (remoteSubscription) {
+          void remoteSubscription.unsubscribe();
+        }
+      };
+    });
+  }
+
+  disconnectEntityChanges(): Observable<void> {
+    return from(this.client.disconnectEntityChanges());
   }
 
   registerAuthAccount(payload: JsonObject): Observable<JsonObject> {

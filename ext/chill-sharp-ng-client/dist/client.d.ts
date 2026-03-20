@@ -1,6 +1,6 @@
-import { type Observable } from "rxjs";
+import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -18,6 +18,8 @@ export declare class ChillSharpNgClient {
     getText(request: GetTextRequest): Observable<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Observable<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Observable<GetTextResponse>;
+    watchEntityChanges(chillType: string, guid?: string | null): Observable<ChillEntityChangeNotification[]>;
+    disconnectEntityChanges(): Observable<void>;
     registerAuthAccount(payload: JsonObject): Observable<JsonObject>;
     loginAuthAccount(payload: JsonObject): Observable<JsonObject>;
     refreshAuthAccount(): Observable<JsonObject>;

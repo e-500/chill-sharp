@@ -1,7 +1,13 @@
-import { ref, watchEffect, type Ref } from "vue";
+import { onScopeDispose, ref, watch, watchEffect, type Ref } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, JsonObject } from "chill-sharp-ts-client";
+import type {
+  ChillDtoSchemaListItem,
+  ChillEntityChangeCallback,
+  ChillEntityChangeSubscription,
+  GetTextRequest,
+  JsonObject
+} from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: ReadonlyRef<TData | null>;
@@ -16,6 +22,11 @@ export interface UseChillMutationState<TData> {
   isLoading: ReadonlyRef<boolean>;
   execute: (...args: unknown[]) => Promise<TData>;
   reset: () => void;
+}
+
+export interface UseChillSubscriptionState {
+  error: ReadonlyRef<unknown>;
+  isSubscribed: ReadonlyRef<boolean>;
 }
 
 export function useSchema(
@@ -53,18 +64,18 @@ export function useSchema(
   });
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     reload: load
   };
 }
 
 export function useSchemaList(
   cultureName?: Ref<string | undefined> | string
-): UseChillAsyncState<ChillDtoSchemaListItem[]> {
+): UseChillAsyncState<JsonObject[]> {
   const client = useChillSharpClient();
-  const data = ref<ChillDtoSchemaListItem[] | null>(null);
+  const data = ref<JsonObject[] | null>(null);
   const error = ref<unknown>(null);
   const isLoading = ref<boolean>(true);
 
@@ -89,9 +100,9 @@ export function useSchemaList(
   });
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     reload: load
   };
 }
@@ -123,9 +134,9 @@ export function useText(request: Ref<JsonObject> | JsonObject): UseChillAsyncSta
   });
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     reload: load
   };
 }
@@ -157,9 +168,9 @@ export function useTexts(requests: Ref<JsonObject[]> | JsonObject[]): UseChillAs
   });
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     reload: load
   };
 }
@@ -195,9 +206,9 @@ export function useTest(): UseChillAsyncState<string> {
   });
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     reload: load
   };
 }
@@ -226,9 +237,9 @@ export function useQueryMutation(): UseChillMutationState<JsonObject> {
   };
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     execute,
     reset: () => {
       data.value = null;
@@ -278,15 +289,86 @@ export function useEntityMutation(action: "find" | "create" | "update" | "delete
   };
 
   return {
-    data: asReadonlyRef(data),
-    error: asReadonlyRef(error),
-    isLoading: asReadonlyRef(isLoading),
+    data,
+    error,
+    isLoading,
     execute,
     reset: () => {
       data.value = null;
       error.value = null;
       isLoading.value = false;
     }
+  };
+}
+
+export function useEntityChanges(
+  chillType: Ref<string> | string,
+  onChanges: Ref<ChillEntityChangeCallback> | ChillEntityChangeCallback,
+  guid?: Ref<string | null | undefined> | string | null
+): UseChillSubscriptionState {
+  const client = useChillSharpClient();
+  const error = ref<unknown>(null);
+  const isSubscribed = ref<boolean>(false);
+  let subscription: ChillEntityChangeSubscription | null = null;
+
+  const release = async () => {
+    const currentSubscription = subscription;
+    subscription = null;
+    isSubscribed.value = false;
+    if (currentSubscription) {
+      await currentSubscription.unsubscribe();
+    }
+  };
+
+  watch(
+    [
+      () => readRef(chillType),
+      () => (guid === undefined ? null : (readRef(guid) ?? null)),
+      () => readRef(onChanges)
+    ],
+    async ([nextChillType, nextGuid, nextOnChanges], _previousValue, onCleanup) => {
+      error.value = null;
+      await release();
+
+      let isActive = true;
+      onCleanup(() => {
+        isActive = false;
+        void release();
+      });
+
+      try {
+        const nextSubscription = await client.subscribeToEntityChanges(
+          nextChillType,
+          async (changes) => {
+            await nextOnChanges(changes);
+          },
+          nextGuid
+        );
+
+        if (!isActive) {
+          await nextSubscription.unsubscribe();
+          return;
+        }
+
+        subscription = nextSubscription;
+        isSubscribed.value = true;
+      } catch (err) {
+        if (isActive) {
+          error.value = err;
+          isSubscribed.value = false;
+        }
+      }
+    },
+    { immediate: true }
+  );
+
+  onScopeDispose(() => {
+    void release();
+  });
+
+  return {
+    error,
+    isSubscribed
   };
 }
 
@@ -303,3 +385,5 @@ function readRef<T>(value: Ref<T> | T): T {
 
   return value;
 }
+
+

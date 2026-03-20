@@ -31,6 +31,9 @@
     "ef-core"
   ],
   "author": "Andrea Piovesan",
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.17"
+  },
   "devDependencies": {
     "typescript": "^5.8.2"
   }

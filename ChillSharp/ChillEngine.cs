@@ -57,6 +57,7 @@ namespace ChillSharp
 
         internal IChillContext _Context;
         private IDbContextTransaction? _CurrentTransaction;
+        internal bool HasOpenTransaction => _CurrentTransaction != null;
 
         #region TRANSACTION MANAGEMENT
 

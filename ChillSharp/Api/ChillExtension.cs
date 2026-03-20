@@ -18,8 +18,10 @@
  */
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
 using System.Reflection;
 using ChillSharp.Dto;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChillSharp.Api
 {
@@ -57,6 +59,8 @@ namespace ChillSharp.Api
             configureOptions?.Invoke(options);
 
             services.AddSingleton(options);
+            services.AddSignalR();
+            services.AddScoped<IChillEntityChangeDispatcher, ChillEntityChangeDispatcher>();
 
             services.AddControllers()
                     .AddApplicationPart(Assembly.GetExecutingAssembly())
@@ -77,7 +81,8 @@ namespace ChillSharp.Api
             {
                 var chillContext = provider.GetRequiredService<IChillContext>();
                 var schemaService = provider.GetService<IChillSchemaService>();
-                return new ChillDtoEngine(chillContext, schemaService);
+                var changeDispatcher = provider.GetService<IChillEntityChangeDispatcher>();
+                return new ChillDtoEngine(chillContext, schemaService, changeDispatcher);
             });
 
             return services;
@@ -110,6 +115,7 @@ namespace ChillSharp.Api
 
             endpoints.MapGet($"/{ApiUrlBasePath}/test", () => "ChillSharp is up and running!");
             endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
+            endpoints.MapHub<ChillEntityChangeHub>($"/{ApiUrlBasePath}/{ChillEntityChangeHub.HubRouteSuffix}");
 
             return endpoints;
         }

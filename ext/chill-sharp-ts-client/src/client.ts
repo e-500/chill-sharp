@@ -1,3 +1,8 @@
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  HubConnectionState
+} from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 
@@ -52,12 +57,37 @@ export interface ChillSharpClientOptions {
   fetchImpl?: typeof fetch;
 }
 
+export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
+
+export interface ChillEntityChangeNotification extends JsonObject {
+  chillType: string;
+  guid: string;
+  action: ChillEntityChangeAction;
+}
+
+export type ChillEntityChangeCallback = (
+  changes: ChillEntityChangeNotification[]
+) => void | Promise<void>;
+
+export interface ChillEntityChangeSubscription {
+  chillType: string;
+  guid: string | null;
+  unsubscribe(): Promise<void>;
+}
+
 interface TokenState {
   accessToken: string | null;
   accessTokenIssuedUtc: Date | null;
   accessTokenExpiresUtc: Date | null;
   refreshToken: string | null;
   refreshTokenExpiresUtc: Date | null;
+}
+
+interface LocalEntityChangeSubscription {
+  id: string;
+  chillType: string;
+  guid: string | null;
+  callback: ChillEntityChangeCallback;
 }
 
 export class ChillSharpClient {
@@ -69,6 +99,10 @@ export class ChillSharpClient {
   private password: string | null;
   private refreshPromise: Promise<JsonObject> | null = null;
   private tokenState: TokenState;
+  private notificationConnection: HubConnection | null = null;
+  private readonly entityChangeSubscriptions = new Map<string, LocalEntityChangeSubscription>();
+  private readonly entityChangeRegistrationCounts = new Map<string, number>();
+  private entityChangeSubscriptionSequence = 0;
 
   constructor(baseUrl: string, options: ChillSharpClientOptions = {}) {
     this.baseUrl = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/$/, "");
@@ -162,6 +196,56 @@ export class ChillSharpClient {
 
   setText(payload: JsonObject): Promise<GetTextResponse> {
     return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("text"), payload);
+  }
+
+  async subscribeToEntityChanges(
+    chillType: string,
+    callback: ChillEntityChangeCallback,
+    guid?: string | null
+  ): Promise<ChillEntityChangeSubscription> {
+    if (typeof callback !== "function") {
+      throw new Error("callback is required.");
+    }
+
+    const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+    const normalizedGuid = this.normalizeOptionalValue(guid);
+    const connection = await this.ensureNotificationConnection();
+    const registrationKey = this.buildEntityChangeRegistrationKey(normalizedChillType, normalizedGuid);
+
+    const registrationCount = this.entityChangeRegistrationCounts.get(registrationKey) ?? 0;
+    if (registrationCount === 0) {
+      await connection.invoke("Register", normalizedChillType, normalizedGuid);
+    }
+    this.entityChangeRegistrationCounts.set(registrationKey, registrationCount + 1);
+
+    const subscriptionId = `entity-change-${++this.entityChangeSubscriptionSequence}`;
+    this.entityChangeSubscriptions.set(subscriptionId, {
+      id: subscriptionId,
+      chillType: normalizedChillType,
+      guid: normalizedGuid,
+      callback
+    });
+
+    return {
+      chillType: normalizedChillType,
+      guid: normalizedGuid,
+      unsubscribe: async () => {
+        await this.unsubscribeFromEntityChanges(subscriptionId);
+      }
+    };
+  }
+
+  async disconnectEntityChanges(): Promise<void> {
+    this.entityChangeSubscriptions.clear();
+    this.entityChangeRegistrationCounts.clear();
+
+    if (!this.notificationConnection) {
+      return;
+    }
+
+    const connection = this.notificationConnection;
+    this.notificationConnection = null;
+    await connection.stop();
   }
 
   async registerAuthAccount(payload: JsonObject): Promise<JsonObject> {
@@ -445,6 +529,10 @@ export class ChillSharpClient {
     return `${this.baseUrl}/${relativeUrl.replace(/^\/+/, "")}`;
   }
 
+  private buildNotifyUrl(): string {
+    return `${this.baseUrl.replace(/\/$/, "")}/notify`;
+  }
+
   private buildAuthUrl(relativeUrl: string): string {
     return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
@@ -522,5 +610,128 @@ export class ChillSharpClient {
 
   private formatDate(value: Date | null): string {
     return value ? value.toISOString() : "";
+  }
+
+  private async ensureNotificationConnection(): Promise<HubConnection> {
+    if (this.notificationConnection) {
+      if (this.notificationConnection.state === HubConnectionState.Disconnected) {
+        await this.notificationConnection.start();
+      }
+
+      return this.notificationConnection;
+    }
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(this.buildNotifyUrl(), {
+        accessTokenFactory: async () => {
+          if (this.canUseAuthentication()) {
+            await this.getAuthTokenIfNecessary();
+          }
+
+          return this.tokenState.accessToken ?? "";
+        }
+      })
+      .withAutomaticReconnect()
+      .build();
+
+    connection.on("EntitiesChanged", (payload: unknown) => {
+      void this.dispatchEntityChangeNotifications(payload);
+    });
+
+    connection.onreconnected(async () => {
+      await this.reregisterEntityChangeSubscriptions();
+    });
+
+    await connection.start();
+    this.notificationConnection = connection;
+    return connection;
+  }
+
+  private async unsubscribeFromEntityChanges(subscriptionId: string): Promise<void> {
+    const subscription = this.entityChangeSubscriptions.get(subscriptionId);
+    if (!subscription) {
+      return;
+    }
+
+    this.entityChangeSubscriptions.delete(subscriptionId);
+
+    const registrationKey = this.buildEntityChangeRegistrationKey(subscription.chillType, subscription.guid);
+    const registrationCount = this.entityChangeRegistrationCounts.get(registrationKey) ?? 0;
+    if (registrationCount <= 1) {
+      this.entityChangeRegistrationCounts.delete(registrationKey);
+
+      const connection = this.notificationConnection;
+      if (connection && connection.state === HubConnectionState.Connected) {
+        await connection.invoke("Unregister", subscription.chillType, subscription.guid);
+      }
+    } else {
+      this.entityChangeRegistrationCounts.set(registrationKey, registrationCount - 1);
+    }
+  }
+
+  private async dispatchEntityChangeNotifications(payload: unknown): Promise<void> {
+    const notifications = this.normalizeEntityChangeNotifications(payload);
+    if (notifications.length === 0) {
+      return;
+    }
+
+    for (const subscription of this.entityChangeSubscriptions.values()) {
+      const matchingChanges = notifications.filter((change) =>
+        change.chillType === subscription.chillType &&
+        (!subscription.guid || change.guid === subscription.guid)
+      );
+
+      if (matchingChanges.length === 0) {
+        continue;
+      }
+
+      await subscription.callback(matchingChanges);
+    }
+  }
+
+  private normalizeEntityChangeNotifications(payload: unknown): ChillEntityChangeNotification[] {
+    if (!Array.isArray(payload)) {
+      return [];
+    }
+
+    return payload
+      .filter((entry): entry is JsonObject => !!entry && typeof entry === "object" && !Array.isArray(entry))
+      .map((entry) => {
+        const chillType = this.readString(entry, "chillType");
+        const guid = this.readString(entry, "guid");
+        const action = this.readString(entry, "action");
+        if (!chillType || !guid || !this.isEntityChangeAction(action)) {
+          return null;
+        }
+
+        return {
+          chillType,
+          guid,
+          action
+        } satisfies ChillEntityChangeNotification;
+      })
+      .filter((entry): entry is ChillEntityChangeNotification => entry !== null);
+  }
+
+  private isEntityChangeAction(value: string | null): value is ChillEntityChangeAction {
+    return value === "CREATED" || value === "UPDATED" || value === "DELETED";
+  }
+
+  private async reregisterEntityChangeSubscriptions(): Promise<void> {
+    const connection = this.notificationConnection;
+    if (!connection || connection.state !== HubConnectionState.Connected) {
+      return;
+    }
+
+    for (const registrationKey of this.entityChangeRegistrationCounts.keys()) {
+      const separatorIndex = registrationKey.indexOf("|");
+      const chillType = separatorIndex >= 0 ? registrationKey.slice(0, separatorIndex) : registrationKey;
+      const guid = separatorIndex >= 0 ? registrationKey.slice(separatorIndex + 1) : "";
+      await connection.invoke("Register", chillType, guid || null);
+    }
+  }
+
+  private buildEntityChangeRegistrationKey(chillType: string, guid: string | null): string {
+    return `${chillType}|${guid ?? ""}`;
   }
 }

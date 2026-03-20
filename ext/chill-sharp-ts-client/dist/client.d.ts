@@ -42,6 +42,18 @@ export interface ChillSharpClientOptions {
     cultureName?: string;
     fetchImpl?: typeof fetch;
 }
+export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
+export interface ChillEntityChangeNotification extends JsonObject {
+    chillType: string;
+    guid: string;
+    action: ChillEntityChangeAction;
+}
+export type ChillEntityChangeCallback = (changes: ChillEntityChangeNotification[]) => void | Promise<void>;
+export interface ChillEntityChangeSubscription {
+    chillType: string;
+    guid: string | null;
+    unsubscribe(): Promise<void>;
+}
 export declare class ChillSharpClient {
     private readonly baseUrl;
     private readonly fetchImpl;
@@ -50,6 +62,10 @@ export declare class ChillSharpClient {
     private password;
     private refreshPromise;
     private tokenState;
+    private notificationConnection;
+    private readonly entityChangeSubscriptions;
+    private readonly entityChangeRegistrationCounts;
+    private entityChangeSubscriptionSequence;
     constructor(baseUrl: string, options?: ChillSharpClientOptions);
     query(dtoQuery: JsonObject): Promise<JsonObject>;
     find(dtoEntity: JsonObject): Promise<JsonObject | null>;
@@ -65,6 +81,8 @@ export declare class ChillSharpClient {
     getText(request: GetTextRequest): Promise<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Promise<GetTextResponse>;
+    subscribeToEntityChanges(chillType: string, callback: ChillEntityChangeCallback, guid?: string | null): Promise<ChillEntityChangeSubscription>;
+    disconnectEntityChanges(): Promise<void>;
     registerAuthAccount(payload: JsonObject): Promise<JsonObject>;
     loginAuthAccount(payload: JsonObject): Promise<JsonObject>;
     refreshAuthAccount(): Promise<JsonObject>;
@@ -85,6 +103,7 @@ export declare class ChillSharpClient {
     private tryRefreshAuthentication;
     private createCurrentTokenResponse;
     private buildChillUrl;
+    private buildNotifyUrl;
     private buildAuthUrl;
     private buildI18nUrl;
     private getAuthBaseUrl;
@@ -96,4 +115,11 @@ export declare class ChillSharpClient {
     private readValue;
     private parseDate;
     private formatDate;
+    private ensureNotificationConnection;
+    private unsubscribeFromEntityChanges;
+    private dispatchEntityChangeNotifications;
+    private normalizeEntityChangeNotifications;
+    private isEntityChangeAction;
+    private reregisterEntityChangeSubscriptions;
+    private buildEntityChangeRegistrationKey;
 }

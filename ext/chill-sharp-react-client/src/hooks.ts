@@ -1,7 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type {
+  ChillDtoSchema,
+  ChillDtoSchemaListItem,
+  ChillEntityChangeCallback,
+  ChillEntityChangeSubscription,
+  GetTextRequest,
+  GetTextResponse,
+  JsonObject
+} from "chill-sharp-ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: TData | null;
@@ -16,6 +24,11 @@ export interface UseChillMutationState<TData> {
   isLoading: boolean;
   execute: (...args: unknown[]) => Promise<TData>;
   reset: () => void;
+}
+
+export interface UseChillSubscriptionState {
+  error: unknown;
+  isSubscribed: boolean;
 }
 
 export function useSchema(
@@ -281,5 +294,67 @@ export function useEntityMutation(action: "find" | "create" | "update" | "delete
       setError(null);
       setIsLoading(false);
     }
+  };
+}
+
+export function useEntityChanges(
+  chillType: string,
+  onChanges: ChillEntityChangeCallback,
+  guid?: string | null
+): UseChillSubscriptionState {
+  const client = useChillSharpClient();
+  const onChangesRef = useRef<ChillEntityChangeCallback>(onChanges);
+  const unsubscribeRef = useRef<null | (() => Promise<void>)>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+
+  useEffect(() => {
+    onChangesRef.current = onChanges;
+  }, [onChanges]);
+
+  useEffect(() => {
+    let isDisposed = false;
+
+    setError(null);
+    setIsSubscribed(false);
+    unsubscribeRef.current = null;
+
+    void client
+      .subscribeToEntityChanges(
+        chillType,
+        async (changes) => {
+          await onChangesRef.current(changes);
+        },
+        guid
+      )
+      .then((subscription: ChillEntityChangeSubscription) => {
+        if (isDisposed) {
+          void subscription.unsubscribe();
+          return;
+        }
+
+        unsubscribeRef.current = () => subscription.unsubscribe();
+        setIsSubscribed(true);
+      })
+      .catch((err) => {
+        if (!isDisposed) {
+          setError(err);
+          setIsSubscribed(false);
+        }
+      });
+
+    return () => {
+      isDisposed = true;
+      setIsSubscribed(false);
+      if (unsubscribeRef.current) {
+        void unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
+  }, [client, chillType, guid]);
+
+  return {
+    error,
+    isSubscribed
   };
 }

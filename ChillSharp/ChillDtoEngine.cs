@@ -19,6 +19,7 @@
 
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Api;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp
@@ -46,11 +47,15 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillDtoEngine"/> using a Chill context.
         /// </summary>
         /// <param name="Context">The ChillSharp database context.</param>
-        public ChillDtoEngine(IChillContext Context, IChillSchemaService? schemaService = null)
+        public ChillDtoEngine(
+            IChillContext Context,
+            IChillSchemaService? schemaService = null,
+            IChillEntityChangeDispatcher? changeDispatcher = null)
         {
             _Engine = new ChillEngine(Context);
             _Context = Context;
             _SchemaService = schemaService;
+            _ChangeDispatcher = changeDispatcher;
         }
 
         /// <summary>
@@ -61,11 +66,14 @@ namespace ChillSharp
         {
             _Context = Engine._Context;
             _Engine = Engine;
+            _ChangeDispatcher = null;
         }
 
         private IChillContext _Context;
         private ChillEngine _Engine;
         private IChillSchemaService? _SchemaService;
+        private readonly IChillEntityChangeDispatcher? _ChangeDispatcher;
+        private readonly List<ChillEntityChangeNotification> _pendingEntityChanges = [];
 
         /// <summary>
         /// Starts a transaction
@@ -81,6 +89,7 @@ namespace ChillSharp
         public void CommitTransaction()
         {
             _Engine.CommitTransaction();
+            FlushEntityChanges();
         }
 
         /// <summary>
@@ -89,6 +98,7 @@ namespace ChillSharp
         public void RollbackTransaction()
         {
             _Engine.RollbackTransaction();
+            _pendingEntityChanges.Clear();
         }
 
         /// <summary>
@@ -159,6 +169,7 @@ namespace ChillSharp
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Create(e);
             DtoEntity.FromEntity(_Context, e);
+            QueueEntityChange(e, ChillEntityChangeNotification.CreatedAction);
             return DtoEntity;
         }
 
@@ -184,6 +195,7 @@ namespace ChillSharp
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Update(e);
             DtoEntity.FromEntity(_Context, e);
+            QueueEntityChange(e, ChillEntityChangeNotification.UpdatedAction);
             return DtoEntity;
         }
 
@@ -207,6 +219,7 @@ namespace ChillSharp
 
             DtoEntity.ToEntity(_Context, e);
             _Engine.Delete(e);
+            QueueEntityChange(DtoEntity.ChillType, DtoEntity.Guid, ChillEntityChangeNotification.DeletedAction);
         }
 
         public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
@@ -223,6 +236,48 @@ namespace ChillSharp
                 throw new ChillException("Chill schema service is not registered.");
 
             return _SchemaService.SetSchemaAsync(Schema).GetAwaiter().GetResult();
+        }
+
+        private void QueueEntityChange(IChillEntity entity, string action)
+        {
+            QueueEntityChange(
+                ChillTypeResolver.NormalizeChillType(entity.GetType(), _Context.GetChillTypePrefix()),
+                entity.Guid,
+                action);
+        }
+
+        private void QueueEntityChange(string chillType, Guid guid, string action)
+        {
+            if (_ChangeDispatcher == null || string.IsNullOrWhiteSpace(chillType) || guid == Guid.Empty || string.IsNullOrWhiteSpace(action))
+                return;
+
+            _pendingEntityChanges.Add(new ChillEntityChangeNotification
+            {
+                ChillType = NormalizeChillType(chillType),
+                Guid = guid,
+                Action = action
+            });
+
+            if (!_Engine.HasOpenTransaction)
+            {
+                FlushEntityChanges();
+            }
+        }
+
+        private void FlushEntityChanges()
+        {
+            if (_ChangeDispatcher == null || _pendingEntityChanges.Count == 0)
+                return;
+
+            var changes = _pendingEntityChanges.ToArray();
+            _pendingEntityChanges.Clear();
+            _ChangeDispatcher.DispatchAsync(changes).GetAwaiter().GetResult();
+        }
+
+        private string NormalizeChillType(string chillType)
+        {
+            var resolvedType = ChillTypeResolver.ResolveType(_Context.GetType().Assembly, chillType, _Context.GetChillTypePrefix());
+            return ChillTypeResolver.NormalizeChillType(resolvedType, _Context.GetChillTypePrefix());
         }
     }
 }

@@ -1,4 +1,4 @@
-import { ref, watchEffect } from "vue";
+import { onScopeDispose, ref, watch, watchEffect } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 export function useSchema(chillType, chillViewCode = "default", cultureName) {
@@ -26,9 +26,9 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         void load();
     });
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         reload: load
     };
 }
@@ -57,9 +57,9 @@ export function useSchemaList(cultureName) {
         void load();
     });
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         reload: load
     };
 }
@@ -88,9 +88,9 @@ export function useText(request) {
         void load();
     });
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         reload: load
     };
 }
@@ -119,9 +119,9 @@ export function useTexts(requests) {
         void load();
     });
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         reload: load
     };
 }
@@ -153,9 +153,9 @@ export function useTest() {
         void load();
     });
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         reload: load
     };
 }
@@ -182,9 +182,9 @@ export function useQueryMutation() {
         }
     };
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         execute,
         reset: () => {
             data.value = null;
@@ -231,15 +231,66 @@ export function useEntityMutation(action) {
         }
     };
     return {
-        data: asReadonlyRef(data),
-        error: asReadonlyRef(error),
-        isLoading: asReadonlyRef(isLoading),
+        data,
+        error,
+        isLoading,
         execute,
         reset: () => {
             data.value = null;
             error.value = null;
             isLoading.value = false;
         }
+    };
+}
+export function useEntityChanges(chillType, onChanges, guid) {
+    const client = useChillSharpClient();
+    const error = ref(null);
+    const isSubscribed = ref(false);
+    let subscription = null;
+    const release = async () => {
+        const currentSubscription = subscription;
+        subscription = null;
+        isSubscribed.value = false;
+        if (currentSubscription) {
+            await currentSubscription.unsubscribe();
+        }
+    };
+    watch([
+        () => readRef(chillType),
+        () => (guid === undefined ? null : (readRef(guid) ?? null)),
+        () => readRef(onChanges)
+    ], async ([nextChillType, nextGuid, nextOnChanges], _previousValue, onCleanup) => {
+        error.value = null;
+        await release();
+        let isActive = true;
+        onCleanup(() => {
+            isActive = false;
+            void release();
+        });
+        try {
+            const nextSubscription = await client.subscribeToEntityChanges(nextChillType, async (changes) => {
+                await nextOnChanges(changes);
+            }, nextGuid);
+            if (!isActive) {
+                await nextSubscription.unsubscribe();
+                return;
+            }
+            subscription = nextSubscription;
+            isSubscribed.value = true;
+        }
+        catch (err) {
+            if (isActive) {
+                error.value = err;
+                isSubscribed.value = false;
+            }
+        }
+    }, { immediate: true });
+    onScopeDispose(() => {
+        void release();
+    });
+    return {
+        error,
+        isSubscribed
     };
 }
 function asReadonlyRef(value) {
