@@ -14,6 +14,9 @@ This folder contains the reference documentation for ChillSharp.
 - [RegisterContext.md](./RegisterContext.md)
   Register ChillSharp modules against a host `DbContext` and map the API surface.
 
+- [Configuration/README.md](./Configuration/README.md)
+  Quick reference for the example host configuration options and their environment variables.
+
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 

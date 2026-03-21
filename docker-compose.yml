@@ -1,0 +1,54 @@
+services:
+  chillsharp-blogging-api:
+    # Build the example API image from the repository root.
+    build:
+      context: .
+      dockerfile: ChillSharp.Examples/BloggingApiService/Dockerfile
+    image: chillsharp-blogging-api:local
+    container_name: chillsharp-blogging-api
+
+    environment:
+      # Keep explicit defaults here so the compose file is self-documenting
+      # even when a variable is omitted from the local .env file.
+      ASPNETCORE_URLS: ${ASPNETCORE_URLS:-http://+:8080}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      CHILLSHARP_DB_PATH: ${CHILLSHARP_DB_PATH:-/data/blogging.db}
+      CHILLSHARP_PRIMARY_CULTURE: ${CHILLSHARP_PRIMARY_CULTURE:-en-GB}
+      CHILLSHARP_SECONDARY_CULTURE: ${CHILLSHARP_SECONDARY_CULTURE:-it-IT}
+      CHILLSHARP_API_PROTECTED: ${CHILLSHARP_API_PROTECTED:-true}
+      CHILLSHARP_ENABLE_SCHEMA: ${CHILLSHARP_ENABLE_SCHEMA:-true}
+      CHILLSHARP_ENABLE_AUTH: ${CHILLSHARP_ENABLE_AUTH:-true}
+      CHILLSHARP_ENABLE_I18N: ${CHILLSHARP_ENABLE_I18N:-true}
+      CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES: ${CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES:-20}
+      CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS: ${CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS:-14}
+      CHILLSHARP_AUTH_RETURN_PASSWORD_RESET_TOKENS: ${CHILLSHARP_AUTH_RETURN_PASSWORD_RESET_TOKENS:-false}
+      CHILLSHARP_AUTH_SEND_PASSWORD_RESET_EMAILS: ${CHILLSHARP_AUTH_SEND_PASSWORD_RESET_EMAILS:-true}
+      CHILLSHARP_AUTH_INITIALIZE_ROOT_USER: ${CHILLSHARP_AUTH_INITIALIZE_ROOT_USER:-true}
+      CHILLSHARP_AUTH_CREATE_ROOT_AUTH_USER: ${CHILLSHARP_AUTH_CREATE_ROOT_AUTH_USER:-true}
+      CHILLSHARP_AUTH_PASSWORD_RESET_SUBJECT: ${CHILLSHARP_AUTH_PASSWORD_RESET_SUBJECT:-Reset your password}
+      CHILLSHARP_AUTH_PASSWORD_RESET_URL: ${CHILLSHARP_AUTH_PASSWORD_RESET_URL:-http://localhost:3000/reset-password}
+      CHILLSHARP_SMTP_HOST: ${CHILLSHARP_SMTP_HOST:-smtp.example.com}
+      CHILLSHARP_SMTP_PORT: ${CHILLSHARP_SMTP_PORT:-587}
+      CHILLSHARP_SMTP_ENABLE_SSL: ${CHILLSHARP_SMTP_ENABLE_SSL:-true}
+      CHILLSHARP_SMTP_USERNAME: ${CHILLSHARP_SMTP_USERNAME:-no-reply@example.com}
+      CHILLSHARP_SMTP_PASSWORD: ${CHILLSHARP_SMTP_PASSWORD:-change-me}
+      CHILLSHARP_SMTP_FROM_EMAIL: ${CHILLSHARP_SMTP_FROM_EMAIL:-no-reply@example.com}
+      CHILLSHARP_SMTP_FROM_DISPLAY_NAME: ${CHILLSHARP_SMTP_FROM_DISPLAY_NAME:-ChillSharp No-Reply}
+      CHILLSHARP_AUTH_ROOT_USERNAME: ${CHILLSHARP_AUTH_ROOT_USERNAME:-root}
+      CHILLSHARP_AUTH_ROOT_PASSWORD: ${CHILLSHARP_AUTH_ROOT_PASSWORD:-Pass123$}
+      CHILLSHARP_AUTH_ROOT_EMAIL: ${CHILLSHARP_AUTH_ROOT_EMAIL:-root@example.com}
+      CHILLSHARP_AUTH_ROOT_DISPLAY_NAME: ${CHILLSHARP_AUTH_ROOT_DISPLAY_NAME:-Root Administrator}
+
+    ports:
+      # Expose the API on localhost:8080.
+      - "8080:8080"
+
+    volumes:
+      # Persist the SQLite database outside the container lifecycle.
+      - chillsharp-blogging-data:/data
+
+    restart: unless-stopped
+
+volumes:
+  # Named volume used by CHILLSHARP_DB_PATH=/data/blogging.db.
+  chillsharp-blogging-data:
