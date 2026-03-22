@@ -21,6 +21,8 @@ using ChillSharp.Annotations;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 namespace ChillSharp.Dto
@@ -50,34 +52,53 @@ namespace ChillSharp.Dto
             IChillContext? context = null,
             string? cultureName = null)
         {
-            var s = new ChillDtoPropertySchema();
-            s.Name = propInfo.Name;
             var chillAttr = propInfo.GetCustomAttribute<ChillPropertyAttribute>();
-            s.DisplayName = ChillLabelResolver.Resolve(
-                chillAttr?.PrimaryLanguageLabel,
-                chillAttr?.SecondaryLanguageLabel,
-                propInfo.Name,
-                context,
-                cultureName);
-            s.Type = ChillDtoPropertyMapper.Map(propInfo.PropertyType);
+            var propertyType = propInfo.PropertyType;
+            var schema = new ChillDtoPropertySchema
+            {
+                Name = propInfo.Name,
+                DisplayName = ChillLabelResolver.Resolve(
+                    chillAttr?.PrimaryLanguageLabel,
+                    chillAttr?.SecondaryLanguageLabel,
+                    propInfo.Name,
+                    context,
+                    cultureName),
+                Type = ChillDtoPropertyMapper.Map(propertyType),
+                IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
+                IsReadOnly = chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo),
+                MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
+                MaxLength = chillAttr?.MaxLength ?? ResolveMaxLength(propInfo),
+                IntegerMinValue = chillAttr?.IntegerMinValue,
+                IntegerMaxValue = chillAttr?.IntegerMaxValue,
+                DecimalMinValue = chillAttr?.GetDecimalMinValue(),
+                DecimalMaxValue = chillAttr?.GetDecimalMaxValue(),
+                DecimalPlaces = chillAttr?.DecimalPlaces,
+                Precision = chillAttr?.Precision,
+                Scale = chillAttr?.Scale,
+                DateFormat = chillAttr?.DateFormat ?? ResolveDateFormat(propInfo),
+                CustomFormat = chillAttr?.CustomFormat ?? ResolveCustomFormat(propInfo),
+                RegexPattern = chillAttr?.RegexPattern ?? ResolveRegexPattern(propInfo),
+                EnumValues = ResolveEnumValues(propertyType, chillAttr),
+                Metadata = chillAttr?.GetMetadata() ?? new Dictionary<string, string>()
+            };
+
+            ApplyPrecisionFallbacks(propInfo, schema);
 
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
 
-            if (s.Type == ChillDtoPropertyType.ChillEntity ||
-                s.Type == ChillDtoPropertyType.ChillQuery)
+            if (schema.Type == ChillDtoPropertyType.ChillEntity ||
+                schema.Type == ChillDtoPropertyType.ChillQuery)
             {
-                string? propertyFullType = propInfo.PropertyType.FullName;
+                string? propertyFullType = propertyType.FullName;
                 if (!string.IsNullOrEmpty(propertyFullType))
                 {
                     propertyFullType = propertyFullType.Replace(shrinkTypePrefix, string.Empty);
-                    s.ReferenceChillType = propertyFullType;
+                    schema.ReferenceChillType = propertyFullType;
                 }
             }
-            else if (s.Type == ChillDtoPropertyType.ChillEntityCollection)
+            else if (schema.Type == ChillDtoPropertyType.ChillEntityCollection)
             {
-                var propertyType = propInfo.PropertyType;
-
                 var collectionType = new[] { propertyType }
                     .Concat(propertyType.GetInterfaces())
                     .FirstOrDefault(t =>
@@ -95,12 +116,13 @@ namespace ChillSharp.Dto
                         if (!string.IsNullOrEmpty(itemFullName))
                         {
                             itemFullName = itemFullName.Replace(shrinkTypePrefix, string.Empty);
-                            s.ReferenceChillType = itemFullName;
+                            schema.ReferenceChillType = itemFullName;
                         }
                     }
                 }
             }
-            return s;
+
+            return schema;
         }
 
         /// <summary>
@@ -129,9 +151,34 @@ namespace ChillSharp.Dto
         public bool? IsReadOnly { get; set; }
 
         /// <summary>
+        /// Minimum string length when applicable.
+        /// </summary>
+        public int? MinLength { get; set; }
+
+        /// <summary>
         /// Maximum string length when applicable.
         /// </summary>
         public int? MaxLength { get; set; }
+
+        /// <summary>
+        /// Minimum allowed value for integer-like properties.
+        /// </summary>
+        public long? IntegerMinValue { get; set; }
+
+        /// <summary>
+        /// Maximum allowed value for integer-like properties.
+        /// </summary>
+        public long? IntegerMaxValue { get; set; }
+
+        /// <summary>
+        /// Minimum allowed value for decimal-like properties.
+        /// </summary>
+        public decimal? DecimalMinValue { get; set; }
+
+        /// <summary>
+        /// Maximum allowed value for decimal-like properties.
+        /// </summary>
+        public decimal? DecimalMaxValue { get; set; }
 
         /// <summary>
         /// Preferred number of decimal places for decimal-like values.
@@ -174,15 +221,27 @@ namespace ChillSharp.Dto
         public string CustomFormat { get; set; } = string.Empty;
 
         /// <summary>
+        /// Regular-expression hint for string validation.
+        /// </summary>
+        public string RegexPattern { get; set; } = string.Empty;
+
+        /// <summary>
         /// Creates a schema preconfigured for decimal values.
         /// </summary>
-        public static ChillDtoPropertySchema ForDecimal(int? decimalPlaces = null, int? precision = null, int? scale = null)
+        public static ChillDtoPropertySchema ForDecimal(
+            int? decimalPlaces = null,
+            int? precision = null,
+            int? scale = null,
+            decimal? minValue = null,
+            decimal? maxValue = null)
         {
             return new ChillDtoPropertySchema
             {
                 DecimalPlaces = decimalPlaces,
                 Precision = precision,
-                Scale = scale
+                Scale = scale,
+                DecimalMinValue = minValue,
+                DecimalMaxValue = maxValue
             };
         }
 
@@ -200,11 +259,25 @@ namespace ChillSharp.Dto
         /// <summary>
         /// Creates a schema preconfigured for string values.
         /// </summary>
-        public static ChillDtoPropertySchema ForString(int? maxLength = null)
+        public static ChillDtoPropertySchema ForString(int? minLength = null, int? maxLength = null, string? regexPattern = null)
         {
             return new ChillDtoPropertySchema
             {
-                MaxLength = maxLength
+                MinLength = minLength,
+                MaxLength = maxLength,
+                RegexPattern = regexPattern ?? string.Empty
+            };
+        }
+
+        /// <summary>
+        /// Creates a schema preconfigured for integer values.
+        /// </summary>
+        public static ChillDtoPropertySchema ForInteger(long? minValue = null, long? maxValue = null)
+        {
+            return new ChillDtoPropertySchema
+            {
+                IntegerMinValue = minValue,
+                IntegerMaxValue = maxValue
             };
         }
 
@@ -239,6 +312,118 @@ namespace ChillSharp.Dto
             {
                 ReferenceChillType = referenceType ?? string.Empty
             };
+        }
+
+        private static void ApplyPrecisionFallbacks(PropertyInfo propInfo, ChillDtoPropertySchema schema)
+        {
+            var precisionAttribute = propInfo.GetCustomAttribute<PrecisionAttribute>();
+            if (precisionAttribute != null)
+            {
+                schema.Precision ??= precisionAttribute.Precision;
+                schema.Scale ??= precisionAttribute.Scale;
+                schema.DecimalPlaces ??= precisionAttribute.Scale;
+            }
+
+            if (schema.DecimalPlaces == null && schema.Scale != null)
+            {
+                schema.DecimalPlaces = schema.Scale;
+            }
+        }
+
+        private static bool? ResolveNullable(PropertyInfo propInfo)
+        {
+            var propertyType = propInfo.PropertyType;
+            if (Nullable.GetUnderlyingType(propertyType) != null)
+            {
+                return true;
+            }
+
+            if (propertyType.IsValueType)
+            {
+                return false;
+            }
+
+            var nullability = new NullabilityInfoContext().Create(propInfo);
+            return nullability.ReadState switch
+            {
+                NullabilityState.Nullable => true,
+                NullabilityState.NotNull => false,
+                _ => null
+            };
+        }
+
+        private static bool? ResolveReadOnly(PropertyInfo propInfo)
+        {
+            if (!propInfo.CanWrite || propInfo.SetMethod == null || !propInfo.SetMethod.IsPublic)
+            {
+                return true;
+            }
+
+            var readOnlyAttribute = propInfo.GetCustomAttribute<ReadOnlyAttribute>();
+            if (readOnlyAttribute != null)
+            {
+                return readOnlyAttribute.IsReadOnly;
+            }
+
+            var editableAttribute = propInfo.GetCustomAttribute<EditableAttribute>();
+            if (editableAttribute != null)
+            {
+                return !editableAttribute.AllowEdit;
+            }
+
+            return null;
+        }
+
+        private static int? ResolveMinLength(PropertyInfo propInfo)
+        {
+            var stringLengthAttribute = propInfo.GetCustomAttribute<StringLengthAttribute>();
+            return stringLengthAttribute?.MinimumLength;
+        }
+
+        private static int? ResolveMaxLength(PropertyInfo propInfo)
+        {
+            var maxLengthAttribute = propInfo.GetCustomAttribute<MaxLengthAttribute>();
+            if (maxLengthAttribute != null)
+            {
+                return maxLengthAttribute.Length;
+            }
+
+            var stringLengthAttribute = propInfo.GetCustomAttribute<StringLengthAttribute>();
+            return stringLengthAttribute?.MaximumLength;
+        }
+
+        private static string ResolveDateFormat(PropertyInfo propInfo)
+        {
+            var displayFormatAttribute = propInfo.GetCustomAttribute<DisplayFormatAttribute>();
+            return displayFormatAttribute?.DataFormatString ?? string.Empty;
+        }
+
+        private static string ResolveCustomFormat(PropertyInfo propInfo)
+        {
+            var displayFormatAttribute = propInfo.GetCustomAttribute<DisplayFormatAttribute>();
+            return displayFormatAttribute?.DataFormatString ?? string.Empty;
+        }
+
+        private static string ResolveRegexPattern(PropertyInfo propInfo)
+        {
+            var regexAttribute = propInfo.GetCustomAttribute<RegularExpressionAttribute>();
+            return regexAttribute?.Pattern ?? string.Empty;
+        }
+
+        private static List<string> ResolveEnumValues(Type propertyType, ChillPropertyAttribute? chillAttr)
+        {
+            if (chillAttr?.EnumValues != null && chillAttr.EnumValues.Length > 0)
+            {
+                return chillAttr.EnumValues.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+            }
+
+            var underlyingType = Nullable.GetUnderlyingType(propertyType) ?? propertyType;
+            if (!underlyingType.IsEnum)
+            {
+                return new List<string>();
+            }
+
+            return Enum.GetNames(underlyingType).ToList();
         }
     }
 }
