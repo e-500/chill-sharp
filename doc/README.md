@@ -23,6 +23,12 @@ This folder contains the reference documentation for ChillSharp.
 - [PermissionModel/README.md](./PermissionModel/README.md)
   The permission model used by `ChillSharp.Auth`, including precedence, scopes, and how entity/property access is resolved.
 
+- [ComplianceGuide/README.md](./ComplianceGuide/README.md)
+  How ChillSharp supports common security and compliance controls such as validation, least-privilege authorization, and audit metadata.
+
+- [AIAssistedDevelopment/README.md](./AIAssistedDevelopment/README.md)
+  How ChillSharp supports AI-assisted development by reducing repetitive CRUD code, stabilizing the API surface, and keeping model growth more uniform.
+
 - [ClientGeneration/README.md](./ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
 
