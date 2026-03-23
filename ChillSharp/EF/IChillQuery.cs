@@ -85,5 +85,16 @@ namespace ChillSharp.EF
         /// <param name="query">The query to paginate.</param>
         /// <returns>The paginated <see cref="IQueryable{T}"/>.</returns>
         IQueryable<T> OnPaginate(IChillContext Context, IQueryable<T> Query);
+
+        /// <summary>
+        /// Returns optional localized validation message definitions that can be referenced
+        /// by placing a GUID string inside a DataAnnotations <c>ErrorMessage</c>.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        /// <returns>The validation message definitions available for the query.</returns>
+        IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context)
+        {
+            return [];
+        }
     }
 }

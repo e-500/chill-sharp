@@ -49,5 +49,16 @@ namespace ChillSharp.EF
         /// <param name="Context">The active database context.</param>
         /// <returns>A collection of validation results.</returns>
         IEnumerable<ChillValidationError> OnValidation(IChillContext Context);
+
+        /// <summary>
+        /// Returns optional localized validation message definitions that can be referenced
+        /// by placing a GUID string inside a DataAnnotations <c>ErrorMessage</c>.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        /// <returns>The validation message definitions available for the current model.</returns>
+        IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context)
+        {
+            return [];
+        }
     }
 }

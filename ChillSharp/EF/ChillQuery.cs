@@ -120,6 +120,25 @@ namespace ChillSharp.EF
         /// <param name="Context">The active Chill database context.</param>
         /// <returns>A collection of <see cref="ChillValidationError"/> representing validation issues.</returns>
         public virtual IEnumerable<ChillValidationError> OnValidation(IChillContext Context) { return new List<ChillValidationError>(); }
+
+        /// <summary>
+        /// Returns optional validation message definitions that can translate GUID-based
+        /// DataAnnotations error messages using ChillSharp primary/secondary texts.
+        /// </summary>
+        /// <param name="Context">The active Chill database context.</param>
+        /// <returns>The validation message definitions available for the query.</returns>
+        public virtual IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context) { return new List<ChillValidationMessageDefinition>(); }
+
+        // ChillSharp invokes validation through the IChillValidable interface, not through the concrete query.
+        // This keeps DataAnnotations validation for Chill properties always enabled while preserving the simple
+        // user override surface on the public virtual OnValidation(...) method.
+        IEnumerable<ChillValidationError> IChillValidable.OnValidation(IChillContext Context)
+        {
+            var errors = new List<ChillValidationError>();
+            errors.AddRange(ChillDataAnnotationsValidator.ValidateChillProperties(this, Context, GetValidationMessageDefinitions(Context)));
+            errors.AddRange(OnValidation(Context));
+            return errors;
+        }
         #endregion
     }
 }

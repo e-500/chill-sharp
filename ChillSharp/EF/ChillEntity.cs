@@ -120,6 +120,7 @@ namespace ChillSharp.EF
         // being able to accidentally skip the base audit logic.
         void IChillEntity.OnAfterUpdate(IChillContext Context)
         {
+            ChillDataAnnotationsValidator.ThrowIfInvalid(((IChillValidable)this).OnValidation(Context));
             UpdateAuditFields(Context);
             OnAfterUpdate(Context);
         }
@@ -263,6 +264,26 @@ namespace ChillSharp.EF
         /// <param name="Context">The active database context.</param>
         /// <returns>A collection of validation results.</returns>
         public virtual IEnumerable<ChillValidationError> OnValidation(IChillContext Context) { return new List<ChillValidationError>(); }
+
+        /// <summary>
+        /// Returns optional validation message definitions that can translate GUID-based
+        /// DataAnnotations error messages using ChillSharp primary/secondary texts.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        /// <returns>The validation message definitions available for the entity.</returns>
+        public virtual IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context) { return new List<ChillValidationMessageDefinition>(); }
+
+        // ChillSharp invokes validation through the IChillValidable interface, not through the concrete class.
+        // This explicit implementation guarantees that framework DataAnnotations run first for the Chill
+        // properties only, then the user-defined OnValidation(...) logic is appended without requiring
+        // derived classes to call base.OnValidation(...).
+        IEnumerable<ChillValidationError> IChillValidable.OnValidation(IChillContext Context)
+        {
+            var errors = new List<ChillValidationError>();
+            errors.AddRange(ChillDataAnnotationsValidator.ValidateChillProperties(this, Context, GetValidationMessageDefinitions(Context)));
+            errors.AddRange(OnValidation(Context));
+            return errors;
+        }
         #endregion
     }
 }

@@ -141,6 +141,17 @@ namespace ChillSharp.EF
         /// <param name="context">The database context used to access related data.</param>
         /// <returns>The full-text string representing the entity.</returns>
         string GetFullTextContent(IChillContext Context);
+
+        /// <summary>
+        /// Returns optional localized validation message definitions that can be referenced
+        /// by placing a GUID string inside a DataAnnotations <c>ErrorMessage</c>.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        /// <returns>The validation message definitions available for the entity.</returns>
+        IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context)
+        {
+            return [];
+        }
         #endregion
     }
 }
