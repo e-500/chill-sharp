@@ -179,7 +179,7 @@ export class ChillSharpClient {
   }
 
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
-    return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
+    return this.sendJson<GetTextResponse | null>("GET", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
   }
 
   getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>> {
@@ -188,14 +188,14 @@ export class ChillSharpClient {
     }
 
     return this.sendJson<Array<GetTextResponse | null>>(
-      "POST",
-      this.buildI18nUrl("text/get-multiple"),
+      "GET",
+      this.buildI18nUrl("get-multiple-text"),
       requests.map((request) => this.prepareGetTextRequest(request))
     );
   }
 
   setText(payload: JsonObject): Promise<GetTextResponse> {
-    return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("text"), payload);
+    return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("set-text"), payload);
   }
 
   async subscribeToEntityChanges(

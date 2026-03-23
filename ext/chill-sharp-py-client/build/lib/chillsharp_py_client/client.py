@@ -103,15 +103,15 @@ class ChillSharpClient:
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
         return self._send_json(
-            "POST",
-            self._build_i18n_url("text/get"),
+            "GET",
+            self._build_i18n_url("get-text"),
             self._prepare_get_text_request(request),
             allow_anonymous=True,
         )
 
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""
-        return self._send_json("PUT", self._build_i18n_url("text"), payload)
+        return self._send_json("PUT", self._build_i18n_url("set-text"), payload)
 
     def register_auth_account(self, payload: JsonDict) -> JsonDict:
         """Register an auth account and store returned tokens."""

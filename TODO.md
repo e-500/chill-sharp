@@ -2,6 +2,9 @@
 - Update website chillsharp.dev e pubblicazione video introduttivo
 - Creazione di podcast per specifica funzionalità (e pubblicazione su spotify?)
 
+## Site
+- 
+
 ## Aspects
 - Cost for AI rereprocess all endpoint to add afunctionlity or horizontal new featrue introduction (the same cost in the human way) 
 - Hardening the security
@@ -11,14 +14,14 @@
 # Features TODO
 
 ## Core
-- ENV variabile configuration (Priority: ENV_VARS, appsettings.json)
++ ENV variabile configuration (Priority: ENV_VARS, appsettings.json)
 
 ## Query capabilities
 - Include advanced full text search based on FullTextContent
 
 ## Auth
-- Create and test reset password email capability
-- Create ENV variables for reset password.
++ Create and test reset password email capability
++ Create ENV variables for reset password.
 
 ## Schema
 - Creation of ChillEntityConfiguration (and ChillQueryConfiguration ?!) to store standard behaviour options for example:

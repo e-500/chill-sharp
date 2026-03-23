@@ -73,16 +73,16 @@ export class ChillSharpClient {
         return this.sendJson("POST", this.buildChillUrl("set-schema"), schema);
     }
     getText(request) {
-        return this.sendJson("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
+        return this.sendJson("GET", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
     }
     getTexts(requests) {
         if (!Array.isArray(requests)) {
             throw new Error("requests is required.");
         }
-        return this.sendJson("POST", this.buildI18nUrl("text/get-multiple"), requests.map((request) => this.prepareGetTextRequest(request)));
+        return this.sendJson("GET", this.buildI18nUrl("get-multiple-text"), requests.map((request) => this.prepareGetTextRequest(request)));
     }
     setText(payload) {
-        return this.sendJson("PUT", this.buildI18nUrl("text"), payload);
+        return this.sendJson("PUT", this.buildI18nUrl("set-text"), payload);
     }
     async subscribeToEntityChanges(chillType, callback, guid) {
         if (typeof callback !== "function") {
