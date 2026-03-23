@@ -194,6 +194,152 @@ public class UpdateAuthPermissionRuleRequest : CreateAuthPermissionRuleRequest
 }
 
 /// <summary>
+/// Editable permission-rule payload used by the new auth management endpoints.
+/// </summary>
+public class AuthPermissionRuleItem
+{
+    /// <summary>
+    /// Gets or sets the permission-rule identifier when editing an existing rule.
+    /// </summary>
+    public Guid? Guid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the effect applied by the rule.
+    /// </summary>
+    public PermissionEffect Effect { get; set; }
+
+    /// <summary>
+    /// Gets or sets the action controlled by the rule.
+    /// </summary>
+    public PermissionAction Action { get; set; }
+
+    /// <summary>
+    /// Gets or sets the hierarchy scope targeted by the rule.
+    /// </summary>
+    public PermissionScope Scope { get; set; }
+
+    /// <summary>
+    /// Gets or sets the targeted module prefix.
+    /// </summary>
+    [Required]
+    [MaxLength(256)]
+    public string Module { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the targeted entity name for entity and property rules.
+    /// </summary>
+    [MaxLength(128)]
+    public string? EntityName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the targeted property name for property rules.
+    /// </summary>
+    [MaxLength(128)]
+    public string? PropertyName { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether a property rule applies to all properties of the entity.
+    /// </summary>
+    public bool AppliesToAllProperties { get; set; }
+
+    /// <summary>
+    /// Gets or sets a free-text description for the rule.
+    /// </summary>
+    [MaxLength(1024)]
+    public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request payload for creating or updating a user together with role assignments and direct permissions.
+/// </summary>
+public class SetAuthUserRequest
+{
+    /// <summary>
+    /// Gets or sets the user identifier. Leave empty to create a new user.
+    /// </summary>
+    public Guid? Guid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the external identity provider identifier.
+    /// </summary>
+    [Required]
+    [MaxLength(256)]
+    public string ExternalId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the unique user name.
+    /// </summary>
+    [Required]
+    [MaxLength(256)]
+    public string UserName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the display name shown in the UI.
+    /// </summary>
+    [MaxLength(256)]
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the user is active.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets whether the user can manage auth permissions.
+    /// </summary>
+    public bool CanManagePermissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets the full role assignment list for the user.
+    /// </summary>
+    public IReadOnlyList<Guid> RoleGuids { get; set; } = Array.Empty<Guid>();
+
+    /// <summary>
+    /// Gets or sets the full list of direct permissions for the user.
+    /// </summary>
+    public IReadOnlyList<AuthPermissionRuleItem> Permissions { get; set; } = Array.Empty<AuthPermissionRuleItem>();
+}
+
+/// <summary>
+/// Request payload for creating or updating a role together with its users and permissions.
+/// </summary>
+public class SetAuthRoleRequest
+{
+    /// <summary>
+    /// Gets or sets the role identifier. Leave empty to create a new role.
+    /// </summary>
+    public Guid? Guid { get; set; }
+
+    /// <summary>
+    /// Gets or sets the unique role name.
+    /// </summary>
+    [Required]
+    [MaxLength(128)]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the role description.
+    /// </summary>
+    [MaxLength(1024)]
+    public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets whether the role is active.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the full list of users assigned to the role.
+    /// </summary>
+    public IReadOnlyList<Guid> UserGuids { get; set; } = Array.Empty<Guid>();
+
+    /// <summary>
+    /// Gets or sets the full list of role permissions.
+    /// </summary>
+    public IReadOnlyList<AuthPermissionRuleItem> Permissions { get; set; } = Array.Empty<AuthPermissionRuleItem>();
+}
+
+/// <summary>
 /// Request payload for evaluating an entity-level permission.
 /// </summary>
 public class EvaluateEntityPermissionRequest

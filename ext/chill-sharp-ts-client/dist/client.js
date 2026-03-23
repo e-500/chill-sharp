@@ -144,6 +144,29 @@ export class ChillSharpClient {
     resetAuthPassword(payload) {
         return this.sendAuthJson("POST", "account/reset-password", payload, true, true);
     }
+    getAuthPermissions() {
+        return this.sendAuthJson("GET", "get-permissions");
+    }
+    getAuthUserList() {
+        return this.sendAuthJson("GET", "get-user-list");
+    }
+    getAuthUser(userGuid) {
+        const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+        return this.sendAuthJson("GET", `get-user?userGuid=${encodeURIComponent(normalizedUserGuid)}`);
+    }
+    setAuthUser(payload) {
+        return this.sendAuthJson("POST", "set-user", payload);
+    }
+    getAuthRoleList() {
+        return this.sendAuthJson("GET", "get-role-list");
+    }
+    getAuthRole(roleGuid) {
+        const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+        return this.sendAuthJson("GET", `get-role?roleGuid=${encodeURIComponent(normalizedRoleGuid)}`);
+    }
+    setAuthRole(payload) {
+        return this.sendAuthJson("POST", "set-role", payload);
+    }
     prepareGetTextRequest(request) {
         if (!request || typeof request !== "object") {
             throw new Error("request is required.");

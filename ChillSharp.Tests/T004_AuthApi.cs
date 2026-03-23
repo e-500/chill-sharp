@@ -19,12 +19,15 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Model;
 using ChillSharp.Api;
 using ChillSharp.Client;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -315,6 +318,204 @@ public sealed class AuthApi
         }
     }
 
+    /// <summary>
+    /// Verifies the refactored get/set management endpoints and that updates do not duplicate memberships or permission rules.
+    /// </summary>
+    [TestMethod]
+    public async Task Step006_RefactoredManagementEndpointsReturnStructuredPayloads()
+    {
+        TestApiHost.EnsureStarted();
+
+        using var client = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5000/")
+        };
+
+        var role = await (await client.PostAsJsonAsync("api/chill-auth/set-role", new SetAuthRoleRequest
+        {
+            Name = $"ManagedRole-{Guid.NewGuid():N}",
+            Description = "Role created by set-role",
+            IsActive = true,
+            Permissions =
+            [
+                new AuthPermissionRuleItem
+                {
+                    Effect = PermissionEffect.Allow,
+                    Action = PermissionAction.Query,
+                    Scope = PermissionScope.Entity,
+                    Module = "Blog",
+                    EntityName = "Post",
+                    Description = "Allow blog post query"
+                }
+            ]
+        })).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
+
+        var user = await (await client.PostAsJsonAsync("api/chill-auth/set-user", new SetAuthUserRequest
+        {
+            ExternalId = $"managed-user-{Guid.NewGuid():N}",
+            UserName = $"managed.user.{Guid.NewGuid():N}",
+            DisplayName = "Managed User",
+            IsActive = true,
+            RoleGuids = [role.Guid],
+            Permissions =
+            [
+                new AuthPermissionRuleItem
+                {
+                    Effect = PermissionEffect.Allow,
+                    Action = PermissionAction.Modify,
+                    Scope = PermissionScope.Property,
+                    Module = "Blog",
+                    EntityName = "Post",
+                    PropertyName = "Title",
+                    Description = "Allow title edits"
+                }
+            ]
+        })).EnsureSuccess().Content.ReadAsAsync<AuthUserDetailsResponse>();
+
+        var fetchedUser = await (await client.GetAsync($"api/chill-auth/get-user?userGuid={user.Guid}")).EnsureSuccess().Content.ReadAsAsync<AuthUserDetailsResponse>();
+        var fetchedRole = await (await client.GetAsync($"api/chill-auth/get-role?roleGuid={role.Guid}")).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
+        var userList = await (await client.GetAsync("api/chill-auth/get-user-list")).EnsureSuccess().Content.ReadAsAsync<List<AuthUserListItemResponse>>();
+        var roleList = await (await client.GetAsync("api/chill-auth/get-role-list")).EnsureSuccess().Content.ReadAsAsync<List<AuthRoleListItemResponse>>();
+
+        Assert.IsNotNull(fetchedUser);
+        Assert.AreEqual(1, fetchedUser.Roles.Count);
+        Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
+        Assert.AreEqual(1, fetchedUser.Permissions.Count);
+        Assert.IsNotNull(fetchedRole);
+        Assert.AreEqual(1, fetchedRole.Users.Count);
+        Assert.AreEqual(user.Guid, fetchedRole.Users[0].Guid);
+        Assert.AreEqual(1, fetchedRole.Permissions.Count);
+        Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
+        Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
+
+        var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;
+        var updatedRole = await (await client.PostAsJsonAsync("api/chill-auth/set-role", new SetAuthRoleRequest
+        {
+            Guid = role.Guid,
+            Name = role.Name,
+            Description = "Role updated by set-role",
+            IsActive = true,
+            UserGuids = [user.Guid],
+            Permissions =
+            [
+                new AuthPermissionRuleItem
+                {
+                    Guid = existingRolePermissionGuid,
+                    Effect = PermissionEffect.Allow,
+                    Action = PermissionAction.Query,
+                    Scope = PermissionScope.Entity,
+                    Module = "Blog",
+                    EntityName = "Post",
+                    Description = "Allow blog post query"
+                },
+                new AuthPermissionRuleItem
+                {
+                    Effect = PermissionEffect.Allow,
+                    Action = PermissionAction.Update,
+                    Scope = PermissionScope.Entity,
+                    Module = "Blog",
+                    EntityName = "Post",
+                    Description = "Allow blog post update"
+                }
+            ]
+        })).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
+
+        Assert.AreEqual(2, updatedRole.Permissions.Count);
+        Assert.IsTrue(updatedRole.Permissions.Any(x => x.Guid == existingRolePermissionGuid));
+
+        await using var verificationContext = TestApiHost.CreateDbContext();
+        var persistedMemberships = await verificationContext.UserRoles
+            .Where(x => x.UserGuid == user.Guid && x.RoleGuid == role.Guid)
+            .CountAsync();
+        var persistedRoleRules = await verificationContext.PermissionRules
+            .Where(x => x.RoleGuid == role.Guid)
+            .CountAsync();
+
+        Assert.AreEqual(1, persistedMemberships);
+        Assert.AreEqual(2, persistedRoleRules);
+    }
+
+    /// <summary>
+    /// Verifies that get-permissions is available to a normal authenticated user while management endpoints remain forbidden.
+    /// </summary>
+    [TestMethod]
+    public async Task Step007_GetPermissionsIsAvailableButManagementRequiresPrivilege()
+    {
+        SecuredAuthApiHost.EnsureStarted();
+
+        var externalId = $"viewer-{Guid.NewGuid():N}";
+        var roleGuid = Guid.NewGuid();
+        var userGuid = Guid.NewGuid();
+
+        await using (var seedContext = SecuredAuthApiHost.CreateDbContext())
+        {
+            seedContext.Users.Add(new ChillSharp.Auth.Model.AuthUser
+            {
+                Guid = userGuid,
+                ExternalId = externalId,
+                UserName = $"viewer.{Guid.NewGuid():N}",
+                DisplayName = "Viewer User",
+                IsActive = true,
+                CanManagePermissions = false
+            });
+            seedContext.Roles.Add(new ChillSharp.Auth.Model.AuthRole
+            {
+                Guid = roleGuid,
+                Name = $"ViewerRole-{Guid.NewGuid():N}",
+                Description = "Role for get-permissions test",
+                IsActive = true
+            });
+            seedContext.UserRoles.Add(new ChillSharp.Auth.Model.AuthUserRole
+            {
+                UserGuid = userGuid,
+                RoleGuid = roleGuid,
+                AssignedUtc = DateTime.UtcNow
+            });
+            seedContext.PermissionRules.Add(new ChillSharp.Auth.Model.AuthPermissionRule
+            {
+                Guid = Guid.NewGuid(),
+                UserGuid = userGuid,
+                Effect = PermissionEffect.Allow,
+                Action = PermissionAction.Update,
+                Scope = PermissionScope.Entity,
+                Module = "Blog",
+                EntityName = "Post",
+                CreatedUtc = DateTime.UtcNow
+            });
+            seedContext.PermissionRules.Add(new ChillSharp.Auth.Model.AuthPermissionRule
+            {
+                Guid = Guid.NewGuid(),
+                RoleGuid = roleGuid,
+                Effect = PermissionEffect.Allow,
+                Action = PermissionAction.Query,
+                Scope = PermissionScope.Entity,
+                Module = "Blog",
+                EntityName = "Post",
+                CreatedUtc = DateTime.UtcNow
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        using var client = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5001/")
+        };
+        client.DefaultRequestHeaders.Add("X-Test-User", externalId);
+
+        var getPermissions = await client.GetAsync("api/chill-auth/get-permissions");
+        Assert.AreEqual(HttpStatusCode.OK, getPermissions.StatusCode);
+        var permissions = await getPermissions.Content.ReadFromJsonAsync<GetAuthPermissionsResponse>();
+        Assert.IsNotNull(permissions);
+        Assert.IsNotNull(permissions.User);
+        Assert.AreEqual(userGuid, permissions.User.Guid);
+        Assert.AreEqual(1, permissions.Permissions.Count);
+        Assert.AreEqual(1, permissions.Roles.Count);
+        Assert.AreEqual(1, permissions.Roles[0].Permissions.Count);
+
+        var getUserList = await client.GetAsync("api/chill-auth/get-user-list");
+        Assert.AreEqual(HttpStatusCode.Forbidden, getUserList.StatusCode);
+    }
+
     private static class SecuredAuthApiHost
     {
         private static readonly object SyncRoot = new();
@@ -339,10 +540,12 @@ public sealed class AuthApi
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
+                    ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:5001");
+                    builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
                         options.UseSqlite($"Data Source={DatabasePath}"));
                     builder.Services.AddAuthentication("Test")
@@ -400,8 +603,10 @@ public sealed class AuthApi
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:5002");
+                    builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
                         options.UseSqlite($"Data Source={DatabasePath}"));
+                    builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
                     builder.Services.AddIdentityCore<IdentityUser>()
                         .AddEntityFrameworkStores<EF.DummyContext>()
                         .AddSignInManager()
@@ -467,8 +672,10 @@ public sealed class AuthApi
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:5003");
+                    builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
                         options.UseSqlite($"Data Source={DatabasePath}"));
+                    builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
                     builder.Services.AddIdentityCore<IdentityUser>()
                         .AddEntityFrameworkStores<EF.DummyContext>()
                         .AddSignInManager()
@@ -526,5 +733,21 @@ public sealed class AuthApi
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
+    }
+}
+
+internal static class HttpResponseMessageTestExtensions
+{
+    public static HttpResponseMessage EnsureSuccess(this HttpResponseMessage response)
+    {
+        response.EnsureSuccessStatusCode();
+        return response;
+    }
+
+    public static async Task<T> ReadAsAsync<T>(this HttpContent content)
+    {
+        var result = await content.ReadFromJsonAsync<T>();
+        Assert.IsNotNull(result);
+        return result!;
     }
 }

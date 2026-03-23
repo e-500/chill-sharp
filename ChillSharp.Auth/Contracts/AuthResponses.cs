@@ -78,3 +78,80 @@ public class PropertyPermissionSetResult
     /// </summary>
     public IReadOnlyList<PropertyPermissionResult> Properties { get; set; } = Array.Empty<PropertyPermissionResult>();
 }
+
+/// <summary>
+/// Simple user item returned by auth management list endpoints.
+/// </summary>
+public class AuthUserListItemResponse
+{
+    public Guid Guid { get; set; }
+    public string ExternalId { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+    public bool CanManagePermissions { get; set; }
+}
+
+/// <summary>
+/// Simple role item returned by auth management list endpoints.
+/// </summary>
+public class AuthRoleListItemResponse
+{
+    public Guid Guid { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
+}
+
+/// <summary>
+/// Permission rule returned by auth management endpoints.
+/// </summary>
+public class AuthPermissionRuleResponse
+{
+    public Guid Guid { get; set; }
+    public PermissionEffect Effect { get; set; }
+    public PermissionAction Action { get; set; }
+    public PermissionScope Scope { get; set; }
+    public string Module { get; set; } = string.Empty;
+    public string? EntityName { get; set; }
+    public string? PropertyName { get; set; }
+    public bool AppliesToAllProperties { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public DateTime CreatedUtc { get; set; }
+}
+
+/// <summary>
+/// Role item expanded with its permissions.
+/// </summary>
+public class AuthRolePermissionsResponse : AuthRoleListItemResponse
+{
+    public IReadOnlyList<AuthPermissionRuleResponse> Permissions { get; set; } = Array.Empty<AuthPermissionRuleResponse>();
+}
+
+/// <summary>
+/// Returns the current user's direct permissions and role permissions.
+/// </summary>
+public class GetAuthPermissionsResponse
+{
+    public AuthUserListItemResponse? User { get; set; }
+    public IReadOnlyList<AuthPermissionRuleResponse> Permissions { get; set; } = Array.Empty<AuthPermissionRuleResponse>();
+    public IReadOnlyList<AuthRolePermissionsResponse> Roles { get; set; } = Array.Empty<AuthRolePermissionsResponse>();
+}
+
+/// <summary>
+/// Detailed user payload returned by get-user and set-user.
+/// </summary>
+public class AuthUserDetailsResponse : AuthUserListItemResponse
+{
+    public IReadOnlyList<AuthRoleListItemResponse> Roles { get; set; } = Array.Empty<AuthRoleListItemResponse>();
+    public IReadOnlyList<AuthPermissionRuleResponse> Permissions { get; set; } = Array.Empty<AuthPermissionRuleResponse>();
+}
+
+/// <summary>
+/// Detailed role payload returned by get-role and set-role.
+/// </summary>
+public class AuthRoleDetailsResponse : AuthRoleListItemResponse
+{
+    public IReadOnlyList<AuthUserListItemResponse> Users { get; set; } = Array.Empty<AuthUserListItemResponse>();
+    public IReadOnlyList<AuthPermissionRuleResponse> Permissions { get; set; } = Array.Empty<AuthPermissionRuleResponse>();
+}

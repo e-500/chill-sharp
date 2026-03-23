@@ -49,6 +49,87 @@ export interface ChillDtoSchemaListItem extends JsonObject {
   relatedChillType: string | null;
 }
 
+export interface AuthUserListItem extends JsonObject {
+  guid: string;
+  externalId: string;
+  userName: string;
+  displayName: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+}
+
+export interface AuthRoleListItem extends JsonObject {
+  guid: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+export interface AuthPermissionRule extends JsonObject {
+  guid: string;
+  effect: number;
+  action: number;
+  scope: number;
+  module: string;
+  entityName: string | null;
+  propertyName: string | null;
+  appliesToAllProperties: boolean;
+  description: string;
+  createdUtc: string;
+}
+
+export interface AuthRolePermissions extends AuthRoleListItem {
+  permissions: AuthPermissionRule[];
+}
+
+export interface GetAuthPermissionsResponse extends JsonObject {
+  user: AuthUserListItem | null;
+  permissions: AuthPermissionRule[];
+  roles: AuthRolePermissions[];
+}
+
+export interface AuthUserDetailsResponse extends AuthUserListItem {
+  roles: AuthRoleListItem[];
+  permissions: AuthPermissionRule[];
+}
+
+export interface AuthRoleDetailsResponse extends AuthRoleListItem {
+  users: AuthUserListItem[];
+  permissions: AuthPermissionRule[];
+}
+
+export interface AuthPermissionRuleItem extends JsonObject {
+  guid: string | null;
+  effect: number;
+  action: number;
+  scope: number;
+  module: string;
+  entityName: string | null;
+  propertyName: string | null;
+  appliesToAllProperties: boolean;
+  description: string;
+}
+
+export interface SetAuthUserRequest extends JsonObject {
+  guid: string | null;
+  externalId: string;
+  userName: string;
+  displayName: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+  roleGuids: string[];
+  permissions: AuthPermissionRuleItem[];
+}
+
+export interface SetAuthRoleRequest extends JsonObject {
+  guid: string | null;
+  name: string;
+  description: string;
+  isActive: boolean;
+  userGuids: string[];
+  permissions: AuthPermissionRuleItem[];
+}
+
 export interface ChillSharpClientOptions {
   accessToken?: string;
   username?: string;
@@ -274,6 +355,42 @@ export class ChillSharpClient {
 
   resetAuthPassword(payload: JsonObject): Promise<JsonObject> {
     return this.sendAuthJson<JsonObject>("POST", "account/reset-password", payload, true, true);
+  }
+
+  getAuthPermissions(): Promise<GetAuthPermissionsResponse> {
+    return this.sendAuthJson<GetAuthPermissionsResponse>("GET", "get-permissions");
+  }
+
+  getAuthUserList(): Promise<AuthUserListItem[]> {
+    return this.sendAuthJson<AuthUserListItem[]>("GET", "get-user-list");
+  }
+
+  getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    return this.sendAuthJson<AuthUserDetailsResponse>(
+      "GET",
+      `get-user?userGuid=${encodeURIComponent(normalizedUserGuid)}`
+    );
+  }
+
+  setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse> {
+    return this.sendAuthJson<AuthUserDetailsResponse>("POST", "set-user", payload);
+  }
+
+  getAuthRoleList(): Promise<AuthRoleListItem[]> {
+    return this.sendAuthJson<AuthRoleListItem[]>("GET", "get-role-list");
+  }
+
+  getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse> {
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    return this.sendAuthJson<AuthRoleDetailsResponse>(
+      "GET",
+      `get-role?roleGuid=${encodeURIComponent(normalizedRoleGuid)}`
+    );
+  }
+
+  setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse> {
+    return this.sendAuthJson<AuthRoleDetailsResponse>("POST", "set-role", payload);
   }
 
   private prepareGetTextRequest(request: GetTextRequest): GetTextRequest {

@@ -104,6 +104,27 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     resetAuthPassword(payload) {
         return from(this.client.resetAuthPassword(payload));
     }
+    getAuthPermissions() {
+        return from(this.client.getAuthPermissions());
+    }
+    getAuthUserList() {
+        return from(this.client.getAuthUserList());
+    }
+    getAuthUser(userGuid) {
+        return from(this.client.getAuthUser(userGuid));
+    }
+    setAuthUser(payload) {
+        return from(this.client.setAuthUser(payload));
+    }
+    getAuthRoleList() {
+        return from(this.client.getAuthRoleList());
+    }
+    getAuthRole(roleGuid) {
+        return from(this.client.getAuthRole(roleGuid));
+    }
+    setAuthRole(payload) {
+        return from(this.client.setAuthRole(payload));
+    }
     getRawClient() {
         return this.client;
     }

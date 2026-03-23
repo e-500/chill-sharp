@@ -28,6 +28,41 @@ namespace ChillSharp.Auth.Services;
 public interface IChillAuthService
 {
     /// <summary>
+    /// Returns the current user's direct permissions together with role permissions.
+    /// </summary>
+    Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the simplified user list used by management UIs.
+    /// </summary>
+    Task<IReadOnlyList<AuthUserListItemResponse>> GetUserListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the detailed user payload with role assignments and direct permissions.
+    /// </summary>
+    Task<AuthUserDetailsResponse?> GetManagedUserAsync(Guid userGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates or updates a user together with roles and direct permissions.
+    /// </summary>
+    Task<AuthUserDetailsResponse> SetUserAsync(SetAuthUserRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the simplified role list used by management UIs.
+    /// </summary>
+    Task<IReadOnlyList<AuthRoleListItemResponse>> GetRoleListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the detailed role payload with assigned users and direct permissions.
+    /// </summary>
+    Task<AuthRoleDetailsResponse?> GetManagedRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates or updates a role together with users and permissions.
+    /// </summary>
+    Task<AuthRoleDetailsResponse> SetRoleAsync(SetAuthRoleRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns all authorization users.
     /// </summary>
     Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default);

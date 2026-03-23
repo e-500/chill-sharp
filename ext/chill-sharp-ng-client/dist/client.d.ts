@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthUserDetailsResponse, AuthUserListItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -26,5 +26,12 @@ export declare class ChillSharpNgClient {
     changeAuthPassword(payload: JsonObject): Observable<JsonObject>;
     requestAuthPasswordReset(payload: JsonObject): Observable<JsonObject>;
     resetAuthPassword(payload: JsonObject): Observable<JsonObject>;
+    getAuthPermissions(): Observable<GetAuthPermissionsResponse>;
+    getAuthUserList(): Observable<AuthUserListItem[]>;
+    getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse>;
+    setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse>;
+    getAuthRoleList(): Observable<AuthRoleListItem[]>;
+    getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse>;
+    setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse>;
     getRawClient(): ChillSharpClient;
 }

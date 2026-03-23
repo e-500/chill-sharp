@@ -18,6 +18,13 @@ export {
   ChillSharpClientError
 } from "chill-sharp-ts-client";
 export type {
+  AuthPermissionRule,
+  AuthPermissionRuleItem,
+  AuthRoleDetailsResponse,
+  AuthRoleListItem,
+  AuthRolePermissions,
+  AuthUserDetailsResponse,
+  AuthUserListItem,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
@@ -26,9 +33,12 @@ export type {
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
   ChillSharpClientOptions,
+  GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
   JsonObject,
   JsonPrimitive,
-  JsonValue
+  JsonValue,
+  SetAuthRoleRequest,
+  SetAuthUserRequest
 } from "chill-sharp-ts-client";

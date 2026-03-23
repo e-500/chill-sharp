@@ -2,13 +2,20 @@ import { Inject, Injectable } from "@angular/core";
 import { from, Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
 import type {
+  AuthRoleDetailsResponse,
+  AuthRoleListItem,
+  AuthUserDetailsResponse,
+  AuthUserListItem,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
+  GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
-  JsonObject
+  JsonObject,
+  SetAuthRoleRequest,
+  SetAuthUserRequest
 } from "chill-sharp-ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
@@ -133,6 +140,34 @@ export class ChillSharpNgClient {
 
   resetAuthPassword(payload: JsonObject): Observable<JsonObject> {
     return from(this.client.resetAuthPassword(payload));
+  }
+
+  getAuthPermissions(): Observable<GetAuthPermissionsResponse> {
+    return from(this.client.getAuthPermissions());
+  }
+
+  getAuthUserList(): Observable<AuthUserListItem[]> {
+    return from(this.client.getAuthUserList());
+  }
+
+  getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse> {
+    return from(this.client.getAuthUser(userGuid));
+  }
+
+  setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse> {
+    return from(this.client.setAuthUser(payload));
+  }
+
+  getAuthRoleList(): Observable<AuthRoleListItem[]> {
+    return from(this.client.getAuthRoleList());
+  }
+
+  getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse> {
+    return from(this.client.getAuthRole(roleGuid));
+  }
+
+  setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse> {
+    return from(this.client.setAuthRole(payload));
   }
 
   getRawClient(): ChillSharpClient {

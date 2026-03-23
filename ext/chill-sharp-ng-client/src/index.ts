@@ -4,6 +4,13 @@ export { ChillSharpNgClient } from "./client.js";
 export { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 export { ChillSharpClient, ChillSharpClientError } from "chill-sharp-ts-client";
 export type {
+  AuthPermissionRule,
+  AuthPermissionRuleItem,
+  AuthRoleDetailsResponse,
+  AuthRoleListItem,
+  AuthRolePermissions,
+  AuthUserDetailsResponse,
+  AuthUserListItem,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
@@ -12,9 +19,12 @@ export type {
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
   ChillSharpClientOptions,
+  GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
   JsonObject,
   JsonPrimitive,
-  JsonValue
+  JsonValue,
+  SetAuthRoleRequest,
+  SetAuthUserRequest
 } from "chill-sharp-ts-client";

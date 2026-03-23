@@ -141,6 +141,38 @@ class ChillSharpClient:
         """Complete the password reset flow with a reset payload."""
         return self._send_auth_json("POST", "account/reset-password", payload, allow_anonymous=True)
 
+    def get_auth_permissions(self) -> JsonDict:
+        """Return the current user permissions together with role permissions."""
+        return self._send_auth_json("GET", "get-permissions")
+
+    def get_auth_user_list(self) -> list[JsonDict]:
+        """Return the full auth user list."""
+        response = self._send_auth_json("GET", "get-user-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_user(self, user_guid: str) -> JsonDict:
+        """Return one auth user with assigned roles and direct permissions."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        return self._send_auth_json("GET", f"get-user?userGuid={quote(normalized_user_guid)}")
+
+    def set_auth_user(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth user with the full role and permission list."""
+        return self._send_auth_json("POST", "set-user", payload)
+
+    def get_auth_role_list(self) -> list[JsonDict]:
+        """Return the full auth role list."""
+        response = self._send_auth_json("GET", "get-role-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_role(self, role_guid: str) -> JsonDict:
+        """Return one auth role with assigned users and direct permissions."""
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        return self._send_auth_json("GET", f"get-role?roleGuid={quote(normalized_role_guid)}")
+
+    def set_auth_role(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth role with the full user and permission list."""
+        return self._send_auth_json("POST", "set-role", payload)
+
     def _prepare_get_text_request(self, request: JsonDict) -> JsonDict:
         """Normalize a get-text request and apply the client default culture when needed."""
         if request is None:
