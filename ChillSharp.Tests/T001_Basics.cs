@@ -24,6 +24,7 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ChillSharp.Tests
 {
@@ -311,6 +312,80 @@ namespace ChillSharp.Tests
             Assert.AreEqual("Configured author", post.GetLabel(context));
             Assert.AreEqual("Configured title", post.GetShortLabel(context));
             Assert.AreEqual("Configured title||", post.GetFullTextContent(context));
+        }
+
+        [TestMethod]
+        public async Task Step008_ChangeLogStoresSnapshotHistoryAndMocksLinkedEntities()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-changelog-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            context.EntityOptionsEntries.AddRange(
+                new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = "Model.Post",
+                    ChangeLogEnabled = true
+                },
+                new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = "Model.Blog",
+                    ChangeLogEnabled = true
+                });
+            await context.SaveChangesAsync();
+
+            var engine = new ChillEngine(context);
+
+            var blog = (Blog)engine.Create(new Blog
+            {
+                Title = "Tracked blog",
+                Url = "https://tracked.example"
+            });
+
+            var post = (Post)engine.Create(new Post
+            {
+                Title = "Tracked post",
+                Author = "Andrea",
+                Blog = blog
+            });
+
+            post.Title = "Tracked post updated";
+            engine.Update(post);
+
+            await context.Entry(blog).Collection(x => x.Posts!).LoadAsync();
+            blog.Url = "https://tracked.example/v2";
+            engine.Update(blog);
+
+            var postLog = JsonDocument.Parse(post.ChangeLog);
+            var postSnapshots = postLog.RootElement;
+            Assert.AreEqual(2, postSnapshots.GetArrayLength());
+
+            var latestPost = postSnapshots[1];
+            Assert.AreEqual("Tracked post updated", latestPost.GetProperty("Properties").GetProperty("Title").GetString());
+            var blogMock = latestPost.GetProperty("Properties").GetProperty("Blog");
+            Assert.AreEqual(blog.Guid, blogMock.GetProperty("Guid").GetGuid());
+            Assert.AreEqual(blog.Label, blogMock.GetProperty("Label").GetString());
+            Assert.AreEqual(blog.ShortLabel, blogMock.GetProperty("ShortLabel").GetString());
+            Assert.IsFalse(blogMock.TryGetProperty("Properties", out _));
+
+            var blogLog = JsonDocument.Parse(blog.ChangeLog);
+            var blogSnapshots = blogLog.RootElement;
+            Assert.AreEqual(2, blogSnapshots.GetArrayLength());
+
+            var latestBlog = blogSnapshots[1];
+            Assert.AreEqual("https://tracked.example/v2", latestBlog.GetProperty("Properties").GetProperty("Url").GetString());
+            var postsMock = latestBlog.GetProperty("Properties").GetProperty("Posts");
+            Assert.AreEqual(1, postsMock.GetArrayLength());
+            Assert.AreEqual(post.Guid, postsMock[0].GetProperty("Guid").GetGuid());
+            Assert.AreEqual(post.Label, postsMock[0].GetProperty("Label").GetString());
+            Assert.AreEqual(post.ShortLabel, postsMock[0].GetProperty("ShortLabel").GetString());
+            Assert.IsFalse(postsMock[0].TryGetProperty("Properties", out _));
         }
     }
 }

@@ -189,6 +189,8 @@ namespace ChillSharp
                 entry.Entity.Label = ChillEntityLabelFormatter.ResolveLabel(entry.Entity, _Context);
                 entry.Entity.ShortLabel = ChillEntityLabelFormatter.ResolveShortLabel(entry.Entity, _Context);
                 entry.Entity.FullTextContent = ChillEntityLabelFormatter.ResolveFullTextContent(entry.Entity, _Context);
+                if (entry.Entity is ChillEntity chillEntity)
+                    chillEntity.AppendChangeLogSnapshot(_Context);
                 db.SaveChanges();
                 if (opTrans)
                     db.Database.CommitTransaction();
@@ -238,6 +240,8 @@ namespace ChillSharp
                 tmp = ChillEntityLabelFormatter.ResolveFullTextContent(entry.Entity, _Context);
                 if (tmp != entry.Entity.FullTextContent)
                     entry.Entity.FullTextContent = tmp;
+                if (entry.Entity is ChillEntity chillEntity)
+                    chillEntity.AppendChangeLogSnapshot(_Context);
 
                 db.SaveChanges();
                 if (opTrans)

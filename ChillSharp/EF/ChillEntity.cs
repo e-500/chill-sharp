@@ -19,9 +19,12 @@
 
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ChillSharp.EF
 {
@@ -38,6 +41,11 @@ namespace ChillSharp.EF
     /// </summary>
     public abstract class ChillEntity : IChillValidable, IChillEntity
     {
+        private static readonly JsonSerializerOptions ChangeLogJsonSerializerOptions = new()
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        };
+
         /// <summary>
         /// Encourages the use of GUIDs as primary keys to improve offline entity creation and synchronization.
         /// 
@@ -49,6 +57,7 @@ namespace ChillSharp.EF
         public string Label { get; set; } = string.Empty;
         public string ShortLabel { get; set; } = string.Empty;
         public string FullTextContent { get; set; } = string.Empty;
+        public string ChangeLog { get; set; } = "[]";
 
         [ChillProperty(
             UniquePropertyKeyString: "4C9CB824-15A8-4281-AF21-1C46868E4152",
@@ -249,6 +258,163 @@ namespace ChillSharp.EF
             }
 
             return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        }
+
+        internal void AppendChangeLogSnapshot(IChillContext context)
+        {
+            var chillType = ChillTypeResolver.NormalizeChillType(GetType(), context.GetChillTypePrefix());
+            if (!context.GetEntityOptions(chillType).ChangeLogEnabled)
+            {
+                return;
+            }
+
+            var snapshots = DeserializeChangeLog(ChangeLog);
+            snapshots.Add(BuildChangeLogSnapshot(context, chillType));
+            ChangeLog = JsonSerializer.Serialize(snapshots, ChangeLogJsonSerializerOptions);
+        }
+
+        private ChillDtoEntity BuildChangeLogSnapshot(IChillContext context, string chillType)
+        {
+            var snapshot = new ChillDtoEntity
+            {
+                Guid = Guid,
+                ChillType = chillType,
+                Label = Label,
+                ShortLabel = ShortLabel,
+                Properties = new Dictionary<string, object?>()
+            };
+
+            var dbContext = context as DbContext;
+            var chillProperties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(property => property.IsDefined(typeof(ChillPropertyAttribute), inherit: true));
+
+            foreach (var property in chillProperties)
+            {
+                var attr = property.GetCustomAttribute<ChillPropertyAttribute>(inherit: true);
+                if (attr?.CallOnInflate == true)
+                {
+                    OnInflate(context, property.Name);
+                }
+
+                snapshot.Properties[property.Name] = SerializeChangeLogPropertyValue(context, dbContext, property);
+            }
+
+            return snapshot;
+        }
+
+        private object? SerializeChangeLogPropertyValue(IChillContext context, DbContext? dbContext, PropertyInfo property)
+        {
+            if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+            {
+                TryLoadReference(dbContext, property.Name);
+                return CreateEntityMock((IChillEntity?)property.GetValue(this), context);
+            }
+
+            if (typeof(System.Collections.IEnumerable).IsAssignableFrom(property.PropertyType) && property.PropertyType != typeof(string))
+            {
+                var collectionType = property.PropertyType.IsArray
+                    ? property.PropertyType.GetElementType()
+                    : property.PropertyType.GetInterfaces()
+                        .Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                        .Select(t => t.GetGenericArguments()[0])
+                        .FirstOrDefault();
+
+                if (collectionType != null && typeof(IChillEntity).IsAssignableFrom(collectionType))
+                {
+                    TryLoadCollection(dbContext, property.Name);
+                    var entities = property.GetValue(this) as System.Collections.IEnumerable;
+                    if (entities == null)
+                    {
+                        return null;
+                    }
+
+                    return entities
+                        .Cast<object?>()
+                        .OfType<IChillEntity>()
+                        .Select(entity => CreateEntityMock(entity, context))
+                        .ToList();
+                }
+            }
+
+            return property.GetValue(this);
+        }
+
+        private void TryLoadReference(DbContext? dbContext, string propertyName)
+        {
+            if (dbContext == null)
+            {
+                return;
+            }
+
+            try
+            {
+                dbContext.Entry(this).Reference(propertyName).Exist(true);
+            }
+            catch
+            {
+            }
+        }
+
+        private void TryLoadCollection(DbContext? dbContext, string propertyName)
+        {
+            if (dbContext == null)
+            {
+                return;
+            }
+
+            try
+            {
+                dbContext.Entry(this).Collection(propertyName).Load();
+            }
+            catch
+            {
+            }
+        }
+
+        private static ChillDtoEntity? CreateEntityMock(IChillEntity? entity, IChillContext context)
+        {
+            if (entity == null)
+            {
+                return null;
+            }
+
+            var label = entity.Label;
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                label = entity.GetLabel(context);
+            }
+
+            var shortLabel = entity.ShortLabel;
+            if (string.IsNullOrWhiteSpace(shortLabel))
+            {
+                shortLabel = entity.GetShortLabel(context);
+            }
+
+            return new ChillDtoEntity
+            {
+                Guid = entity.Guid,
+                ChillType = ChillTypeResolver.NormalizeChillType(entity.GetType(), context.GetChillTypePrefix()),
+                Label = label,
+                ShortLabel = shortLabel,
+                Properties = null!
+            };
+        }
+
+        private static List<ChillDtoEntity> DeserializeChangeLog(string? changeLog)
+        {
+            if (string.IsNullOrWhiteSpace(changeLog))
+            {
+                return [];
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<ChillDtoEntity>>(changeLog) ?? [];
+            }
+            catch
+            {
+                return [];
+            }
         }
         #endregion
         #endregion
