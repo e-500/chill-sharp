@@ -21,6 +21,15 @@ public static class ChillSchemaModelBuilderExtensions
             builder.HasIndex(x => new { x.ChillType, x.ChillViewCode }).IsUnique();
         });
 
+        modelBuilder.Entity<ChillEntityOptionsEntry>(builder =>
+        {
+            builder.Property(x => x.ChillType).HasMaxLength(512);
+            builder.Property(x => x.LabelFormatString).HasMaxLength(2048);
+            builder.Property(x => x.ShortLabelFormatString).HasMaxLength(2048);
+            builder.Property(x => x.FullTextContentFormatString).HasMaxLength(4096);
+            builder.HasIndex(x => x.ChillType).IsUnique();
+        });
+
         return modelBuilder;
     }
 }

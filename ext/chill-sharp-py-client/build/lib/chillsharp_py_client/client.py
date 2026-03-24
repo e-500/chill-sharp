@@ -82,23 +82,32 @@ class ChillSharpClient:
         encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
         encoded_view = quote(self._normalize_required_value(chill_view_code, "chill_view_code"))
         effective_culture_name = culture_name.strip() if culture_name else self._culture_name
-        url = self._build_chill_url(f"get-schema?chillType={encoded_type}&chillViewCode={encoded_view}")
+        url = self._build_schema_url(f"get-schema?chillType={encoded_type}&chillViewCode={encoded_view}")
         if effective_culture_name:
             url += f"&cultureName={quote(effective_culture_name)}"
         return self._send_json("GET", url)
 
     def set_schema(self, schema: JsonDict) -> JsonDict:
         """Persist schema metadata through the Chill endpoint."""
-        return self._send_json("POST", self._build_chill_url("set-schema"), schema)
+        return self._send_json("POST", self._build_schema_url("set-schema"), schema)
 
     def get_schema_list(self, culture_name: str | None = None) -> list[JsonDict]:
         """Retrieve the list of registered entities and queries."""
         effective_culture_name = culture_name.strip() if culture_name else self._culture_name
-        url = self._build_chill_url("get-schema-list")
+        url = self._build_schema_url("get-schema-list")
         if effective_culture_name:
             url += f"?cultureName={quote(effective_culture_name)}"
         response = self._send_json("GET", url)
         return response if isinstance(response, list) else []
+
+    def get_entity_options(self, chill_type: str) -> JsonDict:
+        """Retrieve runtime entity options for a Chill type."""
+        encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
+        return self._send_json("GET", self._build_schema_url(f"get-entity-options?chillType={encoded_type}"))
+
+    def set_entity_options(self, entity_options: JsonDict) -> JsonDict:
+        """Persist runtime entity options for a Chill type."""
+        return self._send_json("POST", self._build_schema_url("set-entity-options"), entity_options)
 
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
@@ -140,6 +149,38 @@ class ChillSharpClient:
     def reset_auth_password(self, payload: JsonDict) -> JsonDict:
         """Complete the password reset flow with a reset payload."""
         return self._send_auth_json("POST", "account/reset-password", payload, allow_anonymous=True)
+
+    def get_auth_permissions(self) -> JsonDict:
+        """Return the current user permissions together with role permissions."""
+        return self._send_auth_json("GET", "get-permissions")
+
+    def get_auth_user_list(self) -> list[JsonDict]:
+        """Return the full auth user list."""
+        response = self._send_auth_json("GET", "get-user-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_user(self, user_guid: str) -> JsonDict:
+        """Return one auth user with assigned roles and direct permissions."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        return self._send_auth_json("GET", f"get-user?userGuid={quote(normalized_user_guid)}")
+
+    def set_auth_user(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth user with the full role and permission list."""
+        return self._send_auth_json("POST", "set-user", payload)
+
+    def get_auth_role_list(self) -> list[JsonDict]:
+        """Return the full auth role list."""
+        response = self._send_auth_json("GET", "get-role-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_role(self, role_guid: str) -> JsonDict:
+        """Return one auth role with assigned users and direct permissions."""
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        return self._send_auth_json("GET", f"get-role?roleGuid={quote(normalized_role_guid)}")
+
+    def set_auth_role(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth role with the full user and permission list."""
+        return self._send_auth_json("POST", "set-role", payload)
 
     def _prepare_get_text_request(self, request: JsonDict) -> JsonDict:
         """Normalize a get-text request and apply the client default culture when needed."""
@@ -387,6 +428,10 @@ class ChillSharpClient:
         """Build an absolute URL for the auth service."""
         return f"{self._get_auth_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
 
+    def _build_schema_url(self, relative_url: str) -> str:
+        """Build an absolute URL for the schema service."""
+        return f"{self._get_schema_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
+
     def _build_i18n_url(self, relative_url: str) -> str:
         """Build an absolute URL for the i18n service."""
         return f"{self._get_i18n_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
@@ -397,6 +442,13 @@ class ChillSharpClient:
         if self._base_url.lower().endswith(suffix):
             return self._base_url[: -len(suffix)] + "/chill-auth"
         return self._base_url.rstrip("/") + "-auth"
+
+    def _get_schema_base_url(self) -> str:
+        """Resolve the schema service base URL from the Chill base URL."""
+        suffix = "/chill"
+        if self._base_url.lower().endswith(suffix):
+            return self._base_url[: -len(suffix)] + "/chill-schema"
+        return self._base_url.rstrip("/") + "-schema"
 
     def _get_i18n_base_url(self) -> str:
         """Resolve the i18n service base URL from the Chill base URL."""

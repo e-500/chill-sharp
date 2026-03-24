@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Reflection;
+using ChillSharp.Schema.Api;
 
 namespace ChillSharp.Schema;
 
@@ -15,6 +17,10 @@ public static class ChillSchemaServiceCollectionExtensions
     public static IServiceCollection AddChillSchema<TContext>(this IServiceCollection services)
         where TContext : DbContext, IChillSchemaDbContext
     {
+        services.AddControllers()
+            .AddApplicationPart(Assembly.GetExecutingAssembly())
+            .AddControllersAsServices();
+
         services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
 
         services.AddScoped<IChillSchemaDbContext>(provider =>
@@ -29,6 +35,7 @@ public static class ChillSchemaServiceCollectionExtensions
         });
 
         services.AddScoped<IChillSchemaService, ChillSchemaService>();
+        services.AddScoped<ChillSchemaManagementAccessFilter>();
         return services;
     }
 }

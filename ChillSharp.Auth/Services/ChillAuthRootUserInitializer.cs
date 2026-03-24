@@ -114,7 +114,8 @@ internal sealed class ChillAuthRootUserInitializer<TUser> : IHostedService
             UserName = userName,
             DisplayName = string.IsNullOrWhiteSpace(rootDisplayName) ? userName : rootDisplayName,
             IsActive = true,
-            CanManagePermissions = true
+            CanManagePermissions = true,
+            CanManageSchema = true
         }, cancellationToken);
 
         _logger.LogInformation("Initialized ChillSharp root auth user '{RootUserName}'.", userName);

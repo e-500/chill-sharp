@@ -14,6 +14,11 @@ public interface IChillSchemaDbContext
     DbSet<ChillSchemaEntry> SchemaEntries { get; }
 
     /// <summary>
+    /// Gets the persisted entity-options rows.
+    /// </summary>
+    DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; }
+
+    /// <summary>
     /// Persists changes to the underlying store.
     /// </summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

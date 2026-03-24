@@ -49,6 +49,15 @@ export interface ChillDtoSchemaListItem extends JsonObject {
   relatedChillType: string | null;
 }
 
+export interface ChillDtoEntityOptions extends JsonObject {
+  chillType: string;
+  checksumEnabled: boolean;
+  labelFormatString: string | null;
+  shortLabelFormatString: string | null;
+  fullTextContentFormatString: string | null;
+  changeLogEnabled: boolean;
+}
+
 export interface AuthUserListItem extends JsonObject {
   guid: string;
   externalId: string;
@@ -56,6 +65,7 @@ export interface AuthUserListItem extends JsonObject {
   displayName: string;
   isActive: boolean;
   canManagePermissions: boolean;
+  canManageSchema: boolean;
 }
 
 export interface AuthRoleListItem extends JsonObject {
@@ -117,6 +127,7 @@ export interface SetAuthUserRequest extends JsonObject {
   displayName: string;
   isActive: boolean;
   canManagePermissions: boolean;
+  canManageSchema: boolean;
   roleGuids: string[];
   permissions: AuthPermissionRuleItem[];
 }
@@ -242,7 +253,7 @@ export class ChillSharpClient {
       relativeUrl += `&cultureName=${encodeURIComponent(effectiveCultureName)}`;
     }
 
-    return this.sendJson<ChillDtoSchema | null>("GET", this.buildChillUrl(relativeUrl));
+    return this.sendJson<ChillDtoSchema | null>("GET", this.buildSchemaUrl(relativeUrl));
   }
 
   getSchemaList(cultureName?: string): Promise<ChillDtoSchemaListItem[]> {
@@ -252,11 +263,20 @@ export class ChillSharpClient {
       relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
     }
 
-    return this.sendJson<ChillDtoSchemaListItem[]>("GET", this.buildChillUrl(relativeUrl));
+    return this.sendJson<ChillDtoSchemaListItem[]>("GET", this.buildSchemaUrl(relativeUrl));
   }
 
   setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null> {
-    return this.sendJson<ChillDtoSchema | null>("POST", this.buildChillUrl("set-schema"), schema);
+    return this.sendJson<ChillDtoSchema | null>("POST", this.buildSchemaUrl("set-schema"), schema);
+  }
+
+  getEntityOptions(chillType: string): Promise<ChillDtoEntityOptions> {
+    const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
+    return this.sendJson<ChillDtoEntityOptions>("GET", this.buildSchemaUrl(`get-entity-options?chillType=${encodedType}`));
+  }
+
+  setEntityOptions(entityOptions: ChillDtoEntityOptions): Promise<ChillDtoEntityOptions> {
+    return this.sendJson<ChillDtoEntityOptions>("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
   }
 
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
@@ -654,6 +674,10 @@ export class ChillSharpClient {
     return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
 
+  private buildSchemaUrl(relativeUrl: string): string {
+    return `${this.getSchemaBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+  }
+
   private buildI18nUrl(relativeUrl: string): string {
     return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
@@ -665,6 +689,15 @@ export class ChillSharpClient {
     }
 
     return `${this.baseUrl.replace(/\/$/, "")}-auth`;
+  }
+
+  private getSchemaBaseUrl(): string {
+    const suffix = "/chill";
+    if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+      return `${this.baseUrl.slice(0, -suffix.length)}/chill-schema`;
+    }
+
+    return `${this.baseUrl.replace(/\/$/, "")}-schema`;
   }
 
   private getI18nBaseUrl(): string {

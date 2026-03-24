@@ -30,7 +30,7 @@ namespace ChillSharp.Dto
         /// </summary>
         public string? RelatedChillType { get; set; }
 
-        internal static ChillDtoSchemaListItem FromEntityType(Type entityType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
+        public static ChillDtoSchemaListItem FromEntityType(Type entityType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
         {
             var chillAttr = entityType.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
 
@@ -48,7 +48,7 @@ namespace ChillSharp.Dto
             };
         }
 
-        internal static ChillDtoSchemaListItem FromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
+        public static ChillDtoSchemaListItem FromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
         {
             var chillAttr = queryType.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
 

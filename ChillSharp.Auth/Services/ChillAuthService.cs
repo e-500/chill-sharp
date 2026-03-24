@@ -29,14 +29,16 @@ namespace ChillSharp.Auth.Services;
 public class ChillAuthService : IChillAuthService
 {
     private readonly IChillAuthDbContext _context;
+    private readonly IChillAuthManagementAccessCache _managementAccessCache;
 
     /// <summary>
     /// Initializes the service with the auth persistence abstraction.
     /// </summary>
     /// <param name="context">The auth store used for reads and writes.</param>
-    public ChillAuthService(IChillAuthDbContext context)
+    public ChillAuthService(IChillAuthDbContext context, IChillAuthManagementAccessCache managementAccessCache)
     {
         _context = context;
+        _managementAccessCache = managementAccessCache;
     }
 
     /// <inheritdoc />
@@ -167,11 +169,13 @@ public class ChillAuthService : IChillAuthService
         user.DisplayName = request.DisplayName.Trim();
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
+        user.CanManageSchema = request.CanManageSchema;
 
         await _context.SaveChangesAsync(cancellationToken);
         await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
         await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
 
         return (await GetManagedUserAsync(user.Guid, cancellationToken))!;
     }
@@ -258,6 +262,7 @@ public class ChillAuthService : IChillAuthService
         await SyncRoleUsersAsync(role.Guid, userGuids, cancellationToken);
         await SyncPermissionRulesAsync(null, role.Guid, request.Permissions, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
 
         return (await GetManagedRoleAsync(role.Guid, cancellationToken))!;
     }
@@ -305,11 +310,13 @@ public class ChillAuthService : IChillAuthService
             UserName = request.UserName.Trim(),
             DisplayName = request.DisplayName.Trim(),
             IsActive = request.IsActive,
-            CanManagePermissions = request.CanManagePermissions
+            CanManagePermissions = request.CanManagePermissions,
+            CanManageSchema = request.CanManageSchema
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
         return user;
     }
 
@@ -329,8 +336,10 @@ public class ChillAuthService : IChillAuthService
         user.DisplayName = request.DisplayName.Trim();
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
+        user.CanManageSchema = request.CanManageSchema;
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
         return user;
     }
 
@@ -343,6 +352,7 @@ public class ChillAuthService : IChillAuthService
             return false;
         }
 
+        InvalidateManagementAccess(user.ExternalId);
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
@@ -380,6 +390,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.Roles.Add(role);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return role;
     }
 
@@ -399,6 +410,7 @@ public class ChillAuthService : IChillAuthService
         role.IsActive = request.IsActive;
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return role;
     }
 
@@ -413,6 +425,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.Roles.Remove(role);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
 
@@ -451,6 +464,7 @@ public class ChillAuthService : IChillAuthService
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
 
@@ -465,6 +479,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.UserRoles.Remove(membership);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
 
@@ -523,6 +538,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.PermissionRules.Add(rule);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return rule;
     }
 
@@ -549,6 +565,7 @@ public class ChillAuthService : IChillAuthService
         rule.Description = request.Description.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return rule;
     }
 
@@ -563,6 +580,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.PermissionRules.Remove(rule);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
 
@@ -637,6 +655,14 @@ public class ChillAuthService : IChillAuthService
         {
             Properties = results
         };
+    }
+
+    public void InvalidateManagementAccess(string? externalId = null)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+            _managementAccessCache.InvalidateAll();
+        else
+            _managementAccessCache.Invalidate(externalId);
     }
 
     private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)
@@ -1022,7 +1048,8 @@ public class ChillAuthService : IChillAuthService
             UserName = user.UserName,
             DisplayName = user.DisplayName,
             IsActive = user.IsActive,
-            CanManagePermissions = user.CanManagePermissions
+            CanManagePermissions = user.CanManagePermissions,
+            CanManageSchema = user.CanManageSchema
         };
     }
 
@@ -1064,6 +1091,7 @@ public class ChillAuthService : IChillAuthService
             DisplayName = user.DisplayName,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
+            CanManageSchema = user.CanManageSchema,
             Roles = roles.Select(ToRoleListItem).ToList(),
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };

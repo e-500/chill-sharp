@@ -9,6 +9,8 @@ namespace ChillSharp.Tests.EF
     {
         public DbSet<ChillSchemaEntry> SchemaEntries { get; set; }
 
+        public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; set; }
+
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
             modelBuilder.AddChillSchemaModel();

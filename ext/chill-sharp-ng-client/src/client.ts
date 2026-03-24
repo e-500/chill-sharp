@@ -6,6 +6,7 @@ import type {
   AuthRoleListItem,
   AuthUserDetailsResponse,
   AuthUserListItem,
+  ChillDtoEntityOptions,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillEntityChangeNotification,
@@ -68,6 +69,14 @@ export class ChillSharpNgClient {
 
   setSchema(schema: ChillDtoSchema): Observable<ChillDtoSchema | null> {
     return from(this.client.setSchema(schema));
+  }
+
+  getEntityOptions(chillType: string): Observable<ChillDtoEntityOptions> {
+    return from(this.client.getEntityOptions(chillType));
+  }
+
+  setEntityOptions(entityOptions: ChillDtoEntityOptions): Observable<ChillDtoEntityOptions> {
+    return from(this.client.setEntityOptions(entityOptions));
   }
 
   getText(request: GetTextRequest): Observable<GetTextResponse | null> {

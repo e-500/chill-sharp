@@ -90,6 +90,7 @@ public class AuthUserListItemResponse
     public string DisplayName { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public bool CanManagePermissions { get; set; }
+    public bool CanManageSchema { get; set; }
 }
 
 /// <summary>

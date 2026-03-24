@@ -49,6 +49,12 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     setSchema(schema) {
         return from(this.client.setSchema(schema));
     }
+    getEntityOptions(chillType) {
+        return from(this.client.getEntityOptions(chillType));
+    }
+    setEntityOptions(entityOptions) {
+        return from(this.client.setEntityOptions(entityOptions));
+    }
     getText(request) {
         return from(this.client.getText(request));
     }

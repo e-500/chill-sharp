@@ -96,6 +96,16 @@ public class AuthUser : ChillEntity
     public bool CanManagePermissions { get; set; }
 
     /// <summary>
+    /// Indicates whether the user can access the schema-management API and manage schema settings.
+    /// </summary>
+    [Column("can-manage-schema")]
+    [ChillProperty(
+        "58000C5A-26B5-485E-B769-56EA360B28A9",
+        "Can manage schema",
+        "Può gestire schema")]
+    public bool CanManageSchema { get; set; }
+
+    /// <summary>
     /// Role memberships assigned to the user.
     /// </summary>
     [ChillProperty(

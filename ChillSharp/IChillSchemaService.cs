@@ -24,4 +24,20 @@ public interface IChillSchemaService
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>The persisted schema.</returns>
     Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads the persisted runtime options for a Chill entity type.
+    /// </summary>
+    /// <param name="chillType">The logical Chill type identifier.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The resolved entity options, falling back to defaults when no persisted row exists.</returns>
+    Task<ChillDtoEntityOptions> GetEntityOptionsAsync(string chillType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists runtime options for a Chill entity type.
+    /// </summary>
+    /// <param name="entityOptions">The entity options to persist.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The persisted entity options.</returns>
+    Task<ChillDtoEntityOptions> SetEntityOptionsAsync(ChillDtoEntityOptions entityOptions, CancellationToken cancellationToken = default);
 }

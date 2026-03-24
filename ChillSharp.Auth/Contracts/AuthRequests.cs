@@ -56,6 +56,11 @@ public class CreateAuthUserRequest
     /// Gets or sets whether the user can manage the auth API.
     /// </summary>
     public bool CanManagePermissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the user can manage the schema API.
+    /// </summary>
+    public bool CanManageSchema { get; set; }
 }
 
 /// <summary>
@@ -92,6 +97,11 @@ public class UpdateAuthUserRequest
     /// Gets or sets whether the user can manage the auth API.
     /// </summary>
     public bool CanManagePermissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the user can manage the schema API.
+    /// </summary>
+    public bool CanManageSchema { get; set; }
 }
 
 /// <summary>
@@ -288,6 +298,11 @@ public class SetAuthUserRequest
     /// Gets or sets whether the user can manage auth permissions.
     /// </summary>
     public bool CanManagePermissions { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the user can manage schema configuration.
+    /// </summary>
+    public bool CanManageSchema { get; set; }
 
     /// <summary>
     /// Gets or sets the full role assignment list for the user.

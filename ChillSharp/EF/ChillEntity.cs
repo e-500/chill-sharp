@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -133,7 +134,8 @@ namespace ChillSharp.EF
         {
             LastUpdateUtc = DateTime.UtcNow;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
-            Checksum = CalculateChecksum();
+            var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
+            Checksum = Context.IsEntityChecksumEnabled(chillType) ? CalculateChecksum() : 0;
         }
         #endregion
 
@@ -160,8 +162,9 @@ namespace ChillSharp.EF
         /// <param name="Context">The active database context.</param>
         /// <returns>A descriptive label for the entity.</returns>
         public virtual string GetLabel(IChillContext Context)
-        { 
-            return $"ChillEntity Guid = {Guid}"; 
+        {
+            return ChillEntityLabelFormatter.TryResolveConfiguredLabel(this, Context, useShortLabel: false)
+                ?? $"ChillEntity Guid = {Guid}";
         }
 
         /// <summary>
@@ -171,6 +174,10 @@ namespace ChillSharp.EF
         /// <returns>A short descriptive label for the entity.</returns>
         public virtual string GetShortLabel(IChillContext Context) 
         {
+            var configuredLabel = ChillEntityLabelFormatter.TryResolveConfiguredLabel(this, Context, useShortLabel: true);
+            if (configuredLabel != null)
+                return configuredLabel;
+
             string label = GetLabel(Context);
             if (label == null)
                 return $"Chill({Guid.ToString().Substring(0,8)})";
@@ -186,7 +193,8 @@ namespace ChillSharp.EF
         /// <returns>The full-text string representing the entity.</returns>
         public virtual string GetFullTextContent(IChillContext Context)
         {
-            return GetLabel(Context);
+            return ChillEntityLabelFormatter.TryResolveConfiguredFullTextContent(this, Context)
+                ?? GetLabel(Context);
         }
 
         /// <summary>

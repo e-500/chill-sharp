@@ -25,6 +25,7 @@ export type {
   AuthRolePermissions,
   AuthUserDetailsResponse,
   AuthUserListItem,
+  ChillDtoEntityOptions,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,

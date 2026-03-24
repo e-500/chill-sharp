@@ -21,6 +21,11 @@ public class ChillSchemaDbContext : DbContext, IChillSchemaDbContext
     public DbSet<ChillSchemaEntry> SchemaEntries => Set<ChillSchemaEntry>();
 
     /// <summary>
+    /// Gets the set of persisted runtime entity-options rows.
+    /// </summary>
+    public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries => Set<ChillEntityOptionsEntry>();
+
+    /// <summary>
     /// Configures indexes and constraints for the schema persistence model.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)

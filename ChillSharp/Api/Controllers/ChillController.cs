@@ -20,7 +20,6 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace ChillSharp.Api.Controllers
 {
@@ -55,7 +54,7 @@ namespace ChillSharp.Api.Controllers
     /// ©️2025 Andrea Piovesan</para>
     /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/chill")]
     public class ChillController : ControllerBase
     {
         /// <summary>
@@ -196,58 +195,6 @@ namespace ChillSharp.Api.Controllers
         }
 
         /// <summary>
-        /// Returns the schema information for the specified chill type with specific view code.
-        /// </summary>
-        /// <remarks>The returned schema data can be used to understand the structure or configuration
-        /// associated with the specified chill type and view code. This endpoint is typically used to support dynamic
-        /// UI generation or validation scenarios.</remarks>
-        /// <param name="ChillType">The type of chill for which to retrieve schema information. Cannot be null or empty.</param>
-        /// <param name="ChillViewCode">The code representing the specific chill view to query. Cannot be null or empty.</param>
-        /// <param name="CultureName">Optional explicit culture used to localize schema labels.</param>
-        /// <returns>An <see cref="IActionResult"/> containing the schema data for the requested chill type and view code.</returns>
-        [HttpGet]
-        [Route("get-schema")]
-        public IActionResult GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
-        {
-            return Ok(_ce.GetSchema(ChillType, ChillViewCode, CultureName));
-        }
-
-        /// <summary>
-        /// Returns the list of registered Chill entity and query types available in the current context assembly.
-        /// </summary>
-        /// <param name="CultureName">Optional explicit culture used to localize labels. When omitted, the context default user culture is used.</param>
-        /// <returns>A collection of schema list items describing registered entities and queries.</returns>
-        [HttpGet]
-        [Route("get-schema-list")]
-        public IActionResult GetSchemaList(string? CultureName = null)
-        {
-            return Ok(BuildSchemaList(CultureName));
-        }
-
-        /// <summary>
-        /// Persists the provided schema information for a specific chill type and view code.
-        /// </summary>
-        /// <param name="Schema">The <see cref="ChillDtoSchema"/> containing the schema metadata, field definitions and view-specific configuration to be stored or updated.
-        /// This object must not be <c>null</c> and should include valid <see cref="ChillDtoSchema.ChillType"/> and <see cref="ChillDtoSchema.ChillViewCode"/> values.</param>
-        /// <returns>
-        /// An <see cref="IActionResult"/> containing the persisted <see cref="ChillDtoSchema"/> as returned by the Chill DTO engine.
-        /// On success the endpoint returns HTTP 200 with the saved schema payload.
-        /// </returns>
-        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="Schema"/> argument is <c>null</c>.</exception>
-        /// <exception cref="InvalidOperationException">May be thrown if the engine cannot persist the schema due to validation or persistence errors.</exception>
-        /// <remarks>
-        /// This endpoint delegates the persistence work to <see cref="IChillDtoEngine.SetSchema(ChillDtoSchema)"/>.
-        /// The engine implementation is responsible for creating or updating the stored schema record based on the provided data.
-        /// Consumers should validate the schema's required properties (for example, ChillType and ChillViewCode) before calling this endpoint.
-        /// </remarks>
-        [HttpPost]
-        [Route("set-schema")]
-        public IActionResult SetSchema(ChillDtoSchema Schema)
-        {
-            return Ok(_ce.SetSchema(Schema));
-        }
-
-        /// <summary>
         /// Evaluates entity-level ACL requirements for every operation in a chunk before executing the batch.
         /// </summary>
         /// <param name="operation">The operation currently being validated.</param>
@@ -357,43 +304,5 @@ namespace ChillSharp.Api.Controllers
             return ChillTypeResolver.PrepareFullChillType(chillType, _context.GetChillTypePrefix());
         }
 
-        private List<ChillDtoSchemaListItem> BuildSchemaList(string? cultureName)
-        {
-            var assembly = _context.GetType().Assembly;
-            var shrinkTypePrefix = _context.GetChillTypePrefix();
-
-            var entityItems = assembly
-                .GetTypes()
-                .Where(IsRegisteredEntityType)
-                .Select(type => ChillDtoSchemaListItem.FromEntityType(type, shrinkTypePrefix, _context, cultureName));
-
-            var queryItems = assembly
-                .GetTypes()
-                .Where(IsRegisteredQueryType)
-                .Select(type => ChillDtoSchemaListItem.FromQueryType(type, shrinkTypePrefix, _context, cultureName));
-
-            return entityItems
-                .Concat(queryItems)
-                .OrderBy(x => x.Type, StringComparer.Ordinal)
-                .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-                .ThenBy(x => x.ChillType, StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-
-        private static bool IsRegisteredEntityType(Type type)
-        {
-            return (type.IsPublic || type.IsNestedPublic)
-                && type.IsClass
-                && !type.IsAbstract
-                && typeof(IChillEntity).IsAssignableFrom(type);
-        }
-
-        private static bool IsRegisteredQueryType(Type type)
-        {
-            return (type.IsPublic || type.IsNestedPublic)
-                && type.IsClass
-                && !type.IsAbstract
-                && typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type);
-        }
     }
 }

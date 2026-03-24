@@ -238,6 +238,22 @@ namespace ChillSharp
             return _SchemaService.SetSchemaAsync(Schema).GetAwaiter().GetResult();
         }
 
+        public ChillDtoEntityOptions GetEntityOptions(string ChillType)
+        {
+            if (_SchemaService == null)
+                throw new ChillException("Chill schema service is not registered.");
+
+            return _SchemaService.GetEntityOptionsAsync(ChillType).GetAwaiter().GetResult();
+        }
+
+        public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions)
+        {
+            if (_SchemaService == null)
+                throw new ChillException("Chill schema service is not registered.");
+
+            return _SchemaService.SetEntityOptionsAsync(EntityOptions).GetAwaiter().GetResult();
+        }
+
         private void QueueEntityChange(IChillEntity entity, string action)
         {
             QueueEntityChange(

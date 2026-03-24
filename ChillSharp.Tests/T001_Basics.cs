@@ -19,6 +19,10 @@
 
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
+using ChillSharp.EF;
+using ChillSharp.Schema;
+using ChillSharp.Schema.Model;
+using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Tests
@@ -213,6 +217,100 @@ namespace ChillSharp.Tests
             Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
             Assert.IsTrue(updatedPost.LastUpdateUtc > initialLastUpdateUtc);
             Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
+        }
+
+        [TestMethod]
+        public void Step006_ChecksumCalculationCanBeDisabledAndReEnabledPerEntityType()
+        {
+            var chillType = "Model.Post";
+            using (var disabledContext = new EF.DummyContext())
+            {
+                disabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = chillType,
+                    ChecksumEnabled = false
+                });
+
+                var disabledEntity = new Post
+                {
+                    Title = "Checksum disabled",
+                    Author = "Tester"
+                };
+
+                ((IChillEntity)disabledEntity).OnAfterUpdate(disabledContext);
+
+                Assert.AreEqual("dummy-user", disabledEntity.LastUpdateUser);
+                Assert.AreEqual(0L, disabledEntity.Checksum);
+            }
+
+            using (var enabledContext = new EF.DummyContext())
+            {
+                ChillEntityOptionsRuntimeCache.Invalidate(enabledContext, chillType);
+                enabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = chillType,
+                    ChecksumEnabled = true
+                });
+
+                var enabledEntity = new Post
+                {
+                    Title = "Checksum enabled",
+                    Author = "Tester"
+                };
+
+                ((IChillEntity)enabledEntity).OnAfterUpdate(enabledContext);
+
+                Assert.AreEqual("dummy-user", enabledEntity.LastUpdateUser);
+                Assert.IsTrue(enabledEntity.Checksum > 0);
+            }
+        }
+
+        [TestMethod]
+        public async Task Step007_LabelAndShortLabelCanUseConfiguredFormatStrings()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-entity-options-{Guid.NewGuid():N}.db");
+
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var chillType = "Model.Post";
+
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            {
+                ChillType = chillType,
+                LabelFormatString = "{Title} - {Author} - {FullTextContent}",
+                ShortLabelFormatString = "{Author}.{Title}",
+                FullTextContentFormatString = "{Author}::{Title}::{Checksum}"
+            });
+
+            var post = new Post
+            {
+                Title = "Configured title",
+                Author = "Configured author"
+            };
+
+            Assert.AreEqual("Configured title - Configured author - ", post.GetLabel(context));
+            Assert.AreEqual("Configured author.Configured title", post.GetShortLabel(context));
+            Assert.AreEqual("Configured author::Configured title::0", post.GetFullTextContent(context));
+
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            {
+                ChillType = chillType,
+                LabelFormatString = "{Author}",
+                ShortLabelFormatString = "{Title}",
+                FullTextContentFormatString = "{Title}|{LastUpdateUser}|{FullTextContent}"
+            });
+
+            Assert.AreEqual("Configured author", post.GetLabel(context));
+            Assert.AreEqual("Configured title", post.GetShortLabel(context));
+            Assert.AreEqual("Configured title||", post.GetFullTextContent(context));
         }
     }
 }

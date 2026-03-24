@@ -35,6 +35,14 @@ export interface ChillDtoSchemaListItem extends JsonObject {
     type: string;
     relatedChillType: string | null;
 }
+export interface ChillDtoEntityOptions extends JsonObject {
+    chillType: string;
+    checksumEnabled: boolean;
+    labelFormatString: string | null;
+    shortLabelFormatString: string | null;
+    fullTextContentFormatString: string | null;
+    changeLogEnabled: boolean;
+}
 export interface AuthUserListItem extends JsonObject {
     guid: string;
     externalId: string;
@@ -42,6 +50,7 @@ export interface AuthUserListItem extends JsonObject {
     displayName: string;
     isActive: boolean;
     canManagePermissions: boolean;
+    canManageSchema: boolean;
 }
 export interface AuthRoleListItem extends JsonObject {
     guid: string;
@@ -95,6 +104,7 @@ export interface SetAuthUserRequest extends JsonObject {
     displayName: string;
     isActive: boolean;
     canManagePermissions: boolean;
+    canManageSchema: boolean;
     roleGuids: string[];
     permissions: AuthPermissionRuleItem[];
 }
@@ -149,6 +159,8 @@ export declare class ChillSharpClient {
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null>;
     getSchemaList(cultureName?: string): Promise<ChillDtoSchemaListItem[]>;
     setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null>;
+    getEntityOptions(chillType: string): Promise<ChillDtoEntityOptions>;
+    setEntityOptions(entityOptions: ChillDtoEntityOptions): Promise<ChillDtoEntityOptions>;
     getText(request: GetTextRequest): Promise<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Promise<GetTextResponse>;
@@ -183,8 +195,10 @@ export declare class ChillSharpClient {
     private buildChillUrl;
     private buildNotifyUrl;
     private buildAuthUrl;
+    private buildSchemaUrl;
     private buildI18nUrl;
     private getAuthBaseUrl;
+    private getSchemaBaseUrl;
     private getI18nBaseUrl;
     private normalizeRequiredValue;
     private normalizeOptionalValue;

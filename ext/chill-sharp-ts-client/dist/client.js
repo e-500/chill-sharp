@@ -59,7 +59,7 @@ export class ChillSharpClient {
         if (effectiveCultureName) {
             relativeUrl += `&cultureName=${encodeURIComponent(effectiveCultureName)}`;
         }
-        return this.sendJson("GET", this.buildChillUrl(relativeUrl));
+        return this.sendJson("GET", this.buildSchemaUrl(relativeUrl));
     }
     getSchemaList(cultureName) {
         const effectiveCultureName = this.normalizeOptionalValue(cultureName) ?? this.cultureName;
@@ -67,10 +67,17 @@ export class ChillSharpClient {
         if (effectiveCultureName) {
             relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
         }
-        return this.sendJson("GET", this.buildChillUrl(relativeUrl));
+        return this.sendJson("GET", this.buildSchemaUrl(relativeUrl));
     }
     setSchema(schema) {
-        return this.sendJson("POST", this.buildChillUrl("set-schema"), schema);
+        return this.sendJson("POST", this.buildSchemaUrl("set-schema"), schema);
+    }
+    getEntityOptions(chillType) {
+        const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
+        return this.sendJson("GET", this.buildSchemaUrl(`get-entity-options?chillType=${encodedType}`));
+    }
+    setEntityOptions(entityOptions) {
+        return this.sendJson("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
     }
     getText(request) {
         return this.sendJson("GET", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
@@ -349,6 +356,9 @@ export class ChillSharpClient {
     buildAuthUrl(relativeUrl) {
         return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
+    buildSchemaUrl(relativeUrl) {
+        return `${this.getSchemaBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+    }
     buildI18nUrl(relativeUrl) {
         return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
@@ -358,6 +368,13 @@ export class ChillSharpClient {
             return `${this.baseUrl.slice(0, -suffix.length)}/chill-auth`;
         }
         return `${this.baseUrl.replace(/\/$/, "")}-auth`;
+    }
+    getSchemaBaseUrl() {
+        const suffix = "/chill";
+        if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+            return `${this.baseUrl.slice(0, -suffix.length)}/chill-schema`;
+        }
+        return `${this.baseUrl.replace(/\/$/, "")}-schema`;
     }
     getI18nBaseUrl() {
         const suffix = "/chill";

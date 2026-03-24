@@ -2,7 +2,6 @@ using ChillSharp.Dto;
 using ChillSharp.EF;
 using ChillSharp.Schema.Model;
 using Microsoft.EntityFrameworkCore;
-using System.Reflection;
 using System.Text.Json;
 
 namespace ChillSharp.Schema;
@@ -96,7 +95,79 @@ public class ChillSchemaService : IChillSchemaService
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
         _schemaCache.InvalidateAll();
+        ChillEntityOptionsRuntimeCache.InvalidateAll();
         return _schemaCache.SetSchema(schema, NormalizeCultureName(null));
+    }
+
+    /// <inheritdoc />
+    public async Task<ChillDtoEntityOptions> GetEntityOptionsAsync(string chillType, CancellationToken cancellationToken = default)
+    {
+        var normalizedType = NormalizeKey(chillType);
+
+        if (_schemaCache.TryGetEntityOptions(normalizedType, out var cachedEntityOptions) && cachedEntityOptions != null)
+            return cachedEntityOptions;
+
+        var row = await _schemaContext.EntityOptionsEntries
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ChillType == normalizedType, cancellationToken);
+
+        if (row == null)
+        {
+            return _schemaCache.SetEntityOptions(CreateDefaultEntityOptions(normalizedType));
+        }
+
+        return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
+        {
+            ChillType = row.ChillType,
+            ChecksumEnabled = row.ChecksumEnabled,
+            LabelFormatString = row.LabelFormatString,
+            ShortLabelFormatString = row.ShortLabelFormatString,
+            FullTextContentFormatString = row.FullTextContentFormatString,
+            ChangeLogEnabled = row.ChangeLogEnabled
+        });
+    }
+
+    /// <inheritdoc />
+    public async Task<ChillDtoEntityOptions> SetEntityOptionsAsync(ChillDtoEntityOptions entityOptions, CancellationToken cancellationToken = default)
+    {
+        if (entityOptions == null)
+            throw new ArgumentNullException(nameof(entityOptions));
+
+        var chillType = NormalizeKey(entityOptions.ChillType);
+
+        var row = await _schemaContext.EntityOptionsEntries
+            .FirstOrDefaultAsync(x => x.ChillType == chillType, cancellationToken);
+
+        if (row == null)
+        {
+            row = new ChillEntityOptionsEntry
+            {
+                Guid = Guid.NewGuid(),
+                ChillType = chillType
+            };
+            _schemaContext.EntityOptionsEntries.Add(row);
+        }
+
+        row.ChecksumEnabled = entityOptions.ChecksumEnabled;
+        row.LabelFormatString = NormalizeOptionalText(entityOptions.LabelFormatString);
+        row.ShortLabelFormatString = NormalizeOptionalText(entityOptions.ShortLabelFormatString);
+        row.FullTextContentFormatString = NormalizeOptionalText(entityOptions.FullTextContentFormatString);
+        row.ChangeLogEnabled = entityOptions.ChangeLogEnabled;
+        row.UpdatedUtc = DateTime.UtcNow;
+
+        await _schemaContext.SaveChangesAsync(cancellationToken);
+        _schemaCache.InvalidateEntityOptions(chillType);
+        ChillEntityOptionsRuntimeCache.Invalidate(_chillContext, chillType);
+
+        return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
+        {
+            ChillType = chillType,
+            ChecksumEnabled = row.ChecksumEnabled,
+            LabelFormatString = row.LabelFormatString,
+            ShortLabelFormatString = row.ShortLabelFormatString,
+            FullTextContentFormatString = row.FullTextContentFormatString,
+            ChangeLogEnabled = row.ChangeLogEnabled
+        });
     }
 
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
@@ -127,6 +198,21 @@ public class ChillSchemaService : IChillSchemaService
         return string.IsNullOrWhiteSpace(value) ? "default" : value.Trim();
     }
 
+    private static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static ChillDtoEntityOptions CreateDefaultEntityOptions(string chillType)
+    {
+        return new ChillDtoEntityOptions
+        {
+            ChillType = chillType,
+            ChecksumEnabled = true,
+            ChangeLogEnabled = false
+        };
+    }
+
     private string NormalizeCultureName(string? cultureName)
     {
         return string.IsNullOrWhiteSpace(cultureName)
@@ -143,6 +229,3 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
-
-
-

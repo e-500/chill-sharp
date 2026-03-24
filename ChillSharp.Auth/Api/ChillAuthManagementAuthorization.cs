@@ -28,12 +28,12 @@ namespace ChillSharp.Auth.Api;
 /// </summary>
 internal sealed class ChillAuthManagementAccessFilter : IAsyncActionFilter
 {
-    private readonly IChillAuthService _authService;
+    private readonly IChillAuthManagementAccessService _managementAccessService;
     private readonly IChillAuthIdentityResolver _identityResolver;
 
-    public ChillAuthManagementAccessFilter(IChillAuthService authService, IChillAuthIdentityResolver identityResolver)
+    public ChillAuthManagementAccessFilter(IChillAuthManagementAccessService managementAccessService, IChillAuthIdentityResolver identityResolver)
     {
-        _authService = authService;
+        _managementAccessService = managementAccessService;
         _identityResolver = identityResolver;
     }
 
@@ -52,8 +52,11 @@ internal sealed class ChillAuthManagementAccessFilter : IAsyncActionFilter
             return;
         }
 
-        var user = await _authService.GetUserByExternalIdAsync(externalId, context.HttpContext.RequestAborted);
-        if (user is not { IsActive: true, CanManagePermissions: true })
+        var isAllowed = await _managementAccessService.HasCapabilityAsync(
+            externalId,
+            ChillAuthManagementCapability.Permissions,
+            context.HttpContext.RequestAborted);
+        if (!isAllowed)
         {
             context.Result = new ForbidResult();
             return;

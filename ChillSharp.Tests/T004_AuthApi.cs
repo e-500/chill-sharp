@@ -308,6 +308,7 @@ public sealed class AuthApi
             Assert.IsNotNull(persistedAuthUser);
             Assert.AreEqual(rootDisplayName, persistedAuthUser.DisplayName);
             Assert.IsTrue(persistedAuthUser.CanManagePermissions);
+            Assert.IsTrue(persistedAuthUser.CanManageSchema);
         }
         finally
         {
@@ -356,6 +357,7 @@ public sealed class AuthApi
             UserName = $"managed.user.{Guid.NewGuid():N}",
             DisplayName = "Managed User",
             IsActive = true,
+            CanManageSchema = true,
             RoleGuids = [role.Guid],
             Permissions =
             [
@@ -378,6 +380,7 @@ public sealed class AuthApi
         var roleList = await (await client.GetAsync("api/chill-auth/get-role-list")).EnsureSuccess().Content.ReadAsAsync<List<AuthRoleListItemResponse>>();
 
         Assert.IsNotNull(fetchedUser);
+        Assert.IsTrue(fetchedUser.CanManageSchema);
         Assert.AreEqual(1, fetchedUser.Roles.Count);
         Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
         Assert.AreEqual(1, fetchedUser.Permissions.Count);
@@ -386,6 +389,7 @@ public sealed class AuthApi
         Assert.AreEqual(user.Guid, fetchedRole.Users[0].Guid);
         Assert.AreEqual(1, fetchedRole.Permissions.Count);
         Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
+        Assert.IsTrue(userList!.Single(x => x.Guid == user.Guid).CanManageSchema);
         Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
 
         var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;

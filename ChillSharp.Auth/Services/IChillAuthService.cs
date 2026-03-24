@@ -171,4 +171,9 @@ public interface IChillAuthService
     /// Evaluates whether a user can perform a property-level action across a set of properties.
     /// </summary>
     Task<PropertyPermissionSetResult> EvaluatePropertySetPermissionAsync(EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Invalidates cached auth-management access decisions.
+    /// </summary>
+    void InvalidateManagementAccess(string? externalId = null);
 }

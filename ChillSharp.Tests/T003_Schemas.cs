@@ -20,7 +20,18 @@
 using ChillSharp.Client;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Services;
+using ChillSharp.Schema.Api;
+using ChillSharp.Schema.Api.Controllers;
 using ChillSharp.Tests.EF.Model;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Routing;
+using System.Security.Claims;
 using System.Reflection;
 
 namespace ChillSharp.Tests
@@ -137,10 +148,84 @@ namespace ChillSharp.Tests
 
             var blogQuery = italianItems.Single(x => x.Type == "query" && x.ChillType == "Query.BlogQuery");
             Assert.AreEqual("Ricerca Blog", blogQuery.Name);
-            Assert.IsNull(blogQuery.RelatedChillType);
+            Assert.AreEqual("Model.Blog", blogQuery.RelatedChillType);
 
             var defaultBlogQuery = defaultItems.Single(x => x.Type == "query" && x.ChillType == "Query.BlogQuery");
             Assert.AreEqual("Blog query", defaultBlogQuery.Name);
+        }
+
+        [TestMethod]
+        public async Task Step007_EntityOptionsCanBeReadAndPersisted()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-options-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var dtoEngine = new ChillDtoEngine(context, schemaService);
+
+            var defaultOptions = dtoEngine.GetEntityOptions("Model.Post");
+            Assert.AreEqual("Model.Post", defaultOptions.ChillType);
+            Assert.IsTrue(defaultOptions.ChecksumEnabled);
+            Assert.IsFalse(defaultOptions.ChangeLogEnabled);
+            Assert.IsNull(defaultOptions.LabelFormatString);
+            Assert.IsNull(defaultOptions.ShortLabelFormatString);
+            Assert.IsNull(defaultOptions.FullTextContentFormatString);
+
+            var updatedOptions = dtoEngine.SetEntityOptions(new ChillDtoEntityOptions
+            {
+                ChillType = "Model.Post",
+                ChecksumEnabled = false,
+                LabelFormatString = "{Title} - {Author}",
+                ShortLabelFormatString = "{Author}.{Title}",
+                FullTextContentFormatString = "{Title}::{Author}",
+                ChangeLogEnabled = true
+            });
+
+            Assert.AreEqual("Model.Post", updatedOptions.ChillType);
+            Assert.IsFalse(updatedOptions.ChecksumEnabled);
+            Assert.IsTrue(updatedOptions.ChangeLogEnabled);
+            Assert.AreEqual("{Title} - {Author}", updatedOptions.LabelFormatString);
+            Assert.AreEqual("{Author}.{Title}", updatedOptions.ShortLabelFormatString);
+            Assert.AreEqual("{Title}::{Author}", updatedOptions.FullTextContentFormatString);
+
+            var persistedOptions = dtoEngine.GetEntityOptions("Model.Post");
+            Assert.IsFalse(persistedOptions.ChecksumEnabled);
+            Assert.IsTrue(persistedOptions.ChangeLogEnabled);
+            Assert.AreEqual("{Title} - {Author}", persistedOptions.LabelFormatString);
+            Assert.AreEqual("{Author}.{Title}", persistedOptions.ShortLabelFormatString);
+            Assert.AreEqual("{Title}::{Author}", persistedOptions.FullTextContentFormatString);
+        }
+
+        [TestMethod]
+        public async Task Step008_SchemaManagementEndpointsRequireCanManageSchemaPermission()
+        {
+            var result = await ExecuteSchemaAccessFilterAsync(false);
+            Assert.IsInstanceOfType<ForbidResult>(result);
+        }
+
+        [TestMethod]
+        public async Task Step009_SchemaManagementEndpointsAllowCanManageSchemaPermission()
+        {
+            var result = await ExecuteSchemaAccessFilterAsync(true);
+
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public void Step010_SchemaControllerEndpointsRespond()
+        {
+            var controller = CreateSchemaController();
+
+            Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchema("Model.Post", "default"));
+            Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchemaList());
+            Assert.IsInstanceOfType<OkObjectResult>(controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
+            Assert.IsInstanceOfType<OkObjectResult>(controller.GetEntityOptions("Model.Post"));
+            Assert.IsInstanceOfType<OkObjectResult>(controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
         }
 
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
@@ -178,6 +263,87 @@ namespace ChillSharp.Tests
             {
                 return Query;
             }
+        }
+
+        private static ChillSchemaController CreateSchemaController()
+        {
+            var controller = new ChillSchemaController(new StubDtoEngine(), new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"));
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            };
+            return controller;
+        }
+
+        private static async Task<IActionResult?> ExecuteSchemaAccessFilterAsync(bool allowSchemaManagement)
+        {
+            var filter = new ChillSchemaManagementAccessFilter(
+                new StubManagementAccessService(allowSchemaManagement),
+                new StubIdentityResolver());
+            var httpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, "schema-tester")
+                ], authenticationType: "Test"))
+            };
+
+            var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
+            var filters = new List<IFilterMetadata>();
+            var actionArguments = new Dictionary<string, object?>();
+            var controller = CreateSchemaController();
+            var executingContext = new ActionExecutingContext(actionContext, filters, actionArguments, controller);
+
+            await filter.OnActionExecutionAsync(executingContext, () =>
+            {
+                var executedContext = new ActionExecutedContext(actionContext, filters, controller);
+                return Task.FromResult(executedContext);
+            });
+
+            return executingContext.Result;
+        }
+
+        private sealed class StubManagementAccessService : IChillAuthManagementAccessService
+        {
+            private readonly bool _allowSchemaManagement;
+
+            public StubManagementAccessService(bool allowSchemaManagement)
+            {
+                _allowSchemaManagement = allowSchemaManagement;
+            }
+
+            public Task<bool> HasCapabilityAsync(string externalId, ChillAuthManagementCapability capability, CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(capability == ChillAuthManagementCapability.Schema && _allowSchemaManagement);
+            }
+
+            public void Invalidate(string externalId) { }
+
+            public void InvalidateAll() { }
+        }
+
+        private sealed class StubIdentityResolver : IChillAuthIdentityResolver
+        {
+            public string? ResolveExternalId(ClaimsPrincipal principal)
+            {
+                return principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            }
+        }
+
+        private sealed class StubDtoEngine : IChillDtoEngine
+        {
+            public void BeginTransaction() => throw new NotSupportedException();
+            public void CommitTransaction() => throw new NotSupportedException();
+            public void RollbackTransaction() => throw new NotSupportedException();
+            public ChillDtoQuery Query(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
+            public ChillDtoEntity? Find(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public ChillDtoEntity Create(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public ChillDtoEntity Update(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public void Delete(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null) => new() { ChillType = ChillType, ChillViewCode = ChillViewCode };
+            public ChillDtoSchema SetSchema(ChillDtoSchema Schema) => Schema;
+            public ChillDtoEntityOptions GetEntityOptions(string ChillType) => new() { ChillType = ChillType };
+            public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions) => EntityOptions;
         }
 
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery

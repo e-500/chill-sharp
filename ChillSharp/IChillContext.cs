@@ -17,6 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Dto;
+using System.Collections;
+
 namespace ChillSharp
 {
     /// <summary>
@@ -101,6 +104,101 @@ namespace ChillSharp
         string GetCurrentUserName()
         {
             return Environment.UserName;
+        }
+
+        /// <summary>
+        /// Resolves the runtime entity options for the specified Chill type.
+        /// </summary>
+        /// <remarks>
+        /// When the current context also exposes an <c>EntityOptionsEntries</c> set, the default implementation
+        /// reads the persisted row from that set; otherwise it falls back to the built-in defaults.
+        /// </remarks>
+        /// <param name="chillType">The logical Chill type identifier.</param>
+        /// <returns>The resolved entity options.</returns>
+        ChillDtoEntityOptions GetEntityOptions(string chillType)
+        {
+            var normalizedType = string.IsNullOrWhiteSpace(chillType) ? "default" : chillType.Trim();
+            return GetCachedEntityOptions(this, normalizedType, () =>
+            {
+                var defaultOptions = new ChillDtoEntityOptions
+                {
+                    ChillType = normalizedType,
+                    ChecksumEnabled = true,
+                    ChangeLogEnabled = false
+                };
+
+                var entriesProperty = GetType().GetProperty("EntityOptionsEntries");
+                var entries = entriesProperty?.GetValue(this);
+                if (entries == null)
+                    return defaultOptions;
+
+                var localProperty = entries.GetType().GetProperty("Local");
+                if (TryResolveEntityOptions(localProperty?.GetValue(entries) as IEnumerable, normalizedType, out var localOptions))
+                    return localOptions;
+
+                try
+                {
+                    if (TryResolveEntityOptions(entries as IEnumerable, normalizedType, out var persistedOptions))
+                        return persistedOptions;
+                }
+                catch
+                {
+                    return defaultOptions;
+                }
+
+                return defaultOptions;
+            });
+        }
+
+        /// <summary>
+        /// Returns whether checksum calculation is enabled for the specified Chill type.
+        /// </summary>
+        /// <param name="chillType">The logical Chill type identifier.</param>
+        /// <returns><see langword="true"/> when checksum calculation is enabled; otherwise <see langword="false"/>.</returns>
+        bool IsEntityChecksumEnabled(string chillType)
+        {
+            return GetEntityOptions(chillType).ChecksumEnabled;
+        }
+
+        private static bool TryResolveEntityOptions(IEnumerable? entries, string chillType, out ChillDtoEntityOptions options)
+        {
+            if (entries != null)
+            {
+                foreach (var entry in entries)
+                {
+                    if (entry == null)
+                        continue;
+
+                    var entryType = entry.GetType();
+                    var entryChillType = entryType.GetProperty("ChillType")?.GetValue(entry) as string;
+                    if (!string.Equals(entryChillType, chillType, StringComparison.Ordinal))
+                        continue;
+
+                    options = new ChillDtoEntityOptions
+                    {
+                        ChillType = entryChillType ?? chillType,
+                        ChecksumEnabled = entryType.GetProperty("ChecksumEnabled")?.GetValue(entry) as bool? ?? true,
+                        LabelFormatString = entryType.GetProperty("LabelFormatString")?.GetValue(entry) as string,
+                        ShortLabelFormatString = entryType.GetProperty("ShortLabelFormatString")?.GetValue(entry) as string,
+                        FullTextContentFormatString = entryType.GetProperty("FullTextContentFormatString")?.GetValue(entry) as string,
+                        ChangeLogEnabled = entryType.GetProperty("ChangeLogEnabled")?.GetValue(entry) as bool? ?? false
+                    };
+                    return true;
+                }
+            }
+
+            options = null!;
+            return false;
+        }
+
+        private static ChillDtoEntityOptions GetCachedEntityOptions(IChillContext context, string chillType, Func<ChillDtoEntityOptions> factory)
+        {
+            var runtimeCacheType = Type.GetType("ChillSharp.Schema.ChillEntityOptionsRuntimeCache, ChillSharp.Schema");
+            var getOrAddMethod = runtimeCacheType?.GetMethod("GetOrAdd", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (getOrAddMethod == null)
+                return factory();
+
+            return (ChillDtoEntityOptions)getOrAddMethod.Invoke(null, [context, chillType, factory])!;
         }
         #endregion
     }

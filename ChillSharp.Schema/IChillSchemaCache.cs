@@ -11,7 +11,13 @@ public interface IChillSchemaCache
 
     ChillDtoSchema SetSchema(ChillDtoSchema schema, string? cultureName);
 
+    bool TryGetEntityOptions(string chillType, out ChillDtoEntityOptions? entityOptions);
+
+    ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions entityOptions);
+
     void Invalidate(string chillType, string chillViewCode, string? cultureName);
+
+    void InvalidateEntityOptions(string chillType);
 
     void InvalidateAll();
 }
