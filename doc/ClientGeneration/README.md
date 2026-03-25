@@ -57,6 +57,7 @@ http://localhost:5000/swagger/v1/swagger.json
 A ChillSharp host may expose several surfaces:
 
 - core Chill API
+- schema endpoints
 - auth/account endpoints
 - auth-management endpoints
 - i18n endpoints

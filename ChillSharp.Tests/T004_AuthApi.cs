@@ -327,12 +327,9 @@ public sealed class AuthApi
     {
         TestApiHost.EnsureStarted();
 
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5000/")
-        };
+        var client = new ChillSharpClient("http://localhost:5000/api/chill");
 
-        var role = await (await client.PostAsJsonAsync("api/chill-auth/set-role", new SetAuthRoleRequest
+        var role = client.SetAuthRole(new SetAuthRoleRequest
         {
             Name = $"ManagedRole-{Guid.NewGuid():N}",
             Description = "Role created by set-role",
@@ -349,9 +346,9 @@ public sealed class AuthApi
                     Description = "Allow blog post query"
                 }
             ]
-        })).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
+        });
 
-        var user = await (await client.PostAsJsonAsync("api/chill-auth/set-user", new SetAuthUserRequest
+        var user = client.SetAuthUser(new SetAuthUserRequest
         {
             ExternalId = $"managed-user-{Guid.NewGuid():N}",
             UserName = $"managed.user.{Guid.NewGuid():N}",
@@ -372,12 +369,12 @@ public sealed class AuthApi
                     Description = "Allow title edits"
                 }
             ]
-        })).EnsureSuccess().Content.ReadAsAsync<AuthUserDetailsResponse>();
+        });
 
-        var fetchedUser = await (await client.GetAsync($"api/chill-auth/get-user?userGuid={user.Guid}")).EnsureSuccess().Content.ReadAsAsync<AuthUserDetailsResponse>();
-        var fetchedRole = await (await client.GetAsync($"api/chill-auth/get-role?roleGuid={role.Guid}")).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
-        var userList = await (await client.GetAsync("api/chill-auth/get-user-list")).EnsureSuccess().Content.ReadAsAsync<List<AuthUserListItemResponse>>();
-        var roleList = await (await client.GetAsync("api/chill-auth/get-role-list")).EnsureSuccess().Content.ReadAsAsync<List<AuthRoleListItemResponse>>();
+        var fetchedUser = client.GetAuthManagedUser(user.Guid);
+        var fetchedRole = client.GetAuthManagedRole(role.Guid);
+        var userList = client.GetAuthUserList();
+        var roleList = client.GetAuthRoleList();
 
         Assert.IsNotNull(fetchedUser);
         Assert.IsTrue(fetchedUser.CanManageSchema);
@@ -393,7 +390,7 @@ public sealed class AuthApi
         Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
 
         var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;
-        var updatedRole = await (await client.PostAsJsonAsync("api/chill-auth/set-role", new SetAuthRoleRequest
+        var updatedRole = client.SetAuthRole(new SetAuthRoleRequest
         {
             Guid = role.Guid,
             Name = role.Name,
@@ -422,7 +419,7 @@ public sealed class AuthApi
                     Description = "Allow blog post update"
                 }
             ]
-        })).EnsureSuccess().Content.ReadAsAsync<AuthRoleDetailsResponse>();
+        });
 
         Assert.AreEqual(2, updatedRole.Permissions.Count);
         Assert.IsTrue(updatedRole.Permissions.Any(x => x.Guid == existingRolePermissionGuid));
@@ -500,13 +497,13 @@ public sealed class AuthApi
             await seedContext.SaveChangesAsync();
         }
 
-        using var client = new HttpClient
+        using var httpClient = new HttpClient
         {
             BaseAddress = new Uri("http://localhost:5001/")
         };
-        client.DefaultRequestHeaders.Add("X-Test-User", externalId);
+        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
 
-        var getPermissions = await client.GetAsync("api/chill-auth/get-permissions");
+        var getPermissions = await httpClient.GetAsync("api/chill-auth/get-permissions");
         Assert.AreEqual(HttpStatusCode.OK, getPermissions.StatusCode);
         var permissions = await getPermissions.Content.ReadFromJsonAsync<GetAuthPermissionsResponse>();
         Assert.IsNotNull(permissions);
@@ -516,7 +513,7 @@ public sealed class AuthApi
         Assert.AreEqual(1, permissions.Roles.Count);
         Assert.AreEqual(1, permissions.Roles[0].Permissions.Count);
 
-        var getUserList = await client.GetAsync("api/chill-auth/get-user-list");
+        var getUserList = await httpClient.GetAsync("api/chill-auth/get-user-list");
         Assert.AreEqual(HttpStatusCode.Forbidden, getUserList.StatusCode);
     }
 

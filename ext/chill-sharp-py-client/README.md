@@ -5,6 +5,7 @@ Python client for a generic ChillSharp service.
 This package targets the standard ChillSharp HTTP surface:
 
 - core Chill API at `/api/chill`
+- schema API at `/api/chill-schema`
 - auth API at `/api/chill-auth`
 - i18n API at `/api/chill-i18n`
 
@@ -196,6 +197,25 @@ client.set_schema({
 })
 ```
 
+### Get entity options
+
+```python
+options = client.get_entity_options("Model.Post")
+```
+
+### Set entity options
+
+```python
+options = client.set_entity_options({
+    "ChillType": "Model.Post",
+    "ChecksumEnabled": True,
+    "LabelFormatString": "{Title}",
+    "ShortLabelFormatString": "{Title}",
+    "FullTextContentFormatString": "{Title} {Author}",
+    "ChangeLogEnabled": True,
+})
+```
+
 ## I18n Operations
 
 ### Get text
@@ -279,6 +299,69 @@ result = client.reset_auth_password({
 })
 ```
 
+## Auth Management Operations
+
+Use these endpoints when the host exposes ChillSharp auth management APIs.
+
+### Get current permissions
+
+```python
+permissions = client.get_auth_permissions()
+```
+
+### Get user list
+
+```python
+users = client.get_auth_user_list()
+```
+
+### Get managed user
+
+```python
+user = client.get_auth_user("f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11")
+```
+
+### Set managed user
+
+```python
+user = client.set_auth_user({
+    "Guid": None,
+    "ExternalId": "identity-user-001",
+    "UserName": "identity.user",
+    "DisplayName": "Identity User",
+    "IsActive": True,
+    "CanManagePermissions": False,
+    "CanManageSchema": True,
+    "RoleGuids": [],
+    "Permissions": [],
+})
+```
+
+### Get role list
+
+```python
+roles = client.get_auth_role_list()
+```
+
+### Get managed role
+
+```python
+role = client.get_auth_role("e2f0d8d5-0a1f-4d15-9396-2ab5f6c4ff22")
+```
+
+### Set managed role
+
+```python
+role = client.set_auth_role({
+    "Guid": None,
+    "Name": "Editors",
+    "Description": "Can edit posts",
+    "IsActive": True,
+    "UserGuids": [],
+    "Permissions": [],
+})
+```
+
 ## Accessing The Underlying Session
 
 If you need custom headers, proxies, or retries, use the exposed `session`:
@@ -314,4 +397,5 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed Python clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
 

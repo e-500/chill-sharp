@@ -11,16 +11,11 @@
 - Time to market
 - ACL ad NIS2
 
+# To check
+- IChillContext > ChillDtoEntityOptions GetEntityOptions(string chillType) "default" is not a possible value "default" is only for ChillViewCode
+
 # Features TODO
 
-## Core
-- Test Claim CanManagePermission and CanManageSchema !!!!! different?""?
-
-+ ENV variabile configuration (Priority: ENV_VARS, appsettings.json)
-- Enable/Disable checksum on web entity based con default schema settings (header options stored in db to be available server-side)
-- Store on default schema also the string to compose the Lookup string
-- Store on default schema also the list of the fields to be used as full-text-search
-- Store on default schema the number of the entity versions es. 10 store (somewhere to decide) the old copies of the entity in a log
 
 ## Query capabilities
 - Include advanced full text search based on FullTextContent

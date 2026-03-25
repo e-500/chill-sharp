@@ -91,6 +91,68 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Returns the current authenticated user's direct permissions and role permissions.
+        /// </summary>
+        public GetAuthPermissionsResponse GetAuthPermissions()
+        {
+            var result = SendAuthJson<GetAuthPermissionsResponse>(HttpMethod.Get, "get-permissions");
+            if (result == null) throw new ChillClientException("Unexpected null get-permissions result");
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the simplified auth user list used by management UIs.
+        /// </summary>
+        public List<AuthUserListItemResponse> GetAuthUserList()
+        {
+            return SendAuthJson<List<AuthUserListItemResponse>>(HttpMethod.Get, "get-user-list") ?? new List<AuthUserListItemResponse>();
+        }
+
+        /// <summary>
+        /// Returns the full managed user payload.
+        /// </summary>
+        public AuthUserDetailsResponse? GetAuthManagedUser(Guid userGuid)
+        {
+            return SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Get, $"get-user?userGuid={Uri.EscapeDataString(userGuid.ToString())}");
+        }
+
+        /// <summary>
+        /// Creates or updates a user together with roles and direct permissions.
+        /// </summary>
+        public AuthUserDetailsResponse SetAuthUser(SetAuthUserRequest request)
+        {
+            var result = SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Post, "set-user", request);
+            if (result == null) throw new ChillClientException("Unexpected null set-user result");
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the simplified auth role list used by management UIs.
+        /// </summary>
+        public List<AuthRoleListItemResponse> GetAuthRoleList()
+        {
+            return SendAuthJson<List<AuthRoleListItemResponse>>(HttpMethod.Get, "get-role-list") ?? new List<AuthRoleListItemResponse>();
+        }
+
+        /// <summary>
+        /// Returns the full managed role payload.
+        /// </summary>
+        public AuthRoleDetailsResponse? GetAuthManagedRole(Guid roleGuid)
+        {
+            return SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Get, $"get-role?roleGuid={Uri.EscapeDataString(roleGuid.ToString())}");
+        }
+
+        /// <summary>
+        /// Creates or updates a role together with users and direct permissions.
+        /// </summary>
+        public AuthRoleDetailsResponse SetAuthRole(SetAuthRoleRequest request)
+        {
+            var result = SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Post, "set-role", request);
+            if (result == null) throw new ChillClientException("Unexpected null set-role result");
+            return result;
+        }
+
+        /// <summary>
         /// Returns all auth users.
         /// </summary>
         public List<AuthUser> GetAuthUsers()
