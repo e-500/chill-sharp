@@ -33,6 +33,11 @@ namespace ChillSharp.Dto
         Unknown = 0,
 
         /// <summary>
+        /// Any string representing a GUID/UUID.
+        /// </summary>
+        Guid = 1,
+
+        /// <summary>
         /// Any integral numeric type (int, long, short, etc.).
         /// </summary>
         Integer = 10,
@@ -111,6 +116,10 @@ namespace ChillSharp.Dto
             // Unwrap Nullable<T> to its underlying type
             type = Nullable.GetUnderlyingType(type) ?? type;
 
+            // Guid types
+            if (IsGuid(type))
+                return ChillDtoPropertyType.Guid;
+
             // Integer numeric types
             if (IsInteger(type))
                 return ChillDtoPropertyType.Integer;
@@ -158,6 +167,12 @@ namespace ChillSharp.Dto
             // Unknown or unsupported type
             return ChillDtoPropertyType.Unknown;
         }
+
+        /// <summary>
+        /// Determines whether the type is an GUID/UUID.
+        /// </summary>
+        private static bool IsGuid(Type type) =>
+            type == typeof(Guid);
 
         /// <summary>
         /// Determines whether the type is an integral numeric type.
@@ -213,28 +228,40 @@ namespace ChillSharp.Dto
             if (type == null)
                 return false;
 
-            // array of IChillEntity
             if (type.IsArray)
             {
-                var elem = type.GetElementType();
+                var elem = UnwrapProxy(type.GetElementType());
                 return elem != null && typeof(IChillEntity).IsAssignableFrom(elem);
             }
 
-            // check IEnumerable<T> (List<IChillEntity>, IEnumerable<IChillEntity>, ICollection<IChillEntity>, etc.)
-            foreach (var iface in type.GetInterfaces())
+            var typesToCheck = new[] { type }.Concat(type.GetInterfaces());
+
+            foreach (var t in typesToCheck)
             {
-                if (!iface.IsGenericType)
+                if (!t.IsGenericType)
                     continue;
 
-                if (iface.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IEnumerable<>))
+                if (t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
                 {
-                    var arg = iface.GetGenericArguments()[0];
+                    var arg = UnwrapProxy(t.GetGenericArguments()[0]);
                     if (typeof(IChillEntity).IsAssignableFrom(arg))
                         return true;
                 }
             }
 
             return false;
+        }
+
+        private static Type UnwrapProxy(Type type)
+        {
+            if (type == null)
+                return null;
+
+            // crude but effective for EF Core proxies
+            if (type.Namespace != null && type.Namespace.Contains("Castle.Proxies"))
+                return type.BaseType ?? type;
+
+            return type;
         }
 
         private static bool IsChillQuery(Type type)

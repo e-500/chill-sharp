@@ -19,6 +19,24 @@
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
+export const PermissionEffect = {
+    Allow: 1,
+    Deny: 2
+};
+export const PermissionAction = {
+    FullControl: 0,
+    Query: 1,
+    Create: 2,
+    Update: 3,
+    Delete: 4,
+    See: 5,
+    Modify: 6
+};
+export const PermissionScope = {
+    Module: 1,
+    Entity: 2,
+    Property: 3
+};
 export class ChillSharpClient {
     baseUrl;
     fetchImpl;
@@ -98,13 +116,13 @@ export class ChillSharpClient {
         return this.sendJson("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
     }
     getText(request) {
-        return this.sendJson("GET", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
+        return this.sendJson("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
     }
     getTexts(requests) {
         if (!Array.isArray(requests)) {
             throw new Error("requests is required.");
         }
-        return this.sendJson("GET", this.buildI18nUrl("get-multiple-text"), requests.map((request) => this.prepareGetTextRequest(request)));
+        return this.sendJson("POST", this.buildI18nUrl("get-multiple-text"), requests.map((request) => this.prepareGetTextRequest(request)));
     }
     setText(payload) {
         return this.sendJson("PUT", this.buildI18nUrl("set-text"), payload);
@@ -184,6 +202,26 @@ export class ChillSharpClient {
     }
     getAuthRoleList() {
         return this.sendAuthJson("GET", "get-role-list");
+    }
+    getAuthModuleList() {
+        return this.sendAuthJson("GET", "get-module-list");
+    }
+    getAuthEntityList(module) {
+        const normalizedModule = this.normalizeQueryValue(module);
+        const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+        return this.sendAuthJson("GET", `get-entity-list${suffix}`);
+    }
+    getAuthQueryList(module) {
+        const normalizedModule = this.normalizeQueryValue(module);
+        const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+        return this.sendAuthJson("GET", `get-query-list${suffix}`);
+    }
+    getAuthModuleEntityList(module) {
+        return this.getAuthEntityList(module);
+    }
+    getAuthPropertyList(chillType) {
+        const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+        return this.sendAuthJson("GET", `get-property-list?chillType=${encodeURIComponent(normalizedChillType)}`);
     }
     getAuthRole(roleGuid) {
         const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
@@ -411,6 +449,9 @@ export class ChillSharpClient {
     normalizeOptionalValue(value) {
         const normalized = value?.trim();
         return normalized ? normalized : null;
+    }
+    normalizeQueryValue(value) {
+        return value == null ? null : value.trim();
     }
     readString(payload, key) {
         const value = this.readValue(payload, key);

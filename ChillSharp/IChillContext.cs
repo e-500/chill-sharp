@@ -18,7 +18,9 @@
  */
 
 using ChillSharp.Dto;
+using ChillSharp.EF;
 using System.Collections;
+using System.Collections.Concurrent;
 
 namespace ChillSharp
 {
@@ -104,6 +106,73 @@ namespace ChillSharp
         string GetCurrentUserName()
         {
             return Environment.UserName;
+        }
+
+        /// <summary>
+        /// Returns the distinct logical modules discovered from the current Chill context metadata.
+        /// </summary>
+        /// <remarks>
+        /// The result is cached in memory because the set of modules is immutable after application bootstrap.
+        /// </remarks>
+        IReadOnlyList<string> GetModuleList()
+        {
+            return GetMetadataCatalog(this).Modules;
+        }
+
+        /// <summary>
+        /// Returns the distinct entity names discovered for the specified module.
+        /// </summary>
+        /// <param name="module">
+        /// Optional logical module filter. When <see langword="null"/> or whitespace, entities from all modules are returned.
+        /// </param>
+        /// <remarks>
+        /// The result is served from an in-memory cache because the set of entities is immutable after application bootstrap.
+        /// </remarks>
+        IReadOnlyList<string> GetEntities(string? module = null)
+        {
+            var catalog = GetMetadataCatalog(this);
+            var normalizedModule = NormalizeOptionalModule(module);
+            return normalizedModule == null
+                ? catalog.AllEntities
+                : catalog.EntitiesByModule.TryGetValue(normalizedModule, out var entities)
+                    ? entities
+                    : Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct query names discovered for the specified module.
+        /// </summary>
+        /// <param name="module">
+        /// Optional logical module filter. When <see langword="null"/> or whitespace, queries from all modules are returned.
+        /// </param>
+        /// <remarks>
+        /// The result is served from an in-memory cache because the set of queries is immutable after application bootstrap.
+        /// </remarks>
+        IReadOnlyList<string> GetQueries(string? module = null)
+        {
+            var catalog = GetMetadataCatalog(this);
+            var normalizedModule = NormalizeOptionalModule(module);
+            return normalizedModule == null
+                ? catalog.AllQueries
+                : catalog.QueriesByModule.TryGetValue(normalizedModule, out var queries)
+                    ? queries
+                    : Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct property names discovered for the specified Chill type.
+        /// </summary>
+        /// <param name="chillType">The entity or query Chill type whose properties should be listed.</param>
+        /// <remarks>
+        /// The result is served from an in-memory cache because metadata is immutable after application bootstrap.
+        /// </remarks>
+        IReadOnlyList<string> GetProperties(string chillType)
+        {
+            var normalizedType = NormalizeRequiredChillType(this, chillType);
+            var catalog = GetMetadataCatalog(this);
+            return catalog.PropertiesByChillType.TryGetValue(normalizedType, out var properties)
+                ? properties
+                : Array.Empty<string>();
         }
 
         /// <summary>
@@ -200,6 +269,132 @@ namespace ChillSharp
 
             return (ChillDtoEntityOptions)getOrAddMethod.Invoke(null, [context, chillType, factory])!;
         }
+
+        private static MetadataCatalog GetMetadataCatalog(IChillContext context)
+        {
+            return ChillContextMetadataCache.MetadataCache.GetOrAdd(
+                (context.GetType().Assembly, context.GetChillTypePrefix().Trim().TrimEnd('.')),
+                static key => BuildMetadataCatalog(key.Assembly, key.Item2));
+        }
+
+        private static MetadataCatalog BuildMetadataCatalog(System.Reflection.Assembly assembly, string chillTypePrefix)
+        {
+            var resources = assembly
+                .GetTypes()
+                .Where(type => type.IsClass && !type.IsAbstract)
+                .ToList();
+
+            var entityResources = resources
+                .Where(type => typeof(IChillEntity).IsAssignableFrom(type))
+                .Select(type => ToLogicalResource(ChillTypeResolver.NormalizeChillType(type, chillTypePrefix)))
+                .Distinct()
+                .ToList();
+
+            var queryResources = resources
+                .Where(IsDiscoverableQueryType)
+                .Select(type => ToLogicalResource(ChillTypeResolver.NormalizeChillType(type, chillTypePrefix)))
+                .Distinct()
+                .ToList();
+
+            return new MetadataCatalog(
+                Modules: entityResources
+                    .Select(x => x.Module)
+                    .Concat(queryResources.Select(x => x.Module))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                AllEntities: entityResources
+                    .Select(x => x.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                AllQueries: queryResources
+                    .Select(x => x.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                EntitiesByModule: entityResources
+                    .GroupBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (IReadOnlyList<string>)group.Select(x => x.Name)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                            .ToArray(),
+                        StringComparer.OrdinalIgnoreCase),
+                QueriesByModule: queryResources
+                    .GroupBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (IReadOnlyList<string>)group.Select(x => x.Name)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                            .ToArray(),
+                        StringComparer.OrdinalIgnoreCase),
+                PropertiesByChillType: resources
+                    .Where(type => typeof(IChillEntity).IsAssignableFrom(type) || IsDiscoverableQueryType(type))
+                    .ToDictionary(
+                        type => ChillTypeResolver.NormalizeChillType(type, chillTypePrefix),
+                        type => (IReadOnlyList<string>)type.GetProperties()
+                            .Where(prop => prop.IsDefined(typeof(Annotations.ChillPropertyAttribute), false))
+                            .Select(prop => prop.Name)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                            .ToArray(),
+                        StringComparer.OrdinalIgnoreCase));
+        }
+
+        private static bool IsDiscoverableQueryType(Type type)
+        {
+            return typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type);
+        }
+
+        private static (string Module, string Name) ToLogicalResource(string chillType)
+        {
+            var normalizedType = chillType.Trim().Trim('.');
+            var lastDot = normalizedType.LastIndexOf('.');
+            if (lastDot < 0)
+            {
+                return ("General", normalizedType);
+            }
+
+            return (normalizedType[..lastDot], normalizedType[(lastDot + 1)..]);
+        }
+
+        private static string? NormalizeOptionalModule(string? module)
+        {
+            var normalized = module?.Trim();
+            return string.IsNullOrWhiteSpace(normalized) ? null : normalized;
+        }
+
+        private static string NormalizeRequiredChillType(IChillContext context, string chillType)
+        {
+            var normalized = chillType?.Trim().Trim('.');
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                throw new ChillException("ChillType is required.");
+            }
+
+            var resolvedType = ChillTypeResolver.ResolveType(
+                context.GetType().Assembly,
+                normalized,
+                context.GetChillTypePrefix());
+
+            return ChillTypeResolver.NormalizeChillType(resolvedType, context.GetChillTypePrefix());
+        }
         #endregion
+    }
+
+    internal sealed record MetadataCatalog(
+        IReadOnlyList<string> Modules,
+        IReadOnlyList<string> AllEntities,
+        IReadOnlyList<string> AllQueries,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> EntitiesByModule,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> QueriesByModule,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> PropertiesByChillType);
+
+    internal static class ChillContextMetadataCache
+    {
+        internal static readonly ConcurrentDictionary<(System.Reflection.Assembly Assembly, string Prefix), MetadataCatalog> MetadataCache = new();
     }
 }

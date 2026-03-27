@@ -135,6 +135,64 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Returns the distinct logical modules available from the current Chill context.
+        /// </summary>
+        public List<string> GetAuthModuleList()
+        {
+            return SendAuthJson<List<string>>(HttpMethod.Get, "get-module-list") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct entities available for the specified logical module.
+        /// </summary>
+        public List<string> GetAuthEntityList(string? module = null)
+        {
+            var suffix = module == null ? string.Empty : $"?module={Uri.EscapeDataString(module)}";
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-entity-list{suffix}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct queries available for the specified logical module.
+        /// </summary>
+        public List<string> GetAuthQueryList(string? module = null)
+        {
+            var suffix = module == null ? string.Empty : $"?module={Uri.EscapeDataString(module)}";
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-query-list{suffix}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the previous pluralized method name.
+        /// </summary>
+        public List<string> GetAuthEntities(string? module = null)
+        {
+            return GetAuthEntityList(module);
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the previous pluralized method name.
+        /// </summary>
+        public List<string> GetAuthQueries(string? module = null)
+        {
+            return GetAuthQueryList(module);
+        }
+
+        /// <summary>
+        /// Returns the distinct properties available for the specified Chill type.
+        /// </summary>
+        public List<string> GetAuthPropertyList(string chillType)
+        {
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-property-list?chillType={Uri.EscapeDataString(chillType)}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the legacy module-entity list client call.
+        /// </summary>
+        public List<string> GetAuthModuleEntityList(string? module)
+        {
+            return GetAuthEntityList(module);
+        }
+
+        /// <summary>
         /// Returns the full managed role payload.
         /// </summary>
         public AuthRoleDetailsResponse? GetAuthManagedRole(Guid roleGuid)

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Any
 from urllib.parse import quote
 
@@ -31,6 +32,33 @@ from .exceptions import ChillSharpClientError
 
 CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
 JsonDict = dict[str, Any]
+
+
+class PermissionEffect(IntEnum):
+    """Effect applied by a permission rule."""
+
+    ALLOW = 1
+    DENY = 2
+
+
+class PermissionAction(IntEnum):
+    """Action controlled by a permission rule."""
+
+    FULL_CONTROL = 0
+    QUERY = 1
+    CREATE = 2
+    UPDATE = 3
+    DELETE = 4
+    SEE = 5
+    MODIFY = 6
+
+
+class PermissionScope(IntEnum):
+    """Hierarchy level targeted by a permission rule."""
+
+    MODULE = 1
+    ENTITY = 2
+    PROPERTY = 3
 
 
 @dataclass
@@ -131,11 +159,24 @@ class ChillSharpClient:
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
         return self._send_json(
-            "GET",
+            "POST",
             self._build_i18n_url("get-text"),
             self._prepare_get_text_request(request),
             allow_anonymous=True,
         )
+
+    def get_texts(self, requests: list[JsonDict]) -> list[JsonDict | None]:
+        """Retrieve multiple i18n text entries in a single request."""
+        if not isinstance(requests, list):
+            raise ValueError("requests is required.")
+
+        response = self._send_json(
+            "POST",
+            self._build_i18n_url("get-multiple-text"),
+            [self._prepare_get_text_request(request) for request in requests],
+            allow_anonymous=True,
+        )
+        return response if isinstance(response, list) else []
 
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""
@@ -190,6 +231,35 @@ class ChillSharpClient:
     def get_auth_role_list(self) -> list[JsonDict]:
         """Return the full auth role list."""
         response = self._send_auth_json("GET", "get-role-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_list(self) -> list[str]:
+        """Return the distinct auth module list."""
+        response = self._send_auth_json("GET", "get-module-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_entity_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct entity list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-entity-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_query_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct query list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-query-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_entity_list(self, module: str | None = None) -> list[str]:
+        """Compatibility alias for get_auth_entity_list."""
+        return self.get_auth_entity_list(module)
+
+    def get_auth_property_list(self, chill_type: str) -> list[str]:
+        """Return the distinct property list for a Chill type."""
+        normalized_chill_type = self._normalize_required_value(chill_type, "chill_type")
+        response = self._send_auth_json("GET", f"get-property-list?chillType={quote(normalized_chill_type)}")
         return response if isinstance(response, list) else []
 
     def get_auth_role(self, role_guid: str) -> JsonDict:
@@ -483,6 +553,13 @@ class ChillSharpClient:
         if not normalized:
             raise ValueError(f"{argument_name} is required.")
         return normalized
+
+    @staticmethod
+    def _normalize_optional_value(value: str | None) -> str | None:
+        """Normalize an optional string argument while preserving empty strings."""
+        if value is None:
+            return None
+        return value.strip()
 
     @staticmethod
     def _coerce_string(value: Any) -> str:

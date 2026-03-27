@@ -112,11 +112,24 @@ class ChillSharpClient:
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
         return self._send_json(
-            "GET",
+            "POST",
             self._build_i18n_url("get-text"),
             self._prepare_get_text_request(request),
             allow_anonymous=True,
         )
+
+    def get_texts(self, requests: list[JsonDict]) -> list[JsonDict | None]:
+        """Retrieve multiple i18n text entries in a single request."""
+        if not isinstance(requests, list):
+            raise ValueError("requests is required.")
+
+        response = self._send_json(
+            "POST",
+            self._build_i18n_url("get-multiple-text"),
+            [self._prepare_get_text_request(request) for request in requests],
+            allow_anonymous=True,
+        )
+        return response if isinstance(response, list) else []
 
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""

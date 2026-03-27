@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp;
 using ChillSharp.Auth.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -53,6 +54,22 @@ public static class ChillAuthApiExtensions
             }
 
             return context;
+        });
+
+        services.AddScoped<IChillContext>(provider =>
+        {
+            var context = provider.GetService<TContext>();
+            if (context is null)
+            {
+                throw new InvalidOperationException($"DbContext of type {typeof(TContext).Name} is not registered in the host application.");
+            }
+
+            if (context is not IChillContext chillContext)
+            {
+                throw new InvalidOperationException($"DbContext of type {typeof(TContext).Name} must implement {nameof(IChillContext)} to use ChillSharp auth management metadata endpoints.");
+            }
+
+            return chillContext;
         });
 
         services.AddScoped<IChillAuthService, ChillAuthService>();

@@ -33,7 +33,7 @@ namespace ChillSharp.Client
         /// </summary>
         public GetTextResponse? GetText(GetTextRequest request)
         {
-            return SendJson<GetTextResponse>(HttpMethod.Get, BuildI18nUrl("get-text"), PrepareGetTextRequest(request), allowAnonymous: true);
+            return SendJson<GetTextResponse>(HttpMethod.Post, BuildI18nUrl("get-text"), PrepareGetTextRequest(request), allowAnonymous: true);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace ChillSharp.Client
                 throw new ArgumentNullException(nameof(requests));
 
             var preparedRequests = requests.Select(PrepareGetTextRequest).ToList();
-            return SendJson<List<GetTextResponse?>>(HttpMethod.Get, BuildI18nUrl("get-multiple-text"), preparedRequests, allowAnonymous: true)
+            return SendJson<List<GetTextResponse?>>(HttpMethod.Post, BuildI18nUrl("get-multiple-text"), preparedRequests, allowAnonymous: true)
                 ?? new List<GetTextResponse?>();
         }
 

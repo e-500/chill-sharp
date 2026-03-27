@@ -94,11 +94,38 @@ export interface AuthRoleListItem extends JsonObject {
   isActive: boolean;
 }
 
+export const PermissionEffect = {
+  Allow: 1,
+  Deny: 2
+} as const;
+
+export type PermissionEffect = (typeof PermissionEffect)[keyof typeof PermissionEffect];
+
+export const PermissionAction = {
+  FullControl: 0,
+  Query: 1,
+  Create: 2,
+  Update: 3,
+  Delete: 4,
+  See: 5,
+  Modify: 6
+} as const;
+
+export type PermissionAction = (typeof PermissionAction)[keyof typeof PermissionAction];
+
+export const PermissionScope = {
+  Module: 1,
+  Entity: 2,
+  Property: 3
+} as const;
+
+export type PermissionScope = (typeof PermissionScope)[keyof typeof PermissionScope];
+
 export interface AuthPermissionRule extends JsonObject {
   guid: string;
-  effect: number;
-  action: number;
-  scope: number;
+  effect: PermissionEffect;
+  action: PermissionAction;
+  scope: PermissionScope;
   module: string;
   entityName: string | null;
   propertyName: string | null;
@@ -129,9 +156,9 @@ export interface AuthRoleDetailsResponse extends AuthRoleListItem {
 
 export interface AuthPermissionRuleItem extends JsonObject {
   guid: string | null;
-  effect: number;
-  action: number;
-  scope: number;
+  effect: PermissionEffect;
+  action: PermissionAction;
+  scope: PermissionScope;
   module: string;
   entityName: string | null;
   propertyName: string | null;
@@ -299,7 +326,7 @@ export class ChillSharpClient {
   }
 
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
-    return this.sendJson<GetTextResponse | null>("GET", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
+    return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
   }
 
   getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>> {
@@ -308,7 +335,7 @@ export class ChillSharpClient {
     }
 
     return this.sendJson<Array<GetTextResponse | null>>(
-      "GET",
+      "POST",
       this.buildI18nUrl("get-multiple-text"),
       requests.map((request) => this.prepareGetTextRequest(request))
     );
@@ -418,6 +445,32 @@ export class ChillSharpClient {
 
   getAuthRoleList(): Promise<AuthRoleListItem[]> {
     return this.sendAuthJson<AuthRoleListItem[]>("GET", "get-role-list");
+  }
+
+  getAuthModuleList(): Promise<string[]> {
+    return this.sendAuthJson<string[]>("GET", "get-module-list");
+  }
+
+  getAuthEntityList(module?: string | null): Promise<string[]> {
+    const normalizedModule = this.normalizeQueryValue(module);
+    const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+    return this.sendAuthJson<string[]>("GET", `get-entity-list${suffix}`);
+  }
+
+  getAuthQueryList(module?: string | null): Promise<string[]> {
+    const normalizedModule = this.normalizeQueryValue(module);
+    const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+    return this.sendAuthJson<string[]>("GET", `get-query-list${suffix}`);
+  }
+
+  getAuthModuleEntityList(module?: string | null): Promise<string[]> {
+    return this.getAuthEntityList(module);
+  }
+
+
+  getAuthPropertyList(chillType: string): Promise<string[]> {
+    const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+    return this.sendAuthJson<string[]>("GET", `get-property-list?chillType=${encodeURIComponent(normalizedChillType)}`);
   }
 
   getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse> {
@@ -742,6 +795,10 @@ export class ChillSharpClient {
     return normalized ? normalized : null;
   }
 
+  private normalizeQueryValue(value?: string | null): string | null {
+    return value == null ? null : value.trim();
+  }
+
   private readString(payload: JsonObject, key: string): string | null {
     const value = this.readValue(payload, key);
     return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -904,3 +961,5 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
+

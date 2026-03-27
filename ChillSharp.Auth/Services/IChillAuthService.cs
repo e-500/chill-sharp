@@ -27,11 +27,14 @@ namespace ChillSharp.Auth.Services;
 /// </summary>
 public interface IChillAuthService
 {
+    #region Current User
     /// <summary>
     /// Returns the current user's direct permissions together with role permissions.
     /// </summary>
     Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default);
+    #endregion
 
+    #region Management UI
     /// <summary>
     /// Returns the simplified user list used by management UIs.
     /// </summary>
@@ -61,6 +64,32 @@ public interface IChillAuthService
     /// Creates or updates a role together with users and permissions.
     /// </summary>
     Task<AuthRoleDetailsResponse> SetRoleAsync(SetAuthRoleRequest request, CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Metadata
+
+    /// <summary>
+    /// Returns the distinct logical modules available from the current Chill context.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetModuleListAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct entities available for the specified logical module.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct queries available for the specified logical module.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the distinct properties available for the specified Chill type.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetPropertyListAsync(string chillType, CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Users
 
     /// <summary>
     /// Returns all authorization users.
@@ -91,6 +120,9 @@ public interface IChillAuthService
     /// Deletes an authorization user.
     /// </summary>
     Task<bool> DeleteUserAsync(Guid userGuid, CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Roles
 
     /// <summary>
     /// Returns all authorization roles.
@@ -131,6 +163,9 @@ public interface IChillAuthService
     /// Removes a role from a user.
     /// </summary>
     Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Permission Rules
 
     /// <summary>
     /// Returns permission rules filtered by optional user or role.
@@ -156,6 +191,9 @@ public interface IChillAuthService
     /// Deletes a permission rule.
     /// </summary>
     Task<bool> DeletePermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default);
+    #endregion
+
+    #region Permission Evaluation
 
     /// <summary>
     /// Evaluates whether a user can perform an entity-level action.
@@ -171,9 +209,12 @@ public interface IChillAuthService
     /// Evaluates whether a user can perform a property-level action across a set of properties.
     /// </summary>
     Task<PropertyPermissionSetResult> EvaluatePropertySetPermissionAsync(EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken = default);
+    #endregion
 
+    #region Cache
     /// <summary>
     /// Invalidates cached auth-management access decisions.
     /// </summary>
     void InvalidateManagementAccess(string? externalId = null);
+    #endregion
 }

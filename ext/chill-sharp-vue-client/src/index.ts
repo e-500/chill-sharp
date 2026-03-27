@@ -31,7 +31,7 @@ export {
 } from "./composables.js";
 export type { ChillSharpVueOptions } from "./plugin.js";
 export type { UseChillAsyncState, UseChillMutationState, UseChillSubscriptionState } from "./composables.js";
-export { ChillSharpClient, ChillSharpClientError } from "chill-sharp-ts-client";
+export { ChillSharpClient, ChillSharpClientError, PermissionAction, PermissionEffect, PermissionScope } from "chill-sharp-ts-client";
 export { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 export type {
   AuthPermissionRule,

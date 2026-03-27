@@ -63,7 +63,7 @@ public sealed class I18nApi
         Assert.IsNotNull(createdPayload);
         Assert.AreEqual("Ciao mondo", createdPayload.Value);
 
-        var firstGetResponse = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var firstGetResponse = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "it-IT"
@@ -80,7 +80,7 @@ public sealed class I18nApi
             await context.SaveChangesAsync();
         }
 
-        var cachedGetResponse = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var cachedGetResponse = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "it-IT"
@@ -102,7 +102,7 @@ public sealed class I18nApi
         Assert.IsNotNull(updatedPayload);
         Assert.AreEqual("Ciao Italia", updatedPayload.Value);
 
-        var refreshedGetResponse = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var refreshedGetResponse = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "it-IT"
@@ -123,7 +123,7 @@ public sealed class I18nApi
             BaseAddress = new Uri("http://localhost:5000/")
         };
 
-        var response = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = Guid.NewGuid(),
             CultureName = "it-IT"
@@ -142,7 +142,7 @@ public sealed class I18nApi
         };
 
         var labelGuid = Guid.NewGuid();
-        var response = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "en-GB",
@@ -158,7 +158,7 @@ public sealed class I18nApi
         Assert.IsNotNull(payload);
         Assert.AreEqual("Hello", payload.Value);
 
-        var secondaryResponse = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var secondaryResponse = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "it-IT"
@@ -181,7 +181,7 @@ public sealed class I18nApi
         };
 
         var labelGuid = Guid.NewGuid();
-        var response = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "en-GB",
@@ -208,7 +208,7 @@ public sealed class I18nApi
         };
 
         var labelGuid = Guid.NewGuid();
-        var response = await SendGetAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
+        var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
         {
             LabelGuid = labelGuid,
             CultureName = "en-GB",
@@ -255,7 +255,7 @@ public sealed class I18nApi
         });
 
         var seededLabelGuid = Guid.NewGuid();
-        var response = await SendGetAsJsonAsync(client, "api/chill-i18n/get-multiple-text", new[]
+        var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-multiple-text", new[]
         {
             new GetTextRequest
             {
@@ -369,15 +369,25 @@ public sealed class I18nApi
         Assert.AreEqual(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private static Task<HttpResponseMessage> SendGetAsJsonAsync<T>(HttpClient client, string requestUri, T payload)
+    private static Task<HttpResponseMessage> SendPostAsJsonAsync<T>(HttpClient client, string requestUri, T payload)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, requestUri)
+        var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
             Content = JsonContent.Create(payload)
         };
 
         return client.SendAsync(request);
     }
+
+    //private static Task<HttpResponseMessage> SendGetAsJsonAsync<T>(HttpClient client, string requestUri, T payload)
+    //{
+    //    var request = new HttpRequestMessage(HttpMethod.Get, requestUri)
+    //    {
+    //        Content = JsonContent.Create(payload)
+    //    };
+
+    //    return client.SendAsync(request);
+    //}
 
     private static class AnonymousFriendlyI18nApiHost
     {

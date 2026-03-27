@@ -104,6 +104,51 @@ public class AuthManagementController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the distinct logical modules available from the current Chill context.
+    /// </summary>
+    [HttpGet("get-module-list")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetModuleList(CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetModuleListAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// Returns the distinct entities available for the specified logical module.
+    /// </summary>
+    [HttpGet("get-entity-list")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetEntityList([FromQuery] string? module, CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetEntityListAsync(module, cancellationToken));
+    }
+
+    /// <summary>
+    /// Returns the distinct queries available for the specified logical module.
+    /// </summary>
+    [HttpGet("get-query-list")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetQueryList([FromQuery] string? module, CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetQueryListAsync(module, cancellationToken));
+    }
+
+    /// <summary>
+    /// Returns the distinct properties available for the specified Chill type.
+    /// </summary>
+    [HttpGet("get-property-list")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetPropertyList([FromQuery] string? chillType, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(chillType))
+        {
+            return BadRequest("ChillType is required.");
+        }
+
+        return Ok(await _service.GetPropertyListAsync(chillType, cancellationToken));
+    }
+
+    /// <summary>
     /// Returns the full managed role payload.
     /// </summary>
     [HttpGet("get-role")]

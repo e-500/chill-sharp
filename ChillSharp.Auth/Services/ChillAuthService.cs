@@ -19,6 +19,7 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
+using ChillSharp;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth.Services;
@@ -28,19 +29,26 @@ namespace ChillSharp.Auth.Services;
 /// </summary>
 public class ChillAuthService : IChillAuthService
 {
+    #region Fields
     private readonly IChillAuthDbContext _context;
+    private readonly IChillContext _chillContext;
     private readonly IChillAuthManagementAccessCache _managementAccessCache;
+    #endregion
 
+    #region Construction
     /// <summary>
     /// Initializes the service with the auth persistence abstraction.
     /// </summary>
     /// <param name="context">The auth store used for reads and writes.</param>
-    public ChillAuthService(IChillAuthDbContext context, IChillAuthManagementAccessCache managementAccessCache)
+    public ChillAuthService(IChillAuthDbContext context, IChillContext chillContext, IChillAuthManagementAccessCache managementAccessCache)
     {
         _context = context;
+        _chillContext = chillContext;
         _managementAccessCache = managementAccessCache;
     }
+    #endregion
 
+    #region Current User
     /// <inheritdoc />
     public async Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default)
     {
@@ -89,7 +97,9 @@ public class ChillAuthService : IChillAuthService
                 .ToList()
         };
     }
+    #endregion
 
+    #region Management UI
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthUserListItemResponse>> GetUserListAsync(CancellationToken cancellationToken = default)
     {
@@ -191,6 +201,30 @@ public class ChillAuthService : IChillAuthService
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetModuleListAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetModuleList());
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetEntities(module));
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetQueries(module));
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetPropertyListAsync(string chillType, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetProperties(chillType));
+    }
+
+    /// <inheritdoc />
     public async Task<AuthRoleDetailsResponse?> GetManagedRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default)
     {
         var role = await _context.Roles
@@ -266,7 +300,9 @@ public class ChillAuthService : IChillAuthService
 
         return (await GetManagedRoleAsync(role.Guid, cancellationToken))!;
     }
+    #endregion
 
+    #region Users
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -357,7 +393,9 @@ public class ChillAuthService : IChillAuthService
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+    #endregion
 
+    #region Roles
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
@@ -428,7 +466,9 @@ public class ChillAuthService : IChillAuthService
         InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Role Assignments
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetUserRolesAsync(Guid userGuid, CancellationToken cancellationToken = default)
     {
@@ -482,7 +522,9 @@ public class ChillAuthService : IChillAuthService
         InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Permission Rules
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthPermissionRule>> GetPermissionRulesAsync(Guid? userGuid = null, Guid? roleGuid = null, CancellationToken cancellationToken = default)
     {
@@ -583,7 +625,9 @@ public class ChillAuthService : IChillAuthService
         InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Permission Evaluation
     /// <inheritdoc />
     public async Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default)
     {
@@ -656,7 +700,9 @@ public class ChillAuthService : IChillAuthService
             Properties = results
         };
     }
+    #endregion
 
+    #region Cache
     public void InvalidateManagementAccess(string? externalId = null)
     {
         if (string.IsNullOrWhiteSpace(externalId))
@@ -664,7 +710,9 @@ public class ChillAuthService : IChillAuthService
         else
             _managementAccessCache.Invalidate(externalId);
     }
+    #endregion
 
+    #region Synchronization Helpers
     private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)
     {
         var existingMemberships = await _context.UserRoles
@@ -769,7 +817,9 @@ public class ChillAuthService : IChillAuthService
             _context.PermissionRules.Remove(obsoleteRule);
         }
     }
+    #endregion
 
+    #region Resolution Helpers
     private async Task<ResolvedRule?> ResolveRuleAsync(Guid userGuid, PermissionAction action, string module, string entityName, string? propertyName, CancellationToken cancellationToken)
     {
         var roleGuids = await _context.UserRoles
@@ -780,19 +830,19 @@ public class ChillAuthService : IChillAuthService
 
         var candidates = await _context.PermissionRules
             .AsNoTracking()
-            .Where(x => x.Action == action)
+            .Where(x => x.Action == action || x.Action == PermissionAction.FullControl)
             .Where(x => x.UserGuid == userGuid || (x.RoleGuid.HasValue && roleGuids.Contains(x.RoleGuid.Value)))
             .ToListAsync(cancellationToken);
 
         return candidates
-            .Select(x => BuildResolvedRule(x, module, entityName, propertyName))
+            .Select(x => BuildResolvedRule(x, action, module, entityName, propertyName))
             .Where(x => x is not null)
             .Select(x => x!)
             .OrderBy(x => x.Order)
             .FirstOrDefault();
     }
 
-    private static ResolvedRule? BuildResolvedRule(AuthPermissionRule rule, string module, string entityName, string? propertyName)
+    private static ResolvedRule? BuildResolvedRule(AuthPermissionRule rule, PermissionAction requestedAction, string module, string entityName, string? propertyName)
     {
         var scopeSpecificity = GetScopeSpecificity(rule, propertyName);
         if (scopeSpecificity == 0)
@@ -832,9 +882,10 @@ public class ChillAuthService : IChillAuthService
         }
 
         var subjectRank = rule.UserGuid.HasValue ? 0 : 1;
+        var actionRank = rule.Action == requestedAction ? 0 : 1;
         var effectRank = rule.Effect == PermissionEffect.Deny ? 0 : 1;
 
-        return new ResolvedRule(rule, (subjectRank, scopeSpecificity * -1, effectRank));
+        return new ResolvedRule(rule, (subjectRank, scopeSpecificity * -1, actionRank, effectRank));
     }
 
     private static int GetScopeSpecificity(AuthPermissionRule rule, string? propertyName)
@@ -847,7 +898,9 @@ public class ChillAuthService : IChillAuthService
             _ => 0
         };
     }
+    #endregion
 
+    #region Validation Helpers
     private async Task ValidatePermissionRuleAsync(Guid? userGuid, Guid? roleGuid, PermissionScope scope, string module, string? entityName, string? propertyName, bool appliesToAllProperties, CancellationToken cancellationToken)
     {
         if (userGuid.HasValue == roleGuid.HasValue)
@@ -914,7 +967,9 @@ public class ChillAuthService : IChillAuthService
             throw new ArgumentException("Role name is required.");
         }
     }
+    #endregion
 
+    #region Normalization Helpers
     private static void ValidateEntityEvaluation(PermissionAction action, string module, string entityName)
     {
         if (action is PermissionAction.See or PermissionAction.Modify)
@@ -1015,7 +1070,9 @@ public class ChillAuthService : IChillAuthService
     {
         return NormalizeProperty(propertyName, false) ?? throw new ArgumentException("PropertyName is required.");
     }
+    #endregion
 
+    #region Mapping Helpers
     private static PermissionEvaluationResult DefaultDeny(string reason)
     {
         return new PermissionEvaluationResult
@@ -1109,7 +1166,9 @@ public class ChillAuthService : IChillAuthService
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };
     }
+    #endregion
 
+    #region Private Records
     private sealed record PermissionRuleSemanticKey(
         PermissionEffect Effect,
         PermissionAction Action,
@@ -1144,7 +1203,7 @@ public class ChillAuthService : IChillAuthService
         }
     }
 
-    private sealed record ResolvedRule(AuthPermissionRule Rule, (int SubjectRank, int SpecificityRank, int EffectRank) Order)
+    private sealed record ResolvedRule(AuthPermissionRule Rule, (int SubjectRank, int SpecificityRank, int ActionRank, int EffectRank) Order)
     {
         public PermissionEvaluationResult ToResult()
         {
@@ -1172,4 +1231,5 @@ public class ChillAuthService : IChillAuthService
             return $"{subject} {Rule.Scope} rule matched on {resource}.";
         }
     }
+    #endregion
 }

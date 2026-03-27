@@ -143,6 +143,21 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     getAuthRoleList() {
         return from(this.client.getAuthRoleList());
     }
+    getAuthModuleList() {
+        return from(this.client.getAuthModuleList());
+    }
+    getAuthEntityList(module) {
+        return from(this.client.getAuthEntityList(module));
+    }
+    getAuthQueryList(module) {
+        return from(this.client.getAuthQueryList(module));
+    }
+    getAuthModuleEntityList(module) {
+        return from(this.client.getAuthModuleEntityList(module));
+    }
+    getAuthPropertyList(chillType) {
+        return from(this.client.getAuthPropertyList(chillType));
+    }
     getAuthRole(roleGuid) {
         return from(this.client.getAuthRole(roleGuid));
     }

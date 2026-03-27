@@ -20,6 +20,7 @@
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Model;
+using ChillSharp.Auth.Services;
 using ChillSharp.Api;
 using ChillSharp.Client;
 using Microsoft.AspNetCore.Identity;
@@ -515,6 +516,82 @@ public sealed class AuthApi
 
         var getUserList = await httpClient.GetAsync("api/chill-auth/get-user-list");
         Assert.AreEqual(HttpStatusCode.Forbidden, getUserList.StatusCode);
+    }
+
+    /// <summary>
+    /// Verifies that FullControl is used as a fallback and loses precedence to an exact action rule.
+    /// </summary>
+    [TestMethod]
+    public async Task Step008_FullControlActsAsFallbackBehindExactActions()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"full-control-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+
+        var userGuid = Guid.NewGuid();
+        context.Users.Add(new ChillSharp.Auth.Model.AuthUser
+        {
+            Guid = userGuid,
+            ExternalId = $"full-control-{Guid.NewGuid():N}",
+            UserName = $"full.control.{Guid.NewGuid():N}",
+            DisplayName = "Full Control User",
+            IsActive = true
+        });
+        context.PermissionRules.Add(new ChillSharp.Auth.Model.AuthPermissionRule
+        {
+            Guid = Guid.NewGuid(),
+            UserGuid = userGuid,
+            Effect = PermissionEffect.Allow,
+            Action = PermissionAction.FullControl,
+            Scope = PermissionScope.Entity,
+            Module = "Blog",
+            EntityName = "Post",
+            Description = "Fallback full control",
+            CreatedUtc = DateTime.UtcNow
+        });
+        context.PermissionRules.Add(new ChillSharp.Auth.Model.AuthPermissionRule
+        {
+            Guid = Guid.NewGuid(),
+            UserGuid = userGuid,
+            Effect = PermissionEffect.Deny,
+            Action = PermissionAction.Delete,
+            Scope = PermissionScope.Entity,
+            Module = "Blog",
+            EntityName = "Post",
+            Description = "Delete denied explicitly",
+            CreatedUtc = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        var service = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+        var createResult = await service.EvaluateEntityPermissionAsync(new EvaluateEntityPermissionRequest
+        {
+            UserGuid = userGuid,
+            Action = PermissionAction.Create,
+            Module = "Blog",
+            EntityName = "Post"
+        });
+
+        var deleteResult = await service.EvaluateEntityPermissionAsync(new EvaluateEntityPermissionRequest
+        {
+            UserGuid = userGuid,
+            Action = PermissionAction.Delete,
+            Module = "Blog",
+            EntityName = "Post"
+        });
+
+        Assert.IsTrue(createResult.IsAllowed);
+        Assert.AreEqual(PermissionEffect.Allow, createResult.MatchedEffect);
+        Assert.IsFalse(deleteResult.IsAllowed);
+        Assert.AreEqual(PermissionEffect.Deny, deleteResult.MatchedEffect);
     }
 
     private static class SecuredAuthApiHost

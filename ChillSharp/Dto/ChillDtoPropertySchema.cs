@@ -63,7 +63,7 @@ namespace ChillSharp.Dto
                     propInfo.Name,
                     context,
                     cultureName),
-                Type = ChillDtoPropertyMapper.Map(propertyType),
+                PropertyType = ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
                 IsReadOnly = chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo),
                 MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
@@ -87,8 +87,8 @@ namespace ChillSharp.Dto
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
 
-            if (schema.Type == ChillDtoPropertyType.ChillEntity ||
-                schema.Type == ChillDtoPropertyType.ChillQuery)
+            if (schema.PropertyType == ChillDtoPropertyType.ChillEntity ||
+                schema.PropertyType == ChillDtoPropertyType.ChillQuery)
             {
                 string? propertyFullType = propertyType.FullName;
                 if (!string.IsNullOrEmpty(propertyFullType))
@@ -97,7 +97,7 @@ namespace ChillSharp.Dto
                     schema.ReferenceChillType = propertyFullType;
                 }
             }
-            else if (schema.Type == ChillDtoPropertyType.ChillEntityCollection)
+            else if (schema.PropertyType == ChillDtoPropertyType.ChillEntityCollection)
             {
                 var collectionType = new[] { propertyType }
                     .Concat(propertyType.GetInterfaces())
@@ -128,7 +128,7 @@ namespace ChillSharp.Dto
         /// <summary>
         /// Detailed description of the property's logical Chill type.
         /// </summary>
-        public ChillDtoPropertyType Type { get; set; } = new ChillDtoPropertyType();
+        public ChillDtoPropertyType PropertyType { get; set; } = new ChillDtoPropertyType();
 
         /// <summary>
         /// CLR property name.

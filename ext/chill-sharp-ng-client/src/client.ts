@@ -190,10 +190,28 @@ export class ChillSharpNgClient {
     return from(this.client.getAuthRoleList());
   }
 
+  getAuthModuleList(): Observable<string[]> {
+    return from(this.client.getAuthModuleList());
+  }
+
+  getAuthEntityList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthEntityList(module));
+  }
+
+  getAuthQueryList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthQueryList(module));
+  }
+
+  getAuthModuleEntityList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthModuleEntityList(module));
+  }
+
+  getAuthPropertyList(chillType: string): Observable<string[]> {
+    return from(this.client.getAuthPropertyList(chillType));
+  }
   getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse> {
     return from(this.client.getAuthRole(roleGuid));
   }
-
   setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse> {
     return from(this.client.setAuthRole(payload));
   }
@@ -202,3 +220,5 @@ export class ChillSharpNgClient {
     return this.client;
   }
 }
+
+

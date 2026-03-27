@@ -58,11 +58,32 @@ export interface AuthRoleListItem extends JsonObject {
     description: string;
     isActive: boolean;
 }
+export declare const PermissionEffect: {
+    readonly Allow: 1;
+    readonly Deny: 2;
+};
+export type PermissionEffect = (typeof PermissionEffect)[keyof typeof PermissionEffect];
+export declare const PermissionAction: {
+    readonly FullControl: 0;
+    readonly Query: 1;
+    readonly Create: 2;
+    readonly Update: 3;
+    readonly Delete: 4;
+    readonly See: 5;
+    readonly Modify: 6;
+};
+export type PermissionAction = (typeof PermissionAction)[keyof typeof PermissionAction];
+export declare const PermissionScope: {
+    readonly Module: 1;
+    readonly Entity: 2;
+    readonly Property: 3;
+};
+export type PermissionScope = (typeof PermissionScope)[keyof typeof PermissionScope];
 export interface AuthPermissionRule extends JsonObject {
     guid: string;
-    effect: number;
-    action: number;
-    scope: number;
+    effect: PermissionEffect;
+    action: PermissionAction;
+    scope: PermissionScope;
     module: string;
     entityName: string | null;
     propertyName: string | null;
@@ -88,9 +109,9 @@ export interface AuthRoleDetailsResponse extends AuthRoleListItem {
 }
 export interface AuthPermissionRuleItem extends JsonObject {
     guid: string | null;
-    effect: number;
-    action: number;
-    scope: number;
+    effect: PermissionEffect;
+    action: PermissionAction;
+    scope: PermissionScope;
     module: string;
     entityName: string | null;
     propertyName: string | null;
@@ -177,6 +198,11 @@ export declare class ChillSharpClient {
     getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse>;
     setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse>;
     getAuthRoleList(): Promise<AuthRoleListItem[]>;
+    getAuthModuleList(): Promise<string[]>;
+    getAuthEntityList(module?: string | null): Promise<string[]>;
+    getAuthQueryList(module?: string | null): Promise<string[]>;
+    getAuthModuleEntityList(module?: string | null): Promise<string[]>;
+    getAuthPropertyList(chillType: string): Promise<string[]>;
     getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse>;
     setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse>;
     private prepareGetTextRequest;
@@ -202,6 +228,7 @@ export declare class ChillSharpClient {
     private getI18nBaseUrl;
     private normalizeRequiredValue;
     private normalizeOptionalValue;
+    private normalizeQueryValue;
     private readString;
     private readDate;
     private readValue;

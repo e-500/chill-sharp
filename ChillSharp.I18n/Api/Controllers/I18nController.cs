@@ -42,7 +42,7 @@ public sealed class I18nController : ControllerBase
     /// Gets the localized text for a label guid and culture name.
     /// </summary>
     [AllowAnonymous]
-    [HttpGet("get-text")]
+    [HttpPost("get-text")]
     public async Task<IActionResult> GetText([FromBody] GetTextRequest request, CancellationToken cancellationToken)
     {
         try
@@ -65,7 +65,7 @@ public sealed class I18nController : ControllerBase
     /// Gets multiple localized texts.
     /// </summary>
     [AllowAnonymous]
-    [HttpGet("get-multiple-text")]
+    [HttpPost("get-multiple-text")]
     public async Task<IActionResult> GetMultipleText([FromBody] GetTextRequest[] requests, CancellationToken cancellationToken)
     {
         try

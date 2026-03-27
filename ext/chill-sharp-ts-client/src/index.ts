@@ -17,7 +17,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-export { ChillSharpClient } from "./client.js";
+export {
+  ChillSharpClient,
+  PermissionAction,
+  PermissionEffect,
+  PermissionScope
+} from "./client.js";
 export { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 export type {
   AuthPermissionRule,

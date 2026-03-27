@@ -34,7 +34,10 @@ export type { UseChillAsyncState, UseChillMutationState, UseChillSubscriptionSta
 export { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 export {
   ChillSharpClient,
-  ChillSharpClientError
+  ChillSharpClientError,
+  PermissionAction,
+  PermissionEffect,
+  PermissionScope
 } from "chill-sharp-ts-client";
 export type {
   AuthPermissionRule,

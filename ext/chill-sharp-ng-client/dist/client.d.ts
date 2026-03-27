@@ -33,6 +33,11 @@ export declare class ChillSharpNgClient {
     getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse>;
     setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse>;
     getAuthRoleList(): Observable<AuthRoleListItem[]>;
+    getAuthModuleList(): Observable<string[]>;
+    getAuthEntityList(module?: string | null): Observable<string[]>;
+    getAuthQueryList(module?: string | null): Observable<string[]>;
+    getAuthModuleEntityList(module?: string | null): Observable<string[]>;
+    getAuthPropertyList(chillType: string): Observable<string[]>;
     getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse>;
     setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse>;
     getRawClient(): ChillSharpClient;
