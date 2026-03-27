@@ -142,6 +142,7 @@ namespace ChillSharp
             try
             {
                 var q = Query.OnQuery(_Context);
+                q = Query.OnSearch(_Context, q);
                 q = Query.OnSort(_Context, q);
                 q = Query.OnPaginate(_Context, q);
                 var res = q.ToList();

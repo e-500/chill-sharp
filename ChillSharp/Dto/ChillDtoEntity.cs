@@ -20,8 +20,6 @@
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
-using System.Collections;
-using System.Text.Json;
 
 namespace ChillSharp.Dto
 {
@@ -130,65 +128,15 @@ namespace ChillSharp.Dto
                 prop.IsDefined(typeof(ChillPropertyAttribute), false) &&
                 (RequiredProperties == null || RequiredProperties.Any(x => x.PropertyName == prop.Name)));
 
-            var dbx = (DbContext)Context;
-
-            Properties = ef_props.ToDictionary(
-                ef_prop => ef_prop.Name,
-                ef_prop => {
-                    var attr = (ChillPropertyAttribute)ef_prop.GetCustomAttributes(typeof(ChillPropertyAttribute), false).First();
-                    var propertyName = ef_prop.Name; // TODO consent to override internal name using a custom property on ChillPropertyAttribute
-
-                    if (attr.CallOnInflate)
-                        Entity.OnInflate(Context, propertyName);
-
-                    // CHILL-ENTITY
-                    if (typeof(IChillEntity).IsAssignableFrom(ef_prop.PropertyType))
-                    {
-                        // if is a reference load it and convert to ChillDtoEntity
-                        if (dbx.Entry(Entity).Reference(propertyName).Exist(true))
-                        {
-                            var ef_obj = (IChillEntity?)ef_prop.GetValue(Entity);
-                            // NULL
-                            if (ef_obj == null)
-                                return null;
-
-                            ChillDtoProperty? reqProp = null;
-                            if (RequiredProperties != null)
-                                reqProp = RequiredProperties.Where(x => x.PropertyName == propertyName).FirstOrDefault();
-                            return new ChillDtoEntity(Context, ef_obj, (reqProp?.SubProperties ?? new List<ChillDtoProperty>()));
-                        }
-                        return null;
-                    }
-                    // CHILL-ENTITIES-COLLECTIONS
-                    else if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(ef_prop.PropertyType))
-                    {
-                        // Try to load collection 
-                        dbx.Entry(Entity).Collection(propertyName)?.Load();
-
-                        var entity = (IEnumerable<IChillEntity>?)ef_prop.GetValue(Entity);
-                        if (entity != null)
-                        {
-                            var ef_obj_coll = (IEnumerable<IChillEntity>?)ef_prop.GetValue(Entity);
-                            // NULL
-                            if (ef_obj_coll == null)
-                                return null;
-
-                            return ef_obj_coll.Select(ef_obj => {
-                                ChillDtoProperty? reqProp = null;
-                                if (RequiredProperties != null)
-                                    reqProp = RequiredProperties.Where(x => x.PropertyName == propertyName).FirstOrDefault();
-                                return new ChillDtoEntity(Context, ef_obj, (reqProp?.SubProperties ?? new List<ChillDtoProperty>()));
-                            });                           
-                        }
-                        else
-                            return null;
-                    }
-                    // OTHER PROPERTY TYPES
-                    else 
-                    {
-                        return (object?)ef_prop.GetValue(Entity);
-                    }
-                });
+            Properties = ChillDtoObjectMapper.BuildProperties(
+                Context,
+                Entity,
+                ChillType,
+                ef_props,
+                propertyName => RequiredProperties?
+                    .FirstOrDefault(x => x.PropertyName == propertyName)?
+                    .SubProperties ?? [],
+                propertyName => Entity.OnInflate(Context, propertyName));
         }
 
         /// <summary>
@@ -215,91 +163,15 @@ namespace ChillSharp.Dto
             var ef_props = Entity.GetType().GetProperties()
                 .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
                 .Where(x => Properties.Keys.Contains(x.Name));
-            foreach (var ef_prop in ef_props)
-            {
-                var attr = (ChillPropertyAttribute)ef_prop.GetCustomAttributes(typeof(ChillPropertyAttribute), false).First();
-                var propertyName = ef_prop.Name; // TODO consent to override internal name using a custom property on ChillPropertyAttribute
-                var value = Properties[propertyName];
-
-                if (attr.CallOnInflate)
-                    Entity.OnInflate(Context, propertyName);
-
-                try
-                {
-                    object? parsedValue = value;
-                    if (value is JsonElement jsonElement)
-                    {
-                        var targetType = ef_prop.PropertyType;
-                        // Handle nullable types
-                        if (Nullable.GetUnderlyingType(targetType) is Type underlyingType)
-                            targetType = underlyingType;
-
-                        // NULL
-                        if (jsonElement.ValueKind == JsonValueKind.Null)
-                        {
-                            parsedValue = null;
-                            // Finalize
-                            ef_prop.SetValue(Entity, parsedValue);
-                        }
-                        // CHILL-ENTITY
-                        else if (typeof(IChillEntity).IsAssignableFrom(ef_prop.PropertyType))
-                        {
-                            // Get the incoming object
-                            var incomingChillEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText());
-                            if (incomingChillEntity != null)
-                                parsedValue = dbx.Find(targetType, incomingChillEntity.Guid);
-                            else
-                                parsedValue = null;
-                            // Finalize
-                            ef_prop.SetValue(Entity, parsedValue);
-                        }
-                        // CHILL-ENTITIES-COLLECTIONS
-                        else if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(ef_prop.PropertyType))
-                        {
-                            parsedValue = null;
-                            var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText());
-
-                            if (incomingCollection != null)
-                            {
-                                dbx.Entry(Entity).Collection(propertyName).Load();
-
-                                Type collectionElementType = ef_prop.PropertyType
-                                    .GetInterfaces()
-                                    .Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                                    .First()
-                                    .GetGenericArguments()[0];
-
-                                // Create List<TTarget>
-                                var listType = typeof(List<>).MakeGenericType(collectionElementType);
-                                var targetList = (IList?)Activator.CreateInstance(listType);
-                                foreach (var item in incomingCollection)
-                                {
-                                    targetList!.Add(dbx.Find(collectionElementType, item.Guid));
-                                }
-
-                                parsedValue = targetList;
-                            }
-                            // Finalize
-                            ef_prop.SetValue(Entity, parsedValue);
-                        }
-                        else
-                        {
-                            parsedValue = JsonSerializer.Deserialize(jsonElement.GetRawText(), targetType);
-                            // Finalize
-                            ef_prop.SetValue(Entity, parsedValue);
-                        }
-                    }
-                    else
-                    {
-                        // OTHER PROPERTY TYPES
-                        ef_prop.SetValue(Entity, parsedValue);
-                    }
-                }
-                catch (Exception ex) 
-                {
-                    throw new ChillException($"Error setting value to field {propertyName} on chillable entity", ex); // {entity.GetFullTypeId()}
-                }
-            }
+            ChillDtoObjectMapper.ApplyProperties(
+                Context,
+                Entity,
+                ChillType,
+                Properties,
+                ef_props,
+                "entity",
+                loadTrackedCollections: true,
+                propertyName => Entity.OnInflate(Context, propertyName));
         }
         #endregion
     }

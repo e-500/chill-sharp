@@ -62,6 +62,8 @@ namespace ChillSharp.Tests
             var authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties don't contains 'Author' property");
             authorProperty.DisplayName = "Post author";
+            postSchema.Metadata["schema-level"] = "enabled";
+            authorProperty.Metadata["property-level"] = "visible";
             cli.SetSchema(postSchema);
 
             postSchema = cli.GetSchema("Model.Post", "default");
@@ -69,6 +71,10 @@ namespace ChillSharp.Tests
             authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties no more contains 'Author' property");
             Assert.AreEqual("Post author", authorProperty.DisplayName, "Persistance not working");
+            Assert.IsTrue(postSchema.Metadata.ContainsKey("schema-level"));
+            Assert.AreEqual("enabled", postSchema.Metadata["schema-level"]);
+            Assert.IsTrue(authorProperty.Metadata.ContainsKey("property-level"));
+            Assert.AreEqual("visible", authorProperty.Metadata["property-level"]);
         }
 
         [TestMethod]
@@ -232,6 +238,8 @@ namespace ChillSharp.Tests
         {
             public Guid? Guid { get; set; }
 
+            public string FullTextSearch { get; set; } = string.Empty;
+
             public ChillPagination? Pagination { get; set; }
 
             public IQueryable<IChillEntity> OnPaginate(IChillContext Context, IQueryable<IChillEntity> Query)
@@ -391,3 +399,5 @@ namespace ChillSharp.Tests
         }
     }
 }
+
+

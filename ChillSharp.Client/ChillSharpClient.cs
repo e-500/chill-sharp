@@ -37,6 +37,7 @@ namespace ChillSharp.Client
         {
             PropertyNameCaseInsensitive = true
         };
+        private readonly Func<HttpClient>? _httpClientFactory;
 
         private string _BaseUrl = string.Empty;
         private string? _UserName;
@@ -57,6 +58,19 @@ namespace ChillSharp.Client
         {
             _BaseUrl = NormalizeBaseUrl(BaseUrl);
             _CultureName = NormalizeOptionalValue(CultureName);
+        }
+
+        /// <summary>
+        /// Initializes the client with a custom HttpClient factory.
+        /// Useful for tests that need custom handlers such as relaxed certificate validation.
+        /// </summary>
+        /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
+        /// <param name="httpClientFactory">Factory invoked for each request.</param>
+        /// <param name="CultureName">Optional default culture sent to culture-aware endpoints.</param>
+        public ChillSharpClient(string BaseUrl, Func<HttpClient> httpClientFactory, string? CultureName = null)
+            : this(BaseUrl, CultureName)
+        {
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
         /// <summary>
@@ -358,7 +372,7 @@ namespace ChillSharp.Client
                     GetAuthTokenWithPasswordIfNecessary();
                 }
 
-                using var client = new HttpClient();
+                using var client = _httpClientFactory?.Invoke() ?? new HttpClient();
                 using var request = new HttpRequestMessage(method, url);
 
                 if (!allowAnonymous && !string.IsNullOrWhiteSpace(_AccessToken))

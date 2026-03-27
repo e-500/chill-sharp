@@ -51,6 +51,11 @@ namespace ChillSharp.EF
         Guid? Guid { get; set; }
 
         /// <summary>
+        /// Search string to perform aquick full-text search
+        /// </summary>
+        string FullTextSearch { get; set; }
+
+        /// <summary>
         /// Pagination settings to limit and offset query results.
         /// </summary>
         ChillPagination? Pagination { get; set; }
@@ -66,6 +71,17 @@ namespace ChillSharp.EF
         /// <param name="query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{T}"/>.</returns>
         IQueryable<T> OnQuery(IChillContext Context);
+
+        /// <summary>
+        /// Applies full-text or keyword search logic to the query results.
+        /// </summary>
+        /// <param name="context">The active Chill database context.</param>
+        /// <param name="query">The query to filter.</param>
+        /// <returns>The filtered <see cref="IQueryable{T}"/>.</returns>
+        IQueryable<T> OnSearch(IChillContext Context, IQueryable<T> Query)
+        {
+            return Query;
+        }
 
         /// <summary>
         /// Applies sorting logic to the query results.

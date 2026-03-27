@@ -67,6 +67,11 @@ namespace ChillSharp.Client.Dto
         /// </summary>
         public List<ChillDtoProperty>? ResultProperties { get; set; } = null;
 
+        /// <summary>
+        /// Optional pagination settings for the query results.
+        /// </summary>
+        public ChillPagination? Pagination { get; set; } = null;
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.

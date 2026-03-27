@@ -50,6 +50,11 @@ namespace ChillSharp.Dto
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Additional metadata for custom client renderers.
+        /// </summary>
+        public Dictionary<string, string> Metadata { get; set; } = new();
+
+        /// <summary>
         /// Chill type of the entity targeted by a query schema.
         /// Empty for entity schemas.
         /// </summary>
@@ -93,6 +98,7 @@ namespace ChillSharp.Dto
             schema.DisplayName = displayName;
             schema.ChillType = ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix);
             schema.ChillViewCode = ChillViewCode;
+            schema.Metadata = chillAttr?.GetMetadata() ?? new Dictionary<string, string>();
 
             var ef_props = chillEntity.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
@@ -134,6 +140,7 @@ namespace ChillSharp.Dto
             schema.DisplayName = displayName;
             schema.ChillType = ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix);
             schema.ChillViewCode = ChillViewCode;
+            schema.Metadata = chillAttr?.GetMetadata() ?? new Dictionary<string, string>();
             schema.QueryRelatedChillType = ResolveQueryRelatedChillType(type, shrinkTypePrefix);
 
             var ef_props = chillQuery.GetType().GetProperties().Where(prop =>
@@ -156,3 +163,4 @@ namespace ChillSharp.Dto
         }
     }
 }
+

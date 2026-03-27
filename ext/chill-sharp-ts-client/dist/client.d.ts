@@ -21,11 +21,13 @@ export interface ChillDtoPropertySchema extends JsonObject {
     displayName: string;
     propertyType: number;
     chillType: string | null;
+    metadata: Record<string, string>;
 }
 export interface ChillDtoSchema extends JsonObject {
     chillType: string;
     chillViewCode: string;
     displayName: string;
+    metadata: Record<string, string>;
     queryRelatedChillType: string | null;
     properties: ChillDtoPropertySchema[];
 }

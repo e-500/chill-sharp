@@ -387,5 +387,69 @@ namespace ChillSharp.Tests
             Assert.AreEqual(post.ShortLabel, postsMock[0].GetProperty("ShortLabel").GetString());
             Assert.IsFalse(postsMock[0].TryGetProperty("Properties", out _));
         }
+
+        [TestMethod]
+        public void Step009_QueryFullTextSearchSplitsTokensAndUsesAndLogic()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var tokenA = $"alpha-{Guid.NewGuid():N}";
+            var tokenB = $"beta-{Guid.NewGuid():N}";
+
+            client.SetEntityOptions(new ChillDtoEntityOptions
+            {
+                ChillType = "Model.Post",
+                FullTextContentFormatString = "{Title} {Author}"
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = tokenB
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = "single-token"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "other-token",
+                    ["Author"] = tokenB
+                }
+            });
+
+            var query = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            query.Properties.Add("FullTextSearch", $"{tokenA} {tokenB}");
+
+            var result = client.Query(query);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.AreEqual(1, result.Results.Count);
+            Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
+            Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
+        }
     }
 }
