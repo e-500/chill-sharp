@@ -158,7 +158,7 @@ namespace ChillSharp.Dto
                 }
 
                 var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
-                return ConvertToClrValue(jsonElement, targetType, propertyType);
+                return ConvertToClrValue(jsonElement, targetType, propertyType, Nullable.GetUnderlyingType(property.PropertyType) != null);
             }
 
             if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
@@ -174,7 +174,7 @@ namespace ChillSharp.Dto
             }
 
             var resolvedPropertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
-            return ConvertToClrValue(value, targetType, resolvedPropertyType);
+            return ConvertToClrValue(value, targetType, resolvedPropertyType, Nullable.GetUnderlyingType(property.PropertyType) != null);
         }
 
         private static object? ConvertEntityCollection(
@@ -203,11 +203,20 @@ namespace ChillSharp.Dto
 
         private static Type GetCollectionElementType(Type collectionType)
         {
-            return collectionType
+            if (collectionType.IsArray)
+                return collectionType.GetElementType()!;
+
+            if (collectionType.IsGenericType && collectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+                return collectionType.GetGenericArguments()[0];
+
+            var enumerableType = collectionType
                 .GetInterfaces()
-                .Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                .Select(t => t.GetGenericArguments()[0])
-                .First();
+                .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+
+            if (enumerableType != null)
+                return enumerableType.GetGenericArguments()[0];
+
+            throw new ChillException($"Unable to resolve collection element type for '{collectionType.FullName ?? collectionType.Name}'.");
         }
 
         private static ChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
@@ -322,7 +331,7 @@ namespace ChillSharp.Dto
             }
         }
 
-        private static object? ConvertToClrValue(object value, Type targetType, ChillDtoPropertyType propertyType)
+        private static object? ConvertToClrValue(object value, Type targetType, ChillDtoPropertyType propertyType, bool isNullable)
         {
             if (value is JsonElement jsonElement)
             {
@@ -331,7 +340,7 @@ namespace ChillSharp.Dto
                     ChillDtoPropertyType.Guid => ConvertGuid(jsonElement, targetType),
                     ChillDtoPropertyType.Integer => ConvertInteger(jsonElement, targetType),
                     ChillDtoPropertyType.Decimal => ConvertDecimal(jsonElement, targetType),
-                    ChillDtoPropertyType.Date => ConvertDate(jsonElement, targetType),
+                    ChillDtoPropertyType.Date => ConvertDate(jsonElement, targetType, isNullable),
                     ChillDtoPropertyType.Time => ConvertTime(jsonElement, targetType),
                     ChillDtoPropertyType.DateTime => ConvertDateTime(jsonElement, targetType),
                     ChillDtoPropertyType.Duration => ConvertDuration(jsonElement, targetType),
@@ -349,7 +358,7 @@ namespace ChillSharp.Dto
                 ChillDtoPropertyType.Guid => ConvertGuid(value, targetType),
                 ChillDtoPropertyType.Integer => ConvertInteger(value, targetType),
                 ChillDtoPropertyType.Decimal => ConvertDecimal(value, targetType),
-                ChillDtoPropertyType.Date => ConvertDate(value, targetType),
+                ChillDtoPropertyType.Date => ConvertDate(value, targetType, isNullable),
                 ChillDtoPropertyType.Time => ConvertTime(value, targetType),
                 ChillDtoPropertyType.DateTime => ConvertDateTime(value, targetType),
                 ChillDtoPropertyType.Duration => ConvertDuration(value, targetType),
@@ -400,11 +409,16 @@ namespace ChillSharp.Dto
             return Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
         }
 
-        private static object ConvertDate(object value, Type targetType)
+        private static object? ConvertDate(object value, Type targetType, bool isNullable)
         {
             var text = value is JsonElement json ? json.GetString() : Convert.ToString(value, CultureInfo.InvariantCulture);
             if (string.IsNullOrWhiteSpace(text))
+            {
+                if (isNullable)
+                    return null;
+
                 return targetType == typeof(DateOnly) ? default(DateOnly) : default(DateTime);
+            }
 
             // Normalize: if has format "2024-01-01T00:00:00.000Z" remove "T00:00:00.000Z" to keep "2024-01-01"
             if (text.Contains("T"))

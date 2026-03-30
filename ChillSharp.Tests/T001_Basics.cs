@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Annotations;
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
 using ChillSharp.EF;
@@ -24,6 +25,7 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Reflection;
 using System.Text.Json;
 
 namespace ChillSharp.Tests
@@ -450,6 +452,245 @@ namespace ChillSharp.Tests
             Assert.AreEqual(1, result.Results.Count);
             Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
             Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
+        }
+
+        [TestMethod]
+        public void Step010_AutocompleteEntityReturnsUpdatedFields()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var entity = new ChillDtoEntity
+            {
+                ChillType = "Model.Blog",
+                Guid = Guid.NewGuid()
+            };
+            entity.Properties["Title"] = "Autocomplete Blog";
+            entity.Properties["Url"] = string.Empty;
+
+            var result = client.Autocomplete(entity);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual("Autocomplete Blog", result.GetString("Title"));
+            Assert.AreEqual("https://autocomplete.local/autocomplete-blog", result.GetString("Url"));
+        }
+
+        [TestMethod]
+        public void Step011_AutocompleteQueryReturnsUpdatedFields()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var query = new ChillDtoQuery
+            {
+                ChillType = "Query.BlogQuery"
+            };
+            query.Properties["Title"] = "  autocomplete query  ";
+
+            var result = client.Autocomplete(query);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual("autocomplete query", result.Properties["Title"]?.ToString());
+            Assert.AreEqual("autocomplete query autocomplete", result.Properties["FullTextSearch"]?.ToString());
+        }
+
+        [TestMethod]
+        public async Task Step012_AutocompleteDoesNotPersistEntityChanges()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var created = client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Blog",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "Persisted Blog",
+                    ["Url"] = "https://persisted.local/original"
+                }
+            });
+
+            var autocompleteRequest = new ChillDtoEntity
+            {
+                ChillType = "Model.Blog",
+                Guid = created.Guid,
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "Persisted Blog Updated",
+                    ["Url"] = string.Empty
+                }
+            };
+
+            var autocompleted = client.Autocomplete(autocompleteRequest);
+
+            Assert.AreEqual("Persisted Blog Updated", autocompleted.GetString("Title"));
+            Assert.AreEqual("https://autocomplete.local/persisted-blog-updated", autocompleted.GetString("Url"));
+
+            await using var db = TestApiHost.CreateDbContext();
+            var persisted = await db.Blog.FirstAsync(x => x.Guid == created.Guid);
+            Assert.AreEqual("Persisted Blog", persisted.Title);
+            Assert.AreEqual("https://persisted.local/original", persisted.Url);
+        }
+
+        [TestMethod]
+        public void Step013_GetCollectionElementTypeSupportsDirectEnumerableTypes()
+        {
+            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+            Assert.IsNotNull(mapperType);
+
+            var method = mapperType
+                .GetMethod("GetCollectionElementType", BindingFlags.NonPublic | BindingFlags.Static);
+
+            Assert.IsNotNull(method);
+
+            var enumerableElementType = (Type?)method.Invoke(null, [typeof(IEnumerable<Post>)]);
+            var arrayElementType = (Type?)method.Invoke(null, [typeof(Post[])]);
+
+            Assert.AreEqual(typeof(Post), enumerableElementType);
+            Assert.AreEqual(typeof(Post), arrayElementType);
+        }
+
+        [TestMethod]
+        public void Step014_ApplyPropertiesKeepsNullableDateFieldsNullWhenDtoDateIsBlank()
+        {
+            using var db = TestApiHost.CreateDbContext();
+
+            var target = new NullableDateEntity();
+            var sourceValues = new Dictionary<string, object?>
+            {
+                ["PublishedOn"] = string.Empty
+            };
+
+            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+            Assert.IsNotNull(mapperType);
+
+            var applyPropertiesMethod = mapperType.GetMethod(
+                "ApplyProperties",
+                BindingFlags.Public | BindingFlags.Static);
+
+            Assert.IsNotNull(applyPropertiesMethod);
+
+            applyPropertiesMethod.Invoke(null,
+            [
+                db,
+                target,
+                "Tests.NullableDateEntity",
+                sourceValues,
+                typeof(NullableDateEntity).GetProperties(),
+                "NullableDateEntity",
+                false,
+                null
+            ]);
+
+            Assert.IsNull(target.PublishedOn);
+        }
+
+        [TestMethod]
+        public void Step015_ValidateEntityReturnsValidationErrors()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var errors = client.Validate(new ChillDtoEntity
+            {
+                ChillType = "Model.Blog",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "invalid"
+                }
+            });
+
+            Assert.HasCount(1, errors);
+            Assert.AreEqual("Title", errors[0].FieldName);
+            Assert.AreEqual("Blog title is invalid.", errors[0].Message);
+        }
+
+        [TestMethod]
+        public void Step016_ValidateQueryReturnsValidationErrors()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var errors = client.Validate(new ChillDtoQuery
+            {
+                ChillType = "Query.BlogQuery",
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "invalid"
+                }
+            });
+
+            Assert.HasCount(1, errors);
+            Assert.AreEqual("Title", errors[0].FieldName);
+            Assert.AreEqual("Blog query title is invalid.", errors[0].Message);
+        }
+
+        [TestMethod]
+        public void Step017_ChunkSupportsValidateAndAutocompleteOperations()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var operations = client.Chunk(
+            [
+                new ChillOperation
+                {
+                    Index = 0,
+                    Verb = ChillOperationVerb.VALIDATE,
+                    Entity = new ChillDtoEntity
+                    {
+                        ChillType = "Model.Blog",
+                        Guid = Guid.NewGuid(),
+                        Properties = new Dictionary<string, object?>
+                        {
+                            ["Title"] = "invalid"
+                        }
+                    }
+                },
+                new ChillOperation
+                {
+                    Index = 1,
+                    Verb = ChillOperationVerb.VALIDATE,
+                    Query = new ChillDtoQuery
+                    {
+                        ChillType = "Query.BlogQuery",
+                        Properties = new Dictionary<string, object?>
+                        {
+                            ["Title"] = "invalid"
+                        }
+                    }
+                },
+                new ChillOperation
+                {
+                    Index = 2,
+                    Verb = ChillOperationVerb.AUTOCOMPLETE,
+                    Entity = new ChillDtoEntity
+                    {
+                        ChillType = "Model.Blog",
+                        Guid = Guid.NewGuid(),
+                        Properties = new Dictionary<string, object?>
+                        {
+                            ["Title"] = "Chunk Autocomplete",
+                            ["Url"] = string.Empty
+                        }
+                    }
+                }
+            ]);
+
+            Assert.HasCount(3, operations);
+            Assert.HasCount(1, operations[0].ValidationErrors);
+            Assert.AreEqual("Blog title is invalid.", operations[0].ValidationErrors![0].Message);
+            Assert.HasCount(1, operations[1].ValidationErrors);
+            Assert.AreEqual("Blog query title is invalid.", operations[1].ValidationErrors![0].Message);
+            Assert.AreEqual("https://autocomplete.local/chunk-autocomplete", operations[2].Entity!.GetString("Url"));
+        }
+
+        private sealed class NullableDateEntity
+        {
+            [ChillProperty]
+            public DateOnly? PublishedOn { get; set; }
         }
     }
 }

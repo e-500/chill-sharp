@@ -153,3 +153,18 @@ If you plan to generate clients regularly:
 - treat OpenAPI shape changes as public-contract changes
 
 
+
+## 9. Generic Batch Operations
+
+The generic clients shipped in `ext/` also support ChillSharp batch execution through `chunk()`.
+
+Use a plain batch when you want multiple operations in one HTTP call.
+Wrap the batch with `transaction` and `commit` when the write operations must be committed as a single database transaction.
+
+See the package readmes for concrete examples:
+
+- `ext/chill-sharp-ts-client/README.md`
+- `ext/chill-sharp-ng-client/README.md`
+- `ext/chill-sharp-react-client/README.md`
+- `ext/chill-sharp-vue-client/README.md`
+- `ext/chill-sharp-py-client/README.md`

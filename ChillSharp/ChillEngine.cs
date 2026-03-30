@@ -122,6 +122,97 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Applies autocomplete logic to an entity without persisting the changes.
+        /// </summary>
+        /// <param name="Entity">The entity to autocomplete.</param>
+        /// <returns>The same entity after <c>OnAutocomplete</c> has been applied.</returns>
+        public IChillEntity Autocomplete(IChillEntity Entity)
+        {
+            if (Entity is not IChillValidable validable)
+                throw new ChillException($"{Entity.GetType().FullName} does not implement IChillValidable");
+            var db = (DbContext)_Context;
+            var opTrans = false;
+
+            if (_CurrentTransaction == null)
+            {
+                opTrans = true;
+                db.Database.BeginTransaction();
+            }
+
+            try
+            {
+                validable.OnAutocomplete(_Context);
+                return Entity;
+            }
+            finally
+            {
+                if (opTrans)
+                {
+                    db.Database.RollbackTransaction();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies autocomplete logic to a query without executing it.
+        /// </summary>
+        /// <param name="Query">The query to autocomplete.</param>
+        /// <returns>The same query after <c>OnAutocomplete</c> has been applied.</returns>
+        public IChillQuery<IChillEntity> Autocomplete(IChillQuery<IChillEntity> Query)
+        {
+            if (Query is not IChillValidable validable)
+                throw new ChillException($"{Query.GetType().FullName} does not implement IChillValidable");
+
+            validable.OnAutocomplete(_Context);
+            return Query;
+        }
+
+        /// <summary>
+        /// Validates an entity without persisting changes and returns the validation errors.
+        /// </summary>
+        /// <param name="Entity">The entity to validate.</param>
+        /// <returns>The validation errors returned by <c>OnValidation</c>.</returns>
+        public List<ChillValidationError> Validate(IChillEntity Entity)
+        {
+            if (Entity is not IChillValidable validable)
+                throw new ChillException($"{Entity.GetType().FullName} does not implement IChillValidable");
+
+            var db = (DbContext)_Context;
+            var opTrans = false;
+
+            if (_CurrentTransaction == null)
+            {
+                opTrans = true;
+                db.Database.BeginTransaction();
+            }
+
+            try
+            {
+                return validable.OnValidation(_Context).ToList();
+            }
+            finally
+            {
+                if (opTrans)
+                {
+                    db.Database.RollbackTransaction();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates a query without executing it and returns the validation errors.
+        /// </summary>
+        /// <param name="Query">The query to validate.</param>
+        /// <returns>The validation errors returned by <c>OnValidation</c>.</returns>
+        public List<ChillValidationError> Validate(IChillQuery<IChillEntity> Query)
+        {
+            if (Query is not IChillValidable validable)
+                throw new ChillException($"{Query.GetType().FullName} does not implement IChillValidable");
+
+            return validable.OnValidation(_Context).ToList();
+        }
+
+        /// <summary>
         /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
         /// <para>
         /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods

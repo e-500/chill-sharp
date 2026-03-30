@@ -163,10 +163,14 @@ await client.delete({
 
 ### Chunk
 
+Use `chunk()` when several operations should be sent in one HTTP request.
+The operations are executed in `Index` order when you provide it. For write-heavy batches, set `Index` explicitly.
+
 ```ts
 const operations = await client.chunk([
   {
-    Verb: "CREATE",
+    Index: 0,
+    Verb: "create",
     Entity: {
       ChillType: "Model.Post",
       Guid: "11111111-1111-1111-1111-111111111111",
@@ -174,15 +178,68 @@ const operations = await client.chunk([
     }
   },
   {
-    Verb: "CREATE",
+    Index: 1,
+    Verb: "create",
     Entity: {
       ChillType: "Model.Post",
       Guid: "22222222-2222-2222-2222-222222222222",
       Properties: { Title: "Second", Author: "B" }
     }
+  },
+  {
+    Index: 2,
+    Verb: "update",
+    Entity: {
+      ChillType: "Model.Post",
+      Guid: "11111111-1111-1111-1111-111111111111",
+      Properties: { Title: "First updated" }
+    }
   }
 ]);
 ```
+
+### Chunk inside one transaction
+
+Wrap the batch with `transaction` and `commit` when all write operations must succeed or fail together.
+
+```ts
+const operations = await client.chunk([
+  {
+    Index: 0,
+    Verb: "transaction"
+  },
+  {
+    Index: 1,
+    Verb: "create",
+    Entity: {
+      ChillType: "Model.Blog",
+      Guid: crypto.randomUUID(),
+      Properties: {
+        Name: "Batch blog",
+        Url: "https://example.local/batch-blog"
+      }
+    }
+  },
+  {
+    Index: 2,
+    Verb: "create",
+    Entity: {
+      ChillType: "Model.Post",
+      Guid: crypto.randomUUID(),
+      Properties: {
+        Title: "Batch post",
+        Author: "Grace Hopper"
+      }
+    }
+  },
+  {
+    Index: 3,
+    Verb: "commit"
+  }
+]);
+```
+
+Use this pattern only for the operations that must share the same database transaction. If one write fails before `commit`, the transaction is not committed.
 
 ### Test
 
@@ -354,9 +411,12 @@ const token = await client.registerAuthAccount({
   Email: "root@example.com",
   Password: "Pass123$",
   DisplayName: "Root",
+  DisplayCultureName: "it-IT",
   CreateChillAuthUser: true
 });
 ```
+
+If `DisplayCultureName` is provided and `CreateChillAuthUser` is `true`, the server presets the linked `AuthUser` with culture-based defaults for `displayTimeZone`, `displayDateFormat`, and `displayNumberFormat`.
 
 ### Login
 
@@ -416,6 +476,8 @@ const permissions = await client.getAuthPermissions();
 const users = await client.getAuthUserList();
 ```
 
+Each auth user item includes `displayCultureName`, `displayTimeZone`, `displayDateFormat`, and `displayNumberFormat`.
+
 ### Get managed user
 
 ```ts
@@ -430,6 +492,10 @@ const user = await client.setAuthUser({
   externalId: "identity-user-001",
   userName: "identity.user",
   displayName: "Identity User",
+  displayCultureName: "it-IT",
+  displayTimeZone: "W. Europe Standard Time",
+  displayDateFormat: "DD/MM/YYYY",
+  displayNumberFormat: "1.000,00",
   isActive: true,
   canManagePermissions: false,
   canManageSchema: true,
@@ -505,4 +571,8 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed TypeScript clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
+
+
 

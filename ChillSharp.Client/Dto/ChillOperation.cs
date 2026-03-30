@@ -1,4 +1,4 @@
-﻿/*
+/*
  * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
  * and turns an existing data model into a fully working REST API with almost no setup.
  * Copyright (C) 2025 Andrea Piovesan
@@ -49,6 +49,11 @@ namespace ChillSharp.Client.Dto
         /// The entity object to act upon, if applicable.
         /// </summary>
         public ChillDtoEntity? Entity { get; set; }
+
+        /// <summary>
+        /// Validation errors returned by a validate operation, if applicable.
+        /// </summary>
+        public List<ChillValidationError>? ValidationErrors { get; set; }
     }
 
     /// <summary>
@@ -58,10 +63,16 @@ namespace ChillSharp.Client.Dto
     {
         public const string TRANSACTION  = "transaction";
         public const string QUERY  = "query";
-        //public const string FIND   = "find";
+        public const string FIND   = "find";
         public const string CREATE = "create";
         public const string UPDATE = "update";
         public const string DELETE = "delete";
+        public const string AUTOCOMPLETE = "autocomplete";
+        public const string VALIDATE = "validate";
         public const string COMMIT = "commit";
     }
 }
+
+
+
+

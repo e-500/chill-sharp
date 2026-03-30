@@ -23,16 +23,19 @@ import { ChillSharpClient } from "chill-sharp-ts-client";
 import type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
+  AuthTokenResponse,
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
+  ChillValidationError,
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
   GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
+  RegisterAuthIdentityRequest,
   JsonObject,
   SetAuthRoleRequest,
   SetAuthUserRequest
@@ -64,6 +67,14 @@ export class ChillSharpNgClient {
 
   delete(dtoEntity: JsonObject): Observable<void> {
     return from(this.client.delete(dtoEntity));
+  }
+
+  autocomplete(dto: JsonObject): Observable<JsonObject> {
+    return from(this.client.autocomplete(dto));
+  }
+
+  validate(dto: JsonObject): Observable<ChillValidationError[]> {
+    return from(this.client.validate(dto));
   }
 
   chunk(operations: JsonObject[]): Observable<JsonObject[]> {
@@ -146,15 +157,15 @@ export class ChillSharpNgClient {
     return from(this.client.disconnectEntityChanges());
   }
 
-  registerAuthAccount(payload: JsonObject): Observable<JsonObject> {
+  registerAuthAccount(payload: RegisterAuthIdentityRequest): Observable<AuthTokenResponse> {
     return from(this.client.registerAuthAccount(payload));
   }
 
-  loginAuthAccount(payload: JsonObject): Observable<JsonObject> {
+  loginAuthAccount(payload: JsonObject): Observable<AuthTokenResponse> {
     return from(this.client.loginAuthAccount(payload));
   }
 
-  refreshAuthAccount(): Observable<JsonObject> {
+  refreshAuthAccount(): Observable<AuthTokenResponse> {
     return from(this.client.refreshAuthAccount());
   }
 
@@ -209,9 +220,11 @@ export class ChillSharpNgClient {
   getAuthPropertyList(chillType: string): Observable<string[]> {
     return from(this.client.getAuthPropertyList(chillType));
   }
+
   getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse> {
     return from(this.client.getAuthRole(roleGuid));
   }
+
   setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse> {
     return from(this.client.setAuthRole(payload));
   }
@@ -220,5 +233,9 @@ export class ChillSharpNgClient {
     return this.client;
   }
 }
+
+
+
+
 
 

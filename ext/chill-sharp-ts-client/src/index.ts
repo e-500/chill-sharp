@@ -30,12 +30,14 @@ export type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
   AuthRolePermissions,
+  AuthTokenResponse,
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
+  ChillValidationError,
   ChillEntityChangeAction,
   ChillEntityChangeCallback,
   ChillEntityChangeNotification,
@@ -47,7 +49,10 @@ export type {
   JsonObject,
   JsonPrimitive,
   JsonValue,
+  RegisterAuthIdentityRequest,
   SetAuthRoleRequest,
   SetAuthUserRequest
 } from "./client.js";
 export { ChillSharpClientError } from "./errors.js";
+
+

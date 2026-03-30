@@ -55,5 +55,28 @@ namespace ChillSharp.Tests.EF.Model
             PrimaryLanguageLabel: "Blog posts",
             SecondaryLanguageLabel: "Post del blog")]
         public ICollection<Post>? Posts { get; set; } = null;
+
+        public override void OnAutocomplete(IChillContext Context)
+        {
+            if (!string.IsNullOrWhiteSpace(Title) && string.IsNullOrWhiteSpace(Url))
+            {
+                Url = $"https://autocomplete.local/{Title.Trim().ToLowerInvariant().Replace(' ', '-')}";
+            }
+        }
+
+        public override IEnumerable<ChillValidationError> OnValidation(IChillContext Context)
+        {
+            if (!string.Equals(Title?.Trim(), "invalid", StringComparison.OrdinalIgnoreCase))
+                return [];
+
+            return
+            [
+                new ChillValidationError
+                {
+                    FieldName = nameof(Title),
+                    Message = "Blog title is invalid."
+                }
+            ];
+        }
     }
 }

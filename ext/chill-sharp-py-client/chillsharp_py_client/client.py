@@ -112,6 +112,15 @@ class ChillSharpClient:
         """Delete an entity through the Chill endpoint."""
         self._send_json("POST", self._build_chill_url("delete"), dto_entity, expect_response_body=False)
 
+    def autocomplete(self, dto: JsonDict) -> JsonDict:
+        """Apply autocomplete logic to an entity or query DTO."""
+        return self._send_json("POST", self._build_chill_url("autocomplete"), dto)
+
+    def validate(self, dto: JsonDict) -> list[JsonDict]:
+        """Validate an entity or query DTO and return the validation errors."""
+        response = self._send_json("POST", self._build_chill_url("validate"), dto)
+        return response if isinstance(response, list) else []
+
     def chunk(self, operations: list[JsonDict]) -> list[JsonDict]:
         """Submit a batch of operations in one request."""
         return self._send_json("POST", self._build_chill_url("chunk"), operations)
@@ -506,6 +515,7 @@ class ChillSharpClient:
             "accessTokenExpiresUtc": self._format_datetime(self._token_state.access_token_expires_utc),
             "refreshToken": self._token_state.refresh_token or "",
             "refreshTokenExpiresUtc": self._format_datetime(self._token_state.refresh_token_expires_utc),
+            "userId": "",
             "userName": self._username or "",
         }
 
@@ -605,3 +615,9 @@ class ChillSharpClient:
                 return value
 
         return None
+
+
+
+
+
+

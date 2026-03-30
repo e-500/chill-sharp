@@ -54,6 +54,12 @@ public class RegisterAuthIdentityRequest
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the preferred culture name used to preset user display preferences.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayCultureName { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets whether the corresponding ChillSharp auth user should be created automatically.
     /// </summary>
     public bool CreateChillAuthUser { get; set; } = true;

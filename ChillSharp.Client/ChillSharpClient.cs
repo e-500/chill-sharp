@@ -152,6 +152,52 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Applies autocomplete logic to the given entity and returns the updated DTO.
+        /// </summary>
+        /// <param name="Entity">Entity payload for autocomplete.</param>
+        /// <returns>The autocompleted entity DTO.</returns>
+        public ChillDtoEntity Autocomplete(ChillDtoEntity Entity)
+        {
+            var result = SendJson<ChillDtoEntity>(HttpMethod.Post, BuildChillUrl("autocomplete"), Entity);
+            if (result == null) throw new ChillClientException("Unexpected null entity autocomplete result");
+            return result;
+        }
+
+        /// <summary>
+        /// Applies autocomplete logic to the given query and returns the updated DTO.
+        /// </summary>
+        /// <param name="Query">Query payload for autocomplete.</param>
+        /// <returns>The autocompleted query DTO.</returns>
+        public ChillDtoQuery Autocomplete(ChillDtoQuery Query)
+        {
+            var result = SendJson<ChillDtoQuery>(HttpMethod.Post, BuildChillUrl("autocomplete"), Query);
+            if (result == null) throw new ChillClientException("Unexpected null query autocomplete result");
+            return result;
+        }
+
+        /// <summary>
+        /// Validates the given entity and returns the validation errors.
+        /// </summary>
+        /// <param name="Entity">Entity payload for validation.</param>
+        /// <returns>The validation errors returned by the server.</returns>
+        public List<Dto.ChillValidationError> Validate(ChillDtoEntity Entity)
+        {
+            return SendJson<List<Dto.ChillValidationError>>(HttpMethod.Post, BuildChillUrl("validate"), Entity)
+                ?? new List<Dto.ChillValidationError>();
+        }
+
+        /// <summary>
+        /// Validates the given query and returns the validation errors.
+        /// </summary>
+        /// <param name="Query">Query payload for validation.</param>
+        /// <returns>The validation errors returned by the server.</returns>
+        public List<Dto.ChillValidationError> Validate(ChillDtoQuery Query)
+        {
+            return SendJson<List<Dto.ChillValidationError>>(HttpMethod.Post, BuildChillUrl("validate"), Query)
+                ?? new List<Dto.ChillValidationError>();
+        }
+
+        /// <summary>
         /// Internal method used by the CRUD helpers to send
         /// an action-based request to the API.
         /// </summary>
@@ -547,3 +593,4 @@ namespace ChillSharp.Client
         }
     }
 }
+

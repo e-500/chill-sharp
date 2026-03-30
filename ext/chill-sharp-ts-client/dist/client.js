@@ -78,6 +78,12 @@ export class ChillSharpClient {
     async delete(dtoEntity) {
         await this.sendJson("POST", this.buildChillUrl("delete"), dtoEntity, false);
     }
+    autocomplete(dto) {
+        return this.sendJson("POST", this.buildChillUrl("autocomplete"), dto);
+    }
+    validate(dto) {
+        return this.sendJson("POST", this.buildChillUrl("validate"), dto);
+    }
     chunk(operations) {
         return this.sendJson("POST", this.buildChillUrl("chunk"), operations);
     }
@@ -400,6 +406,7 @@ export class ChillSharpClient {
             accessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
             refreshToken: this.tokenState.refreshToken ?? "",
             refreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
+            userId: "",
             userName: this.username ?? ""
         };
     }

@@ -20,6 +20,7 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ChillSharp.Api.Controllers
 {
@@ -41,6 +42,8 @@ namespace ChillSharp.Api.Controllers
     ///   <item><description>POST: api/chill/create → Creates a new entity in the database.</description></item>
     ///   <item><description>POST: api/chill/update → Updates an existing entity.</description></item>
     ///   <item><description>POST: api/chill/delete → Deletes an existing entity.</description></item>
+    ///   <item><description>POST: api/chill/autocomplete → Applies autocomplete logic to an entity or query DTO.</description></item>
+    ///   <item><description>POST: api/chill/validate → Validates an entity or query DTO and returns validation errors.</description></item>
     /// </list>
     /// </para>
     ///
@@ -57,6 +60,11 @@ namespace ChillSharp.Api.Controllers
     [Route("api/chill")]
     public class ChillController : ControllerBase
     {
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         /// <summary>
         /// Initializes a new instance of the <see cref="ChillController"/> class.
         /// </summary>
@@ -170,6 +178,88 @@ namespace ChillSharp.Api.Controllers
         }
 
         /// <summary>
+        /// Applies autocomplete logic to an entity or query DTO and returns the updated payload.
+        /// </summary>
+        /// <param name="payload">The incoming entity or query DTO payload.</param>
+        /// <returns>The autocompleted DTO payload.</returns>
+        [HttpPost]
+        [Route("autocomplete")]
+        public async Task<IActionResult> Autocomplete(JsonElement payload, CancellationToken cancellationToken)
+        {
+            if (!TryGetPropertyIgnoreCase(payload, "ChillType", out var chillTypeElement))
+                return BadRequest("ChillType is required.");
+
+            var chillType = chillTypeElement.GetString();
+            if (string.IsNullOrWhiteSpace(chillType))
+                return BadRequest("ChillType is required.");
+
+            var resolvedType = ChillTypeResolver.ResolveType(_context.GetType().Assembly, chillType, _context.GetChillTypePrefix());
+            if (typeof(IChillQuery<IChillEntity>).IsAssignableFrom(resolvedType))
+            {
+                var authorizationResult = await EnsureEntityAccessAsync(chillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                if (authorizationResult != null)
+                    return authorizationResult;
+
+                var dtoQuery = payload.Deserialize<ChillDtoQuery>(_jsonOptions);
+                if (dtoQuery == null)
+                    return BadRequest("Invalid autocomplete query payload.");
+
+                return Ok(_ce.Autocomplete(dtoQuery));
+            }
+
+            var entityAuthorizationResult = await EnsureEntityAccessAsync(chillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
+            if (entityAuthorizationResult != null)
+                return entityAuthorizationResult;
+
+            var dtoEntity = payload.Deserialize<ChillDtoEntity>(_jsonOptions);
+            if (dtoEntity == null)
+                return BadRequest("Invalid autocomplete entity payload.");
+
+            return Ok(_ce.Autocomplete(dtoEntity));
+        }
+
+        /// <summary>
+        /// Validates an entity or query DTO and returns the validation errors.
+        /// </summary>
+        /// <param name="payload">The incoming entity or query DTO payload.</param>
+        /// <returns>The validation errors returned by the underlying type.</returns>
+        [HttpPost]
+        [Route("validate")]
+        public async Task<IActionResult> Validate(JsonElement payload, CancellationToken cancellationToken)
+        {
+            if (!TryGetPropertyIgnoreCase(payload, "ChillType", out var chillTypeElement))
+                return BadRequest("ChillType is required.");
+
+            var chillType = chillTypeElement.GetString();
+            if (string.IsNullOrWhiteSpace(chillType))
+                return BadRequest("ChillType is required.");
+
+            var resolvedType = ChillTypeResolver.ResolveType(_context.GetType().Assembly, chillType, _context.GetChillTypePrefix());
+            if (typeof(IChillQuery<IChillEntity>).IsAssignableFrom(resolvedType))
+            {
+                var authorizationResult = await EnsureEntityAccessAsync(chillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                if (authorizationResult != null)
+                    return authorizationResult;
+
+                var dtoQuery = payload.Deserialize<ChillDtoQuery>(_jsonOptions);
+                if (dtoQuery == null)
+                    return BadRequest("Invalid validate query payload.");
+
+                return Ok(_ce.Validate(dtoQuery));
+            }
+
+            var entityAuthorizationResult = await EnsureEntityAccessAsync(chillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
+            if (entityAuthorizationResult != null)
+                return entityAuthorizationResult;
+
+            var dtoEntity = payload.Deserialize<ChillDtoEntity>(_jsonOptions);
+            if (dtoEntity == null)
+                return BadRequest("Invalid validate entity payload.");
+
+            return Ok(_ce.Validate(dtoEntity));
+        }
+
+        /// <summary>
         /// COMMENT: Execute a chunk of operations using transaction
         /// </summary>
         /// <param name="DtoEntity">The DTO entity identifying the record to delete.</param>
@@ -217,6 +307,14 @@ namespace ChillSharp.Api.Controllers
                     return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
                 case ChillOperationVerb.DELETE when operation.Entity != null:
                     return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Delete, isQueryType: false, cancellationToken);
+                case ChillOperationVerb.AUTOCOMPLETE when operation.Query != null:
+                    return await EnsureEntityAccessAsync(operation.Query.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                case ChillOperationVerb.AUTOCOMPLETE when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
+                case ChillOperationVerb.VALIDATE when operation.Query != null:
+                    return await EnsureEntityAccessAsync(operation.Query.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                case ChillOperationVerb.VALIDATE when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
             }
 
             return null;
@@ -302,6 +400,21 @@ namespace ChillSharp.Api.Controllers
         private string PrepareFullChillType(string chillType)
         {
             return ChillTypeResolver.PrepareFullChillType(chillType, _context.GetChillTypePrefix());
+        }
+
+        private static bool TryGetPropertyIgnoreCase(JsonElement payload, string propertyName, out JsonElement value)
+        {
+            foreach (var property in payload.EnumerateObject())
+            {
+                if (string.Equals(property.Name, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = property.Value;
+                    return true;
+                }
+            }
+
+            value = default;
+            return false;
         }
 
     }

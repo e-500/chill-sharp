@@ -45,11 +45,19 @@ export interface ChillDtoEntityOptions extends JsonObject {
     fullTextContentFormatString: string | null;
     changeLogEnabled: boolean;
 }
+export interface ChillValidationError extends JsonObject {
+    fieldName: string | null;
+    message: string | null;
+}
 export interface AuthUserListItem extends JsonObject {
     guid: string;
     externalId: string;
     userName: string;
     displayName: string;
+    displayCultureName: string;
+    displayTimeZone: string;
+    displayDateFormat: string;
+    displayNumberFormat: string;
     isActive: boolean;
     canManagePermissions: boolean;
     canManageSchema: boolean;
@@ -59,6 +67,23 @@ export interface AuthRoleListItem extends JsonObject {
     name: string;
     description: string;
     isActive: boolean;
+}
+export interface AuthTokenResponse extends JsonObject {
+    accessToken: string;
+    accessTokenIssuedUtc: string;
+    accessTokenExpiresUtc: string;
+    refreshToken: string;
+    refreshTokenExpiresUtc: string;
+    userId: string;
+    userName: string;
+}
+export interface RegisterAuthIdentityRequest extends JsonObject {
+    userName: string;
+    email: string | null;
+    password: string;
+    displayName: string;
+    displayCultureName: string;
+    createChillAuthUser: boolean;
 }
 export declare const PermissionEffect: {
     readonly Allow: 1;
@@ -125,6 +150,10 @@ export interface SetAuthUserRequest extends JsonObject {
     externalId: string;
     userName: string;
     displayName: string;
+    displayCultureName: string;
+    displayTimeZone: string;
+    displayDateFormat: string;
+    displayNumberFormat: string;
     isActive: boolean;
     canManagePermissions: boolean;
     canManageSchema: boolean;
@@ -176,6 +205,8 @@ export declare class ChillSharpClient {
     create(dtoEntity: JsonObject): Promise<JsonObject>;
     update(dtoEntity: JsonObject): Promise<JsonObject>;
     delete(dtoEntity: JsonObject): Promise<void>;
+    autocomplete(dto: JsonObject): Promise<JsonObject>;
+    validate(dto: JsonObject): Promise<ChillValidationError[]>;
     chunk(operations: JsonObject[]): Promise<JsonObject[]>;
     version(): string;
     test(): Promise<string>;
@@ -189,9 +220,9 @@ export declare class ChillSharpClient {
     setText(payload: JsonObject): Promise<GetTextResponse>;
     subscribeToEntityChanges(chillType: string, callback: ChillEntityChangeCallback, guid?: string | null): Promise<ChillEntityChangeSubscription>;
     disconnectEntityChanges(): Promise<void>;
-    registerAuthAccount(payload: JsonObject): Promise<JsonObject>;
-    loginAuthAccount(payload: JsonObject): Promise<JsonObject>;
-    refreshAuthAccount(): Promise<JsonObject>;
+    registerAuthAccount(payload: RegisterAuthIdentityRequest): Promise<AuthTokenResponse>;
+    loginAuthAccount(payload: JsonObject): Promise<AuthTokenResponse>;
+    refreshAuthAccount(): Promise<AuthTokenResponse>;
     changeAuthPassword(payload: JsonObject): Promise<JsonObject>;
     requestAuthPasswordReset(payload: JsonObject): Promise<JsonObject>;
     resetAuthPassword(payload: JsonObject): Promise<JsonObject>;

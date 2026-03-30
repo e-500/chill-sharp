@@ -234,13 +234,65 @@ await createPost.execute({
 });
 ```
 
+## Chunk batches
+
+Call `chunk()` through `useChillSharpClient()` when several operations should be sent in one request.
+
+```tsx
+function SaveBatch() {
+  const client = useChillSharpClient();
+
+  async function executeBatch(existingGuid: string) {
+    await client.chunk([
+      { Index: 0, Verb: "transaction" },
+      {
+        Index: 1,
+        Verb: "create",
+        Entity: {
+          ChillType: "Model.Post",
+          Guid: crypto.randomUUID(),
+          Properties: {
+            Title: "Batched post",
+            Author: "Grace Hopper"
+          }
+        }
+      },
+      {
+        Index: 2,
+        Verb: "update",
+        Entity: {
+          ChillType: "Model.Post",
+          Guid: existingGuid,
+          Properties: {
+            Title: "Updated in the same batch"
+          }
+        }
+      },
+      { Index: 3, Verb: "commit" }
+    ]);
+  }
+
+  return null;
+}
+```
+
+Use `transaction` and `commit` only when the enclosed write operations must be committed together.
+
 ## Authentication
 
 Because the React package reuses the TypeScript client, it inherits the same auth behavior:
 
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
+- pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()` and `setEntityOptions()`
+
+Auth user list/detail payloads exposed through the raw client include:
+
+- `displayCultureName`
+- `displayTimeZone`
+- `displayDateFormat`
+- `displayNumberFormat`
 
 ## Error Handling
 
@@ -281,5 +333,7 @@ That is intentional:
 - model-specific React hooks are better generated from OpenAPI for each host application
 
 If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
 
 

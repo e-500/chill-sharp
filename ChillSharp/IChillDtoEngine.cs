@@ -96,6 +96,34 @@ namespace ChillSharp
         void Delete(ChillDtoEntity DtoEntity);
 
         /// <summary>
+        /// Applies autocomplete logic to an entity DTO and returns the updated payload.
+        /// </summary>
+        /// <param name="DtoEntity">The entity DTO to autocomplete.</param>
+        /// <returns>The autocompleted entity DTO.</returns>
+        ChillDtoEntity Autocomplete(ChillDtoEntity DtoEntity);
+
+        /// <summary>
+        /// Applies autocomplete logic to a query DTO and returns the updated payload.
+        /// </summary>
+        /// <param name="DtoQuery">The query DTO to autocomplete.</param>
+        /// <returns>The autocompleted query DTO.</returns>
+        ChillDtoQuery Autocomplete(ChillDtoQuery DtoQuery);
+
+        /// <summary>
+        /// Validates an entity DTO and returns the validation errors.
+        /// </summary>
+        /// <param name="DtoEntity">The entity DTO to validate.</param>
+        /// <returns>The validation errors returned by the underlying model.</returns>
+        IEnumerable<ChillValidationError> Validate(ChillDtoEntity DtoEntity);
+
+        /// <summary>
+        /// Validates a query DTO and returns the validation errors.
+        /// </summary>
+        /// <param name="DtoQuery">The query DTO to validate.</param>
+        /// <returns>The validation errors returned by the underlying query.</returns>
+        IEnumerable<ChillValidationError> Validate(ChillDtoQuery DtoQuery);
+
+        /// <summary>
         /// Retrieves the schema definition for a specified chill type and view code.
         /// </summary>
         /// <param name="ChillType">The identifier representing the chill type for which the schema is requested. Cannot be null or empty.</param>

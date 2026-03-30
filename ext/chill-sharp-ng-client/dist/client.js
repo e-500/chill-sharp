@@ -49,6 +49,12 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     delete(dtoEntity) {
         return from(this.client.delete(dtoEntity));
     }
+    autocomplete(dto) {
+        return from(this.client.autocomplete(dto));
+    }
+    validate(dto) {
+        return from(this.client.validate(dto));
+    }
     chunk(operations) {
         return from(this.client.chunk(operations));
     }

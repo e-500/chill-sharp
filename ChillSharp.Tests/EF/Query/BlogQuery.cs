@@ -41,6 +41,30 @@ namespace ChillSharp.Tests.EF.Query
             SecondaryLanguageLabel: "Titolo del blog")]
         public string Title { get; set; } = string.Empty;
 
+        public override void OnAutocomplete(IChillContext Context)
+        {
+            if (!string.IsNullOrWhiteSpace(Title) && !Guid.HasValue)
+            {
+                Title = Title.Trim();
+                FullTextSearch = $"{Title} autocomplete";
+            }
+        }
+
+        public override IEnumerable<ChillValidationError> OnValidation(IChillContext Context)
+        {
+            if (!string.Equals(Title?.Trim(), "invalid", StringComparison.OrdinalIgnoreCase))
+                return [];
+
+            return
+            [
+                new ChillValidationError
+                {
+                    FieldName = nameof(Title),
+                    Message = "Blog query title is invalid."
+                }
+            ];
+        }
+
         /// <summary>
         /// <inheritdoc/>
         /// </summary>

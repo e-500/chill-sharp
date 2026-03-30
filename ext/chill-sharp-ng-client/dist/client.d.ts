@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
+import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -9,6 +9,8 @@ export declare class ChillSharpNgClient {
     create(dtoEntity: JsonObject): Observable<JsonObject>;
     update(dtoEntity: JsonObject): Observable<JsonObject>;
     delete(dtoEntity: JsonObject): Observable<void>;
+    autocomplete(dto: JsonObject): Observable<JsonObject>;
+    validate(dto: JsonObject): Observable<ChillValidationError[]>;
     chunk(operations: JsonObject[]): Observable<JsonObject[]>;
     version(): string;
     test(): Observable<string>;
@@ -22,9 +24,9 @@ export declare class ChillSharpNgClient {
     setText(payload: JsonObject): Observable<GetTextResponse>;
     watchEntityChanges(chillType: string, guid?: string | null): Observable<ChillEntityChangeNotification[]>;
     disconnectEntityChanges(): Observable<void>;
-    registerAuthAccount(payload: JsonObject): Observable<JsonObject>;
-    loginAuthAccount(payload: JsonObject): Observable<JsonObject>;
-    refreshAuthAccount(): Observable<JsonObject>;
+    registerAuthAccount(payload: RegisterAuthIdentityRequest): Observable<AuthTokenResponse>;
+    loginAuthAccount(payload: JsonObject): Observable<AuthTokenResponse>;
+    refreshAuthAccount(): Observable<AuthTokenResponse>;
     changeAuthPassword(payload: JsonObject): Observable<JsonObject>;
     requestAuthPasswordReset(payload: JsonObject): Observable<JsonObject>;
     resetAuthPassword(payload: JsonObject): Observable<JsonObject>;

@@ -146,11 +146,26 @@ var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityReques
     Email = "admin@example.com",
     Password = "Pass123$",
     DisplayName = "Administrator",
+    DisplayCultureName = "it-IT",
     CreateChillAuthUser = true
 });
 ```
 
 After a successful registration, the client stores the returned access token and refresh token internally.
+
+If `DisplayCultureName` is provided and `CreateChillAuthUser = true`, the linked `AuthUser` is initialized with culture-based defaults for:
+
+- `DisplayTimeZone`
+- `DisplayDateFormat`
+- `DisplayNumberFormat`
+
+For example, `it-IT` typically produces presets like:
+
+- `DisplayTimeZone = "W. Europe Standard Time"`
+- `DisplayDateFormat = "DD/MM/YYYY"`
+- `DisplayNumberFormat = "1.000,00"`
+
+These are server-side presets and can be edited later through auth-user management.
 
 ## 6. Log in explicitly
 
@@ -200,6 +215,7 @@ var refreshed = client.RefreshAuthAccount();
 - Use `options.ProtectedApi = true` on `AddChillApi<TContext>(...)` if your ChillSharp endpoints must require authentication.
 - The root user created by `AddChillAuthIdentityApi(...)` is the bootstrap administrator path. When `CreateChillAuthUserForRoot = true`, the linked ChillSharp `AuthUser` is created with `CanManagePermissions = true`.
 - `CreateChillAuthUser = true` creates the linked ChillSharp `AuthUser`, but it does not automatically grant admin permissions.
+- `DisplayCultureName` on registration presets `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat` for the linked `AuthUser`.
 - For production, bootstrap the first administrator deliberately, for example through root-user initialization or a trusted install-time flow.
 
 Next example: [Create a Docker image and configure it with environment variables](04-docker-env-variables.md)

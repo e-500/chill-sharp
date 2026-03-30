@@ -171,5 +171,6 @@ The existing tutorials remain unchanged:
 - [HowTo/03-authentication.md](./HowTo/03-authentication.md)
 - [HowTo/04-blog-posts-one-to-many.md](./HowTo/04-blog-posts-one-to-many.md)
 - [HowTo/05-docker-env-variables.md](./HowTo/05-docker-env-variables.md)
+- [HowTo/06-chunk-transactions-autocomplete.md](./HowTo/06-chunk-transactions-autocomplete.md)
 
 

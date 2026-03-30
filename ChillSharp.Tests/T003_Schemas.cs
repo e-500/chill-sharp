@@ -348,6 +348,10 @@ namespace ChillSharp.Tests
             public ChillDtoEntity Create(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public ChillDtoEntity Update(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public void Delete(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public ChillDtoEntity Autocomplete(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public ChillDtoQuery Autocomplete(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
+            public IEnumerable<ChillValidationError> Validate(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
+            public IEnumerable<ChillValidationError> Validate(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
             public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null) => new() { ChillType = ChillType, ChillViewCode = ChillViewCode };
             public ChillDtoSchema SetSchema(ChillDtoSchema Schema) => Schema;
             public ChillDtoEntityOptions GetEntityOptions(string ChillType) => new() { ChillType = ChillType };

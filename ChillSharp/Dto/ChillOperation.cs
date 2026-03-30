@@ -52,6 +52,11 @@ namespace ChillSharp.Dto
         public ChillDtoEntity? Entity { get; set; }
 
         /// <summary>
+        /// Validation errors returned by a validate operation, if applicable.
+        /// </summary>
+        public List<ChillValidationError>? ValidationErrors { get; set; }
+
+        /// <summary>
         /// Executes the operation using the provided Chill DTO engine.
         /// </summary>
         public void Execute(IChillDtoEngine ChillEngine)
@@ -73,7 +78,7 @@ namespace ChillSharp.Dto
                     break;
                 case ChillOperationVerb.FIND:
                     if (obj == null) return;
-                    ChillEngine.Find((ChillDtoEntity)obj);
+                    Entity = ChillEngine.Find((ChillDtoEntity)obj);
                     break;
                 case ChillOperationVerb.CREATE:
                     if (obj == null) return;
@@ -86,6 +91,28 @@ namespace ChillSharp.Dto
                 case ChillOperationVerb.DELETE:
                     if (obj == null) return;
                     ChillEngine.Delete((ChillDtoEntity)obj);
+                    break;
+                case ChillOperationVerb.AUTOCOMPLETE:
+                    if (Query != null)
+                    {
+                        Query = ChillEngine.Autocomplete(Query);
+                        return;
+                    }
+                    if (Entity != null)
+                    {
+                        Entity = ChillEngine.Autocomplete(Entity);
+                    }
+                    break;
+                case ChillOperationVerb.VALIDATE:
+                    if (Query != null)
+                    {
+                        ValidationErrors = ChillEngine.Validate(Query).ToList();
+                        return;
+                    }
+                    if (Entity != null)
+                    {
+                        ValidationErrors = ChillEngine.Validate(Entity).ToList();
+                    }
                     break;
                 case ChillOperationVerb.COMMIT:
                     ChillEngine.CommitTransaction();
@@ -105,6 +132,8 @@ namespace ChillSharp.Dto
         public const string CREATE = "create";
         public const string UPDATE = "update";
         public const string DELETE = "delete";
+        public const string AUTOCOMPLETE = "autocomplete";
+        public const string VALIDATE = "validate";
         public const string COMMIT = "commit";
     }
 }

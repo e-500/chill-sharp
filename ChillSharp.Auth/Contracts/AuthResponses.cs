@@ -88,6 +88,10 @@ public class AuthUserListItemResponse
     public string ExternalId { get; set; } = string.Empty;
     public string UserName { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
+    public string DisplayCultureName { get; set; } = string.Empty;
+    public string DisplayTimeZone { get; set; } = string.Empty;
+    public string DisplayDateFormat { get; set; } = string.Empty;
+    public string DisplayNumberFormat { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool CanManageSchema { get; set; }
