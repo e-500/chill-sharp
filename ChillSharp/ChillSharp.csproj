@@ -16,7 +16,7 @@
         <IsPackable>true</IsPackable>
         <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
         <Description>ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
-        <Version>1.0.36</Version>
+        <Version>1.0.37</Version>
         <Authors>Andrea Piovesan</Authors>
         <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBuiltinModuleOutputs</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
@@ -49,7 +49,7 @@
 
     <Target Name="BuildBuiltinModuleProjects">
         <MSBuild
-            Projects="..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj"
+            Projects="..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj"
             Targets="Build"
             Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
     </Target>
@@ -59,6 +59,7 @@
             <BuildOutputInPackage Include="..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
             <BuildOutputInPackage Include="..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
             <BuildOutputInPackage Include="..\ChillSharp.Schema\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.dll" />
+            <BuildOutputInPackage Include="..\ChillSharp.Mcp\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Mcp.dll" />
         </ItemGroup>
     </Target>
 
