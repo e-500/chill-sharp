@@ -85,7 +85,7 @@ public sealed class ChillSchemaController : ControllerBase
         var queryItems = assembly
             .GetTypes()
             .Where(IsRegisteredQueryType)
-            .Select(type => ChillDtoSchemaListItem.FromQueryType(type, shrinkTypePrefix, _context, cultureName));
+            .Select(type => ChillDtoSchemaListItem.CreateFromQueryType(type, shrinkTypePrefix, _context, cultureName));
 
         return entityItems
             .Concat(queryItems)

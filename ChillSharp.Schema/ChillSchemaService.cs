@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Dto;
+using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Schema.Model;
 using Microsoft.EntityFrameworkCore;
@@ -142,6 +143,8 @@ public class ChillSchemaService : IChillSchemaService
             LabelFormatString = row.LabelFormatString,
             ShortLabelFormatString = row.ShortLabelFormatString,
             FullTextContentFormatString = row.FullTextContentFormatString,
+            EnableMCP = row.EnableMCP,
+            MCPDescription = row.MCPDescription,
             ChangeLogEnabled = row.ChangeLogEnabled
         });
     }
@@ -171,6 +174,8 @@ public class ChillSchemaService : IChillSchemaService
         row.LabelFormatString = NormalizeOptionalText(entityOptions.LabelFormatString);
         row.ShortLabelFormatString = NormalizeOptionalText(entityOptions.ShortLabelFormatString);
         row.FullTextContentFormatString = NormalizeOptionalText(entityOptions.FullTextContentFormatString);
+        row.EnableMCP = entityOptions.EnableMCP;
+        row.MCPDescription = NormalizeOptionalText(entityOptions.MCPDescription);
         row.ChangeLogEnabled = entityOptions.ChangeLogEnabled;
         row.UpdatedUtc = DateTime.UtcNow;
 
@@ -185,6 +190,8 @@ public class ChillSchemaService : IChillSchemaService
             LabelFormatString = row.LabelFormatString,
             ShortLabelFormatString = row.ShortLabelFormatString,
             FullTextContentFormatString = row.FullTextContentFormatString,
+            EnableMCP = row.EnableMCP,
+            MCPDescription = row.MCPDescription,
             ChangeLogEnabled = row.ChangeLogEnabled
         });
     }
@@ -222,14 +229,38 @@ public class ChillSchemaService : IChillSchemaService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static ChillDtoEntityOptions CreateDefaultEntityOptions(string chillType)
+    private ChillDtoEntityOptions CreateDefaultEntityOptions(string chillType)
     {
+        var defaults = ResolveEntityAttributeDefaults(chillType);
+
         return new ChillDtoEntityOptions
         {
             ChillType = chillType,
             ChecksumEnabled = true,
+            EnableMCP = defaults.EnableMCP,
+            MCPDescription = defaults.MCPDescription,
             ChangeLogEnabled = false
         };
+    }
+
+    private (bool EnableMCP, string? MCPDescription) ResolveEntityAttributeDefaults(string chillType)
+    {
+        try
+        {
+            var resolvedType = ChillTypeResolver.ResolveType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
+            var chillAttribute = resolvedType.GetCustomAttributes(typeof(ChillEntityAttribute), inherit: true)
+                .OfType<ChillEntityAttribute>()
+                .FirstOrDefault();
+
+            if (chillAttribute == null)
+                return default;
+
+            return (chillAttribute.EnableMCP, NormalizeOptionalText(chillAttribute.MCPDescription));
+        }
+        catch
+        {
+            return default;
+        }
     }
 
     private string NormalizeCultureName(string? cultureName)

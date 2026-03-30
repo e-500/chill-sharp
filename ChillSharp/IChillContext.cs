@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Dto;
+using ChillSharp.Annotations;
 using ChillSharp.EF;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -193,6 +194,8 @@ namespace ChillSharp
                 {
                     ChillType = normalizedType,
                     ChecksumEnabled = true,
+                    EnableMCP = GetDefaultEnableMCP(this, normalizedType),
+                    MCPDescription = GetDefaultMCPDescription(this, normalizedType),
                     ChangeLogEnabled = false
                 };
 
@@ -250,6 +253,8 @@ namespace ChillSharp
                         LabelFormatString = entryType.GetProperty("LabelFormatString")?.GetValue(entry) as string,
                         ShortLabelFormatString = entryType.GetProperty("ShortLabelFormatString")?.GetValue(entry) as string,
                         FullTextContentFormatString = entryType.GetProperty("FullTextContentFormatString")?.GetValue(entry) as string,
+                        EnableMCP = entryType.GetProperty("EnableMCP")?.GetValue(entry) as bool? ?? false,
+                        MCPDescription = entryType.GetProperty("MCPDescription")?.GetValue(entry) as string,
                         ChangeLogEnabled = entryType.GetProperty("ChangeLogEnabled")?.GetValue(entry) as bool? ?? false
                     };
                     return true;
@@ -268,6 +273,35 @@ namespace ChillSharp
                 return factory();
 
             return (ChillDtoEntityOptions)getOrAddMethod.Invoke(null, [context, chillType, factory])!;
+        }
+
+        private static bool GetDefaultEnableMCP(IChillContext context, string chillType)
+        {
+            return ResolveEntityAttribute(context, chillType)?.EnableMCP ?? false;
+        }
+
+        private static string? GetDefaultMCPDescription(IChillContext context, string chillType)
+        {
+            return ResolveEntityAttribute(context, chillType)?.MCPDescription;
+        }
+
+        private static ChillEntityAttribute? ResolveEntityAttribute(IChillContext context, string chillType)
+        {
+            try
+            {
+                var resolvedType = ChillTypeResolver.ResolveType(
+                    context.GetType().Assembly,
+                    chillType,
+                    context.GetChillTypePrefix());
+
+                return resolvedType.GetCustomAttributes(typeof(ChillEntityAttribute), inherit: true)
+                    .OfType<ChillEntityAttribute>()
+                    .FirstOrDefault();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static MetadataCatalog GetMetadataCatalog(IChillContext context)

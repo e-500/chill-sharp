@@ -49,9 +49,12 @@ namespace ChillSharp.Tests
 
             var blogSchema = cli.GetSchema("Model.Blog", "default");
             Assert.IsNotNull(blogSchema, "GetSchema('Model.Blog', 'default') returned null");
+            Assert.IsTrue(blogSchema.EnableMCP);
+            Assert.AreEqual("Blog resource exposed to MCP clients.", blogSchema.MCPDescription);
             Assert.IsTrue(blogSchema.Properties.Select(x => x.Name).ToArray().Contains("Title"),
                 "Blog schema properties don't contains 'Title'");
             Assert.AreEqual("Titolo del blog", blogSchema.Properties.Single(x => x.Name == "Title").DisplayName);
+            Assert.AreEqual("Blog title used to identify the resource.", blogSchema.Properties.Single(x => x.Name == "Title").MCPDescription);
 
             var defaultBlogSchema = defaultCultureClient.GetSchema("Model.Blog", "default");
             Assert.IsNotNull(defaultBlogSchema, "GetSchema('Model.Blog', 'default') returned null");
@@ -62,8 +65,11 @@ namespace ChillSharp.Tests
             var authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties don't contains 'Author' property");
             authorProperty.DisplayName = "Post author";
+            postSchema.EnableMCP = true;
+            postSchema.MCPDescription = "Post resource published through schema overrides.";
             postSchema.Metadata["schema-level"] = "enabled";
             authorProperty.Metadata["property-level"] = "visible";
+            authorProperty.MCPDescription = "Author field exposed to MCP clients.";
             cli.SetSchema(postSchema);
 
             postSchema = cli.GetSchema("Model.Post", "default");
@@ -71,10 +77,13 @@ namespace ChillSharp.Tests
             authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties no more contains 'Author' property");
             Assert.AreEqual("Post author", authorProperty.DisplayName, "Persistance not working");
+            Assert.IsTrue(postSchema.EnableMCP);
+            Assert.AreEqual("Post resource published through schema overrides.", postSchema.MCPDescription);
             Assert.IsTrue(postSchema.Metadata.ContainsKey("schema-level"));
             Assert.AreEqual("enabled", postSchema.Metadata["schema-level"]);
             Assert.IsTrue(authorProperty.Metadata.ContainsKey("property-level"));
             Assert.AreEqual("visible", authorProperty.Metadata["property-level"]);
+            Assert.AreEqual("Author field exposed to MCP clients.", authorProperty.MCPDescription);
         }
 
         [TestMethod]
@@ -178,6 +187,8 @@ namespace ChillSharp.Tests
             Assert.AreEqual("Model.Post", defaultOptions.ChillType);
             Assert.IsTrue(defaultOptions.ChecksumEnabled);
             Assert.IsFalse(defaultOptions.ChangeLogEnabled);
+            Assert.IsFalse(defaultOptions.EnableMCP);
+            Assert.AreEqual("Post resource exposed to MCP clients.", defaultOptions.MCPDescription);
             Assert.IsNull(defaultOptions.LabelFormatString);
             Assert.IsNull(defaultOptions.ShortLabelFormatString);
             Assert.IsNull(defaultOptions.FullTextContentFormatString);
@@ -189,12 +200,16 @@ namespace ChillSharp.Tests
                 LabelFormatString = "{Title} - {Author}",
                 ShortLabelFormatString = "{Author}.{Title}",
                 FullTextContentFormatString = "{Title}::{Author}",
+                EnableMCP = true,
+                MCPDescription = "Post MCP runtime description.",
                 ChangeLogEnabled = true
             });
 
             Assert.AreEqual("Model.Post", updatedOptions.ChillType);
             Assert.IsFalse(updatedOptions.ChecksumEnabled);
             Assert.IsTrue(updatedOptions.ChangeLogEnabled);
+            Assert.IsTrue(updatedOptions.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", updatedOptions.MCPDescription);
             Assert.AreEqual("{Title} - {Author}", updatedOptions.LabelFormatString);
             Assert.AreEqual("{Author}.{Title}", updatedOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title}::{Author}", updatedOptions.FullTextContentFormatString);
@@ -202,6 +217,8 @@ namespace ChillSharp.Tests
             var persistedOptions = dtoEngine.GetEntityOptions("Model.Post");
             Assert.IsFalse(persistedOptions.ChecksumEnabled);
             Assert.IsTrue(persistedOptions.ChangeLogEnabled);
+            Assert.IsTrue(persistedOptions.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", persistedOptions.MCPDescription);
             Assert.AreEqual("{Title} - {Author}", persistedOptions.LabelFormatString);
             Assert.AreEqual("{Author}.{Title}", persistedOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title}::{Author}", persistedOptions.FullTextContentFormatString);

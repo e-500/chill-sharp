@@ -63,6 +63,7 @@ namespace ChillSharp.Dto
                     propInfo.Name,
                     context,
                     cultureName),
+                MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
                 PropertyType = ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
                 IsReadOnly = chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo),
@@ -139,6 +140,11 @@ namespace ChillSharp.Dto
         /// Human-friendly label chosen from Chill metadata or the property name fallback.
         /// </summary>
         public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Description exposed to MCP clients for the property.
+        /// </summary>
+        public string MCPDescription { get; set; } = string.Empty;
 
         /// <summary>
         /// Whether the value can be null when known.
