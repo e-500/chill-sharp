@@ -227,6 +227,7 @@ export interface ChillSharpClientOptions {
   password?: string;
   cultureName?: string;
   fetchImpl?: typeof fetch;
+  signalRWithCredentials?: boolean;
 }
 
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
@@ -266,6 +267,7 @@ export class ChillSharpClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly cultureName: string | null;
+  private readonly signalRWithCredentials: boolean;
 
   private username: string | null;
   private password: string | null;
@@ -282,6 +284,7 @@ export class ChillSharpClient {
     this.username = this.normalizeOptionalValue(options.username);
     this.password = this.normalizeOptionalValue(options.password);
     this.cultureName = this.normalizeOptionalValue(options.cultureName);
+    this.signalRWithCredentials = options.signalRWithCredentials ?? true;
     this.tokenState = {
       accessToken: this.normalizeOptionalValue(options.accessToken),
       accessTokenIssuedUtc: null,
@@ -892,6 +895,7 @@ export class ChillSharpClient {
 
     const connection = new HubConnectionBuilder()
       .withUrl(this.buildNotifyUrl(), {
+        withCredentials: this.signalRWithCredentials,
         accessTokenFactory: async () => {
           if (this.canUseAuthentication()) {
             await this.getAuthTokenIfNecessary();
@@ -1004,6 +1008,8 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
+
 
 
 

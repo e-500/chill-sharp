@@ -19,6 +19,7 @@
 
 export { ChillSharpProvider, useChillSharpClient } from "./context.js";
 export {
+  useAutocompleteMutation,
   useEntityChanges,
   useEntityMutation,
   useQueryMutation,
@@ -27,6 +28,7 @@ export {
   useTest,
   useText,
   useTexts,
+  useValidateMutation,
   useVersion
 } from "./hooks.js";
 export type { ChillSharpProviderProps } from "./context.js";

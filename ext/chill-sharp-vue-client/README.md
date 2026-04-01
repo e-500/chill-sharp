@@ -10,7 +10,7 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - `useSchemaList()` for registered type discovery
 - `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
-- `useQueryMutation()` and `useEntityMutation()` for generic API actions
+- `useQueryMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
 
 It stays generic on purpose. Payloads are plain objects so the same package can work against arbitrary ChillSharp models.
 
@@ -219,6 +219,32 @@ async function runQuery() {
     ResultProperties: [{ Name: "Guid" }, { Name: "Title" }]
   });
 }
+```
+
+### `useAutocompleteMutation()`
+
+```ts
+const autocompletePost = useAutocompleteMutation();
+
+await autocompletePost.execute({
+  ChillType: "Model.Post",
+  Properties: {
+    Title: "  Draft title  "
+  }
+});
+```
+
+### `useValidateMutation()`
+
+```ts
+const validatePost = useValidateMutation();
+
+const errors = await validatePost.execute({
+  ChillType: "Model.Post",
+  Properties: {
+    Title: ""
+  }
+});
 ```
 
 ### `useEntityMutation()`

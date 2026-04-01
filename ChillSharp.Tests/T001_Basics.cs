@@ -202,7 +202,7 @@ namespace ChillSharp.Tests
 
             Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
             Assert.IsTrue(createdPost.Checksum > 0);
-            Assert.AreNotEqual(default, createdPost.LastUpdateUtc);
+            Assert.IsNotNull(createdPost.LastUpdateUtc);
 
             await Task.Delay(20);
 
@@ -218,7 +218,7 @@ namespace ChillSharp.Tests
             var updatedPost = await updatedContext.Post.FirstAsync(x => x.Guid == postGuid);
 
             Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
-            Assert.IsTrue(updatedPost.LastUpdateUtc > initialLastUpdateUtc);
+            Assert.IsTrue(updatedPost.LastUpdateUtc.HasValue && initialLastUpdateUtc.HasValue && updatedPost.LastUpdateUtc.Value > initialLastUpdateUtc.Value);
             Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
         }
 

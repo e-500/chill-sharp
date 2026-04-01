@@ -79,6 +79,8 @@ const client = new ChillSharpClient("http://localhost:5000/api/chill", {
 });
 ```
 
+SignalR entity-change subscriptions use the same bearer token flow as the other authenticated endpoints. Browser SignalR connections send credentials by default; if your app needs a non-credentialed cross-origin negotiate request, set `signalRWithCredentials: false` when creating the client.
+
 ### With an existing access token
 
 ```ts
@@ -571,6 +573,8 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed TypeScript clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
 
 
 

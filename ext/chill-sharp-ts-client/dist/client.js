@@ -41,6 +41,7 @@ export class ChillSharpClient {
     baseUrl;
     fetchImpl;
     cultureName;
+    signalRWithCredentials;
     username;
     password;
     refreshPromise = null;
@@ -55,6 +56,7 @@ export class ChillSharpClient {
         this.username = this.normalizeOptionalValue(options.username);
         this.password = this.normalizeOptionalValue(options.password);
         this.cultureName = this.normalizeOptionalValue(options.cultureName);
+        this.signalRWithCredentials = options.signalRWithCredentials ?? true;
         this.tokenState = {
             accessToken: this.normalizeOptionalValue(options.accessToken),
             accessTokenIssuedUtc: null,
@@ -499,6 +501,7 @@ export class ChillSharpClient {
         }
         const connection = new HubConnectionBuilder()
             .withUrl(this.buildNotifyUrl(), {
+            withCredentials: this.signalRWithCredentials,
             accessTokenFactory: async () => {
                 if (this.canUseAuthentication()) {
                     await this.getAuthTokenIfNecessary();

@@ -9,9 +9,9 @@ namespace ChillSharp.Mcp.Api.Controllers;
 [Route("api/chill-mcp")]
 public sealed class ChillMcpController : ControllerBase
 {
-    private readonly IChillMcpService _service;
+    private readonly IChillMcpService? _service;
 
-    public ChillMcpController(IChillMcpService service)
+    public ChillMcpController(IChillMcpService? service = null)
     {
         _service = service;
     }
@@ -19,13 +19,19 @@ public sealed class ChillMcpController : ControllerBase
     [HttpGet("get-resource-list")]
     public async Task<IActionResult> GetResourceList([FromQuery] string? cultureName = null, CancellationToken cancellationToken = default)
     {
-        return Ok(await _service.GetResourcesAsync(cultureName, cancellationToken));
+        return Ok(await GetRequiredService().GetResourcesAsync(cultureName, cancellationToken));
     }
 
     [HttpGet("get-resource")]
     public async Task<IActionResult> GetResource([FromQuery] string chillType, [FromQuery] string? cultureName = null, CancellationToken cancellationToken = default)
     {
-        var resource = await _service.GetResourceAsync(chillType, cultureName, cancellationToken);
+        var resource = await GetRequiredService().GetResourceAsync(chillType, cultureName, cancellationToken);
         return resource == null ? NotFound() : Ok(resource);
+    }
+
+    private IChillMcpService GetRequiredService()
+    {
+        return _service ?? throw new InvalidOperationException(
+            "ChillSharp MCP services are not registered. Call AddChillMcp<TContext>() to enable the MCP API.");
     }
 }

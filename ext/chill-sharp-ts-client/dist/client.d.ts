@@ -174,6 +174,7 @@ export interface ChillSharpClientOptions {
     password?: string;
     cultureName?: string;
     fetchImpl?: typeof fetch;
+    signalRWithCredentials?: boolean;
 }
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
 export interface ChillEntityChangeNotification extends JsonObject {
@@ -191,6 +192,7 @@ export declare class ChillSharpClient {
     private readonly baseUrl;
     private readonly fetchImpl;
     private readonly cultureName;
+    private readonly signalRWithCredentials;
     private username;
     private password;
     private refreshPromise;

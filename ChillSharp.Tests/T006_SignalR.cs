@@ -19,9 +19,19 @@
 
 using System.Collections.Concurrent;
 using ChillSharp.Api;
+using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Contracts;
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.Extensions;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace ChillSharp.Tests
 {
@@ -170,6 +180,58 @@ namespace ChillSharp.Tests
             }
         }
 
+        [TestMethod]
+        public async Task Step003_ProtectedHubRequiresBearerAuthenticationAndAcceptsSignalRAccessToken()
+        {
+            ProtectedSignalRAuthApiHost.EnsureStarted();
+
+            var anonymousConnection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5004/api/chill/notify")
+                .Build();
+
+            try
+            {
+                await anonymousConnection.StartAsync();
+                Assert.Fail("Anonymous SignalR connection should have been rejected.");
+            }
+            catch (HttpRequestException)
+            {
+            }
+            finally
+            {
+                await anonymousConnection.DisposeAsync();
+            }
+
+            var client = new ChillSharpClient("http://localhost:5004/api/chill");
+            var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityRequest
+            {
+                UserName = $"signalr.user.{Guid.NewGuid():N}",
+                Email = $"signalr.{Guid.NewGuid():N}@test.local",
+                Password = "Pass123$",
+                DisplayName = "SignalR User",
+                DisplayCultureName = "it-IT",
+                CreateChillAuthUser = true
+            });
+
+            var authenticatedConnection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5004/api/chill/notify", options =>
+                {
+                    options.AccessTokenProvider = () => Task.FromResult<string?>(registerResponse.AccessToken);
+                })
+                .Build();
+
+            await authenticatedConnection.StartAsync();
+
+            try
+            {
+                await authenticatedConnection.InvokeAsync("Register", "Model.Post", (Guid?)null);
+            }
+            finally
+            {
+                await authenticatedConnection.DisposeAsync();
+            }
+        }
+
         private static async Task<ChillEntityChangeNotification[]> WaitForNotificationAsync(
             ConcurrentQueue<ChillEntityChangeNotification[]> receivedChanges,
             SemaphoreSlim notificationSignal,
@@ -194,5 +256,70 @@ namespace ChillSharp.Tests
             receivedChanges.TryDequeue(out _);
             return true;
         }
+
+        private static class ProtectedSignalRAuthApiHost
+        {
+            private static readonly object SyncRoot = new();
+            private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "protected-signalr-auth-api-host.db");
+            private static bool _apiServiceUpAndRunning;
+
+            public static void EnsureStarted()
+            {
+                if (_apiServiceUpAndRunning)
+                {
+                    return;
+                }
+
+                lock (SyncRoot)
+                {
+                    if (_apiServiceUpAndRunning)
+                    {
+                        return;
+                    }
+
+                    var apiServer = Task.Run(() =>
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
+                        var ctx = CreateDbContext();
+                        ctx.Database.EnsureDeleted();
+                        ctx.Database.EnsureCreated();
+
+                        var builder = WebApplication.CreateBuilder(Array.Empty<string>());
+                        builder.WebHost.UseUrls("http://localhost:5004");
+                        builder.Logging.ClearProviders();
+                        builder.Services.AddDbContext<EF.DummyContext>(options =>
+                            options.UseSqlite($"Data Source={DatabasePath}"));
+                        builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+                        builder.Services.AddIdentityCore<IdentityUser>()
+                            .AddEntityFrameworkStores<EF.DummyContext>()
+                            .AddSignInManager()
+                            .AddDefaultTokenProviders();
+                        builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
+                            .AddChillAuthBearer();
+                        builder.Services.AddAuthorization();
+                        builder.Services.AddChillApi<EF.DummyContext>(options => options.ProtectedApi = true);
+                        builder.Services.AddChillAuthIdentityApi<EF.DummyContext, IdentityUser>();
+
+                        var app = builder.Build();
+                        app.UseAuthentication();
+                        app.UseAuthorization();
+                        app.MapChillApi();
+                        app.Run();
+                    });
+
+                    apiServer.Wait(5000);
+                    _apiServiceUpAndRunning = true;
+                }
+            }
+
+            public static EF.DummyContext CreateDbContext()
+            {
+                var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                    .UseSqlite($"Data Source={DatabasePath}")
+                    .Options;
+                return new EF.DummyContext(options);
+            }
+        }
     }
 }
+

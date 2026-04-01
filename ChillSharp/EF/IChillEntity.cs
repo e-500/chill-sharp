@@ -43,8 +43,8 @@ namespace ChillSharp.EF
         string ShortLabel { get; set; }
         string FullTextContent { get; set; }
         long Checksum { get; set; }
-        string LastUpdateUser { get; set; }
-        DateTime LastUpdateUtc { get; set; }
+        string? LastUpdateUser { get; set; }
+        DateTime? LastUpdateUtc { get; set; }
 
         #region CREATE
         /// <summary>
