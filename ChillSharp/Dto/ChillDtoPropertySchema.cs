@@ -66,7 +66,7 @@ namespace ChillSharp.Dto
                 MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
                 PropertyType = ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
-                IsReadOnly = chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo),
+                IsReadOnly = ResolveIsReadOnly(propInfo, chillAttr),
                 MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
                 MaxLength = chillAttr?.MaxLength ?? ResolveMaxLength(propInfo),
                 IntegerMinValue = chillAttr?.IntegerMinValue,
@@ -378,6 +378,16 @@ namespace ChillSharp.Dto
             }
 
             return null;
+        }
+
+        private static bool? ResolveIsReadOnly(PropertyInfo propInfo, ChillPropertyAttribute? chillAttr)
+        {
+            if (chillAttr?.CallOnInflate == true)
+            {
+                return true;
+            }
+
+            return chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo);
         }
 
         private static int? ResolveMinLength(PropertyInfo propInfo)

@@ -16,7 +16,7 @@
 		<IsPackable>true</IsPackable>
 		<PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
 		<Description>Lightweight client for interacting with the ChillSharp API. ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
-		<Version>1.0.41</Version>
+		<Version>1.0.42</Version>
 		<Authors>Andrea Piovesan</Authors>
 	</PropertyGroup>
 

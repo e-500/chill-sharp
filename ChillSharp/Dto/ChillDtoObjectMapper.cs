@@ -49,7 +49,9 @@ namespace ChillSharp.Dto
                     var propertyName = property.Name;
 
                     if (attr.CallOnInflate)
+                    {
                         onInflate?.Invoke(propertyName);
+                    }
 
                     if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                     {
@@ -67,7 +69,14 @@ namespace ChillSharp.Dto
 
                     if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
                     {
-                        dbx.Entry(source).Collection(propertyName)?.Load();
+                        // Check if property is mapped in EF model
+                        var entityType = dbx.Model.FindEntityType(source.GetType());
+                        var navigation = entityType?.FindNavigation(propertyName);
+
+                        if (navigation != null)
+                        {
+                            dbx.Entry(source).Collection(propertyName).Load();
+                        }
 
                         var collection = (IEnumerable<IChillEntity>?)property.GetValue(source);
                         if (collection == null)
@@ -102,7 +111,10 @@ namespace ChillSharp.Dto
                 var value = sourceValues[propertyName];
 
                 if (attr.CallOnInflate)
+                {
                     onInflate?.Invoke(propertyName);
+                    continue;
+                }
 
                 try
                 {

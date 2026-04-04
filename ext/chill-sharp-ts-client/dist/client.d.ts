@@ -20,7 +20,7 @@ export interface ChillDtoPropertySchema extends JsonObject {
     name: string;
     displayName: string;
     propertyType: number;
-    chillType: string | null;
+    referenceChillType: string | null;
     metadata: Record<string, string>;
 }
 export interface ChillDtoSchema extends JsonObject {

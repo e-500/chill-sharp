@@ -587,7 +587,44 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step015_ValidateEntityReturnsValidationErrors()
+        public void Step015_ApplyPropertiesUsesOnInflateForInflatedPropertiesInsteadOfDtoValues()
+        {
+            using var db = TestApiHost.CreateDbContext();
+
+            var target = new InflateOnlyEntity();
+            var sourceValues = new Dictionary<string, object?>
+            {
+                ["ComputedTitle"] = 123
+            };
+
+            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+            Assert.IsNotNull(mapperType);
+
+            var applyPropertiesMethod = mapperType.GetMethod(
+                "ApplyProperties",
+                BindingFlags.Public | BindingFlags.Static);
+
+            Assert.IsNotNull(applyPropertiesMethod);
+
+            applyPropertiesMethod.Invoke(null,
+            [
+                db,
+                target,
+                "Tests.InflateOnlyEntity",
+                sourceValues,
+                typeof(InflateOnlyEntity).GetProperties()
+                    .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false)),
+                "InflateOnlyEntity",
+                false,
+                (Action<string>)target.OnInflateProperty
+            ]);
+
+            Assert.AreEqual(1, target.OnInflateCalls);
+            Assert.AreEqual("ComputedTitle", target.ComputedTitle);
+        }
+
+        [TestMethod]
+        public void Step016_ValidateEntityReturnsValidationErrors()
         {
             TestApiHost.EnsureStarted();
 
@@ -608,7 +645,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step016_ValidateQueryReturnsValidationErrors()
+        public void Step017_ValidateQueryReturnsValidationErrors()
         {
             TestApiHost.EnsureStarted();
 
@@ -628,7 +665,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step017_ChunkSupportsValidateAndAutocompleteOperations()
+        public void Step018_ChunkSupportsValidateAndAutocompleteOperations()
         {
             TestApiHost.EnsureStarted();
 
@@ -691,6 +728,23 @@ namespace ChillSharp.Tests
         {
             [ChillProperty]
             public DateOnly? PublishedOn { get; set; }
+        }
+
+        private sealed class InflateOnlyEntity
+        {
+            public int OnInflateCalls { get; private set; }
+
+            [ChillProperty(CallOnInflate: true)]
+            public string? ComputedTitle { get; set; }
+
+            public void OnInflateProperty(string propertyName)
+            {
+                OnInflateCalls++;
+                if (propertyName == nameof(ComputedTitle))
+                {
+                    ComputedTitle = propertyName;
+                }
+            }
         }
     }
 }
