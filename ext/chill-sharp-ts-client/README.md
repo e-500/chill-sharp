@@ -106,11 +106,31 @@ If the service supports ChillSharp auth endpoints, the client can log in and ref
 
 ### Query
 
+Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
+
 ```ts
 const result = await client.query({
   ChillType: "Query.PostQuery",
   Properties: {
     Title: "Hello"
+  },
+  ResultProperties: [
+    { Name: "Guid" },
+    { Name: "Title" },
+    { Name: "Author" }
+  ]
+});
+```
+
+### Lookup
+
+Use `lookup()` when `ChillType` points to an entity type and you only need generic full-text search.
+
+```ts
+const result = await client.lookup({
+  ChillType: "Model.Post",
+  Properties: {
+    FullTextSearch: "Ada Lovelace"
   },
   ResultProperties: [
     { Name: "Guid" },

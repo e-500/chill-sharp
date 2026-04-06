@@ -32,6 +32,9 @@ namespace ChillSharp.Tests.EF.Model
         UniquePropertyKeyString: "13673DEB-15DA-439B-8AEA-7C5FB3BA8C79",
         PrimaryLanguageLabel: "Post",
         SecondaryLanguageLabel: "Post",
+        LabelFormatString = "{Title} - {Author}",
+        ShortLabelFormatString = "{Title}",
+        FullTextContentFormatString = "{Title} {Author}",
         MCPDescription = "Post resource exposed to MCP clients.")]
     public class Post : ChillEntity
     {
@@ -42,6 +45,7 @@ namespace ChillSharp.Tests.EF.Model
             UniquePropertyKeyString: "0636356D-C6C1-4319-9E1F-121CF87CE617",
             PrimaryLanguageLabel: "Blog",
             SecondaryLanguageLabel: "Blog",
+            ReferenceChillTypeQuery = "Query.BlogQuery",
             MCPDescription = "Owning blog for the post.")]
         public Blog? Blog { get; set; } = null;
 
@@ -60,3 +64,6 @@ namespace ChillSharp.Tests.EF.Model
         public string Author { get; set; } = string.Empty;
     }
 }
+
+
+

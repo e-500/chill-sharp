@@ -724,6 +724,138 @@ namespace ChillSharp.Tests
             Assert.AreEqual("https://autocomplete.local/chunk-autocomplete", operations[2].Entity!.GetString("Url"));
         }
 
+        [TestMethod]
+        public void Step019_LookupPerformsGenericFullTextSearchAgainstEntityType()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var tokenA = $"lookup-alpha-{Guid.NewGuid():N}";
+            var tokenB = $"lookup-beta-{Guid.NewGuid():N}";
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = tokenA,
+                Author = tokenB,
+                FullTextContent = $"{tokenA} {tokenB}",
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = tokenA,
+                Author = "lookup-single-token",
+                FullTextContent = $"{tokenA} lookup-single-token",
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+
+            var lookup = new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Model.Post",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            lookup.Properties["FullTextSearch"] = $"{tokenA} {tokenB}";
+
+            var result = dtoEngine.Lookup(lookup);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.AreEqual(1, result.Results.Count);
+            Assert.AreEqual(tokenA, result.Results[0].Properties["Title"]?.ToString());
+            Assert.AreEqual(tokenB, result.Results[0].Properties["Author"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step020_BaseChillQueryOnQueryResolvesDbSetFromEntityType()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-autoquery-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var engine = new ChillEngine(db);
+            var token = $"auto-query-{Guid.NewGuid():N}";
+
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = token,
+                Author = "default-query",
+                FullTextContent = token,
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var results = engine.Query(new AutoPostQuery
+            {
+                FullTextSearch = token
+            });
+
+            Assert.AreEqual(1, results.Count);
+            Assert.AreEqual(token, ((Post)results[0]).Title);
+        }
+
+        [TestMethod]
+        public async Task Step021_ToEntityAcceptsCamelCaseDtoPropertiesAndNestedEntities()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-camelcase-dto-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var db = new EF.DummyContext(options);
+            await db.Database.EnsureCreatedAsync();
+
+            var blog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Title = "Mapped blog",
+                Url = "https://mapped.local"
+            };
+            db.Blog.Add(blog);
+            await db.SaveChangesAsync();
+
+            var blogPayload = JsonDocument.Parse($$"""
+            {
+              "guid": "{{blog.Guid:D}}",
+              "chillType": "Model.Blog",
+              "label": "Mapped blog",
+              "shortLabel": "Mapped blog"
+            }
+            """);
+
+            var dto = new ChillSharp.Dto.ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["title"] = "Camel title",
+                    ["author"] = "Camel author",
+                    ["blog"] = blogPayload.RootElement.Clone()
+                }
+            };
+
+            var post = new Post();
+            dto.ToEntity(db, post);
+
+            Assert.AreEqual("Camel title", post.Title);
+            Assert.AreEqual("Camel author", post.Author);
+            Assert.IsNotNull(post.Blog);
+            Assert.AreEqual(blog.Guid, post.Blog.Guid);
+        }
+
         private sealed class NullableDateEntity
         {
             [ChillProperty]
@@ -744,6 +876,27 @@ namespace ChillSharp.Tests
                 {
                     ComputedTitle = propertyName;
                 }
+            }
+        }
+
+        private sealed class AutoPostQuery : ChillQuery, IChillQuery<Post>
+        {
+            IQueryable<Post> IChillQuery<Post>.OnQuery(IChillContext Context)
+            {
+                return OnQuery(Context).Cast<Post>();
+            }
+
+            IQueryable<Post> IChillQuery<Post>.OnSort(IChillContext Context, IQueryable<Post> Query)
+            {
+                return Query.OrderBy(x => x.Guid);
+            }
+
+            IQueryable<Post> IChillQuery<Post>.OnPaginate(IChillContext Context, IQueryable<Post> Query)
+            {
+                if (Pagination == null)
+                    return Query;
+
+                return Query.Skip((Pagination.Page - 1) * Pagination.PageResults).Take(Pagination.PageResults);
             }
         }
     }

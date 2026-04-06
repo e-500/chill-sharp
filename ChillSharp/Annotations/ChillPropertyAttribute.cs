@@ -200,6 +200,11 @@ namespace ChillSharp.Annotations
         public string? MCPDescription { get; set; }
 
         /// <summary>
+        /// Optional Chill query type used by clients to perform lookups for this reference property.
+        /// </summary>
+        public string? ReferenceChillTypeQuery { get; set; }
+
+        /// <summary>
         /// Explicit nullable flag used by schema generation when provided.
         /// </summary>
         public bool? IsNullable { get; set; }

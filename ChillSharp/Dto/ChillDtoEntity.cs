@@ -162,7 +162,7 @@ namespace ChillSharp.Dto
 
             var ef_props = Entity.GetType().GetProperties()
                 .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
-                .Where(x => Properties.Keys.Contains(x.Name));
+                .Where(x => Properties.Keys.Any(key => string.Equals(key, x.Name, StringComparison.OrdinalIgnoreCase)));
             ChillDtoObjectMapper.ApplyProperties(
                 Context,
                 Entity,

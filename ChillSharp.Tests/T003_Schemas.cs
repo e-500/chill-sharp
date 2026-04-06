@@ -20,6 +20,7 @@
 using ChillSharp.Client;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Annotations;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
 using ChillSharp.Schema.Api;
@@ -33,6 +34,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.Reflection;
+using System.ComponentModel.DataAnnotations;
 
 namespace ChillSharp.Tests
 {
@@ -63,7 +65,11 @@ namespace ChillSharp.Tests
             var postSchema = cli.GetSchema("Model.Post", "default");
             Assert.IsNotNull(postSchema, "GetSchema('Model.Post', 'default') returned null");
             var authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
+            var blogProperty = postSchema.Properties.Where(x => x.Name == "Blog").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties don't contains 'Author' property");
+            Assert.IsNotNull(blogProperty, "Post schema properties don't contains 'Blog' property");
+            Assert.AreEqual("Model.Blog", blogProperty.ReferenceChillType);
+            Assert.AreEqual("Query.BlogQuery", blogProperty.ReferenceChillTypeQuery);
             authorProperty.DisplayName = "Post author";
             postSchema.EnableMCP = true;
             postSchema.MCPDescription = "Post resource published through schema overrides.";
@@ -189,9 +195,9 @@ namespace ChillSharp.Tests
             Assert.IsFalse(defaultOptions.ChangeLogEnabled);
             Assert.IsFalse(defaultOptions.EnableMCP);
             Assert.AreEqual("Post resource exposed to MCP clients.", defaultOptions.MCPDescription);
-            Assert.IsNull(defaultOptions.LabelFormatString);
-            Assert.IsNull(defaultOptions.ShortLabelFormatString);
-            Assert.IsNull(defaultOptions.FullTextContentFormatString);
+            Assert.AreEqual("{Title} - {Author}", defaultOptions.LabelFormatString);
+            Assert.AreEqual("{Title}", defaultOptions.ShortLabelFormatString);
+            Assert.AreEqual("{Title} {Author}", defaultOptions.FullTextContentFormatString);
 
             var updatedOptions = dtoEngine.SetEntityOptions(new ChillDtoEntityOptions
             {
@@ -249,6 +255,24 @@ namespace ChillSharp.Tests
             Assert.IsInstanceOfType<OkObjectResult>(controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
             Assert.IsInstanceOfType<OkObjectResult>(controller.GetEntityOptions("Model.Post"));
             Assert.IsInstanceOfType<OkObjectResult>(controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
+        }
+
+        [TestMethod]
+        public void Step011_PropertySchemaInfersReferenceQueryTypeOnlyWhenMatchingQueryExists()
+        {
+            var inferredProperty = typeof(FallbackReferenceHolder).GetProperty(nameof(FallbackReferenceHolder.InferredTarget));
+            var blankProperty = typeof(FallbackReferenceHolder).GetProperty(nameof(FallbackReferenceHolder.BlogWithoutQuery));
+
+            Assert.IsNotNull(inferredProperty);
+            Assert.IsNotNull(blankProperty);
+
+            var inferredSchema = ChillDtoPropertySchema.FromPropertyInfo(inferredProperty!, "ChillSharp.Tests");
+            var blankSchema = ChillDtoPropertySchema.FromPropertyInfo(blankProperty!, "ChillSharp.Tests");
+
+            Assert.AreEqual("Schemas+FallbackLookupTarget", inferredSchema.ReferenceChillType);
+            Assert.AreEqual("Schemas+FallbackLookupTargetQuery", inferredSchema.ReferenceChillTypeQuery);
+            Assert.AreEqual("EF.Model.Blog", blankSchema.ReferenceChillType);
+            Assert.AreEqual(string.Empty, blankSchema.ReferenceChillTypeQuery);
         }
 
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
@@ -361,6 +385,7 @@ namespace ChillSharp.Tests
             public void CommitTransaction() => throw new NotSupportedException();
             public void RollbackTransaction() => throw new NotSupportedException();
             public ChillDtoQuery Query(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
+            public ChillDtoQuery Lookup(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
             public ChillDtoEntity? Find(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public ChillDtoEntity Create(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public ChillDtoEntity Update(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
@@ -381,6 +406,29 @@ namespace ChillSharp.Tests
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }
+        }
+
+        private sealed class FallbackLookupTarget : ChillEntity
+        {
+            [Key]
+            public override Guid Guid { get; set; }
+        }
+
+        private sealed class FallbackLookupTargetQuery : ChillQuery
+        {
+            public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            {
+                return Array.Empty<IChillEntity>().AsQueryable();
+            }
+        }
+
+        private sealed class FallbackReferenceHolder
+        {
+            [ChillProperty]
+            public FallbackLookupTarget? InferredTarget { get; set; }
+
+            [ChillProperty]
+            public Blog? BlogWithoutQuery { get; set; }
         }
 
         private sealed class TestChillContext : IChillContext
@@ -420,5 +468,8 @@ namespace ChillSharp.Tests
         }
     }
 }
+
+
+
 
 

@@ -5,6 +5,7 @@ export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
     query(dtoQuery: JsonObject): Observable<JsonObject>;
+    lookup(dtoQuery: JsonObject): Observable<JsonObject>;
     find(dtoEntity: JsonObject): Observable<JsonObject | null>;
     create(dtoEntity: JsonObject): Observable<JsonObject>;
     update(dtoEntity: JsonObject): Observable<JsonObject>;

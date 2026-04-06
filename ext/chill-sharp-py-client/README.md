@@ -83,11 +83,31 @@ If the service supports ChillSharp auth endpoints, the client can log in and ref
 
 ### Query
 
-```python
+Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
+
+`python
 result = client.query({
     "ChillType": "Query.PostQuery",
     "Properties": {
         "Title": "Hello"
+    },
+    "ResultProperties": [
+        {"Name": "Guid"},
+        {"Name": "Title"},
+        {"Name": "Author"},
+    ],
+})
+```
+
+### Lookup
+
+Use `lookup()` when `ChillType` points to an entity type and you only need generic full-text search.
+
+```python
+result = client.lookup({
+    "ChillType": "Model.Post",
+    "Properties": {
+        "FullTextSearch": "Ada Lovelace"
     },
     "ResultProperties": [
         {"Name": "Guid"},

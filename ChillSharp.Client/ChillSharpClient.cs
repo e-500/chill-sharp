@@ -111,6 +111,19 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Sends a generic full-text lookup request to the ChillSharp API.
+        /// </summary>
+        /// <param name="Query">Lookup DTO whose <c>ChillType</c> targets an entity type.</param>
+        /// <returns>The response mapped back into a ChillDtoQuery object.</returns>
+        public ChillDtoQuery Lookup(ChillDtoQuery Query)
+        {
+            var result = SendJson<ChillDtoQuery>(HttpMethod.Post, BuildChillUrl("lookup"), Query);
+            if (result == null)
+                throw new ChillClientException("Unexpected null lookup result");
+            return result;
+        }
+
+        /// <summary>
         /// Executes a FIND operation on the given entity.
         /// </summary>
         public ChillDtoEntity? Find(ChillDtoEntity Entity)

@@ -53,6 +53,10 @@ export class ChillSharpNgClient {
     return from(this.client.query(dtoQuery));
   }
 
+  lookup(dtoQuery: JsonObject): Observable<JsonObject> {
+    return from(this.client.lookup(dtoQuery));
+  }
+
   find(dtoEntity: JsonObject): Observable<JsonObject | null> {
     return from(this.client.find(dtoEntity));
   }

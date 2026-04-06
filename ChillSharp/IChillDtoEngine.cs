@@ -67,6 +67,14 @@ namespace ChillSharp
         ChillDtoQuery Query(ChillDtoQuery DtoQuery);
 
         /// <summary>
+        /// Executes a generic full-text lookup represented by a <see cref="ChillDtoQuery"/> whose
+        /// <c>ChillType</c> targets an entity type instead of a query type.
+        /// </summary>
+        /// <param name="DtoQuery">The lookup DTO containing the target entity type and search parameters.</param>
+        /// <returns>The same DTO with its <c>Results</c> property filled with matching entities.</returns>
+        ChillDtoQuery Lookup(ChillDtoQuery DtoQuery);
+
+        /// <summary>
         /// Finds an existing entity in the database based on the provided DTO.
         /// </summary>
         /// <param name="DtoEntity">The DTO identifying the entity to find.</param>

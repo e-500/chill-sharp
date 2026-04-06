@@ -123,6 +123,7 @@ providers: [
 `ChillSharpNgClient` mirrors the generic TypeScript client but returns `Observable`s:
 
 - `query()`
+- `lookup()`
 - `find()`
 - `create()`
 - `update()`
@@ -149,13 +150,29 @@ The auth user payloads include:
 
 ## Examples
 
-### Query
-
-```ts
+### Query`r`n`r`nUse `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.`r`n`r`n```ts
 readonly posts$ = this.chill.query({
   ChillType: "Query.PostQuery",
   Properties: {
     Title: "Hello"
+  },
+  ResultProperties: [
+    { Name: "Guid" },
+    { Name: "Title" },
+    { Name: "Author" }
+  ]
+});
+```
+
+### Lookup
+
+Use `lookup()` when `ChillType` points to an entity type and you only need generic full-text search.
+
+```ts
+readonly postsLookup$ = this.chill.lookup({
+  ChillType: "Model.Post",
+  Properties: {
+    FullTextSearch: "Ada Lovelace"
   },
   ResultProperties: [
     { Name: "Guid" },

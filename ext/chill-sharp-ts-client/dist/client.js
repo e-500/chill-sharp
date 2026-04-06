@@ -68,6 +68,9 @@ export class ChillSharpClient {
     query(dtoQuery) {
         return this.sendJson("POST", this.buildChillUrl("query"), dtoQuery);
     }
+    lookup(dtoQuery) {
+        return this.sendJson("POST", this.buildChillUrl("lookup"), dtoQuery);
+    }
     find(dtoEntity) {
         return this.sendJson("POST", this.buildChillUrl("find"), dtoEntity);
     }

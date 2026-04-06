@@ -10,7 +10,7 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - `useSchemaList()` for registered type discovery
 - `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
-- `useQueryMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
+- `useQueryMutation()`, `useLookupMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
 
 It stays generic on purpose. Payloads are plain objects so the same package can work against arbitrary ChillSharp models.
 
@@ -209,7 +209,9 @@ const statusState = useTest();
 
 ### `useQueryMutation()`
 
-```ts
+Use `useQueryMutation()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
+
+`	s
 const { execute, data, isLoading } = useQueryMutation();
 
 async function runQuery() {
@@ -220,6 +222,22 @@ async function runQuery() {
   });
 }
 ```
+
+### `useLookupMutation()`
+
+```ts
+const lookupPosts = useLookupMutation();
+
+await lookupPosts.execute({
+  ChillType: "Model.Post",
+  Properties: {
+    FullTextSearch: "Ada Lovelace"
+  },
+  ResultProperties: [{ Name: "Guid" }, { Name: "Title" }]
+});
+```
+
+Use `useLookupMutation()` when `ChillType` points to an entity type and you only need generic full-text search.
 
 ### `useAutocompleteMutation()`
 

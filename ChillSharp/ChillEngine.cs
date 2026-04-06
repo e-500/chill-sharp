@@ -251,6 +251,42 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Executes a generic full-text lookup against the specified Chill entity type.
+        /// </summary>
+        /// <param name="chillType">The Chill entity type to search.</param>
+        /// <param name="fullTextSearch">The tokenized full-text search string.</param>
+        /// <param name="pagination">Optional pagination settings.</param>
+        /// <returns>The matching entities.</returns>
+        public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null)
+        {
+            var query = GetQueryable(_Context, chillType);
+
+            if (!string.IsNullOrWhiteSpace(fullTextSearch))
+            {
+                var tokens = fullTextSearch
+                    .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                foreach (var token in tokens)
+                {
+                    var currentToken = token;
+                    query = query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(currentToken));
+                }
+            }
+
+            query = query.OrderBy(x => x.Guid);
+
+            if (pagination != null)
+                query = query.Skip((pagination.Page - 1) * pagination.PageResults).Take(pagination.PageResults);
+
+            var res = query.ToList();
+            res.ForEach(x => x.OnSelect(_Context));
+            return res;
+        }
+
+        /// <summary>
         /// Creates a new entity in the database.
         /// <para>
         /// Executes <c>OnCreate</c> and <c>OnUpdate</c> lifecycle events, persists the entity,
@@ -429,6 +465,29 @@ namespace ChillSharp
         {
             var res = ChillTypeResolver.ActivateType(_GetContextAssembly(), ChillType, _Context.GetChillTypePrefix());
             return (IChillQuery<IChillEntity>)res;
+        }
+
+        internal static IQueryable<IChillEntity> GetQueryable(IChillContext context, string chillType)
+        {
+            var entity = new ChillEngine(context).ActivateDetachedChillEntity(chillType);
+            return GetQueryable(context, entity.GetType());
+        }
+
+        internal static IQueryable<IChillEntity> GetQueryable(IChillContext context, Type entityType)
+        {
+            var ctx = (DbContext)context;
+            var method = typeof(DbContext)
+                .GetMethod(nameof(DbContext.Set), Type.EmptyTypes)?
+                .MakeGenericMethod(entityType);
+
+            if (method == null)
+                throw new ChillException("DbContext.Set(Type.EmptyTypes) method is not available");
+
+            var dbSet = method.Invoke(ctx, null);
+            if (dbSet == null)
+                throw new ChillException($"DbSet for entity type '{entityType.FullName ?? entityType.Name}' was not found.");
+
+            return ((IQueryable)dbSet).Cast<IChillEntity>();
         }
 
         /// <summary>

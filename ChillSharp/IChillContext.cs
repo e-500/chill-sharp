@@ -194,6 +194,9 @@ namespace ChillSharp
                 {
                     ChillType = normalizedType,
                     ChecksumEnabled = true,
+                    LabelFormatString = GetDefaultLabelFormatString(this, normalizedType),
+                    ShortLabelFormatString = GetDefaultShortLabelFormatString(this, normalizedType),
+                    FullTextContentFormatString = GetDefaultFullTextContentFormatString(this, normalizedType),
                     EnableMCP = GetDefaultEnableMCP(this, normalizedType),
                     MCPDescription = GetDefaultMCPDescription(this, normalizedType),
                     ChangeLogEnabled = false
@@ -280,9 +283,24 @@ namespace ChillSharp
             return ResolveEntityAttribute(context, chillType)?.EnableMCP ?? false;
         }
 
+        private static string? GetDefaultLabelFormatString(IChillContext context, string chillType)
+        {
+            return NormalizeOptionalText(ResolveEntityAttribute(context, chillType)?.LabelFormatString);
+        }
+
+        private static string? GetDefaultShortLabelFormatString(IChillContext context, string chillType)
+        {
+            return NormalizeOptionalText(ResolveEntityAttribute(context, chillType)?.ShortLabelFormatString);
+        }
+
+        private static string? GetDefaultFullTextContentFormatString(IChillContext context, string chillType)
+        {
+            return NormalizeOptionalText(ResolveEntityAttribute(context, chillType)?.FullTextContentFormatString);
+        }
+
         private static string? GetDefaultMCPDescription(IChillContext context, string chillType)
         {
-            return ResolveEntityAttribute(context, chillType)?.MCPDescription;
+            return NormalizeOptionalText(ResolveEntityAttribute(context, chillType)?.MCPDescription);
         }
 
         private static ChillEntityAttribute? ResolveEntityAttribute(IChillContext context, string chillType)
@@ -302,6 +320,11 @@ namespace ChillSharp
             {
                 return null;
             }
+        }
+
+        private static string? NormalizeOptionalText(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
         }
 
         private static MetadataCatalog GetMetadataCatalog(IChillContext context)
@@ -432,3 +455,5 @@ namespace ChillSharp
         internal static readonly ConcurrentDictionary<(System.Reflection.Assembly Assembly, string Prefix), MetadataCatalog> MetadataCache = new();
     }
 }
+
+

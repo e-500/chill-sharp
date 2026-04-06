@@ -211,6 +211,40 @@ export function useQueryMutation() {
         }
     };
 }
+export function useLookupMutation() {
+    const client = useChillSharpClient();
+    const [data, setData] = useState(null);
+    const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const execute = async (...args) => {
+        const payload = args[0];
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await client.lookup(payload);
+            setData(response);
+            return response;
+        }
+        catch (err) {
+            setError(err);
+            throw err;
+        }
+        finally {
+            setIsLoading(false);
+        }
+    };
+    return {
+        data,
+        error,
+        isLoading,
+        execute,
+        reset: () => {
+            setData(null);
+            setError(null);
+            setIsLoading(false);
+        }
+    };
+}
 export function useAutocompleteMutation() {
     const client = useChillSharpClient();
     const [data, setData] = useState(null);

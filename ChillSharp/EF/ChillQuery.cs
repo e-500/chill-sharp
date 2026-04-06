@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 
 namespace ChillSharp.EF
 {
@@ -38,7 +39,7 @@ namespace ChillSharp.EF
     /// © 2025 Andrea Piovesan
     /// </para>
     /// </summary>
-    public abstract class ChillQuery : IChillValidable, IChillQuery<IChillEntity>
+    public class ChillQuery : IChillValidable, IChillQuery<IChillEntity>
     {
         /// <summary>
         /// Optional GUID used as a primary key for the entity.
@@ -72,7 +73,18 @@ namespace ChillSharp.EF
         /// <param name="Context">The active Chill database context.</param>
         /// <param name="Query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
-        public abstract IQueryable<IChillEntity> OnQuery(IChillContext Context);
+        public virtual IQueryable<IChillEntity> OnQuery(IChillContext Context)
+        {
+            var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(GetType());
+            if (entityType == null)
+                throw new ChillException($"Unable to resolve the entity type for query '{GetType().FullName ?? GetType().Name}'.");
+
+            var query = ChillEngine.GetQueryable(Context, entityType);
+            if (Guid.HasValue)
+                query = query.Where(x => x.Guid == Guid.Value);
+
+            return query;
+        }
 
         /// <summary>
         /// Applies tokenized full-text filtering against <see cref="IChillEntity.FullTextContent"/>.

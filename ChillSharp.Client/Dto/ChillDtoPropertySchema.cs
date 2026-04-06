@@ -121,6 +121,11 @@ namespace ChillSharp.Client.Dto
         public string ReferenceChillType { get; set; } = string.Empty;
 
         /// <summary>
+        /// Optional query type clients should use when performing lookups for this reference property.
+        /// </summary>
+        public string ReferenceChillTypeQuery { get; set; } = string.Empty;
+
+        /// <summary>
         /// Values for enum types (ordered).
         /// </summary>
         public List<string> EnumValues { get; set; } = new();

@@ -21,6 +21,7 @@ export interface ChillDtoPropertySchema extends JsonObject {
     displayName: string;
     propertyType: number;
     referenceChillType: string | null;
+    referenceChillTypeQuery: string | null;
     metadata: Record<string, string>;
 }
 export interface ChillDtoSchema extends JsonObject {
@@ -203,6 +204,7 @@ export declare class ChillSharpClient {
     private entityChangeSubscriptionSequence;
     constructor(baseUrl: string, options?: ChillSharpClientOptions);
     query(dtoQuery: JsonObject): Promise<JsonObject>;
+    lookup(dtoQuery: JsonObject): Promise<JsonObject>;
     find(dtoEntity: JsonObject): Promise<JsonObject | null>;
     create(dtoEntity: JsonObject): Promise<JsonObject>;
     update(dtoEntity: JsonObject): Promise<JsonObject>;

@@ -123,6 +123,13 @@ namespace ChillSharp.Dto
                 }
             }
 
+            schema.ReferenceChillTypeQuery = ResolveReferenceChillTypeQuery(
+                chillAttr?.ReferenceChillTypeQuery,
+                schema.ReferenceChillType,
+                propInfo,
+                context,
+                shrinkTypePrefix);
+
             return schema;
         }
 
@@ -210,6 +217,11 @@ namespace ChillSharp.Dto
         /// Referenced Chill type for entity, query, or collection relationships.
         /// </summary>
         public string ReferenceChillType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional Chill query type that clients should use for lookups on this reference.
+        /// </summary>
+        public string ReferenceChillTypeQuery { get; set; } = string.Empty;
 
         /// <summary>
         /// Ordered values for enum-like properties.
@@ -301,23 +313,83 @@ namespace ChillSharp.Dto
         /// <summary>
         /// Creates a schema preconfigured for a single reference relationship.
         /// </summary>
-        public static ChillDtoPropertySchema ForReference(string referenceType)
+        public static ChillDtoPropertySchema ForReference(string referenceType, string? referenceQueryType = null)
         {
             return new ChillDtoPropertySchema
             {
-                ReferenceChillType = referenceType ?? string.Empty
+                ReferenceChillType = referenceType ?? string.Empty,
+                ReferenceChillTypeQuery = referenceQueryType ?? string.Empty
             };
         }
 
         /// <summary>
         /// Creates a schema preconfigured for a collection relationship.
         /// </summary>
-        public static ChillDtoPropertySchema ForCollection(string referenceType)
+        public static ChillDtoPropertySchema ForCollection(string referenceType, string? referenceQueryType = null)
         {
             return new ChillDtoPropertySchema
             {
-                ReferenceChillType = referenceType ?? string.Empty
+                ReferenceChillType = referenceType ?? string.Empty,
+                ReferenceChillTypeQuery = referenceQueryType ?? string.Empty
             };
+        }
+
+        private static string NormalizeReferenceChillType(string? referenceType, string shrinkTypePrefix)
+        {
+            if (string.IsNullOrWhiteSpace(referenceType))
+            {
+                return string.Empty;
+            }
+
+            var normalized = referenceType.Trim();
+            if (string.IsNullOrEmpty(shrinkTypePrefix))
+            {
+                return normalized;
+            }
+
+            return normalized.Replace(shrinkTypePrefix, string.Empty);
+        }
+
+        private static string ResolveReferenceChillTypeQuery(
+            string? explicitReferenceQueryType,
+            string referenceChillType,
+            PropertyInfo propInfo,
+            IChillContext? context,
+            string shrinkTypePrefix)
+        {
+            var explicitValue = NormalizeReferenceChillType(explicitReferenceQueryType, shrinkTypePrefix);
+            if (!string.IsNullOrEmpty(explicitValue))
+            {
+                return explicitValue;
+            }
+
+            if (string.IsNullOrWhiteSpace(referenceChillType))
+            {
+                return string.Empty;
+            }
+
+            var lastDot = referenceChillType.LastIndexOf('.');
+            var candidateQueryType = lastDot >= 0
+                ? $"{referenceChillType[..lastDot]}.{referenceChillType[(lastDot + 1)..]}Query"
+                : $"{referenceChillType}Query";
+
+            var assembly = context?.GetType().Assembly ?? propInfo.DeclaringType?.Assembly;
+            var chillTypePrefix = context?.GetChillTypePrefix() ?? shrinkTypePrefix.Trim().TrimEnd('.');
+
+            if (assembly == null)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                ChillTypeResolver.ResolveType(assembly, candidateQueryType, chillTypePrefix);
+                return candidateQueryType;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private static void ApplyPrecisionFallbacks(PropertyInfo propInfo, ChillDtoPropertySchema schema)

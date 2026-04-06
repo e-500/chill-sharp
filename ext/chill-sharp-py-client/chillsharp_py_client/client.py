@@ -96,6 +96,10 @@ class ChillSharpClient:
         """Send a query request to the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("query"), dto_query)
 
+    def lookup(self, dto_query: JsonDict) -> JsonDict:
+        """Send a generic full-text lookup request to the Chill endpoint."""
+        return self._send_json("POST", self._build_chill_url("lookup"), dto_query)
+
     def find(self, dto_entity: JsonDict) -> JsonDict | None:
         """Fetch a single entity matching the supplied DTO."""
         return self._send_json("POST", self._build_chill_url("find"), dto_entity)

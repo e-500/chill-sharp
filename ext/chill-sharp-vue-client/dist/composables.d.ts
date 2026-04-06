@@ -24,6 +24,7 @@ export declare function useTexts(requests: Ref<JsonObject[]> | JsonObject[]): Us
 export declare function useVersion(): string;
 export declare function useTest(): UseChillAsyncState<string>;
 export declare function useQueryMutation(): UseChillMutationState<JsonObject>;
+export declare function useLookupMutation(): UseChillMutationState<JsonObject>;
 export declare function useAutocompleteMutation(): UseChillMutationState<JsonObject>;
 export declare function useValidateMutation(): UseChillMutationState<ChillValidationError[]>;
 export declare function useEntityMutation(action: "find" | "create" | "update" | "delete"): UseChillMutationState<JsonObject | null>;

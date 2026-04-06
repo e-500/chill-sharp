@@ -269,6 +269,42 @@ export function useQueryMutation(): UseChillMutationState<JsonObject> {
   };
 }
 
+export function useLookupMutation(): UseChillMutationState<JsonObject> {
+  const client = useChillSharpClient();
+  const data = ref<JsonObject | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(false);
+
+  const execute = async (...args: unknown[]) => {
+    const payload = args[0] as JsonObject;
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.lookup(payload);
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      data.value = null;
+      error.value = null;
+      isLoading.value = false;
+    }
+  };
+}
+
 export function useAutocompleteMutation(): UseChillMutationState<JsonObject> {
   const client = useChillSharpClient();
   const data = ref<JsonObject | null>(null);

@@ -237,13 +237,16 @@ public class ChillSchemaService : IChillSchemaService
         {
             ChillType = chillType,
             ChecksumEnabled = true,
+            LabelFormatString = defaults.LabelFormatString,
+            ShortLabelFormatString = defaults.ShortLabelFormatString,
+            FullTextContentFormatString = defaults.FullTextContentFormatString,
             EnableMCP = defaults.EnableMCP,
             MCPDescription = defaults.MCPDescription,
             ChangeLogEnabled = false
         };
     }
 
-    private (bool EnableMCP, string? MCPDescription) ResolveEntityAttributeDefaults(string chillType)
+    private (string? LabelFormatString, string? ShortLabelFormatString, string? FullTextContentFormatString, bool EnableMCP, string? MCPDescription) ResolveEntityAttributeDefaults(string chillType)
     {
         try
         {
@@ -255,7 +258,12 @@ public class ChillSchemaService : IChillSchemaService
             if (chillAttribute == null)
                 return default;
 
-            return (chillAttribute.EnableMCP, NormalizeOptionalText(chillAttribute.MCPDescription));
+            return (
+                NormalizeOptionalText(chillAttribute.LabelFormatString),
+                NormalizeOptionalText(chillAttribute.ShortLabelFormatString),
+                NormalizeOptionalText(chillAttribute.FullTextContentFormatString),
+                chillAttribute.EnableMCP,
+                NormalizeOptionalText(chillAttribute.MCPDescription));
         }
         catch
         {
@@ -279,3 +287,5 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
+
+

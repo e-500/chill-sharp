@@ -77,6 +77,21 @@ namespace ChillSharp.Annotations
         public bool EnableMCP { get; set; }
 
         /// <summary>
+        /// Default format string used to build the entity label.
+        /// </summary>
+        public string? LabelFormatString { get; set; }
+
+        /// <summary>
+        /// Default format string used to build the entity short label.
+        /// </summary>
+        public string? ShortLabelFormatString { get; set; }
+
+        /// <summary>
+        /// Default format string used to build the entity full text content.
+        /// </summary>
+        public string? FullTextContentFormatString { get; set; }
+
+        /// <summary>
         /// Description exposed to MCP clients for the entity resource.
         /// </summary>
         public string? MCPDescription { get; set; }

@@ -37,6 +37,9 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     query(dtoQuery) {
         return from(this.client.query(dtoQuery));
     }
+    lookup(dtoQuery) {
+        return from(this.client.lookup(dtoQuery));
+    }
     find(dtoEntity) {
         return from(this.client.find(dtoEntity));
     }

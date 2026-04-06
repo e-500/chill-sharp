@@ -198,6 +198,23 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Executes a generic full-text lookup directly against an entity type.
+        /// </summary>
+        /// <param name="DtoQuery">The DTO containing the target entity type and lookup parameters.</param>
+        /// <returns>The same DTO with lookup results embedded.</returns>
+        public ChillDtoQuery Lookup(ChillDtoQuery DtoQuery)
+        {
+            DtoQuery.Results = _Engine.Lookup(
+                    DtoQuery.ChillType,
+                    DtoQuery.Properties.GetValueOrDefault(nameof(ChillQuery.FullTextSearch))?.ToString(),
+                    DtoQuery.Pagination)
+                .Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties))
+                .ToList();
+
+            return DtoQuery;
+        }
+
+        /// <summary>
         /// Validates an entity DTO without persisting changes.
         /// </summary>
         /// <param name="DtoEntity">The DTO containing the entity state to validate.</param>

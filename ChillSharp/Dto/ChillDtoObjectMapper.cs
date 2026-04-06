@@ -30,6 +30,11 @@ namespace ChillSharp.Dto
 {
     internal static class ChillDtoObjectMapper
     {
+        private static readonly JsonSerializerOptions IncomingJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
         public static Dictionary<string, object?> BuildProperties(
             IChillContext context,
             object source,
@@ -108,7 +113,9 @@ namespace ChillSharp.Dto
             {
                 var attr = property.GetCustomAttribute<ChillPropertyAttribute>()!;
                 var propertyName = property.Name;
-                var value = sourceValues[propertyName];
+
+                if (!TryGetSourceValue(sourceValues, propertyName, out var value))
+                    continue;
 
                 if (attr.CallOnInflate)
                 {
@@ -159,13 +166,13 @@ namespace ChillSharp.Dto
 
                 if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                 {
-                    var incomingEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText());
+                    var incomingEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return incomingEntity == null ? null : dbx.Find(targetType, incomingEntity.Guid);
                 }
 
                 if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
                 {
-                    var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText());
+                    var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return ConvertEntityCollection(dbx, target, property, propertyName, incomingCollection, loadTrackedCollections);
                 }
 
@@ -485,6 +492,24 @@ namespace ChillSharp.Dto
                 return string.IsNullOrEmpty(value) ? default(char) : value[0];
 
             return value ?? string.Empty;
+        }
+
+        private static bool TryGetSourceValue(IReadOnlyDictionary<string, object?> sourceValues, string propertyName, out object? value)
+        {
+            if (sourceValues.TryGetValue(propertyName, out value))
+                return true;
+
+            foreach (var entry in sourceValues)
+            {
+                if (string.Equals(entry.Key, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = entry.Value;
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
         }
     }
 }

@@ -143,6 +143,8 @@ The core mapped API is exposed by:
 
 This maps the Chill API controllers and also includes:
 
+- `/api/chill/query`
+- `/api/chill/lookup`
 - `/api/chill/test`
 - `/api/chill/license`
 

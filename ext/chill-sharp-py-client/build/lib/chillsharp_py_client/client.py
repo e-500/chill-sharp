@@ -1,7 +1,27 @@
+"""
+ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core
+and turns an existing data model into a fully working REST API with almost no setup.
+Copyright (C) 2025 Andrea Piovesan
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Any
 from urllib.parse import quote
 
@@ -12,6 +32,33 @@ from .exceptions import ChillSharpClientError
 
 CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
 JsonDict = dict[str, Any]
+
+
+class PermissionEffect(IntEnum):
+    """Effect applied by a permission rule."""
+
+    ALLOW = 1
+    DENY = 2
+
+
+class PermissionAction(IntEnum):
+    """Action controlled by a permission rule."""
+
+    FULL_CONTROL = 0
+    QUERY = 1
+    CREATE = 2
+    UPDATE = 3
+    DELETE = 4
+    SEE = 5
+    MODIFY = 6
+
+
+class PermissionScope(IntEnum):
+    """Hierarchy level targeted by a permission rule."""
+
+    MODULE = 1
+    ENTITY = 2
+    PROPERTY = 3
 
 
 @dataclass
@@ -49,6 +96,10 @@ class ChillSharpClient:
         """Send a query request to the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("query"), dto_query)
 
+    def lookup(self, dto_query: JsonDict) -> JsonDict:
+        """Send a generic full-text lookup request to the Chill endpoint."""
+        return self._send_json("POST", self._build_chill_url("lookup"), dto_query)
+
     def find(self, dto_entity: JsonDict) -> JsonDict | None:
         """Fetch a single entity matching the supplied DTO."""
         return self._send_json("POST", self._build_chill_url("find"), dto_entity)
@@ -64,6 +115,15 @@ class ChillSharpClient:
     def delete(self, dto_entity: JsonDict) -> None:
         """Delete an entity through the Chill endpoint."""
         self._send_json("POST", self._build_chill_url("delete"), dto_entity, expect_response_body=False)
+
+    def autocomplete(self, dto: JsonDict) -> JsonDict:
+        """Apply autocomplete logic to an entity or query DTO."""
+        return self._send_json("POST", self._build_chill_url("autocomplete"), dto)
+
+    def validate(self, dto: JsonDict) -> list[JsonDict]:
+        """Validate an entity or query DTO and return the validation errors."""
+        response = self._send_json("POST", self._build_chill_url("validate"), dto)
+        return response if isinstance(response, list) else []
 
     def chunk(self, operations: list[JsonDict]) -> list[JsonDict]:
         """Submit a batch of operations in one request."""
@@ -184,6 +244,35 @@ class ChillSharpClient:
     def get_auth_role_list(self) -> list[JsonDict]:
         """Return the full auth role list."""
         response = self._send_auth_json("GET", "get-role-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_list(self) -> list[str]:
+        """Return the distinct auth module list."""
+        response = self._send_auth_json("GET", "get-module-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_entity_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct entity list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-entity-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_query_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct query list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-query-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_entity_list(self, module: str | None = None) -> list[str]:
+        """Compatibility alias for get_auth_entity_list."""
+        return self.get_auth_entity_list(module)
+
+    def get_auth_property_list(self, chill_type: str) -> list[str]:
+        """Return the distinct property list for a Chill type."""
+        normalized_chill_type = self._normalize_required_value(chill_type, "chill_type")
+        response = self._send_auth_json("GET", f"get-property-list?chillType={quote(normalized_chill_type)}")
         return response if isinstance(response, list) else []
 
     def get_auth_role(self, role_guid: str) -> JsonDict:
@@ -430,6 +519,7 @@ class ChillSharpClient:
             "accessTokenExpiresUtc": self._format_datetime(self._token_state.access_token_expires_utc),
             "refreshToken": self._token_state.refresh_token or "",
             "refreshTokenExpiresUtc": self._format_datetime(self._token_state.refresh_token_expires_utc),
+            "userId": "",
             "userName": self._username or "",
         }
 
@@ -479,6 +569,13 @@ class ChillSharpClient:
         return normalized
 
     @staticmethod
+    def _normalize_optional_value(value: str | None) -> str | None:
+        """Normalize an optional string argument while preserving empty strings."""
+        if value is None:
+            return None
+        return value.strip()
+
+    @staticmethod
     def _coerce_string(value: Any) -> str:
         """Normalize arbitrary values into trimmed strings for endpoint payloads."""
         if value is None:
@@ -522,3 +619,9 @@ class ChillSharpClient:
                 return value
 
         return None
+
+
+
+
+
+

@@ -38,6 +38,7 @@ namespace ChillSharp.Api.Controllers
     /// <para>Endpoints:<br/>
     /// <list type="bullet">
     ///   <item><description>POST: api/chill/query  → Executes a data query based on a <see cref="ChillDtoQuery"/>.</description></item>
+    ///   <item><description>POST: api/chill/lookup → Executes a generic full-text lookup against an entity type.</description></item>
     ///   <item><description>POST: api/chill/find   → Retrieves a specific entity using a <see cref="ChillDtoEntity"/>.</description></item>
     ///   <item><description>POST: api/chill/create → Creates a new entity in the database.</description></item>
     ///   <item><description>POST: api/chill/update → Updates an existing entity.</description></item>
@@ -97,6 +98,21 @@ namespace ChillSharp.Api.Controllers
             if (authorizationResult != null)
                 return authorizationResult;
             return Ok(_ce.Query(DtoQuery));
+        }
+
+        /// <summary>
+        /// Executes a generic full-text lookup against the entity type specified by <see cref="ChillDtoQuery.ChillType"/>.
+        /// </summary>
+        /// <param name="DtoQuery">The lookup DTO containing the entity type, search text, and requested result properties.</param>
+        /// <returns>The lookup DTO with matching entities in <see cref="ChillDtoQuery.Results"/>.</returns>
+        [HttpPost]
+        [Route("lookup")]
+        public async Task<IActionResult> Lookup(ChillDtoQuery DtoQuery, CancellationToken cancellationToken)
+        {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
+            return Ok(_ce.Lookup(DtoQuery));
         }
 
         /// <summary>

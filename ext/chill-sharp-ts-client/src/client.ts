@@ -50,7 +50,8 @@ export interface ChillDtoPropertySchema extends JsonObject {
   name: string;
   displayName: string;
   propertyType: number;
-  chillType: string | null;
+  referenceChillType: string | null;
+  referenceChillTypeQuery: string | null;
   metadata: Record<string, string>;
 }
 
@@ -296,6 +297,10 @@ export class ChillSharpClient {
 
   query(dtoQuery: JsonObject): Promise<JsonObject> {
     return this.sendJson<JsonObject>("POST", this.buildChillUrl("query"), dtoQuery);
+  }
+
+  lookup(dtoQuery: JsonObject): Promise<JsonObject> {
+    return this.sendJson<JsonObject>("POST", this.buildChillUrl("lookup"), dtoQuery);
   }
 
   find(dtoEntity: JsonObject): Promise<JsonObject | null> {
@@ -1008,6 +1013,9 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
+
+
 
 
 
