@@ -18,9 +18,11 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.EF;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ChillSharp.EF.ServiceModel.I18n
+namespace ChillSharp.I18n.Model
 {
     /// <summary>
     /// Represents a localized text entity that stores a text value and its associated culture code for language or

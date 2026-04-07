@@ -40,6 +40,8 @@
         <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoSchema.cs" Link="Schema\Contracts\ChillDtoSchema.cs" />
         <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoSchemaListItem.cs" Link="Schema\Contracts\ChillDtoSchemaListItem.cs" />
         <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoEntityOptions.cs" Link="Schema\Contracts\ChillDtoEntityOptions.cs" />
+        <Compile Include="..\ChillSharp.Schema\Services\IChillSchemaService.cs" Link="Schema\Services\IChillSchemaService.cs" />
+        <Compile Include="..\ChillSharp.Schema\Services\ChillEntityLabelFormatter.cs" Link="Schema\Services\ChillEntityLabelFormatter.cs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -48,10 +50,7 @@
     </ItemGroup>
 
     <Target Name="BuildBuiltinModuleProjects">
-        <MSBuild
-            Projects="..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj"
-            Targets="Build"
-            Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+        <MSBuild Projects="..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
     </Target>
 
     <Target Name="IncludeBuiltinModuleOutputs" DependsOnTargets="BuildBuiltinModuleProjects">

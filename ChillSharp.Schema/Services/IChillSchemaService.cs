@@ -83,5 +83,3 @@ public interface IChillSchemaService
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default);
 }
-
-
