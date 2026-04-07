@@ -37,14 +37,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoSchema.cs" Link="Schema\Contracts\ChillDtoSchema.cs" />
-        <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoSchemaListItem.cs" Link="Schema\Contracts\ChillDtoSchemaListItem.cs" />
-        <Compile Include="..\ChillSharp.Schema\Contracts\ChillDtoEntityOptions.cs" Link="Schema\Contracts\ChillDtoEntityOptions.cs" />
-        <Compile Include="..\ChillSharp.Schema\Services\IChillSchemaService.cs" Link="Schema\Services\IChillSchemaService.cs" />
-        <Compile Include="..\ChillSharp.Schema\Services\ChillEntityLabelFormatter.cs" Link="Schema\Services\ChillEntityLabelFormatter.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
 	    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
 	    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     </ItemGroup>

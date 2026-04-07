@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-namespace ChillSharp.Dto;
+namespace ChillSharp.Schema.Contracts;
 
 /// <summary>
 /// DTO used by the schema module to persist and retrieve menu items.

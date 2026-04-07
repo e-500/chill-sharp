@@ -17,12 +17,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Dto;
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Schema.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using ChillSharp.Schema.Contracts;
+using ChillSharp.Dto;
 
 namespace ChillSharp.Schema;
 

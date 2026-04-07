@@ -19,8 +19,8 @@
 
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
-using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Schema.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ChillSharp.Schema.Api.Controllers;
@@ -32,20 +32,17 @@ namespace ChillSharp.Schema.Api.Controllers;
 [Route("api/chill-schema")]
 public sealed class ChillSchemaController : ControllerBase
 {
-    private readonly IChillDtoEngine _dtoEngine;
     private readonly IChillContext _context;
-    private readonly IChillSchemaService? _schemaService;
+    private readonly IChillSchemaService _schemaService;
     private readonly IChillAuthService? _authService;
     private readonly IChillAuthIdentityResolver? _identityResolver;
 
     public ChillSchemaController(
-        IChillDtoEngine dtoEngine,
         IChillContext context,
-        IChillSchemaService? schemaService = null,
+        IChillSchemaService? schemaService,
         IChillAuthService? authService = null,
         IChillAuthIdentityResolver? identityResolver = null)
     {
-        _dtoEngine = dtoEngine;
         _context = context;
         _schemaService = schemaService;
         _authService = authService;
@@ -53,9 +50,9 @@ public sealed class ChillSchemaController : ControllerBase
     }
 
     [HttpGet("get-schema")]
-    public IActionResult GetSchema([FromQuery] string ChillType, [FromQuery] string ChillViewCode, [FromQuery] string? CultureName = null)
+    public async Task<IActionResult> GetSchema([FromQuery] string ChillType, [FromQuery] string ChillViewCode, [FromQuery] string? CultureName = null)
     {
-        return Ok(_dtoEngine.GetSchema(ChillType, ChillViewCode, CultureName));
+        return Ok(await _schemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName));
     }
 
     [HttpGet("get-schema-list")]
@@ -66,23 +63,23 @@ public sealed class ChillSchemaController : ControllerBase
 
     [HttpPost("set-schema")]
     [ServiceFilter(typeof(ChillSchemaManagementAccessFilter))]
-    public IActionResult SetSchema([FromBody] ChillDtoSchema Schema)
+    public async Task<IActionResult> SetSchema([FromBody] ChillDtoSchema Schema)
     {
-        return Ok(_dtoEngine.SetSchema(Schema));
+        return Ok(await _schemaService.SetSchemaAsync(Schema));
     }
 
     [HttpGet("get-entity-options")]
     [ServiceFilter(typeof(ChillSchemaManagementAccessFilter))]
-    public IActionResult GetEntityOptions([FromQuery] string ChillType)
+    public async Task<IActionResult> GetEntityOptions([FromQuery] string ChillType)
     {
-        return Ok(_dtoEngine.GetEntityOptions(ChillType));
+        return Ok(await _schemaService.GetEntityOptionsAsync(ChillType));
     }
 
     [HttpPost("set-entity-options")]
     [ServiceFilter(typeof(ChillSchemaManagementAccessFilter))]
-    public IActionResult SetEntityOptions([FromBody] ChillDtoEntityOptions EntityOptions)
+    public async Task<IActionResult> SetEntityOptions([FromBody] ChillDtoEntityOptions EntityOptions)
     {
-        return Ok(_dtoEngine.SetEntityOptions(EntityOptions));
+        return Ok(await _schemaService.SetEntityOptionsAsync(EntityOptions));
     }
 
     [HttpGet("get-menu")]

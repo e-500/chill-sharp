@@ -132,38 +132,5 @@ namespace ChillSharp
         /// <param name="DtoQuery">The query DTO to validate.</param>
         /// <returns>The validation errors returned by the underlying query.</returns>
         IEnumerable<ChillValidationError> Validate(ChillDtoQuery DtoQuery);
-
-        /// <summary>
-        /// Retrieves the schema definition for a specified chill type and view code.
-        /// </summary>
-        /// <param name="ChillType">The identifier representing the chill type for which the schema is requested. Cannot be null or empty.</param>
-        /// <param name="ChillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
-        /// <param name="CultureName">Optional explicit culture used to localize schema labels.</param>
-        /// <returns>A ChillDtoSchema object containing the schema definition for the specified chill type and view code. Returns
-        /// null if no matching schema is found.</returns>
-        ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null);
-
-        /// <summary>
-        /// Sets the schema definition used for DTO operations and returns the previous schema.
-        /// </summary>
-        /// <remarks>Use this method to change the schema used for DTO serialization or validation. Changing the
-        /// schema may affect subsequent DTO processing.</remarks>
-        /// <param name="Schema">The schema to be applied for DTO operations. Cannot be null.</param>
-        /// <returns>The previous schema definition before the update. Returns null if no schema was previously set.</returns>
-        ChillDtoSchema SetSchema(ChillDtoSchema Schema);
-
-        /// <summary>
-        /// Retrieves the runtime entity options for a specified Chill entity type.
-        /// </summary>
-        /// <param name="ChillType">The identifier representing the Chill entity type.</param>
-        /// <returns>The entity options for the requested type.</returns>
-        ChillDtoEntityOptions GetEntityOptions(string ChillType);
-
-        /// <summary>
-        /// Persists runtime entity options for a specified Chill entity type.
-        /// </summary>
-        /// <param name="EntityOptions">The entity options to persist.</param>
-        /// <returns>The persisted entity options.</returns>
-        ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions);
     }
 }

@@ -17,9 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Dto;
+using ChillSharp.Schema.Contracts;
 
-namespace ChillSharp;
+namespace ChillSharp.Schema;
 
 /// <summary>
 /// Defines the contract for loading and persisting Chill DTO schemas independently from the core engine.

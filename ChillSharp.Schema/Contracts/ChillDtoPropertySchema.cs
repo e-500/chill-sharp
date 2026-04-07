@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
@@ -25,7 +26,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
-namespace ChillSharp.Dto
+namespace ChillSharp.Schema.Contracts
 {
     /// <summary>
     /// Describes how a DTO property should be represented at the front-end.

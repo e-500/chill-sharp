@@ -21,16 +21,16 @@ using ChillSharp.EF;
 
 namespace ChillSharp.Dto
 {
-    internal static class ChillQueryTypeResolver
+    public static class ChillQueryTypeResolver
     {
-        internal static Type? ResolveRelatedEntityType(Type queryType)
+        public static Type? ResolveRelatedEntityType(Type queryType)
         {
             return ResolveFromQueryInterfaces(queryType)
                 ?? ResolveFromGenericArguments(queryType)
                 ?? ResolveFromQueryName(queryType);
         }
 
-        private static Type? ResolveFromQueryInterfaces(Type queryType)
+        public static Type? ResolveFromQueryInterfaces(Type queryType)
         {
             return queryType
                 .GetInterfaces()

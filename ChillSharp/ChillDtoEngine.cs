@@ -50,12 +50,10 @@ namespace ChillSharp
         /// <param name="Context">The ChillSharp database context.</param>
         public ChillDtoEngine(
             IChillContext Context,
-            IChillSchemaService? schemaService = null,
             IChillEntityChangeDispatcher? changeDispatcher = null)
         {
             _Engine = new ChillEngine(Context);
             _Context = Context;
-            _SchemaService = schemaService;
             _ChangeDispatcher = changeDispatcher;
         }
 
@@ -72,7 +70,6 @@ namespace ChillSharp
 
         private IChillContext _Context;
         private ChillEngine _Engine;
-        private IChillSchemaService? _SchemaService;
         private readonly IChillEntityChangeDispatcher? _ChangeDispatcher;
         private readonly List<ChillEntityChangeNotification> _pendingEntityChanges = [];
 
@@ -311,38 +308,6 @@ namespace ChillSharp
             DtoEntity.ToEntity(_Context, e);
             _Engine.Delete(e);
             QueueEntityChange(DtoEntity.ChillType, DtoEntity.Guid, ChillEntityChangeNotification.DeletedAction);
-        }
-
-        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.SetSchemaAsync(Schema).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoEntityOptions GetEntityOptions(string ChillType)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.GetEntityOptionsAsync(ChillType).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.SetEntityOptionsAsync(EntityOptions).GetAwaiter().GetResult();
         }
 
         private void QueueEntityChange(IChillEntity entity, string action)

@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -25,7 +26,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace ChillSharp.Dto
+namespace ChillSharp.Schema.Contracts
 {
     /// <summary>
     /// Schema representation of a Chill entity or query type.

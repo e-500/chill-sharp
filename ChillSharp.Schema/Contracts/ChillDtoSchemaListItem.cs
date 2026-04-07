@@ -18,10 +18,11 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 using ChillSharp.EF;
 using System.Reflection;
 
-namespace ChillSharp.Dto
+namespace ChillSharp.Schema.Contracts
 {
     /// <summary>
     /// Lightweight descriptor for a registered Chill entity or query type.
