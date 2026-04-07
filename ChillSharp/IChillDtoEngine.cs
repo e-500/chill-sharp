@@ -20,6 +20,7 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ChillSharp
 {
@@ -34,8 +35,9 @@ namespace ChillSharp
     /// </para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>

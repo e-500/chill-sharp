@@ -17,11 +17,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Builder;
-using System.Reflection;
 using ChillSharp.Dto;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ChillSharp.Api
 {
@@ -41,8 +42,10 @@ namespace ChillSharp.Api
     ///   terms under which the ChillSharp library is distributed.</para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or removal must comply with GPLv3 licensing terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
+    /// Any modification or removal must comply with licensing terms.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// ©️2025 Andrea Piovesan</para>
     /// </summary>

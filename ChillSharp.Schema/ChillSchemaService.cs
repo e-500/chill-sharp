@@ -226,7 +226,12 @@ public class ChillSchemaService : IChillSchemaService
         }
 
         ChillMenuItemEntry row;
+
+        bool exists = false;
         if (menuItem.Guid != Guid.Empty)
+            exists = await _schemaContext.MenuItems.AnyAsync(x => x.Guid == menuItem.Guid, cancellationToken);
+
+        if (exists)
         {
             row = await _schemaContext.MenuItems
                 .Include(x => x.Parent)
@@ -237,7 +242,7 @@ public class ChillSchemaService : IChillSchemaService
         {
             row = new ChillMenuItemEntry
             {
-                Guid = Guid.NewGuid()
+                Guid = (menuItem.Guid == Guid.Empty) ? Guid.NewGuid() : menuItem.Guid
             };
             _schemaContext.MenuItems.Add(row);
         }
