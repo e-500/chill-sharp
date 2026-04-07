@@ -32,6 +32,7 @@ export type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
+  ChillDtoMenuItem,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
@@ -50,4 +51,5 @@ export type {
   SetAuthRoleRequest,
   SetAuthUserRequest
 } from "chill-sharp-ts-client";
+
 

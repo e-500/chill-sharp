@@ -323,6 +323,46 @@ namespace ChillSharp.Client
             return result;
         }
 
+        /// <summary>
+        /// Retrieves root menu items or the children of a specific parent menu item.
+        /// </summary>
+        public List<ChillDtoMenuItem> GetMenu(Guid? parentGuid = null)
+        {
+            var relativeUrl = "get-menu";
+            if (parentGuid.HasValue)
+            {
+                relativeUrl += $"?parentGuid={Uri.EscapeDataString(parentGuid.Value.ToString())}";
+            }
+
+            return SendJson<List<ChillDtoMenuItem>>(HttpMethod.Get, BuildSchemaUrl(relativeUrl), payload: null)
+                ?? new List<ChillDtoMenuItem>();
+        }
+
+        /// <summary>
+        /// Creates or updates a menu item through the schema-management API.
+        /// </summary>
+        public ChillDtoMenuItem SetMenu(ChillDtoMenuItem menuItem)
+        {
+            if (menuItem == null)
+                throw new ArgumentNullException(nameof(menuItem));
+
+            var result = SendJson<ChillDtoMenuItem>(HttpMethod.Post, BuildSchemaUrl("set-menu"), menuItem);
+            if (result == null)
+                throw new ChillClientException("Unexpected null menu item result");
+            return result;
+        }
+
+
+        /// <summary>
+        /// Deletes a menu item and all of its descendants through the schema-management API.
+        /// </summary>
+        public void DeleteMenu(Guid menuItemGuid)
+        {
+            if (menuItemGuid == Guid.Empty)
+                throw new ArgumentException("menuItemGuid is required.", nameof(menuItemGuid));
+
+            SendJson<object>(HttpMethod.Delete, BuildSchemaUrl($"delete-menu?menuItemGuid={Uri.EscapeDataString(menuItemGuid.ToString())}"), payload: null, expectResponseBody: false);
+        }
         internal T? SendAuthJson<T>(HttpMethod method, string relativeUrl, object? payload = null, bool expectResponseBody = true, bool allowAnonymous = false)
         {
             return SendJson<T>(method, BuildAuthUrl(relativeUrl), payload, expectResponseBody, allowAnonymous);

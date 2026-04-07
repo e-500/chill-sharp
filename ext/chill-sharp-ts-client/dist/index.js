@@ -16,6 +16,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-export { ChillSharpClient, PermissionAction, PermissionEffect, PermissionScope } from "./client.js";
+export { ChillSharpClient, ChillDtoPropertyType, PermissionAction, PermissionEffect, PermissionScope } from "./client.js";
 export { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 export { ChillSharpClientError } from "./errors.js";

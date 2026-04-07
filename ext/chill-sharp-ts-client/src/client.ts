@@ -46,10 +46,31 @@ export interface GetTextResponse extends JsonObject {
   value: string;
 }
 
+
+export const ChillDtoPropertyType = {
+  Unknown: 0,
+  Guid: 1,
+  Integer: 10,
+  Decimal: 20,
+  Date: 30,
+  Time: 40,
+  DateTime: 50,
+  Duration: 60,
+  Boolean: 70,
+  String: 80,
+  Text: 81,
+  Json: 99,
+  ChillEntity: 1000,
+  ChillEntityCollection: 1010,
+  ChillQuery: 1100
+} as const;
+
+export type ChillDtoPropertyType = (typeof ChillDtoPropertyType)[keyof typeof ChillDtoPropertyType];
+
 export interface ChillDtoPropertySchema extends JsonObject {
   name: string;
   displayName: string;
-  propertyType: number;
+  propertyType: ChillDtoPropertyType;
   referenceChillType: string | null;
   referenceChillTypeQuery: string | null;
   metadata: Record<string, string>;
@@ -80,6 +101,16 @@ export interface ChillDtoEntityOptions extends JsonObject {
   changeLogEnabled: boolean;
 }
 
+export interface ChillDtoMenuItem extends JsonObject {
+  guid: string;
+  title: string;
+  description: string | null;
+  parent: ChillDtoMenuItem | null;
+  componentName: string;
+  componentConfigurationJson: string | null;
+  menuHierarchy: string;
+}
+
 export interface ChillValidationError extends JsonObject {
   fieldName: string | null;
   message: string | null;
@@ -97,6 +128,7 @@ export interface AuthUserListItem extends JsonObject {
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
+  menuHierarchy: string;
 }
 
 export interface AuthRoleListItem extends JsonObject {
@@ -104,6 +136,7 @@ export interface AuthRoleListItem extends JsonObject {
   name: string;
   description: string;
   isActive: boolean;
+  menuHierarchy: string;
 }
 
 export interface AuthTokenResponse extends JsonObject {
@@ -209,6 +242,7 @@ export interface SetAuthUserRequest extends JsonObject {
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
+  menuHierarchy: string;
   roleGuids: string[];
   permissions: AuthPermissionRuleItem[];
 }
@@ -218,6 +252,7 @@ export interface SetAuthRoleRequest extends JsonObject {
   name: string;
   description: string;
   isActive: boolean;
+  menuHierarchy: string;
   userGuids: string[];
   permissions: AuthPermissionRuleItem[];
 }
@@ -375,6 +410,21 @@ export class ChillSharpClient {
     return this.sendJson<ChillDtoEntityOptions>("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
   }
 
+  getMenu(parentGuid?: string | null): Promise<ChillDtoMenuItem[]> {
+    const normalizedParentGuid = this.normalizeQueryValue(parentGuid);
+    const suffix = normalizedParentGuid === null ? "" : `?parentGuid=${encodeURIComponent(normalizedParentGuid)}`;
+    return this.sendJson<ChillDtoMenuItem[]>("GET", this.buildSchemaUrl(`get-menu${suffix}`));
+  }
+
+  setMenu(menuItem: ChillDtoMenuItem): Promise<ChillDtoMenuItem> {
+    return this.sendJson<ChillDtoMenuItem>("POST", this.buildSchemaUrl("set-menu"), menuItem);
+  }
+
+
+  async deleteMenu(menuItemGuid: string): Promise<void> {
+    const normalizedMenuItemGuid = this.normalizeRequiredValue(menuItemGuid, "menuItemGuid");
+    await this.sendJson("DELETE", this.buildSchemaUrl(`delete-menu?menuItemGuid=${encodeURIComponent(normalizedMenuItemGuid)}`), undefined, false);
+  }
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
     return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
   }
@@ -1013,6 +1063,7 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
 
 
 

@@ -89,6 +89,7 @@ public class ChillAuthService : IChillAuthService
                     Name = role.Name,
                     Description = role.Description,
                     IsActive = role.IsActive,
+                    MenuHierarchy = role.MenuHierarchy,
                     Permissions = rules
                         .Where(x => x.RoleGuid == role.Guid)
                         .Select(ToPermissionRuleResponse)
@@ -184,6 +185,7 @@ public class ChillAuthService : IChillAuthService
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
         user.CanManageSchema = request.CanManageSchema;
+        user.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
@@ -295,6 +297,7 @@ public class ChillAuthService : IChillAuthService
         role.Name = request.Name.Trim();
         role.Description = request.Description.Trim();
         role.IsActive = request.IsActive;
+        role.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         await SyncRoleUsersAsync(role.Guid, userGuids, cancellationToken);
@@ -354,6 +357,7 @@ public class ChillAuthService : IChillAuthService
             DisplayDateFormat = request.DisplayDateFormat.Trim(),
             DisplayNumberFormat = request.DisplayNumberFormat.Trim(),
             IsActive = request.IsActive,
+            MenuHierarchy = request.MenuHierarchy.Trim(),
             CanManagePermissions = request.CanManagePermissions,
             CanManageSchema = request.CanManageSchema
         };
@@ -385,6 +389,7 @@ public class ChillAuthService : IChillAuthService
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
         user.CanManageSchema = request.CanManageSchema;
+        user.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
@@ -435,7 +440,8 @@ public class ChillAuthService : IChillAuthService
             Guid = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Description = request.Description.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            MenuHierarchy = request.MenuHierarchy.Trim()
         };
 
         _context.Roles.Add(role);
@@ -458,6 +464,7 @@ public class ChillAuthService : IChillAuthService
         role.Name = request.Name.Trim();
         role.Description = request.Description.Trim();
         role.IsActive = request.IsActive;
+        role.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess();
@@ -1122,7 +1129,8 @@ public class ChillAuthService : IChillAuthService
             DisplayNumberFormat = user.DisplayNumberFormat,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
-            CanManageSchema = user.CanManageSchema
+            CanManageSchema = user.CanManageSchema,
+            MenuHierarchy = user.MenuHierarchy
         };
     }
 
@@ -1133,7 +1141,8 @@ public class ChillAuthService : IChillAuthService
             Guid = role.Guid,
             Name = role.Name,
             Description = role.Description,
-            IsActive = role.IsActive
+            IsActive = role.IsActive,
+            MenuHierarchy = role.MenuHierarchy
         };
     }
 
@@ -1169,6 +1178,7 @@ public class ChillAuthService : IChillAuthService
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,
+            MenuHierarchy = user.MenuHierarchy,
             Roles = roles.Select(ToRoleListItem).ToList(),
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };
@@ -1182,6 +1192,7 @@ public class ChillAuthService : IChillAuthService
             Name = role.Name,
             Description = role.Description,
             IsActive = role.IsActive,
+            MenuHierarchy = role.MenuHierarchy,
             Users = users.Select(ToUserListItem).ToList(),
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };
@@ -1253,3 +1264,7 @@ public class ChillAuthService : IChillAuthService
     }
     #endregion
 }
+
+
+
+

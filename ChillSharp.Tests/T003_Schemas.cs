@@ -246,7 +246,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step010_SchemaControllerEndpointsRespond()
+        public async Task Step010_SchemaControllerEndpointsRespond()
         {
             var controller = CreateSchemaController();
 
@@ -255,6 +255,9 @@ namespace ChillSharp.Tests
             Assert.IsInstanceOfType<OkObjectResult>(controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
             Assert.IsInstanceOfType<OkObjectResult>(controller.GetEntityOptions("Model.Post"));
             Assert.IsInstanceOfType<OkObjectResult>(controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetMenu(cancellationToken: CancellationToken.None));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
+            Assert.IsInstanceOfType<NoContentResult>(await controller.DeleteMenu(Guid.NewGuid(), CancellationToken.None));
         }
 
         [TestMethod]
@@ -275,6 +278,152 @@ namespace ChillSharp.Tests
             Assert.AreEqual(string.Empty, blankSchema.ReferenceChillTypeQuery);
         }
 
+        [TestMethod]
+        public void Step012_PropertySchemaMarksJsonFormattedStringsAsJsonType()
+        {
+            var property = typeof(JsonPayloadHolder).GetProperty(nameof(JsonPayloadHolder.Payload));
+
+            Assert.IsNotNull(property);
+
+            var schema = ChillDtoPropertySchema.FromPropertyInfo(property!, "ChillSharp.Tests");
+
+            Assert.AreEqual(ChillDtoPropertyType.Json, schema.PropertyType);
+            Assert.AreEqual("json", schema.CustomFormat);
+        }
+
+
+        [TestMethod]
+        public async Task Step013_MenuEndpointsFilterByUserAndRoleHierarchy()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var authService = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+            var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Section A",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A"
+            });
+            var sectionB = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Section B",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-B"
+            });
+            var sectionAChild = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Section A Child",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A.CHILD",
+                Parent = new ChillDtoMenuItem { Guid = sectionA.Guid }
+            });
+
+            var role = await authService.CreateRoleAsync(new ChillSharp.Auth.Contracts.CreateAuthRoleRequest
+            {
+                Name = $"menu-role-{Guid.NewGuid():N}",
+                Description = "Menu role",
+                MenuHierarchy = "SECTION-A"
+            });
+
+            var user = await authService.CreateUserAsync(new ChillSharp.Auth.Contracts.CreateAuthUserRequest
+            {
+                ExternalId = "menu-user",
+                UserName = "menu-user",
+                DisplayName = "Menu User",
+                MenuHierarchy = string.Empty
+            });
+
+            await authService.AssignRoleAsync(user.Guid, role.Guid);
+
+            var controller = new ChillSchemaController(
+                new StubDtoEngine(),
+                context,
+                schemaService,
+                authService,
+                new StubIdentityResolver());
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "menu-user")
+                    ], authenticationType: "Test"))
+                }
+            };
+
+            var rootResult = (OkObjectResult)await controller.GetMenu(cancellationToken: CancellationToken.None);
+            var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
+            Assert.AreEqual(1, rootItems.Count);
+            Assert.AreEqual(sectionA.Guid, rootItems[0].Guid);
+
+            var childResult = (OkObjectResult)await controller.GetMenu(sectionA.Guid, CancellationToken.None);
+            var childItems = (IReadOnlyList<ChillDtoMenuItem>)childResult.Value!;
+            Assert.AreEqual(1, childItems.Count);
+            Assert.AreEqual(sectionAChild.Guid, childItems[0].Guid);
+
+            Assert.AreNotEqual(sectionB.Guid, rootItems[0].Guid);
+        }
+
+        [TestMethod]
+        public async Task Step014_DeleteMenuRemovesDescendants()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-delete-menu-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+
+            var root = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Root",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT"
+            });
+            var child = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Child",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.CHILD",
+                Parent = new ChillDtoMenuItem { Guid = root.Guid }
+            });
+            await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Grandchild",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.CHILD.GRANDCHILD",
+                Parent = new ChillDtoMenuItem { Guid = child.Guid }
+            });
+            var sibling = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Title = "Sibling",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SIBLING"
+            });
+
+            await schemaService.DeleteMenuAsync(root.Guid, CancellationToken.None);
+
+            var remainingRootItems = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
+            Assert.AreEqual(1, remainingRootItems.Count);
+            Assert.AreEqual(sibling.Guid, remainingRootItems[0].Guid);
+
+            var deletedChildren = await schemaService.GetMenuAsync(root.Guid, CancellationToken.None);
+            Assert.AreEqual(0, deletedChildren.Count);
+        }
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
         {
             public Guid? Guid { get; set; }
@@ -316,7 +465,7 @@ namespace ChillSharp.Tests
 
         private static ChillSchemaController CreateSchemaController()
         {
-            var controller = new ChillSchemaController(new StubDtoEngine(), new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"));
+            var controller = new ChillSchemaController(new StubDtoEngine(), new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"), new StubSchemaService());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -379,6 +528,50 @@ namespace ChillSharp.Tests
             }
         }
 
+        private sealed class StubSchemaService : IChillSchemaService
+        {
+            private readonly List<ChillDtoMenuItem> _menuItems = [];
+
+            public Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
+                => Task.FromResult<ChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
+
+            public Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default)
+                => Task.FromResult(schema);
+
+            public Task<ChillDtoEntityOptions> GetEntityOptionsAsync(string chillType, CancellationToken cancellationToken = default)
+                => Task.FromResult(new ChillDtoEntityOptions { ChillType = chillType });
+
+            public Task<ChillDtoEntityOptions> SetEntityOptionsAsync(ChillDtoEntityOptions entityOptions, CancellationToken cancellationToken = default)
+                => Task.FromResult(entityOptions);
+
+            public Task<IReadOnlyList<ChillDtoMenuItem>> GetMenuAsync(Guid? parentGuid = null, CancellationToken cancellationToken = default)
+                => Task.FromResult<IReadOnlyList<ChillDtoMenuItem>>(_menuItems.Where(x => x.Parent?.Guid == parentGuid).ToList());
+
+            public Task<ChillDtoMenuItem> SetMenuAsync(ChillDtoMenuItem menuItem, CancellationToken cancellationToken = default)
+            {
+                if (menuItem.Guid == Guid.Empty)
+                    menuItem.Guid = Guid.NewGuid();
+                _menuItems.RemoveAll(x => x.Guid == menuItem.Guid);
+                _menuItems.Add(menuItem);
+                return Task.FromResult(menuItem);
+            }
+            public Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default)
+            {
+                var pending = new Stack<Guid>();
+                pending.Push(menuItemGuid);
+                while (pending.Count > 0)
+                {
+                    var currentGuid = pending.Pop();
+                    var childGuids = _menuItems.Where(x => x.Parent?.Guid == currentGuid).Select(x => x.Guid).ToList();
+                    _menuItems.RemoveAll(x => x.Guid == currentGuid);
+                    foreach (var childGuid in childGuids)
+                    {
+                        pending.Push(childGuid);
+                    }
+                }
+                return Task.CompletedTask;
+            }
+        }
         private sealed class StubDtoEngine : IChillDtoEngine
         {
             public void BeginTransaction() => throw new NotSupportedException();
@@ -398,6 +591,12 @@ namespace ChillSharp.Tests
             public ChillDtoSchema SetSchema(ChillDtoSchema Schema) => Schema;
             public ChillDtoEntityOptions GetEntityOptions(string ChillType) => new() { ChillType = ChillType };
             public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions) => EntityOptions;
+        }
+
+        private sealed class JsonPayloadHolder
+        {
+            [ChillProperty(CustomFormat = "json")]
+            public string Payload { get; set; } = "{}";
         }
 
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery
@@ -468,6 +667,8 @@ namespace ChillSharp.Tests
         }
     }
 }
+
+
 
 
 

@@ -339,6 +339,7 @@ namespace ChillSharp.Dto
 
                 case ChillDtoPropertyType.String:
                 case ChillDtoPropertyType.Text:
+                case ChillDtoPropertyType.Json:
                     return value switch
                     {
                         char charValue => charValue.ToString(),
@@ -364,7 +365,7 @@ namespace ChillSharp.Dto
                     ChillDtoPropertyType.DateTime => ConvertDateTime(jsonElement, targetType),
                     ChillDtoPropertyType.Duration => ConvertDuration(jsonElement, targetType),
                     ChillDtoPropertyType.Boolean => jsonElement.GetBoolean(),
-                    ChillDtoPropertyType.String or ChillDtoPropertyType.Text => ConvertString(jsonElement.GetString(), targetType),
+                    ChillDtoPropertyType.String or ChillDtoPropertyType.Text or ChillDtoPropertyType.Json => ConvertString(jsonElement.GetString(), targetType),
                     _ => JsonSerializer.Deserialize(jsonElement.GetRawText(), targetType)
                 };
             }
@@ -382,7 +383,7 @@ namespace ChillSharp.Dto
                 ChillDtoPropertyType.DateTime => ConvertDateTime(value, targetType),
                 ChillDtoPropertyType.Duration => ConvertDuration(value, targetType),
                 ChillDtoPropertyType.Boolean => Convert.ToBoolean(value, CultureInfo.InvariantCulture),
-                ChillDtoPropertyType.String or ChillDtoPropertyType.Text => ConvertString(value.ToString(), targetType),
+                ChillDtoPropertyType.String or ChillDtoPropertyType.Text or ChillDtoPropertyType.Json => ConvertString(value.ToString(), targetType),
                 _ => Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture)
             };
         }

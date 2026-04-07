@@ -19,6 +19,7 @@
 
 export {
   ChillSharpClient,
+  ChillDtoPropertyType,
   PermissionAction,
   PermissionEffect,
   PermissionScope
@@ -34,6 +35,7 @@ export type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
+  ChillDtoMenuItem,
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
@@ -54,5 +56,8 @@ export type {
   SetAuthUserRequest
 } from "./client.js";
 export { ChillSharpClientError } from "./errors.js";
+
+
+
 
 

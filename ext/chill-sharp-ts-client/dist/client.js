@@ -19,6 +19,23 @@
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
+export const ChillDtoPropertyType = {
+    Unknown: 0,
+    Guid: 1,
+    Integer: 10,
+    Decimal: 20,
+    Date: 30,
+    Time: 40,
+    DateTime: 50,
+    Duration: 60,
+    Boolean: 70,
+    String: 80,
+    Text: 81,
+    Json: 99,
+    ChillEntity: 1000,
+    ChillEntityCollection: 1010,
+    ChillQuery: 1100
+};
 export const PermissionEffect = {
     Allow: 1,
     Deny: 2
@@ -125,6 +142,18 @@ export class ChillSharpClient {
     }
     setEntityOptions(entityOptions) {
         return this.sendJson("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
+    }
+    getMenu(parentGuid) {
+        const normalizedParentGuid = this.normalizeQueryValue(parentGuid);
+        const suffix = normalizedParentGuid === null ? "" : `?parentGuid=${encodeURIComponent(normalizedParentGuid)}`;
+        return this.sendJson("GET", this.buildSchemaUrl(`get-menu${suffix}`));
+    }
+    setMenu(menuItem) {
+        return this.sendJson("POST", this.buildSchemaUrl("set-menu"), menuItem);
+    }
+    async deleteMenu(menuItemGuid) {
+        const normalizedMenuItemGuid = this.normalizeRequiredValue(menuItemGuid, "menuItemGuid");
+        await this.sendJson("DELETE", this.buildSchemaUrl(`delete-menu?menuItemGuid=${encodeURIComponent(normalizedMenuItemGuid)}`), undefined, false);
     }
     getText(request) {
         return this.sendJson("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);

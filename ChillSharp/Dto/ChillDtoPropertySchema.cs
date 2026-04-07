@@ -84,6 +84,7 @@ namespace ChillSharp.Dto
             };
 
             ApplyPrecisionFallbacks(propInfo, schema);
+            PromoteStringJsonProperties(schema);
 
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
@@ -490,6 +491,15 @@ namespace ChillSharp.Dto
         {
             var displayFormatAttribute = propInfo.GetCustomAttribute<DisplayFormatAttribute>();
             return displayFormatAttribute?.DataFormatString ?? string.Empty;
+        }
+
+        private static void PromoteStringJsonProperties(ChillDtoPropertySchema schema)
+        {
+            if ((schema.PropertyType == ChillDtoPropertyType.String || schema.PropertyType == ChillDtoPropertyType.Text) &&
+                string.Equals(schema.CustomFormat, "json", StringComparison.OrdinalIgnoreCase))
+            {
+                schema.PropertyType = ChillDtoPropertyType.Json;
+            }
         }
 
         private static string ResolveRegexPattern(PropertyInfo propInfo)

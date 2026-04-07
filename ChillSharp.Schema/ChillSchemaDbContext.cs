@@ -45,6 +45,11 @@ public class ChillSchemaDbContext : DbContext, IChillSchemaDbContext
     public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries => Set<ChillEntityOptionsEntry>();
 
     /// <summary>
+    /// Gets the set of persisted menu items.
+    /// </summary>
+    public DbSet<ChillMenuItemEntry> MenuItems => Set<ChillMenuItemEntry>();
+
+    /// <summary>
     /// Configures indexes and constraints for the schema persistence model.
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,3 +58,5 @@ public class ChillSchemaDbContext : DbContext, IChillSchemaDbContext
         modelBuilder.AddChillSchemaModel();
     }
 }
+
+

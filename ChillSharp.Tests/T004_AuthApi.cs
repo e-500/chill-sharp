@@ -348,6 +348,7 @@ public sealed class AuthApi
             Name = $"ManagedRole-{Guid.NewGuid():N}",
             Description = "Role created by set-role",
             IsActive = true,
+            MenuHierarchy = "BLOG.ADMIN",
             Permissions =
             [
                 new AuthPermissionRuleItem
@@ -373,6 +374,7 @@ public sealed class AuthApi
             DisplayNumberFormat = "1,000.00",
             IsActive = true,
             CanManageSchema = true,
+            MenuHierarchy = "BLOG.USER",
             RoleGuids = [role.Guid],
             Permissions =
             [
@@ -400,12 +402,16 @@ public sealed class AuthApi
         Assert.AreEqual("Eastern Standard Time", fetchedUser.DisplayTimeZone);
         Assert.AreEqual("MM/DD/YYYY", fetchedUser.DisplayDateFormat);
         Assert.AreEqual("1,000.00", fetchedUser.DisplayNumberFormat);
+        Assert.AreEqual("BLOG.USER", fetchedUser.MenuHierarchy);
         Assert.AreEqual(1, fetchedUser.Roles.Count);
         Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
+        Assert.AreEqual("BLOG.ADMIN", fetchedUser.Roles[0].MenuHierarchy);
         Assert.AreEqual(1, fetchedUser.Permissions.Count);
         Assert.IsNotNull(fetchedRole);
+        Assert.AreEqual("BLOG.ADMIN", fetchedRole.MenuHierarchy);
         Assert.AreEqual(1, fetchedRole.Users.Count);
         Assert.AreEqual(user.Guid, fetchedRole.Users[0].Guid);
+        Assert.AreEqual("BLOG.USER", fetchedRole.Users[0].MenuHierarchy);
         Assert.AreEqual(1, fetchedRole.Permissions.Count);
         Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
         Assert.IsTrue(userList!.Single(x => x.Guid == user.Guid).CanManageSchema);
@@ -413,7 +419,9 @@ public sealed class AuthApi
         Assert.AreEqual("Eastern Standard Time", userList!.Single(x => x.Guid == user.Guid).DisplayTimeZone);
         Assert.AreEqual("MM/DD/YYYY", userList!.Single(x => x.Guid == user.Guid).DisplayDateFormat);
         Assert.AreEqual("1,000.00", userList!.Single(x => x.Guid == user.Guid).DisplayNumberFormat);
+        Assert.AreEqual("BLOG.USER", userList!.Single(x => x.Guid == user.Guid).MenuHierarchy);
         Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
+        Assert.AreEqual("BLOG.ADMIN", roleList!.Single(x => x.Guid == role.Guid).MenuHierarchy);
 
         var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;
         var updatedRole = client.SetAuthRole(new SetAuthRoleRequest
@@ -422,6 +430,7 @@ public sealed class AuthApi
             Name = role.Name,
             Description = "Role updated by set-role",
             IsActive = true,
+            MenuHierarchy = "BLOG.EDITOR",
             UserGuids = [user.Guid],
             Permissions =
             [
@@ -449,6 +458,7 @@ public sealed class AuthApi
 
         Assert.AreEqual(2, updatedRole.Permissions.Count);
         Assert.IsTrue(updatedRole.Permissions.Any(x => x.Guid == existingRolePermissionGuid));
+        Assert.AreEqual("BLOG.EDITOR", updatedRole.MenuHierarchy);
 
         await using var verificationContext = TestApiHost.CreateDbContext();
         var persistedMemberships = await verificationContext.UserRoles

@@ -76,6 +76,16 @@ public class AuthRole : ChillEntity
     public bool IsActive { get; set; } = true;
 
     /// <summary>
+    /// Menu hierarchy prefix used to filter the menu tree for users assigned to this role.
+    /// </summary>
+    [Column("menu-hierarchy")]
+    [ChillProperty(
+        "E46E84EB-94E3-4E27-B589-3988017F424A",
+        "Menu hierarchy",
+        "Gerarchia menu")]
+    public string MenuHierarchy { get; set; } = string.Empty;
+
+    /// <summary>
     /// User memberships associated with this role.
     /// </summary>
     [ChillProperty(
@@ -89,3 +99,4 @@ public class AuthRole : ChillEntity
         return Name;
     }
 }
+

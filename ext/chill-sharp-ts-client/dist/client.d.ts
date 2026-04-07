@@ -16,10 +16,28 @@ export interface GetTextResponse extends JsonObject {
     cultureName: string;
     value: string;
 }
+export declare const ChillDtoPropertyType: {
+    readonly Unknown: 0;
+    readonly Guid: 1;
+    readonly Integer: 10;
+    readonly Decimal: 20;
+    readonly Date: 30;
+    readonly Time: 40;
+    readonly DateTime: 50;
+    readonly Duration: 60;
+    readonly Boolean: 70;
+    readonly String: 80;
+    readonly Text: 81;
+    readonly Json: 99;
+    readonly ChillEntity: 1000;
+    readonly ChillEntityCollection: 1010;
+    readonly ChillQuery: 1100;
+};
+export type ChillDtoPropertyType = (typeof ChillDtoPropertyType)[keyof typeof ChillDtoPropertyType];
 export interface ChillDtoPropertySchema extends JsonObject {
     name: string;
     displayName: string;
-    propertyType: number;
+    propertyType: ChillDtoPropertyType;
     referenceChillType: string | null;
     referenceChillTypeQuery: string | null;
     metadata: Record<string, string>;
@@ -46,6 +64,15 @@ export interface ChillDtoEntityOptions extends JsonObject {
     fullTextContentFormatString: string | null;
     changeLogEnabled: boolean;
 }
+export interface ChillDtoMenuItem extends JsonObject {
+    guid: string;
+    title: string;
+    description: string | null;
+    parent: ChillDtoMenuItem | null;
+    componentName: string;
+    componentConfigurationJson: string | null;
+    menuHierarchy: string;
+}
 export interface ChillValidationError extends JsonObject {
     fieldName: string | null;
     message: string | null;
@@ -62,12 +89,14 @@ export interface AuthUserListItem extends JsonObject {
     isActive: boolean;
     canManagePermissions: boolean;
     canManageSchema: boolean;
+    menuHierarchy: string;
 }
 export interface AuthRoleListItem extends JsonObject {
     guid: string;
     name: string;
     description: string;
     isActive: boolean;
+    menuHierarchy: string;
 }
 export interface AuthTokenResponse extends JsonObject {
     accessToken: string;
@@ -158,6 +187,7 @@ export interface SetAuthUserRequest extends JsonObject {
     isActive: boolean;
     canManagePermissions: boolean;
     canManageSchema: boolean;
+    menuHierarchy: string;
     roleGuids: string[];
     permissions: AuthPermissionRuleItem[];
 }
@@ -166,6 +196,7 @@ export interface SetAuthRoleRequest extends JsonObject {
     name: string;
     description: string;
     isActive: boolean;
+    menuHierarchy: string;
     userGuids: string[];
     permissions: AuthPermissionRuleItem[];
 }
@@ -219,6 +250,9 @@ export declare class ChillSharpClient {
     setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null>;
     getEntityOptions(chillType: string): Promise<ChillDtoEntityOptions>;
     setEntityOptions(entityOptions: ChillDtoEntityOptions): Promise<ChillDtoEntityOptions>;
+    getMenu(parentGuid?: string | null): Promise<ChillDtoMenuItem[]>;
+    setMenu(menuItem: ChillDtoMenuItem): Promise<ChillDtoMenuItem>;
+    deleteMenu(menuItemGuid: string): Promise<void>;
     getText(request: GetTextRequest): Promise<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Promise<GetTextResponse>;

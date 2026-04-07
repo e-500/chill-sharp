@@ -59,4 +59,29 @@ public interface IChillSchemaService
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>The persisted entity options.</returns>
     Task<ChillDtoEntityOptions> SetEntityOptionsAsync(ChillDtoEntityOptions entityOptions, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Loads the root menu items or the direct children of a menu item.
+    /// </summary>
+    /// <param name="parentGuid">Optional parent menu-item identifier. <see langword="null"/> returns root nodes.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The matching menu items ordered for UI consumption.</returns>
+    Task<IReadOnlyList<ChillDtoMenuItem>> GetMenuAsync(Guid? parentGuid = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Creates or updates a menu item.
+    /// </summary>
+    /// <param name="menuItem">The menu item to persist.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    /// <returns>The persisted menu item.</returns>
+    Task<ChillDtoMenuItem> SetMenuAsync(ChillDtoMenuItem menuItem, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a menu item and all of its descendants.
+    /// </summary>
+    /// <param name="menuItemGuid">The identifier of the menu item to delete.</param>
+    /// <param name="cancellationToken">Token used to cancel the operation.</param>
+    Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default);
 }
+
+

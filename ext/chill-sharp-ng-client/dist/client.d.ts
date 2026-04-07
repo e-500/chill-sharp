@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
+import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoMenuItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -20,6 +20,9 @@ export declare class ChillSharpNgClient {
     setSchema(schema: ChillDtoSchema): Observable<ChillDtoSchema | null>;
     getEntityOptions(chillType: string): Observable<ChillDtoEntityOptions>;
     setEntityOptions(entityOptions: ChillDtoEntityOptions): Observable<ChillDtoEntityOptions>;
+    getMenu(parentGuid?: string | null): Observable<ChillDtoMenuItem[]>;
+    setMenu(menuItem: ChillDtoMenuItem): Observable<ChillDtoMenuItem>;
+    deleteMenu(menuItemGuid: string): Observable<void>;
     getText(request: GetTextRequest): Observable<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Observable<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Observable<GetTextResponse>;

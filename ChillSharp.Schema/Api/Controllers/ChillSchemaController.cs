@@ -17,6 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Services;
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.AspNetCore.Mvc;
@@ -32,11 +34,22 @@ public sealed class ChillSchemaController : ControllerBase
 {
     private readonly IChillDtoEngine _dtoEngine;
     private readonly IChillContext _context;
+    private readonly IChillSchemaService? _schemaService;
+    private readonly IChillAuthService? _authService;
+    private readonly IChillAuthIdentityResolver? _identityResolver;
 
-    public ChillSchemaController(IChillDtoEngine dtoEngine, IChillContext context)
+    public ChillSchemaController(
+        IChillDtoEngine dtoEngine,
+        IChillContext context,
+        IChillSchemaService? schemaService = null,
+        IChillAuthService? authService = null,
+        IChillAuthIdentityResolver? identityResolver = null)
     {
         _dtoEngine = dtoEngine;
         _context = context;
+        _schemaService = schemaService;
+        _authService = authService;
+        _identityResolver = identityResolver;
     }
 
     [HttpGet("get-schema")]
@@ -72,6 +85,31 @@ public sealed class ChillSchemaController : ControllerBase
         return Ok(_dtoEngine.SetEntityOptions(EntityOptions));
     }
 
+    [HttpGet("get-menu")]
+    public async Task<IActionResult> GetMenu([FromQuery] Guid? ParentGuid = null, CancellationToken cancellationToken = default)
+    {
+        var schemaService = _schemaService ?? throw new ChillException("Chill schema service is not registered.");
+        var menuItems = await schemaService.GetMenuAsync(ParentGuid, cancellationToken);
+        return Ok(await FilterMenuAsync(menuItems, cancellationToken));
+    }
+
+    [HttpPost("set-menu")]
+    [ServiceFilter(typeof(ChillSchemaManagementAccessFilter))]
+    public async Task<IActionResult> SetMenu([FromBody] ChillDtoMenuItem MenuItem, CancellationToken cancellationToken)
+    {
+        var schemaService = _schemaService ?? throw new ChillException("Chill schema service is not registered.");
+        return Ok(await schemaService.SetMenuAsync(MenuItem, cancellationToken));
+    }
+
+
+    [HttpDelete("delete-menu")]
+    [ServiceFilter(typeof(ChillSchemaManagementAccessFilter))]
+    public async Task<IActionResult> DeleteMenu([FromQuery] Guid MenuItemGuid, CancellationToken cancellationToken)
+    {
+        var schemaService = _schemaService ?? throw new ChillException("Chill schema service is not registered.");
+        await schemaService.DeleteMenuAsync(MenuItemGuid, cancellationToken);
+        return NoContent();
+    }
     private List<ChillDtoSchemaListItem> BuildSchemaList(string? cultureName)
     {
         var assembly = _context.GetType().Assembly;
@@ -109,5 +147,53 @@ public sealed class ChillSchemaController : ControllerBase
             && type.IsClass
             && !type.IsAbstract
             && typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type);
+    }
+
+    private async Task<IReadOnlyList<ChillDtoMenuItem>> FilterMenuAsync(IReadOnlyList<ChillDtoMenuItem> menuItems, CancellationToken cancellationToken)
+    {
+        if (_authService == null || _identityResolver == null || HttpContext.User.Identity?.IsAuthenticated != true)
+            return menuItems;
+
+        var externalId = _identityResolver.ResolveExternalId(HttpContext.User);
+        if (string.IsNullOrWhiteSpace(externalId))
+            return [];
+
+        var user = await _authService.GetUserByExternalIdAsync(externalId, cancellationToken);
+        if (user == null || !user.IsActive)
+            return [];
+
+        var hierarchies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddMenuHierarchy(hierarchies, user.MenuHierarchy);
+
+        var roles = await _authService.GetUserRolesAsync(user.Guid, cancellationToken);
+        foreach (var role in roles.Where(x => x.IsActive))
+        {
+            AddMenuHierarchy(hierarchies, role.MenuHierarchy);
+        }
+
+        if (hierarchies.Contains("*"))
+            return menuItems;
+
+        if (hierarchies.Count == 0)
+            return [];
+
+        return menuItems
+            .Where(item => IsMenuAllowed(item.MenuHierarchy, hierarchies))
+            .ToList();
+    }
+
+    private static void AddMenuHierarchy(HashSet<string> hierarchies, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            hierarchies.Add(value.Trim());
+    }
+
+    private static bool IsMenuAllowed(string? menuHierarchy, IReadOnlyCollection<string> allowedHierarchies)
+    {
+        var normalizedHierarchy = menuHierarchy?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedHierarchy))
+            return false;
+
+        return allowedHierarchies.Any(prefix => normalizedHierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
 }

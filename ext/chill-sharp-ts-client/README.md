@@ -373,6 +373,45 @@ const options = await client.setEntityOptions({
 });
 ```
 
+### Get menu
+
+Use `getMenu()` to load root menu nodes or the direct children of one menu item.
+
+```ts
+const rootMenu = await client.getMenu();
+const childMenu = await client.getMenu("8d0946dc-fc2b-4d95-b5ca-6f12d9618a5b");
+```
+
+`getMenu()` returns one tree level at a time.
+
+For the full menu-tree contract and `MenuHierarchy` filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).
+
+### Set menu
+
+Use `setMenu()` to create or update one menu item.
+
+```ts
+const savedMenu = await client.setMenu({
+  guid: "00000000-0000-0000-0000-000000000000",
+  title: "Posts",
+  description: "Open the post management screen",
+  parent: null,
+  componentName: "CRUD",
+  componentConfigurationJson: "{\"chillType\":\"Model.Post\"}",
+  menuHierarchy: "SECTION-A.POSTS"
+});
+```
+
+### Delete menu
+
+Use `deleteMenu()` to remove one menu item and all nested child nodes below it.
+
+```ts
+await client.deleteMenu("8d0946dc-fc2b-4d95-b5ca-6f12d9618a5b");
+```
+
+For parent handling, delete behavior, validation rules, and filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).
+
 ## I18n Operations
 
 ### Get text
@@ -593,6 +632,8 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed TypeScript clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
 
 
 

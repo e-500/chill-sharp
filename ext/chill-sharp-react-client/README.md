@@ -329,7 +329,7 @@ Because the React package reuses the TypeScript client, it inherits the same aut
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
 - pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
-- call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()` and `setEntityOptions()`
+- call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()`, `setEntityOptions()`, `getMenu()`, `setMenu()`, and `deleteMenu()`
 
 Auth user list/detail payloads exposed through the raw client include:
 
@@ -381,3 +381,10 @@ If you need typed model clients, generate them from your host OpenAPI document a
 
 
 
+
+
+## Menu endpoints
+
+When you use the raw client from `useChillSharpClient()`, `getMenu()` loads root menu nodes or the direct children of one menu item, `setMenu()` creates or updates one menu item, and `deleteMenu()` removes one menu item together with its child subtree.
+
+For the complete tree model, delete behavior, and `MenuHierarchy` filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).

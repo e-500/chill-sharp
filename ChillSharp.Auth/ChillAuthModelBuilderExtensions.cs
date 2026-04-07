@@ -39,6 +39,7 @@ public static class ChillAuthModelBuilderExtensions
             builder.Property(x => x.ExternalId).HasMaxLength(256);
             builder.Property(x => x.UserName).HasMaxLength(256);
             builder.Property(x => x.DisplayName).HasMaxLength(256);
+            builder.Property(x => x.MenuHierarchy).HasMaxLength(512);
             builder.HasIndex(x => x.ExternalId).IsUnique();
             builder.HasIndex(x => x.UserName).IsUnique();
         });
@@ -47,6 +48,7 @@ public static class ChillAuthModelBuilderExtensions
         {
             builder.Property(x => x.Name).HasMaxLength(128);
             builder.Property(x => x.Description).HasMaxLength(1024);
+            builder.Property(x => x.MenuHierarchy).HasMaxLength(512);
             builder.HasIndex(x => x.Name).IsUnique();
         });
 

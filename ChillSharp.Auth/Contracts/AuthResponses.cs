@@ -95,6 +95,7 @@ public class AuthUserListItemResponse
     public bool IsActive { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool CanManageSchema { get; set; }
+    public string MenuHierarchy { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -106,6 +107,7 @@ public class AuthRoleListItemResponse
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string MenuHierarchy { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -160,3 +162,6 @@ public class AuthRoleDetailsResponse : AuthRoleListItemResponse
     public IReadOnlyList<AuthUserListItemResponse> Users { get; set; } = Array.Empty<AuthUserListItemResponse>();
     public IReadOnlyList<AuthPermissionRuleResponse> Permissions { get; set; } = Array.Empty<AuthPermissionRuleResponse>();
 }
+
+
+

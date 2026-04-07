@@ -397,6 +397,8 @@ users = client.get_auth_user_list()
 
 Auth user list/detail payloads include `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
 
+Auth user and role payloads also include `MenuHierarchy`, which is used by the schema menu model to filter visible menu nodes. See [../../doc/MenuModel.md](../../doc/MenuModel.md).
+
 ### Get managed user
 
 ```python
@@ -483,6 +485,7 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed Python clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
 
 
 

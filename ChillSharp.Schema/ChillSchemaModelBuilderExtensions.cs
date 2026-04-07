@@ -50,6 +50,25 @@ public static class ChillSchemaModelBuilderExtensions
             builder.HasIndex(x => x.ChillType).IsUnique();
         });
 
+
+        modelBuilder.Entity<ChillMenuItemEntry>(builder =>
+        {
+            builder.Property(x => x.Title).HasMaxLength(255);
+            builder.Property(x => x.Description).HasMaxLength(int.MaxValue);
+            builder.Property(x => x.ComponentName).HasMaxLength(255);
+            builder.Property(x => x.ComponentConfigurationJson).HasMaxLength(int.MaxValue);
+            builder.Property(x => x.MenuHierarchy).HasMaxLength(512);
+
+            builder.HasIndex(x => x.ParentGuid);
+            builder.HasIndex(x => x.MenuHierarchy);
+
+            builder.HasOne(x => x.Parent)
+                .WithMany(x => x.Children)
+                .HasForeignKey(x => x.ParentGuid)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
         return modelBuilder;
     }
 }
+
+

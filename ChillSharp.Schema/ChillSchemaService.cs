@@ -196,6 +196,111 @@ public class ChillSchemaService : IChillSchemaService
         });
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ChillDtoMenuItem>> GetMenuAsync(Guid? parentGuid = null, CancellationToken cancellationToken = default)
+    {
+        var rows = await _schemaContext.MenuItems
+            .AsNoTracking()
+            .Include(x => x.Parent)
+            .Where(x => x.ParentGuid == parentGuid)
+            .OrderBy(x => x.Title)
+            .ThenBy(x => x.Guid)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(MapMenuItem).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<ChillDtoMenuItem> SetMenuAsync(ChillDtoMenuItem menuItem, CancellationToken cancellationToken = default)
+    {
+        if (menuItem == null)
+            throw new ArgumentNullException(nameof(menuItem));
+
+        var parentGuid = menuItem.Parent?.Guid;
+        ChillMenuItemEntry? parent = null;
+        if (parentGuid.HasValue && parentGuid.Value != Guid.Empty)
+        {
+            parent = await _schemaContext.MenuItems
+                .FirstOrDefaultAsync(x => x.Guid == parentGuid.Value, cancellationToken)
+                ?? throw new ArgumentException("The referenced parent menu item does not exist.");
+        }
+
+        ChillMenuItemEntry row;
+        if (menuItem.Guid != Guid.Empty)
+        {
+            row = await _schemaContext.MenuItems
+                .Include(x => x.Parent)
+                .FirstOrDefaultAsync(x => x.Guid == menuItem.Guid, cancellationToken)
+                ?? throw new ArgumentException("The referenced menu item does not exist.");
+        }
+        else
+        {
+            row = new ChillMenuItemEntry
+            {
+                Guid = Guid.NewGuid()
+            };
+            _schemaContext.MenuItems.Add(row);
+        }
+
+        if (parent != null && parent.Guid == row.Guid)
+            throw new ArgumentException("A menu item cannot be its own parent.");
+
+        row.Title = NormalizeRequiredText(menuItem.Title, nameof(menuItem.Title), 255);
+        row.Description = NormalizeOptionalText(menuItem.Description);
+        row.ParentGuid = parent?.Guid;
+        row.Parent = parent;
+        row.ComponentName = NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
+        row.ComponentConfigurationJson = NormalizeOptionalText(menuItem.ComponentConfigurationJson);
+        row.MenuHierarchy = NormalizeRequiredText(menuItem.MenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+        row.UpdatedUtc = DateTime.UtcNow;
+
+        await _schemaContext.SaveChangesAsync(cancellationToken);
+
+        row = await _schemaContext.MenuItems
+            .AsNoTracking()
+            .Include(x => x.Parent)
+            .FirstAsync(x => x.Guid == row.Guid, cancellationToken);
+
+        return MapMenuItem(row);
+    }
+
+
+    /// <inheritdoc />
+    public async Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default)
+    {
+        if (menuItemGuid == Guid.Empty)
+            throw new ArgumentException("'menuItemGuid' is required.", nameof(menuItemGuid));
+
+        var menuRows = await _schemaContext.MenuItems
+            .ToListAsync(cancellationToken);
+
+        var rowsByGuid = menuRows.ToDictionary(x => x.Guid);
+        if (!rowsByGuid.ContainsKey(menuItemGuid))
+            throw new ArgumentException("The referenced menu item does not exist.", nameof(menuItemGuid));
+
+        var descendantGuids = new HashSet<Guid>();
+        var pending = new Stack<Guid>();
+        pending.Push(menuItemGuid);
+
+        while (pending.Count > 0)
+        {
+            var currentGuid = pending.Pop();
+            if (!descendantGuids.Add(currentGuid))
+                continue;
+
+            foreach (var childGuid in menuRows.Where(x => x.ParentGuid == currentGuid).Select(x => x.Guid))
+            {
+                pending.Push(childGuid);
+            }
+        }
+
+        var rowsToDelete = menuRows
+            .Where(x => descendantGuids.Contains(x.Guid))
+            .ToList();
+
+        _schemaContext.MenuItems.RemoveRange(rowsToDelete);
+        await _schemaContext.SaveChangesAsync(cancellationToken);
+    }
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
     {
         var activatedType = ChillTypeResolver.ActivateType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
@@ -227,6 +332,42 @@ public class ChillSchemaService : IChillSchemaService
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string NormalizeRequiredText(string? value, string parameterName, int maxLength)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new ArgumentException($"'{parameterName}' is required.", parameterName);
+
+        if (normalized.Length > maxLength)
+            throw new ArgumentException($"'{parameterName}' cannot exceed {maxLength} characters.", parameterName);
+
+        return normalized;
+    }
+
+    private static ChillDtoMenuItem MapMenuItem(ChillMenuItemEntry row)
+    {
+        return new ChillDtoMenuItem
+        {
+            Guid = row.Guid,
+            Title = row.Title,
+            Description = row.Description,
+            Parent = row.Parent == null
+                ? null
+                : new ChillDtoMenuItem
+                {
+                    Guid = row.Parent.Guid,
+                    Title = row.Parent.Title,
+                    Description = row.Parent.Description,
+                    ComponentName = row.Parent.ComponentName,
+                    ComponentConfigurationJson = row.Parent.ComponentConfigurationJson,
+                    MenuHierarchy = row.Parent.MenuHierarchy
+                },
+            ComponentName = row.ComponentName,
+            ComponentConfigurationJson = row.ComponentConfigurationJson,
+            MenuHierarchy = row.MenuHierarchy
+        };
     }
 
     private ChillDtoEntityOptions CreateDefaultEntityOptions(string chillType)
@@ -287,5 +428,7 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
+
+
 
 

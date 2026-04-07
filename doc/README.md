@@ -20,6 +20,9 @@ This folder contains the reference documentation for ChillSharp.
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 
+- [MenuModel.md](./MenuModel.md)
+  Backend-managed menu tree, menu endpoints, and `MenuHierarchy` filtering rules.
+
 - [PermissionModel/README.md](./PermissionModel/README.md)
   The permission model used by `ChillSharp.Auth`, including precedence, scopes, and how entity/property access is resolved.
 

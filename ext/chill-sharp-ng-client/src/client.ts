@@ -27,6 +27,7 @@ import type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
+  ChillDtoMenuItem,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillValidationError,
@@ -113,6 +114,18 @@ export class ChillSharpNgClient {
     return from(this.client.setEntityOptions(entityOptions));
   }
 
+  getMenu(parentGuid?: string | null): Observable<ChillDtoMenuItem[]> {
+    return from(this.client.getMenu(parentGuid));
+  }
+
+  setMenu(menuItem: ChillDtoMenuItem): Observable<ChillDtoMenuItem> {
+    return from(this.client.setMenu(menuItem));
+  }
+
+
+  deleteMenu(menuItemGuid: string): Observable<void> {
+    return from(this.client.deleteMenu(menuItemGuid));
+  }
   getText(request: GetTextRequest): Observable<GetTextResponse | null> {
     return from(this.client.getText(request));
   }
@@ -237,6 +250,7 @@ export class ChillSharpNgClient {
     return this.client;
   }
 }
+
 
 
 

@@ -82,6 +82,15 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     setEntityOptions(entityOptions) {
         return from(this.client.setEntityOptions(entityOptions));
     }
+    getMenu(parentGuid) {
+        return from(this.client.getMenu(parentGuid));
+    }
+    setMenu(menuItem) {
+        return from(this.client.setMenu(menuItem));
+    }
+    deleteMenu(menuItemGuid) {
+        return from(this.client.deleteMenu(menuItemGuid));
+    }
     getText(request) {
         return from(this.client.getText(request));
     }
