@@ -48,7 +48,7 @@ public sealed class McpApi
 
         Assert.IsNull(await mcpService.GetResourceAsync("Model.Post"));
 
-        await schemaService.SetEntityOptionsAsync(new ChillDtoEntityOptions
+        await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
         {
             ChillType = "Model.Post",
             EnableMCP = true,

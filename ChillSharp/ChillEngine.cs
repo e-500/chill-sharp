@@ -20,6 +20,7 @@
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Reflection;

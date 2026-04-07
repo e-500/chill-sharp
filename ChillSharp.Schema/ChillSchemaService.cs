@@ -53,6 +53,12 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     }
 
     /// <inheritdoc />
+    public IChillDtoEntityOptions GetEntityOptions(string chillType)
+    {
+        return GetEntityOptionsAsync(chillType).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
     public async Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
     {
         var effectiveCultureName = NormalizeCultureName(cultureName);

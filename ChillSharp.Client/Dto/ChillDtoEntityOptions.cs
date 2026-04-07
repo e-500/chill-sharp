@@ -17,12 +17,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Schema.Contracts;
+
 namespace ChillSharp.Client.Dto
 {
     /// <summary>
     /// Runtime-configurable options persisted for a specific Chill entity type.
     /// </summary>
-    public class ChillDtoEntityOptions
+    public class ChillDtoEntityOptions : IChillDtoEntityOptions
     {
         /// <summary>
         /// Logical Chill type identifier.

@@ -17,22 +17,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Schema.Contracts;
-
-namespace ChillSharp.Schema;
+namespace ChillSharp.Schema.Contracts;
 
 /// <summary>
-/// Minimal schema lookup contract shared with the ChillSharp core mapper.
+/// Read-only contract for runtime-configurable options persisted for a specific Chill entity type.
 /// </summary>
-public interface IChillSchemaResolverService
+public interface IChillDtoEntityOptions
 {
-    /// <summary>
-    /// Loads or builds the schema for a Chill type and view code.
-    /// </summary>
-    IChillDtoSchema? ResolveSchema(string chillType, string chillViewCode, string? cultureName = null);
-
-    /// <summary>
-    /// Loads the runtime options for a Chill entity type.
-    /// </summary>
-    IChillDtoEntityOptions GetEntityOptions(string chillType);
+    string ChillType { get; }
+    bool ChecksumEnabled { get; }
+    string? LabelFormatString { get; }
+    string? ShortLabelFormatString { get; }
+    string? FullTextContentFormatString { get; }
+    bool EnableMCP { get; }
+    string? MCPDescription { get; }
+    bool ChangeLogEnabled { get; }
 }

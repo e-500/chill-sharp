@@ -1,5 +1,5 @@
 /*
- * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core
  * and turns an existing data model into a fully working REST API with almost no setup.
  * Copyright (C) 2025 Andrea Piovesan
  *
@@ -7,12 +7,12 @@
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Affero General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -30,6 +30,7 @@ namespace ChillSharp.Schema;
 internal static class ChillEntityLabelFormatter
 {
     private static readonly Regex PlaceholderRegex = new(@"\{(?<field>[A-Za-z_][A-Za-z0-9_]*)\}", RegexOptions.Compiled);
+
     private enum FormatTarget
     {
         Label,
@@ -79,6 +80,7 @@ internal static class ChillEntityLabelFormatter
             FormatTarget.FullTextContent => entityOptions.FullTextContentFormatString,
             _ => null
         };
+
         if (string.IsNullOrWhiteSpace(format))
             return null;
 

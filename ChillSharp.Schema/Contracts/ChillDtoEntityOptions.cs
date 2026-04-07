@@ -22,7 +22,7 @@ namespace ChillSharp.Schema.Contracts
     /// <summary>
     /// Runtime-configurable options persisted for a specific Chill entity type.
     /// </summary>
-    public class ChillDtoEntityOptions
+    public class ChillDtoEntityOptions : IChillDtoEntityOptions
     {
         /// <summary>
         /// Logical Chill type identifier.

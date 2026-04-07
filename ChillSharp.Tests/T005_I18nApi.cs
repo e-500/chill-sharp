@@ -18,7 +18,7 @@
  */
 
 using Microsoft.EntityFrameworkCore;
-using ChillSharp.EF.ServiceModel.I18n;
+using ChillSharp.I18n.Model;
 using ChillSharp.I18n.Contracts;
 using System.Net;
 using System.Net.Http;

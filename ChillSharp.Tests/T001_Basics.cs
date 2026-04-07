@@ -285,7 +285,7 @@ namespace ChillSharp.Tests
             var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
             var chillType = "Model.Post";
 
-            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
             {
                 ChillType = chillType,
                 LabelFormatString = "{Title} - {Author} - {FullTextContent}",
@@ -303,7 +303,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual("Configured author.Configured title", post.GetShortLabel(context));
             Assert.AreEqual("Configured author::Configured title::0", post.GetFullTextContent(context));
 
-            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
             {
                 ChillType = chillType,
                 LabelFormatString = "{Author}",

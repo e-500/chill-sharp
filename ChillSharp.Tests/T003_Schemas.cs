@@ -35,6 +35,8 @@ using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.Reflection;
 using System.ComponentModel.DataAnnotations;
+using ChillSharp.Schema.Contracts;
+using ChillSharp.Schema;
 
 namespace ChillSharp.Tests
 {
@@ -187,9 +189,9 @@ namespace ChillSharp.Tests
             await context.Database.EnsureCreatedAsync();
             var cache = new ChillSharp.Schema.ChillSchemaCache();
             var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
-            var dtoEngine = new ChillDtoEngine(context, schemaService);
+            var dtoEngine = new ChillDtoEngine(context); //, schemaService);
 
-            var defaultOptions = dtoEngine.GetEntityOptions("Model.Post");
+            var defaultOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.AreEqual("Model.Post", defaultOptions.ChillType);
             Assert.IsTrue(defaultOptions.ChecksumEnabled);
             Assert.IsFalse(defaultOptions.ChangeLogEnabled);
@@ -199,7 +201,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual("{Title}", defaultOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title} {Author}", defaultOptions.FullTextContentFormatString);
 
-            var updatedOptions = dtoEngine.SetEntityOptions(new ChillDtoEntityOptions
+            var updatedOptions = schemaService.SetEntityOptionsAsync(new ChillDtoEntityOptions
             {
                 ChillType = "Model.Post",
                 ChecksumEnabled = false,
@@ -209,7 +211,7 @@ namespace ChillSharp.Tests
                 EnableMCP = true,
                 MCPDescription = "Post MCP runtime description.",
                 ChangeLogEnabled = true
-            });
+            }).GetAwaiter().GetResult();
 
             Assert.AreEqual("Model.Post", updatedOptions.ChillType);
             Assert.IsFalse(updatedOptions.ChecksumEnabled);
@@ -220,7 +222,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual("{Author}.{Title}", updatedOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title}::{Author}", updatedOptions.FullTextContentFormatString);
 
-            var persistedOptions = dtoEngine.GetEntityOptions("Model.Post");
+            var persistedOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.IsFalse(persistedOptions.ChecksumEnabled);
             Assert.IsTrue(persistedOptions.ChangeLogEnabled);
             Assert.IsTrue(persistedOptions.EnableMCP);
@@ -345,7 +347,6 @@ namespace ChillSharp.Tests
             await authService.AssignRoleAsync(user.Guid, role.Guid);
 
             var controller = new ChillSchemaController(
-                new StubDtoEngine(),
                 context,
                 schemaService,
                 authService,
@@ -465,7 +466,7 @@ namespace ChillSharp.Tests
 
         private static ChillSchemaController CreateSchemaController()
         {
-            var controller = new ChillSchemaController(new StubDtoEngine(), new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"), new StubSchemaService());
+            var controller = new ChillSchemaController(new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"), new StubSchemaService());
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -528,7 +529,7 @@ namespace ChillSharp.Tests
             }
         }
 
-        private sealed class StubSchemaService : IChillSchemaManagementService
+        private sealed class StubSchemaService : IChillSchemaService
         {
             private readonly List<ChillDtoMenuItem> _menuItems = [];
 
@@ -570,6 +571,11 @@ namespace ChillSharp.Tests
                     }
                 }
                 return Task.CompletedTask;
+            }
+
+            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
             }
         }
         private sealed class StubDtoEngine : IChillDtoEngine

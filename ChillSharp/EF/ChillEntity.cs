@@ -19,6 +19,7 @@
 
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
+using ChillSharp.Schema;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Reflection;
@@ -264,7 +265,7 @@ namespace ChillSharp.EF
         internal void AppendChangeLogSnapshot(IChillContext context)
         {
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), context.GetChillTypePrefix());
-            if (!context.GetEntityOptions(chillType).ChangeLogEnabled)
+            if (!ChillSchemaResolverBridge.GetEntityOptions(context, chillType).ChangeLogEnabled)
             {
                 return;
             }
