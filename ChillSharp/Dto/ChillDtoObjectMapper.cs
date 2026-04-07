@@ -19,6 +19,8 @@
 
 using ChillSharp.Annotations;
 using ChillSharp.EF;
+using ChillSharp.Schema;
+using ChillSharp.Schema.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections;
@@ -151,7 +153,7 @@ namespace ChillSharp.Dto
             PropertyInfo property,
             string propertyName,
             object? value,
-            ChillDtoSchema? defaultSchema,
+            IChillDtoSchema? defaultSchema,
             bool loadTrackedCollections)
         {
             if (value == null)
@@ -238,7 +240,7 @@ namespace ChillSharp.Dto
             throw new ChillException($"Unable to resolve collection element type for '{collectionType.FullName ?? collectionType.Name}'.");
         }
 
-        private static ChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
+        private static IChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
         {
             if (context is not DbContext dbContext)
                 return null;
@@ -246,8 +248,8 @@ namespace ChillSharp.Dto
             try
             {
                 var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
-                var schemaService = serviceProvider.GetService(typeof(IChillSchemaService)) as IChillSchemaService;
-                return schemaService?.GetSchemaAsync(chillType, "default").GetAwaiter().GetResult();
+                var schemaService = serviceProvider.GetService(typeof(IChillSchemaResolverService)) as IChillSchemaResolverService;
+                return schemaService?.ResolveSchema(chillType, "default", context.GetDefaultUserCultureName());
             }
             catch
             {
@@ -255,7 +257,7 @@ namespace ChillSharp.Dto
             }
         }
 
-        private static ChillDtoPropertyType ResolvePropertyType(ChillDtoSchema? schema, string propertyName, Type clrType)
+        private static ChillDtoPropertyType ResolvePropertyType(IChillDtoSchema? schema, string propertyName, Type clrType)
         {
             var schemaPropertyType = schema?.Properties
                 .FirstOrDefault(x => string.Equals(x.Name, propertyName, StringComparison.Ordinal))

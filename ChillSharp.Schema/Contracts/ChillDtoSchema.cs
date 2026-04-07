@@ -33,7 +33,7 @@ namespace ChillSharp.Schema.Contracts
     /// Maps property names to frontend-friendly ChillDtoPropertyType values
     /// as provided by <see cref="ChillDtoPropertyMapper"/>.
     /// </summary>
-    public class ChillDtoSchema
+    public class ChillDtoSchema : IChillDtoSchema
     {
         /// <summary>
         /// Short Chill type identifier exposed to clients.
@@ -75,6 +75,10 @@ namespace ChillSharp.Schema.Contracts
         /// Property schemas exposed for the type.
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
+
+        IReadOnlyDictionary<string, string> IChillDtoSchema.Metadata => Metadata;
+
+        IReadOnlyList<IChillDtoPropertySchema> IChillDtoSchema.Properties => Properties;
 
         /// <summary>
         /// Builds schema metadata from an entity instance.

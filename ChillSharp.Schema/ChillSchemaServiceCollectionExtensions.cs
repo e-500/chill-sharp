@@ -53,6 +53,7 @@ public static class ChillSchemaServiceCollectionExtensions
             return context;
         });
 
+        services.AddScoped<IChillSchemaResolverService, ChillSchemaService>();
         services.AddScoped<IChillSchemaService, ChillSchemaService>();
         services.AddScoped<ChillSchemaManagementAccessFilter>();
         return services;

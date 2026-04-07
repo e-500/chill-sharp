@@ -28,9 +28,9 @@ using ChillSharp.Dto;
 namespace ChillSharp.Schema;
 
 /// <summary>
-/// Default implementation of <see cref="IChillSchemaService"/> backed by EF Core persistence.
+/// Default implementation of <see cref="IChillSchemaManagementService"/> backed by EF Core persistence.
 /// </summary>
-public class ChillSchemaService : IChillSchemaService
+public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverService
 {
     private readonly IChillSchemaDbContext _schemaContext;
     private readonly IChillContext _chillContext;
@@ -44,6 +44,12 @@ public class ChillSchemaService : IChillSchemaService
         _schemaContext = schemaContext;
         _chillContext = chillContext;
         _schemaCache = schemaCache;
+    }
+
+    /// <inheritdoc />
+    public IChillDtoSchema? ResolveSchema(string chillType, string chillViewCode, string? cultureName = null)
+    {
+        return GetSchemaAsync(chillType, chillViewCode, cultureName).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />

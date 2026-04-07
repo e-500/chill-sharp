@@ -44,7 +44,7 @@ public static class ChillMcpServiceCollectionExtensions
         });
 
         services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
-        services.TryAddScoped<IChillSchemaService, ChillSchemaService>();
+        services.TryAddScoped<IChillSchemaResolverService, ChillSchemaService>();
         services.AddScoped<IChillMcpService, ChillMcpService>();
         return services;
     }

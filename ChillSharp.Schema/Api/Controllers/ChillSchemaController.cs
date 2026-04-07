@@ -39,7 +39,7 @@ public sealed class ChillSchemaController : ControllerBase
 
     public ChillSchemaController(
         IChillContext context,
-        IChillSchemaService? schemaService,
+        IChillSchemaService schemaService,
         IChillAuthService? authService = null,
         IChillAuthIdentityResolver? identityResolver = null)
     {

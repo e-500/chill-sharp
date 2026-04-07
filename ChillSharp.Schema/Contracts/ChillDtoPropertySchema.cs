@@ -32,7 +32,7 @@ namespace ChillSharp.Schema.Contracts
     /// Describes how a DTO property should be represented at the front-end.
     /// Contains metadata and presentation hints for various data types.
     /// </summary>
-    public class ChillDtoPropertySchema
+    public class ChillDtoPropertySchema : IChillDtoPropertySchema
     {
         /// <summary>
         /// Initializes an empty property schema instance.
@@ -244,6 +244,10 @@ namespace ChillSharp.Schema.Contracts
         /// Regular-expression hint for string validation.
         /// </summary>
         public string RegexPattern { get; set; } = string.Empty;
+
+        IReadOnlyList<string> IChillDtoPropertySchema.EnumValues => EnumValues;
+
+        IReadOnlyDictionary<string, string> IChillDtoPropertySchema.Metadata => Metadata;
 
         /// <summary>
         /// Creates a schema preconfigured for decimal values.

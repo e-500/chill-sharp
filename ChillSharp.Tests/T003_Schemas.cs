@@ -528,12 +528,12 @@ namespace ChillSharp.Tests
             }
         }
 
-        private sealed class StubSchemaService : IChillSchemaService
+        private sealed class StubSchemaService : IChillSchemaManagementService
         {
             private readonly List<ChillDtoMenuItem> _menuItems = [];
 
-            public Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
-                => Task.FromResult<ChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
+            public Task<IChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
+                => Task.FromResult<IChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
 
             public Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default)
                 => Task.FromResult(schema);
