@@ -20,8 +20,6 @@
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
 using ChillSharp.Schema.Contracts;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ChillSharp.Schema;
 
@@ -31,18 +29,12 @@ public static class ChillSchemaResolverBridge
     {
         var normalizedType = string.IsNullOrWhiteSpace(chillType) ? "default" : chillType.Trim();
 
-        if (context is DbContext dbContext)
+        try
         {
-            try
-            {
-                var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
-                var schemaResolver = serviceProvider.GetService(typeof(IChillSchemaResolverService)) as IChillSchemaResolverService;
-                if (schemaResolver != null)
-                    return schemaResolver.GetEntityOptions(normalizedType);
-            }
-            catch
-            {
-            }
+            return context.GetSchemaService().GetEntityOptions(normalizedType);
+        }
+        catch
+        {
         }
 
         var defaults = ResolveEntityAttributeDefaults(context, normalizedType);

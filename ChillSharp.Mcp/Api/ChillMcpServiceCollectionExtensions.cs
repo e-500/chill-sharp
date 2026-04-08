@@ -44,6 +44,8 @@ public static class ChillMcpServiceCollectionExtensions
         });
 
         services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
+        services.TryAddScoped<IChillSchemaRuntimeContext>(provider =>
+            new ChillContextSchemaRuntimeContext(provider.GetRequiredService<IChillContext>()));
         services.TryAddScoped<IChillSchemaResolverService, ChillSchemaService>();
         services.AddScoped<IChillMcpService, ChillMcpService>();
         return services;

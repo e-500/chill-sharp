@@ -46,10 +46,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step001_TestSchema()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
-            var defaultCultureClient = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill", CultureName: "it-IT");
+            var defaultCultureClient = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var blogSchema = cli.GetSchema("Model.Blog", "default");
             Assert.IsNotNull(blogSchema, "GetSchema('Model.Blog', 'default') returned null");
@@ -155,15 +155,15 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step006_GetSchemaListReturnsRegisteredEntitiesAndQueries()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var italianClient = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
-            var defaultClient = new ChillSharpClient("http://localhost:5000/api/chill");
+            var italianClient = new ChillSharpClient("http://localhost:6002/api/chill", CultureName: "it-IT");
+            var defaultClient = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var italianItems = italianClient.GetSchemaList();
             var defaultItems = defaultClient.GetSchemaList();
 
-            Assert.IsGreaterThanOrEqualTo(italianItems.Count, 4, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
+            Assert.IsGreaterThanOrEqualTo(4, italianItems.Count, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
 
             var blogEntity = italianItems.Single(x => x.Type == "entity" && x.ChillType == "Model.Blog");
             Assert.AreEqual("Blog", blogEntity.Name);
@@ -188,7 +188,10 @@ namespace ChillSharp.Tests
             await using var context = new EF.DummyContext(options);
             await context.Database.EnsureCreatedAsync();
             var cache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
             var dtoEngine = new ChillDtoEngine(context); //, schemaService);
 
             var defaultOptions = schemaService.GetEntityOptions("Model.Post");
@@ -307,7 +310,10 @@ namespace ChillSharp.Tests
             await context.Database.EnsureCreatedAsync();
 
             var cache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
             var authService = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
 
             var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
@@ -388,7 +394,10 @@ namespace ChillSharp.Tests
             await context.Database.EnsureCreatedAsync();
 
             var cache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
 
             var root = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
@@ -477,7 +486,10 @@ namespace ChillSharp.Tests
             await context.Database.EnsureCreatedAsync();
             var cache = new ChillSharp.Schema.ChillSchemaCache();
 
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
 
             var controller = new ChillSchemaController(context, schemaService);
             controller.ControllerContext = new ControllerContext

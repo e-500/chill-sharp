@@ -29,14 +29,14 @@ public static class ChillEntityOptionsRuntimeCache
 {
     private static readonly ConcurrentDictionary<string, ChillDtoEntityOptions> Cache = new();
 
-    public static ChillDtoEntityOptions GetOrAdd(IChillContext context, string chillType, Func<ChillDtoEntityOptions> factory)
+    public static ChillDtoEntityOptions GetOrAdd(string runtimeContextKey, string chillType, Func<ChillDtoEntityOptions> factory)
     {
-        return Cache.GetOrAdd(MakeKey(context, chillType), _ => factory());
+        return Cache.GetOrAdd(MakeKey(runtimeContextKey, chillType), _ => factory());
     }
 
-    public static void Invalidate(IChillContext context, string chillType)
+    public static void Invalidate(string runtimeContextKey, string chillType)
     {
-        Cache.TryRemove(MakeKey(context, chillType), out _);
+        Cache.TryRemove(MakeKey(runtimeContextKey, chillType), out _);
     }
 
     public static void InvalidateAll()
@@ -44,9 +44,10 @@ public static class ChillEntityOptionsRuntimeCache
         Cache.Clear();
     }
 
-    private static string MakeKey(IChillContext context, string chillType)
+    private static string MakeKey(string runtimeContextKey, string chillType)
     {
         var normalizedType = string.IsNullOrWhiteSpace(chillType) ? "default" : chillType.Trim();
-        return $"{context.GetType().FullName}|{normalizedType}";
+        var normalizedContextKey = string.IsNullOrWhiteSpace(runtimeContextKey) ? "default" : runtimeContextKey.Trim();
+        return $"{normalizedContextKey}|{normalizedType}";
     }
 }

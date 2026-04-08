@@ -47,6 +47,11 @@ public sealed class ChillSchemaController : ControllerBase
         _schemaService = schemaService;
         _authService = authService;
         _identityResolver = identityResolver;
+
+        if (schemaService is IChillSchemaResolverService schemaResolver)
+        {
+            _context.RegisterSchemaService(schemaResolver);
+        }
     }
 
     [HttpGet("get-schema")]

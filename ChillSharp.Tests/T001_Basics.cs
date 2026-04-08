@@ -40,10 +40,10 @@ namespace ChillSharp.Tests
         public void Step001_AddEntity()
         {
             // Start the shared API host only once for the whole test run.
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Use the HTTP client wrapper against the Chill endpoints.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             // Create a new Post entity.
             var e = new ChillDtoEntity();
@@ -84,7 +84,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step002_UpdateEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure a seed entity exists for this step.
             if (!PostGuid.HasValue)
@@ -93,7 +93,7 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(PostGuid);
 
             // Update only the Title field.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -124,7 +124,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step003_DeleteEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure the entity exists before attempting deletion.
             if (!PostGuid.HasValue)
@@ -132,7 +132,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(PostGuid);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -155,7 +155,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step004_FindEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure the entity exists before trying to find it.
             if (!PostGuid.HasValue)
@@ -163,7 +163,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(PostGuid);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -180,9 +180,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step005_BaseEntityStoresAuditFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var postGuid = Guid.NewGuid();
 
             var createEntity = new ChillDtoEntity
@@ -201,7 +201,7 @@ namespace ChillSharp.Tests
             var initialLastUpdateUtc = createdPost.LastUpdateUtc;
 
             Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
-            Assert.IsGreaterThan(createdPost.Checksum, 0L);
+            Assert.IsGreaterThan(0L, createdPost.Checksum);
             Assert.IsNotNull(createdPost.LastUpdateUtc);
 
             await Task.Delay(20);
@@ -459,9 +459,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step009_QueryFullTextSearchSplitsTokensAndUsesAndLogic()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var tokenA = $"alpha-{Guid.NewGuid():N}";
             var tokenB = $"beta-{Guid.NewGuid():N}";
 
@@ -523,9 +523,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step010_AutocompleteEntityReturnsUpdatedFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var entity = new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -544,9 +544,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step011_AutocompleteQueryReturnsUpdatedFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var query = new ChillDtoQuery
             {
                 ChillType = "Query.BlogQuery"
@@ -563,9 +563,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step012_AutocompleteDoesNotPersistEntityChanges()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var created = client.Create(new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -692,9 +692,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step016_ValidateEntityReturnsValidationErrors()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var errors = client.Validate(new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -713,9 +713,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step017_ValidateQueryReturnsValidationErrors()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var errors = client.Validate(new ChillDtoQuery
             {
                 ChillType = "Query.BlogQuery",
@@ -733,9 +733,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step018_ChunkSupportsValidateAndAutocompleteOperations()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var operations = client.Chunk(
             [
                 new ChillOperation

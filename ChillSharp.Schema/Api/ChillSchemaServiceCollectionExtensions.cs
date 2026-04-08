@@ -33,13 +33,24 @@ public static class ChillSchemaServiceCollectionExtensions
     /// Registers the ChillSharp schema persistence services against an existing EF Core context.
     /// </summary>
     public static IServiceCollection AddChillSchemaApi<TContext>(this IServiceCollection services)
-        where TContext : DbContext, IChillSchemaDbContext
+        where TContext : DbContext, IChillContext, IChillSchemaDbContext
     {
         services.AddControllers()
             .AddApplicationPart(Assembly.GetExecutingAssembly())
             .AddControllersAsServices();
 
         services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
+
+        services.AddScoped<IChillContext>(provider =>
+        {
+            var context = provider.GetService<TContext>();
+            if (context == null)
+            {
+                throw new InvalidOperationException($"DbContext of type {typeof(TContext).Name} is not registered in the host application.");
+            }
+
+            return context;
+        });
 
         services.AddScoped<IChillSchemaDbContext>(provider =>
         {
@@ -50,6 +61,12 @@ public static class ChillSchemaServiceCollectionExtensions
             }
 
             return context;
+        });
+
+        services.AddScoped<IChillSchemaRuntimeContext>(provider =>
+        {
+            var context = provider.GetRequiredService<IChillContext>();
+            return new ChillContextSchemaRuntimeContext(context);
         });
 
         services.AddScoped<IChillSchemaResolverService, ChillSchemaService>();

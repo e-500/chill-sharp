@@ -22,6 +22,9 @@ using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Schema;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ChillSharp
 {
@@ -178,13 +181,41 @@ namespace ChillSharp
         }
 
         /// <summary>
-        /// Returns whether checksum calculation is enabled for the specified Chill type.
+        /// Returns the schema resolver associated with the current Chill context.
         /// </summary>
-        /// <param name="chillType">The logical Chill type identifier.</param>
-        /// <returns><see langword="true"/> when checksum calculation is enabled; otherwise <see langword="false"/>.</returns>
-        bool IsEntityChecksumEnabled(string chillType)
+        IChillSchemaResolverService GetSchemaService()
         {
-            return ChillSchemaResolverBridge.GetEntityOptions(this, chillType).ChecksumEnabled;
+            if (ChillContextSchemaServiceCache.Cache.TryGetValue(this, out var cachedSchemaService))
+            {
+                return cachedSchemaService;
+            }
+
+            if (this is DbContext dbContext)
+            {
+                try
+                {
+                    var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
+                    var schemaService = serviceProvider.GetService(typeof(IChillSchemaResolverService)) as IChillSchemaResolverService;
+                    if (schemaService != null)
+                        return schemaService;
+                }
+                catch
+                {
+                }
+            }
+            throw new ChillException(
+                $"No {nameof(IChillSchemaResolverService)} is available for context type {GetType().FullName}.");
+        }
+
+        /// <summary>
+        /// Associates a schema resolver with the current Chill context instance.
+        /// </summary>
+        void RegisterSchemaService(IChillSchemaResolverService schemaService)
+        {
+            ArgumentNullException.ThrowIfNull(schemaService);
+
+            ChillContextSchemaServiceCache.Cache.Remove(this);
+            ChillContextSchemaServiceCache.Cache.Add(this, schemaService);
         }
 
         private static MetadataCatalog GetMetadataCatalog(IChillContext context)
@@ -313,6 +344,11 @@ namespace ChillSharp
     internal static class ChillContextMetadataCache
     {
         internal static readonly ConcurrentDictionary<(System.Reflection.Assembly Assembly, string Prefix), MetadataCatalog> MetadataCache = new();
+    }
+
+    internal static class ChillContextSchemaServiceCache
+    {
+        internal static readonly ConditionalWeakTable<IChillContext, IChillSchemaResolverService> Cache = new();
     }
 }
 

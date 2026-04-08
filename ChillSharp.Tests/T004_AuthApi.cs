@@ -50,10 +50,10 @@ public sealed class AuthApi
     public async Task Step001_CreateAuthContextAndEndpoints()
     {
         // Start the shared API host with both ChillApi and ChillAuthApi mapped.
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         // Use the ChillSharp client auth methods against the sibling auth API endpoints.
-        var client = new ChillSharpClient("http://localhost:5000/api/chill");
+        var client = new ChillSharpClient("http://localhost:6002/api/chill");
 
         // Create an auth user through the REST API.
         var user = client.CreateAuthUser(new CreateAuthUserRequest
@@ -339,9 +339,9 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step006_RefactoredManagementEndpointsReturnStructuredPayloads()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
-        var client = new ChillSharpClient("http://localhost:5000/api/chill");
+        var client = new ChillSharpClient("http://localhost:6002/api/chill");
 
         var role = client.SetAuthRole(new SetAuthRoleRequest
         {

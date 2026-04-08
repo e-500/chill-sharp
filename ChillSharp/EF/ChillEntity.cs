@@ -146,7 +146,7 @@ namespace ChillSharp.EF
             LastUpdateUtc = DateTime.UtcNow;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
-            Checksum = Context.IsEntityChecksumEnabled(chillType) ? CalculateChecksum() : 0;
+            Checksum = Context.GetSchemaService().GetEntityOptions(chillType).ChecksumEnabled ? CalculateChecksum() : 0;
         }
         #endregion
 

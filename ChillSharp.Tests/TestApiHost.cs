@@ -36,7 +36,7 @@ internal static class TestApiHost
     private static bool _apiServiceUpAndRunning;
     private static bool _httpsApiServiceUpAndRunning;
 
-    public const string HttpBaseUrl = "http://localhost:5000/";
+    public const string HttpBaseUrl = "http://localhost:6002/";
     public const string HttpsBaseUrl = "https://localhost:5002/";
 
     public static EF.DummyContext CreateDbContext()

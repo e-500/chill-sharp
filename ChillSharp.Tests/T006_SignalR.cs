@@ -42,10 +42,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step001_TypeSubscriptionReceivesCreateUpdateDeleteNotifications()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             var connection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5000/api/chill/notify")
+                .WithUrl("http://localhost:6002/api/chill/notify")
                 .Build();
 
             var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
@@ -64,7 +64,7 @@ namespace ChillSharp.Tests
 
             try
             {
-                var client = new ChillSharpClient("http://localhost:5000/api/chill");
+                var client = new ChillSharpClient("http://localhost:6002/api/chill");
                 var postGuid = Guid.NewGuid();
 
                 var createEntity = new ChillDtoEntity
@@ -116,10 +116,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step002_EntitySubscriptionOnlyReceivesTheRegisteredEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             var connection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5000/api/chill/notify")
+                .WithUrl("http://localhost:6002/api/chill/notify")
                 .Build();
 
             var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
@@ -137,7 +137,7 @@ namespace ChillSharp.Tests
 
             try
             {
-                var client = new ChillSharpClient("http://localhost:5000/api/chill");
+                var client = new ChillSharpClient("http://localhost:6002/api/chill");
                 var targetPost = new ChillDtoEntity
                 {
                     ChillType = "Model.Post",
@@ -183,10 +183,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step003_ProtectedHubRequiresBearerAuthenticationAndAcceptsSignalRAccessToken()
         {
-            ProtectedSignalRAuthApiHost.EnsureStarted();
+            ProtectedSignalRAuthApiHost.EnsureHttpStarted(6002);
 
             var anonymousConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5004/api/chill/notify")
+                .WithUrl("http://localhost:6002/api/chill/notify")
                 .Build();
 
             try
@@ -202,7 +202,7 @@ namespace ChillSharp.Tests
                 await anonymousConnection.DisposeAsync();
             }
 
-            var client = new ChillSharpClient("http://localhost:5004/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityRequest
             {
                 UserName = $"signalr.user.{Guid.NewGuid():N}",
@@ -214,7 +214,7 @@ namespace ChillSharp.Tests
             });
 
             var authenticatedConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5004/api/chill/notify", options =>
+                .WithUrl("http://localhost:6002/api/chill/notify", options =>
                 {
                     options.AccessTokenProvider = () => Task.FromResult<string?>(registerResponse.AccessToken);
                 })
@@ -263,7 +263,7 @@ namespace ChillSharp.Tests
             private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "protected-signalr-auth-api-host.db");
             private static bool _apiServiceUpAndRunning;
 
-            public static void EnsureStarted()
+            public static void EnsureHttpStarted(int HttpPort = 5002)
             {
                 if (_apiServiceUpAndRunning)
                 {
@@ -285,7 +285,7 @@ namespace ChillSharp.Tests
                         ctx.Database.EnsureCreated();
 
                         var builder = WebApplication.CreateBuilder(Array.Empty<string>());
-                        builder.WebHost.UseUrls("http://localhost:5004");
+                        builder.WebHost.UseUrls($"http://localhost:{HttpPort}");
                         builder.Logging.ClearProviders();
                         builder.Services.AddDbContext<EF.DummyContext>(options =>
                             options.UseSqlite($"Data Source={DatabasePath}"));

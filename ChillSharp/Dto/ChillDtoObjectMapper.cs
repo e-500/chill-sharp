@@ -242,14 +242,9 @@ namespace ChillSharp.Dto
 
         private static IChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
         {
-            if (context is not DbContext dbContext)
-                return null;
-
             try
             {
-                var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
-                var schemaService = serviceProvider.GetService(typeof(IChillSchemaResolverService)) as IChillSchemaResolverService;
-                return schemaService?.ResolveSchema(chillType, "default", context.GetDefaultUserCultureName());
+                return context.GetSchemaService().ResolveSchema(chillType, "default", context.GetDefaultUserCultureName());
             }
             catch
             {

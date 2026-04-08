@@ -33,17 +33,22 @@ namespace ChillSharp.Schema;
 public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverService
 {
     private readonly IChillSchemaDbContext _schemaContext;
-    private readonly IChillContext _chillContext;
+    private readonly IChillSchemaRuntimeContext _runtimeContext;
     private readonly IChillSchemaCache _schemaCache;
 
     /// <summary>
     /// Initializes the schema service.
     /// </summary>
-    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillContext chillContext, IChillSchemaCache schemaCache)
+    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillSchemaRuntimeContext runtimeContext, IChillSchemaCache schemaCache)
     {
         _schemaContext = schemaContext;
-        _chillContext = chillContext;
+        _runtimeContext = runtimeContext;
         _schemaCache = schemaCache;
+
+        if (schemaContext is IChillContext chillContext)
+        {
+            chillContext.RegisterSchemaService(this);
+        }
     }
 
     /// <inheritdoc />
@@ -194,7 +199,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
         _schemaCache.InvalidateEntityOptions(chillType);
-        ChillEntityOptionsRuntimeCache.Invalidate(_chillContext, chillType);
+        ChillEntityOptionsRuntimeCache.Invalidate(_runtimeContext.RuntimeContextKey, chillType);
 
         return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
         {
@@ -321,25 +326,20 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     }
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
     {
-        var activatedType = ChillTypeResolver.ActivateType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
+        var activatedType = ChillTypeResolver.ActivateType(_runtimeContext.ModelAssembly, chillType, _runtimeContext.ChillTypePrefix);
         var fullChillType = PrepareFullChillType(chillType);
-
-        if (activatedType is IChillEntity chillEntity)
+        var schema = _runtimeContext.BuildSchema(activatedType, chillViewCode, cultureName);
+        if (schema is ChillDtoSchema typedSchema)
         {
-            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
+            return typedSchema;
         }
 
-        if (activatedType is IChillQuery<IChillEntity> chillQuery)
-        {
-            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
-        }
-
-        throw new ChillException($"Activated type '{fullChillType}' is not a Chill entity or query.");
+        throw new ChillException($"The runtime schema builder returned '{schema.GetType().FullName}' instead of {nameof(ChillDtoSchema)} for '{fullChillType}'.");
     }
 
     private string PrepareFullChillType(string chillType)
     {
-        return ChillTypeResolver.PrepareFullChillType(chillType, _chillContext.GetChillTypePrefix());
+        return ChillTypeResolver.PrepareFullChillType(chillType, _runtimeContext.ChillTypePrefix);
     }
 
     private static string NormalizeKey(string value)
@@ -409,7 +409,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     {
         try
         {
-            var resolvedType = ChillTypeResolver.ResolveType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
+            var resolvedType = ChillTypeResolver.ResolveType(_runtimeContext.ModelAssembly, chillType, _runtimeContext.ChillTypePrefix);
             var chillAttribute = resolvedType.GetCustomAttributes(typeof(ChillEntityAttribute), inherit: true)
                 .OfType<ChillEntityAttribute>()
                 .FirstOrDefault();
@@ -433,7 +433,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     private string NormalizeCultureName(string? cultureName)
     {
         return string.IsNullOrWhiteSpace(cultureName)
-            ? NormalizeKey(_chillContext.GetDefaultUserCultureName())
+            ? NormalizeKey(_runtimeContext.DefaultUserCultureName)
             : NormalizeKey(cultureName);
     }
 
