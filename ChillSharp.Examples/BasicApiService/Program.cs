@@ -59,7 +59,13 @@ namespace ChillSharp.Examples.BasicApiService
             var apiServer = Task.Run(() =>
             {
                 var builder = WebApplication.CreateBuilder(args);
-                builder.Services.AddChillApi<DummyContext>();
+                builder.Services.AddChillApi<DummyContext>(options =>
+                {
+                    options.EnableAuthApi = false;
+                    options.EnableI18nApi = false;
+                    options.EnableSchemaApi = false;
+                    options.EnableMcpApi = false;
+                });
                 var app = builder.Build();
                 app.MapChillApi();
                 app.Run();

@@ -311,7 +311,7 @@ public sealed class AuthApi
 
             Assert.AreEqual(rootUserName, loginResponse.UserName);
             Assert.IsFalse(string.IsNullOrWhiteSpace(loginResponse.AccessToken));
-            Assert.AreEqual(1, client.GetAuthUsers().Count);
+            Assert.HasCount(1, client.GetAuthUsers());
 
             await using var verificationContext = RootBootstrapAuthApiHost.CreateDbContext();
             var persistedIdentityUser = await verificationContext.Set<IdentityUser>().FirstOrDefaultAsync(x => x.UserName == rootUserName);
@@ -403,16 +403,16 @@ public sealed class AuthApi
         Assert.AreEqual("MM/DD/YYYY", fetchedUser.DisplayDateFormat);
         Assert.AreEqual("1,000.00", fetchedUser.DisplayNumberFormat);
         Assert.AreEqual("BLOG.USER", fetchedUser.MenuHierarchy);
-        Assert.AreEqual(1, fetchedUser.Roles.Count);
+        Assert.HasCount(1, fetchedUser.Roles);
         Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
         Assert.AreEqual("BLOG.ADMIN", fetchedUser.Roles[0].MenuHierarchy);
-        Assert.AreEqual(1, fetchedUser.Permissions.Count);
+        Assert.HasCount(1, fetchedUser.Permissions);
         Assert.IsNotNull(fetchedRole);
         Assert.AreEqual("BLOG.ADMIN", fetchedRole.MenuHierarchy);
-        Assert.AreEqual(1, fetchedRole.Users.Count);
+        Assert.HasCount(1, fetchedRole.Users);
         Assert.AreEqual(user.Guid, fetchedRole.Users[0].Guid);
         Assert.AreEqual("BLOG.USER", fetchedRole.Users[0].MenuHierarchy);
-        Assert.AreEqual(1, fetchedRole.Permissions.Count);
+        Assert.HasCount(1, fetchedRole.Permissions);
         Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
         Assert.IsTrue(userList!.Single(x => x.Guid == user.Guid).CanManageSchema);
         Assert.AreEqual("en-US", userList!.Single(x => x.Guid == user.Guid).DisplayCultureName);
@@ -456,7 +456,7 @@ public sealed class AuthApi
             ]
         });
 
-        Assert.AreEqual(2, updatedRole.Permissions.Count);
+        Assert.HasCount(2, updatedRole.Permissions);
         Assert.IsTrue(updatedRole.Permissions.Any(x => x.Guid == existingRolePermissionGuid));
         Assert.AreEqual("BLOG.EDITOR", updatedRole.MenuHierarchy);
 
@@ -545,9 +545,9 @@ public sealed class AuthApi
         Assert.IsNotNull(permissions);
         Assert.IsNotNull(permissions.User);
         Assert.AreEqual(userGuid, permissions.User.Guid);
-        Assert.AreEqual(1, permissions.Permissions.Count);
-        Assert.AreEqual(1, permissions.Roles.Count);
-        Assert.AreEqual(1, permissions.Roles[0].Permissions.Count);
+        Assert.HasCount(1, permissions.Permissions);
+        Assert.HasCount(1, permissions.Roles);
+        Assert.HasCount(1, permissions.Roles[0].Permissions);
 
         var getUserList = await httpClient.GetAsync("api/chill-auth/get-user-list");
         Assert.AreEqual(HttpStatusCode.Forbidden, getUserList.StatusCode);

@@ -18,10 +18,6 @@
  */
 
 using ChillSharp.Api;
-using ChillSharp.Auth.Api;
-using ChillSharp.I18n.Api;
-using ChillSharp.Mcp.Api;
-using ChillSharp.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -59,7 +55,7 @@ internal static class TestApiHost
         return new EF.DummyContext(options);
     }
 
-    public static void EnsureStarted()
+    public static void EnsureStarted(int HttpPort = 5000)
     {
         if (_apiServiceUpAndRunning)
         {
@@ -81,13 +77,10 @@ internal static class TestApiHost
                 ctx.Database.EnsureCreated();
 
                 var builder = WebApplication.CreateBuilder(Array.Empty<string>());
+                builder.WebHost.UseUrls($"http://localhost:{HttpPort}");
                 builder.Services.AddDbContext<EF.DummyContext>(options =>
                     options.UseSqlite($"Data Source={DatabasePath}"));
                 builder.Services.AddChillApi<EF.DummyContext>();
-                builder.Services.AddChillAuthApi<EF.DummyContext>();
-                builder.Services.AddChillI18nApi<EF.DummyContext>();
-                builder.Services.AddChillSchema<EF.DummyContext>();
-                builder.Services.AddChillMcp<EF.DummyContext>();
 
                 var app = builder.Build();
                 app.MapChillApi();
@@ -99,7 +92,7 @@ internal static class TestApiHost
         }
     }
 
-    public static void EnsureHttpsStarted()
+    public static void EnsureHttpsStarted(int HttpsPort = 5002)
     {
         if (_httpsApiServiceUpAndRunning)
         {
@@ -123,15 +116,11 @@ internal static class TestApiHost
                 var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                 builder.WebHost.ConfigureKestrel(options =>
                 {
-                    options.ListenLocalhost(5002, listenOptions => listenOptions.UseHttps(HttpsCertificate));
+                    options.ListenLocalhost(HttpsPort, listenOptions => listenOptions.UseHttps(HttpsCertificate));
                 });
                 builder.Services.AddDbContext<EF.DummyContext>(options =>
                     options.UseSqlite($"Data Source={HttpsDatabasePath}"));
                 builder.Services.AddChillApi<EF.DummyContext>();
-                builder.Services.AddChillAuthApi<EF.DummyContext>();
-                builder.Services.AddChillI18nApi<EF.DummyContext>();
-                builder.Services.AddChillSchema<EF.DummyContext>();
-                builder.Services.AddChillMcp<EF.DummyContext>();
 
                 var app = builder.Build();
                 app.MapChillApi();

@@ -65,7 +65,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.HasCount(1, qRes.Results);
+            Assert.AreEqual(1, qRes.Results.Count);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -109,7 +109,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.HasCount(1, qRes.Results);
+            Assert.AreEqual(1, qRes.Results.Count);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -146,7 +146,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.IsEmpty(qRes.Results);
+            Assert.AreEqual(0, qRes.Results.Count);
         }
 
         /// <summary>
@@ -201,7 +201,7 @@ namespace ChillSharp.Tests
             var initialLastUpdateUtc = createdPost.LastUpdateUtc;
 
             Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
-            Assert.IsGreaterThan(createdPost.Checksum, 0L);
+            Assert.IsTrue(createdPost.Checksum > 0);
             Assert.IsNotNull(createdPost.LastUpdateUtc);
 
             await Task.Delay(20);
@@ -515,7 +515,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(result);
             Assert.IsNotNull(result.Results);
-            Assert.HasCount(1, result.Results);
+            Assert.AreEqual(1, result.Results.Count);
             Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
             Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
         }
@@ -834,7 +834,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(result);
             Assert.IsNotNull(result.Results);
-            Assert.HasCount(1, result.Results);
+            Assert.AreEqual(1, result.Results.Count);
             Assert.AreEqual(tokenA, result.Results[0].Properties["Title"]?.ToString());
             Assert.AreEqual(tokenB, result.Results[0].Properties["Author"]?.ToString());
         }
@@ -868,7 +868,7 @@ namespace ChillSharp.Tests
                 FullTextSearch = token
             });
 
-            Assert.HasCount(1, results);
+            Assert.AreEqual(1, results.Count);
             Assert.AreEqual(token, ((Post)results[0]).Title);
         }
 

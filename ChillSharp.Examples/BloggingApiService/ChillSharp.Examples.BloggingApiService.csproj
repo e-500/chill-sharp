@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
     <ProjectReference Include="..\..\ChillSharp\ChillSharp.csproj" />
     <ProjectReference Include="..\..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
     <ProjectReference Include="..\..\ChillSharp.I18n\ChillSharp.I18n.csproj" />

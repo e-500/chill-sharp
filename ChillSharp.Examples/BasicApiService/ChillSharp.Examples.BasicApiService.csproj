@@ -18,9 +18,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ChillSharp" Version="1.0.0" />
     <PackageReference Include="ChillSharp.Client" Version="1.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

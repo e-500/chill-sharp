@@ -282,7 +282,7 @@ public sealed class I18nApi
 
         var payload = await response.Content.ReadFromJsonAsync<List<GetTextResponse?>>();
         Assert.IsNotNull(payload);
-        Assert.AreEqual(3, payload.Count);
+        Assert.HasCount(3, payload);
         Assert.IsNotNull(payload[0]);
         Assert.AreEqual("Esistente", payload[0]!.Value);
         Assert.IsNotNull(payload[1]);
@@ -341,7 +341,7 @@ public sealed class I18nApi
             }
         });
 
-        Assert.AreEqual(3, bulk.Count);
+        Assert.HasCount(3, bulk);
         Assert.IsNotNull(bulk[0]);
         Assert.AreEqual("Client text", bulk[0]!.Value);
         Assert.IsNotNull(bulk[1]);

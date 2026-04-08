@@ -20,8 +20,6 @@
 using ChillSharp.Api;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
-using ChillSharp.I18n.Api;
-using ChillSharp.Schema;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -60,12 +58,11 @@ internal static class Program
         builder.Services.AddChillApi<BloggingContext>(options =>
         {
             options.ProtectedApi = protectedApi;
+            options.EnableAuthApi = false;
+            options.EnableI18nApi = enableI18n;
+            options.EnableSchemaApi = enableSchema;
+            options.EnableMcpApi = enableSchema;
         });
-
-        if (enableSchema)
-        {
-            builder.Services.AddChillSchema<BloggingContext>();
-        }
 
         if (enableAuth)
         {
@@ -106,11 +103,6 @@ internal static class Program
                     ?? "Reset your password";
                 options.PasswordResetUrlBase = configuration["CHILLSHARP_AUTH_PASSWORD_RESET_URL"];
             });
-        }
-
-        if (enableI18n)
-        {
-            builder.Services.AddChillI18nApi<BloggingContext>();
         }
 
         var app = builder.Build();

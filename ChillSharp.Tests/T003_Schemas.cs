@@ -139,7 +139,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step005_OpenGenericQueryDefinitionCanBeActivated()
         {
-            var resolverType = typeof(ChillDtoSchema).Assembly.GetType("ChillSharp.Dto.ChillTypeResolver");
+            var resolverType = typeof(IChillContext).Assembly.GetType("ChillSharp.Dto.ChillTypeResolver");
             Assert.IsNotNull(resolverType, "Unable to locate ChillTypeResolver");
 
             var method = resolverType.GetMethod("ActivateType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -163,7 +163,7 @@ namespace ChillSharp.Tests
             var italianItems = italianClient.GetSchemaList();
             var defaultItems = defaultClient.GetSchemaList();
 
-            Assert.IsTrue(italianItems.Count >= 4, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
+            Assert.IsGreaterThanOrEqualTo(italianItems.Count, 4, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
 
             var blogEntity = italianItems.Single(x => x.Type == "entity" && x.ChillType == "Model.Blog");
             Assert.AreEqual("Blog", blogEntity.Name);
@@ -250,16 +250,17 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step010_SchemaControllerEndpointsRespond()
         {
-            var controller = CreateSchemaController();
+            var controller = await CreateSchemaController();
 
-            Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchema("Model.Post", "default"));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetSchema("Model.Post", "default"));
             Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchemaList());
-            Assert.IsInstanceOfType<OkObjectResult>(controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
-            Assert.IsInstanceOfType<OkObjectResult>(controller.GetEntityOptions("Model.Post"));
-            Assert.IsInstanceOfType<OkObjectResult>(controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetEntityOptions("Model.Post"));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
             Assert.IsInstanceOfType<OkObjectResult>(await controller.GetMenu(cancellationToken: CancellationToken.None));
-            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
-            Assert.IsInstanceOfType<NoContentResult>(await controller.DeleteMenu(Guid.NewGuid(), CancellationToken.None));
+            var guid = Guid.NewGuid();
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Guid = guid, Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
+            Assert.IsInstanceOfType<NoContentResult>(await controller.DeleteMenu(guid, CancellationToken.None));
         }
 
         [TestMethod]
@@ -364,12 +365,12 @@ namespace ChillSharp.Tests
 
             var rootResult = (OkObjectResult)await controller.GetMenu(cancellationToken: CancellationToken.None);
             var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
-            Assert.AreEqual(1, rootItems.Count);
+            Assert.HasCount(1, rootItems);
             Assert.AreEqual(sectionA.Guid, rootItems[0].Guid);
 
             var childResult = (OkObjectResult)await controller.GetMenu(sectionA.Guid, CancellationToken.None);
             var childItems = (IReadOnlyList<ChillDtoMenuItem>)childResult.Value!;
-            Assert.AreEqual(1, childItems.Count);
+            Assert.HasCount(1, childItems);
             Assert.AreEqual(sectionAChild.Guid, childItems[0].Guid);
 
             Assert.AreNotEqual(sectionB.Guid, rootItems[0].Guid);
@@ -419,11 +420,11 @@ namespace ChillSharp.Tests
             await schemaService.DeleteMenuAsync(root.Guid, CancellationToken.None);
 
             var remainingRootItems = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
-            Assert.AreEqual(1, remainingRootItems.Count);
+            Assert.HasCount(1, remainingRootItems);
             Assert.AreEqual(sibling.Guid, remainingRootItems[0].Guid);
 
             var deletedChildren = await schemaService.GetMenuAsync(root.Guid, CancellationToken.None);
-            Assert.AreEqual(0, deletedChildren.Count);
+            Assert.IsEmpty(deletedChildren);
         }
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
         {
@@ -464,9 +465,21 @@ namespace ChillSharp.Tests
             }
         }
 
-        private static ChillSchemaController CreateSchemaController()
+        private async static Task<ChillSchemaController> CreateSchemaController()
         {
-            var controller = new ChillSchemaController(new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"), new StubSchemaService());
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schemas-{Guid.NewGuid():N}.db");
+
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+
+            var controller = new ChillSchemaController(context, schemaService);
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -490,7 +503,7 @@ namespace ChillSharp.Tests
             var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
             var filters = new List<IFilterMetadata>();
             var actionArguments = new Dictionary<string, object?>();
-            var controller = CreateSchemaController();
+            var controller = await CreateSchemaController();
             var executingContext = new ActionExecutingContext(actionContext, filters, actionArguments, controller);
 
             await filter.OnActionExecutionAsync(executingContext, () =>

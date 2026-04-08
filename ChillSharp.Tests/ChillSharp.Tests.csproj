@@ -12,6 +12,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="T001_Basics.cs.bck" />
+  </ItemGroup>
+
+  <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.23" />
@@ -26,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
     <ProjectReference Include="..\ChillSharp.Client\ChillSharp.Client.csproj" />
     <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
     <ProjectReference Include="..\ChillSharp.I18n\ChillSharp.I18n.csproj" />

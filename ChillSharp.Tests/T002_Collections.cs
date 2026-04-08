@@ -61,7 +61,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.AreEqual(1, qRes.Results.Count);
+            Assert.HasCount(1, qRes.Results);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -99,7 +99,7 @@ namespace ChillSharp.Tests
             var qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
-            Assert.AreEqual(1, qBlog.Results.Count);
+            Assert.HasCount(1, qBlog.Results);
             var blog = qBlog.Results[0];
 
             // Create a Post and attach it to the Blog by sending the Blog DTO as reference.
@@ -126,7 +126,7 @@ namespace ChillSharp.Tests
             qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
-            Assert.AreEqual(1, qBlog.Results.Count);
+            Assert.HasCount(1, qBlog.Results);
             blog = qBlog.Results[0];
             Assert.IsNotNull(blog);
             Assert.IsTrue(blog.HasValue("Title"));
@@ -183,7 +183,7 @@ namespace ChillSharp.Tests
             var qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
-            Assert.AreEqual(1, qr.Results.Count);
+            Assert.HasCount(1, qr.Results);
             var qPost = qr.Results[0];
 
             Assert.IsNotNull(qPost);
@@ -200,7 +200,7 @@ namespace ChillSharp.Tests
             qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
-            Assert.AreEqual(0, qr.Results.Count);
+            Assert.IsEmpty(qr.Results);
         }
     }
 }
