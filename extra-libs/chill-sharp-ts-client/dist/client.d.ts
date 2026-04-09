@@ -350,13 +350,6 @@ export declare class ChillSharpClient {
     getAuthUserList(): Promise<AuthUserListItem[]>;
     getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse>;
     setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse>;
-    getAuthUsers(): Promise<AuthUserListItem[]>;
-    createAuthUser(payload: CreateAuthUserRequest): Promise<AuthUserListItem>;
-    updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Promise<AuthUserListItem | null>;
-    deleteAuthUser(userGuid: string): Promise<void>;
-    getAuthUserRoles(userGuid: string): Promise<AuthRoleListItem[]>;
-    assignAuthRole(userGuid: string, roleGuid: string): Promise<void>;
-    removeAuthRole(userGuid: string, roleGuid: string): Promise<void>;
     getAuthRoleList(): Promise<AuthRoleListItem[]>;
     getAuthModuleList(): Promise<string[]>;
     getAuthEntityList(module?: string | null): Promise<string[]>;
@@ -365,6 +358,13 @@ export declare class ChillSharpClient {
     getAuthPropertyList(chillType: string): Promise<string[]>;
     getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse>;
     setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse>;
+    getAuthUsers(): Promise<AuthUserListItem[]>;
+    createAuthUser(payload: CreateAuthUserRequest): Promise<AuthUserListItem>;
+    updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Promise<AuthUserListItem | null>;
+    deleteAuthUser(userGuid: string): Promise<void>;
+    getAuthUserRoles(userGuid: string): Promise<AuthRoleListItem[]>;
+    assignAuthRole(userGuid: string, roleGuid: string): Promise<void>;
+    removeAuthRole(userGuid: string, roleGuid: string): Promise<void>;
     getAuthRoles(): Promise<AuthRoleListItem[]>;
     createAuthRole(payload: CreateAuthRoleRequest): Promise<AuthRoleListItem>;
     updateAuthRole(roleGuid: string, payload: UpdateAuthRoleRequest): Promise<AuthRoleListItem | null>;
