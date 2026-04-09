@@ -629,6 +629,149 @@ public sealed class AuthApi
         Assert.AreEqual(PermissionEffect.Deny, deleteResult.MatchedEffect);
     }
 
+    /// <summary>
+    /// Verifies that an authenticated permission manager cannot change their own management flags or active state through the legacy update endpoint.
+    /// </summary>
+    [TestMethod]
+    public async Task Step009_SelfUpdateCannotChangeSensitiveFlags()
+    {
+        SecuredAuthApiHost.EnsureStarted();
+
+        var externalId = $"self-update-{Guid.NewGuid():N}";
+        var userGuid = Guid.NewGuid();
+
+        await using (var seedContext = SecuredAuthApiHost.CreateDbContext())
+        {
+            seedContext.Users.Add(new ChillSharp.Auth.Model.AuthUser
+            {
+                Guid = userGuid,
+                ExternalId = externalId,
+                UserName = $"self.update.{Guid.NewGuid():N}",
+                DisplayName = "Self Update User",
+                IsActive = true,
+                CanManagePermissions = true,
+                CanManageSchema = false
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        using var httpClient = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5001/")
+        };
+        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
+
+        var response = await httpClient.PutAsJsonAsync($"api/chill-auth/users/{userGuid}", new UpdateAuthUserRequest
+        {
+            ExternalId = externalId,
+            UserName = $"self.update.changed.{Guid.NewGuid():N}",
+            DisplayName = "Self Update User Changed",
+            DisplayCultureName = "en-US",
+            DisplayTimeZone = "Eastern Standard Time",
+            DisplayDateFormat = "MM/DD/YYYY",
+            DisplayNumberFormat = "1,000.00",
+            IsActive = false,
+            CanManagePermissions = false,
+            CanManageSchema = true,
+            MenuHierarchy = "SELF.TEST"
+        });
+
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+        await using var verificationContext = SecuredAuthApiHost.CreateDbContext();
+        var persistedUser = await verificationContext.Users.FirstAsync(x => x.Guid == userGuid);
+        Assert.IsTrue(persistedUser.IsActive);
+        Assert.IsTrue(persistedUser.CanManagePermissions);
+        Assert.IsFalse(persistedUser.CanManageSchema);
+        Assert.AreEqual("SELF.TEST", persistedUser.MenuHierarchy);
+        Assert.AreEqual("Self Update User Changed", persistedUser.DisplayName);
+    }
+
+    /// <summary>
+    /// Verifies that an authenticated permission manager cannot grant themselves roles or direct permission rules through set-user.
+    /// </summary>
+    [TestMethod]
+    public async Task Step010_SelfSetUserCannotGrantRolesOrDirectPermissions()
+    {
+        SecuredAuthApiHost.EnsureStarted();
+
+        var externalId = $"self-set-{Guid.NewGuid():N}";
+        var userGuid = Guid.NewGuid();
+        var roleGuid = Guid.NewGuid();
+
+        await using (var seedContext = SecuredAuthApiHost.CreateDbContext())
+        {
+            seedContext.Users.Add(new ChillSharp.Auth.Model.AuthUser
+            {
+                Guid = userGuid,
+                ExternalId = externalId,
+                UserName = $"self.set.{Guid.NewGuid():N}",
+                DisplayName = "Self Set User",
+                IsActive = true,
+                CanManagePermissions = true,
+                CanManageSchema = false
+            });
+            seedContext.Roles.Add(new ChillSharp.Auth.Model.AuthRole
+            {
+                Guid = roleGuid,
+                Name = $"SelfSetRole-{Guid.NewGuid():N}",
+                Description = "Role used to test self assignment",
+                IsActive = true
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        using var httpClient = new HttpClient
+        {
+            BaseAddress = new Uri("http://localhost:5001/")
+        };
+        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
+
+        var response = await httpClient.PostAsJsonAsync("api/chill-auth/set-user", new SetAuthUserRequest
+        {
+            Guid = userGuid,
+            ExternalId = externalId,
+            UserName = $"self.set.changed.{Guid.NewGuid():N}",
+            DisplayName = "Self Set User Changed",
+            DisplayCultureName = "en-US",
+            DisplayTimeZone = "Eastern Standard Time",
+            DisplayDateFormat = "MM/DD/YYYY",
+            DisplayNumberFormat = "1,000.00",
+            IsActive = true,
+            CanManagePermissions = true,
+            CanManageSchema = true,
+            MenuHierarchy = "SELF.SET",
+            RoleGuids = [roleGuid],
+            Permissions =
+            [
+                new AuthPermissionRuleItem
+                {
+                    Effect = PermissionEffect.Allow,
+                    Action = PermissionAction.Update,
+                    Scope = PermissionScope.Entity,
+                    Module = "Blog",
+                    EntityName = "Post",
+                    Description = "Attempt to self-grant direct permission"
+                }
+            ]
+        });
+
+        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+        await using var verificationContext = SecuredAuthApiHost.CreateDbContext();
+        var persistedUser = await verificationContext.Users.FirstAsync(x => x.Guid == userGuid);
+        var persistedMemberships = await verificationContext.UserRoles
+            .Where(x => x.UserGuid == userGuid)
+            .CountAsync();
+        var persistedRules = await verificationContext.PermissionRules
+            .Where(x => x.UserGuid == userGuid)
+            .CountAsync();
+
+        Assert.IsFalse(persistedUser.CanManageSchema);
+        Assert.AreEqual(0, persistedMemberships);
+        Assert.AreEqual(0, persistedRules);
+    }
+
     private static class SecuredAuthApiHost
     {
         private static readonly object SyncRoot = new();
@@ -727,9 +870,9 @@ public sealed class AuthApi
                     builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
                         .AddChillAuthBearer();
                     builder.Services.AddAuthorization();
-                    builder.Services.AddChillApi<EF.DummyContext>(options => options.ProtectedApi = true);
-                    builder.Services.AddChillAuthIdentityApi<EF.DummyContext, IdentityUser>(options =>
+                    builder.Services.AddChillApi<EF.DummyContext, IdentityUser>(options =>
                     {
+                        options.ProtectedApi = true;
                         options.AccessTokenLifetime = TimeSpan.FromSeconds(4);
                         options.RefreshTokenLifetime = TimeSpan.FromMinutes(5);
                         options.ReturnPasswordResetTokensInResponse = true;
@@ -796,8 +939,7 @@ public sealed class AuthApi
                     builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
                         .AddChillAuthBearer();
                     builder.Services.AddAuthorization();
-                    builder.Services.AddChillApi<EF.DummyContext>(options => options.ProtectedApi = true);
-                    builder.Services.AddChillAuthIdentityApi<EF.DummyContext, IdentityUser>();
+                    builder.Services.AddChillApi<EF.DummyContext, IdentityUser>(options => options.ProtectedApi = true);
 
                     var app = builder.Build();
                     app.UseAuthentication();

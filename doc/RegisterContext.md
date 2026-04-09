@@ -116,10 +116,10 @@ builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationSchem
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddChillAuthIdentityApi<AppDbContext, IdentityUser>();
+builder.Services.AddChillApi<AppDbContext, IdentityUser>();
 ```
 
-This builds on `AddChillAuthApi<TContext>()`.
+This overload builds on the normal Chill API registration and adds the Identity-backed auth endpoints without requiring a second ChillSharp registration call.
 
 ## Adding I18n Services
 
@@ -166,13 +166,11 @@ builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationSchem
     .AddChillAuthBearer();
 builder.Services.AddAuthorization();
 
-builder.Services.AddChillApi<AppDbContext>(options =>
+builder.Services.AddChillApi<AppDbContext, IdentityUser>(options =>
 {
     options.ProtectedApi = true;
 });
 builder.Services.AddChillSchema<AppDbContext>();
-builder.Services.AddChillAuthIdentityApi<AppDbContext, IdentityUser>();
-builder.Services.AddChillI18nApi<AppDbContext>();
 
 var app = builder.Build();
 
@@ -197,7 +195,7 @@ I18n and auth controllers are added through controller discovery when their modu
 2. register Identity if needed
 3. register authentication and authorization if needed
 4. register `AddChillApi<TContext>()`
-5. register optional modules (`Schema`, `Auth`, `I18n`)
+5. register optional modules or use the combined Identity overload
 6. build app
 7. apply middleware
 8. map Chill API

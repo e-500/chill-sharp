@@ -19,7 +19,9 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
+using ChillSharp.Auth.Api;
 using ChillSharp;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth.Services;
@@ -33,6 +35,8 @@ public class ChillAuthService : IChillAuthService
     private readonly IChillAuthDbContext _context;
     private readonly IChillContext _chillContext;
     private readonly IChillAuthManagementAccessCache _managementAccessCache;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IChillAuthIdentityResolver? _identityResolver;
     #endregion
 
     #region Construction
@@ -40,11 +44,18 @@ public class ChillAuthService : IChillAuthService
     /// Initializes the service with the auth persistence abstraction.
     /// </summary>
     /// <param name="context">The auth store used for reads and writes.</param>
-    public ChillAuthService(IChillAuthDbContext context, IChillContext chillContext, IChillAuthManagementAccessCache managementAccessCache)
+    public ChillAuthService(
+        IChillAuthDbContext context,
+        IChillContext chillContext,
+        IChillAuthManagementAccessCache managementAccessCache,
+        IHttpContextAccessor? httpContextAccessor = null,
+        IChillAuthIdentityResolver? identityResolver = null)
     {
         _context = context;
         _chillContext = chillContext;
         _managementAccessCache = managementAccessCache;
+        _httpContextAccessor = httpContextAccessor;
+        _identityResolver = identityResolver;
     }
     #endregion
 
@@ -175,6 +186,8 @@ public class ChillAuthService : IChillAuthService
             _context.Users.Add(user);
         }
 
+        var isSelfTarget = await IsCurrentActorUserAsync(user.Guid, cancellationToken);
+
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
@@ -182,14 +195,20 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
-        user.IsActive = request.IsActive;
-        user.CanManagePermissions = request.CanManagePermissions;
-        user.CanManageSchema = request.CanManageSchema;
+        if (!isSelfTarget)
+        {
+            user.IsActive = request.IsActive;
+            user.CanManagePermissions = request.CanManagePermissions;
+            user.CanManageSchema = request.CanManageSchema;
+        }
         user.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
-        await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
-        await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
+        if (!isSelfTarget)
+        {
+            await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
+            await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
+        }
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
 
@@ -277,6 +296,11 @@ public class ChillAuthService : IChillAuthService
             {
                 throw new ArgumentException("One or more referenced users do not exist.");
             }
+        }
+
+        if (await RoleChangeAffectsCurrentActorAsync(request.Guid, userGuids, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change roles that affect their own effective permissions.");
         }
 
         AuthRole role;
@@ -379,6 +403,8 @@ public class ChillAuthService : IChillAuthService
             return null;
         }
 
+        var isSelfTarget = await IsCurrentActorUserAsync(user.Guid, cancellationToken);
+
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
@@ -386,10 +412,18 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
-        user.IsActive = request.IsActive;
-        user.CanManagePermissions = request.CanManagePermissions;
-        user.CanManageSchema = request.CanManageSchema;
+        // Only if the updating user (JWT authenticated user) if different from update request user,
+        // allow updating IsActive, CanManagePermissions and CanManageSchema
+        // to prevent users from locking themselves out or losing permissions by mistake
+        // or gain permissions they shouldn't have.
+        if (!isSelfTarget)
+        {
+            user.IsActive = request.IsActive;
+            user.CanManagePermissions = request.CanManagePermissions;
+            user.CanManageSchema = request.CanManageSchema;
+        }
         user.MenuHierarchy = request.MenuHierarchy.Trim();
+        // 
 
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
@@ -502,6 +536,11 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
+        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change their own role assignments.");
+        }
+
         var userExists = await _context.Users.AnyAsync(x => x.Guid == userGuid, cancellationToken);
         var roleExists = await _context.Roles.AnyAsync(x => x.Guid == roleGuid, cancellationToken);
         if (!userExists || !roleExists)
@@ -530,6 +569,11 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
+        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change their own role assignments.");
+        }
+
         var membership = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserGuid == userGuid && x.RoleGuid == roleGuid, cancellationToken);
         if (membership is null)
         {
@@ -580,6 +624,7 @@ public class ChillAuthService : IChillAuthService
     public async Task<AuthPermissionRule> CreatePermissionRuleAsync(CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default)
     {
         await ValidatePermissionRuleAsync(request.UserGuid, request.RoleGuid, request.Scope, request.Module, request.EntityName, request.PropertyName, request.AppliesToAllProperties, cancellationToken);
+        await EnsureRuleDoesNotAffectCurrentActorAsync(request.UserGuid, request.RoleGuid, cancellationToken);
 
         var rule = new AuthPermissionRule
         {
@@ -614,6 +659,11 @@ public class ChillAuthService : IChillAuthService
             return null;
         }
 
+        var currentUserGuid = rule.UserGuid;
+        var currentRoleGuid = rule.RoleGuid;
+        await EnsureRuleDoesNotAffectCurrentActorAsync(currentUserGuid, currentRoleGuid, cancellationToken);
+        await EnsureRuleDoesNotAffectCurrentActorAsync(request.UserGuid, request.RoleGuid, cancellationToken);
+
         rule.UserGuid = request.UserGuid;
         rule.RoleGuid = request.RoleGuid;
         rule.Effect = request.Effect;
@@ -638,6 +688,8 @@ public class ChillAuthService : IChillAuthService
         {
             return false;
         }
+
+        await EnsureRuleDoesNotAffectCurrentActorAsync(rule.UserGuid, rule.RoleGuid, cancellationToken);
 
         _context.PermissionRules.Remove(rule);
         await _context.SaveChangesAsync(cancellationToken);
@@ -732,6 +784,71 @@ public class ChillAuthService : IChillAuthService
     #endregion
 
     #region Synchronization Helpers
+    private async Task<AuthUser?> GetCurrentActorAsync(CancellationToken cancellationToken)
+    {
+        var principal = _httpContextAccessor?.HttpContext?.User;
+        if (principal?.Identity?.IsAuthenticated != true || _identityResolver is null)
+        {
+            return null;
+        }
+
+        var externalId = _identityResolver.ResolveExternalId(principal);
+        if (string.IsNullOrWhiteSpace(externalId))
+        {
+            return null;
+        }
+
+        return await GetUserByExternalIdAsync(externalId, cancellationToken);
+    }
+
+    private async Task<bool> IsCurrentActorUserAsync(Guid userGuid, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        return actor?.Guid == userGuid;
+    }
+
+    private async Task<bool> RoleChangeAffectsCurrentActorAsync(Guid? roleGuid, IReadOnlyList<Guid> requestedUserGuids, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        if (actor is null)
+        {
+            return false;
+        }
+
+        if (requestedUserGuids.Contains(actor.Guid))
+        {
+            return true;
+        }
+
+        if (!roleGuid.HasValue || roleGuid.Value == Guid.Empty)
+        {
+            return false;
+        }
+
+        return await _context.UserRoles.AnyAsync(
+            x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid,
+            cancellationToken);
+    }
+
+    private async Task EnsureRuleDoesNotAffectCurrentActorAsync(Guid? userGuid, Guid? roleGuid, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        if (actor is null)
+        {
+            return;
+        }
+
+        if (userGuid == actor.Guid)
+        {
+            throw new InvalidOperationException("Users cannot change permission rules that affect themselves.");
+        }
+
+        if (roleGuid.HasValue && await _context.UserRoles.AnyAsync(x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change permission rules that affect their own roles.");
+        }
+    }
+
     private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)
     {
         var existingMemberships = await _context.UserRoles

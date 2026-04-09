@@ -34,7 +34,7 @@
   "peerDependencies": {
     "@angular/core": "^17.0.0 || ^18.0.0 || ^19.0.0",
     "rxjs": "^7.8.0",
-    "chill-sharp-ts-client": "^1.0.53"
+    "chill-sharp-ts-client": "^1.0.57"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

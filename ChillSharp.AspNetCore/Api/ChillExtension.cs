@@ -107,6 +107,56 @@ namespace ChillSharp.Api
         }
 
         /// <summary>
+        /// Registers the base Chill API plus ASP.NET Core Identity-backed auth account endpoints against an existing DbContext type.
+        /// </summary>
+        public static IServiceCollection AddChillApi<TContext, TUser>(this IServiceCollection services, Action<ChillIdentityApiOptions>? configureOptions = null)
+            where TContext : DbContext, IChillContext, IChillAuthDbContext
+            where TUser : class
+        {
+            var options = new ChillIdentityApiOptions();
+            configureOptions?.Invoke(options);
+
+            services.AddChillApi<TContext>(apiOptions =>
+            {
+                apiOptions.ProtectedApi = options.ProtectedApi;
+                apiOptions.EnableAuthApi = false;
+                apiOptions.EnableI18nApi = options.EnableI18nApi;
+                apiOptions.EnableSchemaApi = options.EnableSchemaApi;
+                apiOptions.EnableMcpApi = options.EnableMcpApi;
+            });
+
+            services.AddChillAuthIdentityApi<TContext, TUser>(identityOptions =>
+            {
+                identityOptions.AccessTokenLifetime = options.AccessTokenLifetime;
+                identityOptions.RefreshTokenLifetime = options.RefreshTokenLifetime;
+                identityOptions.CreateChillAuthUserOnRegister = options.CreateChillAuthUserOnRegister;
+                identityOptions.ReturnPasswordResetTokensInResponse = options.ReturnPasswordResetTokensInResponse;
+                identityOptions.SendPasswordResetEmails = options.SendPasswordResetEmails;
+                identityOptions.SmtpHost = options.SmtpHost;
+                identityOptions.SmtpPort = options.SmtpPort;
+                identityOptions.SmtpEnableSsl = options.SmtpEnableSsl;
+                identityOptions.SmtpUserName = options.SmtpUserName;
+                identityOptions.SmtpPassword = options.SmtpPassword;
+                identityOptions.PasswordResetFromEmail = options.PasswordResetFromEmail;
+                identityOptions.PasswordResetFromDisplayName = options.PasswordResetFromDisplayName;
+                identityOptions.PasswordResetEmailSubject = options.PasswordResetEmailSubject;
+                identityOptions.PasswordResetUrlBase = options.PasswordResetUrlBase;
+                identityOptions.InitializeRootUserOnStartup = options.InitializeRootUserOnStartup;
+                identityOptions.RootUserName = options.RootUserName;
+                identityOptions.RootPassword = options.RootPassword;
+                identityOptions.RootEmail = options.RootEmail;
+                identityOptions.RootDisplayName = options.RootDisplayName;
+                identityOptions.CreateChillAuthUserForRoot = options.CreateChillAuthUserForRoot;
+                identityOptions.RootUserNameEnvironmentVariable = options.RootUserNameEnvironmentVariable;
+                identityOptions.RootPasswordEnvironmentVariable = options.RootPasswordEnvironmentVariable;
+                identityOptions.RootEmailEnvironmentVariable = options.RootEmailEnvironmentVariable;
+                identityOptions.RootDisplayNameEnvironmentVariable = options.RootDisplayNameEnvironmentVariable;
+            });
+
+            return services;
+        }
+
+        /// <summary>
         /// Maps ChillApi controllers to endpoints.
         /// </summary>
         public static IEndpointRouteBuilder MapChillApi(this IEndpointRouteBuilder endpoints, string ApiUrlBasePath = "api/chill")
@@ -214,5 +264,131 @@ namespace ChillSharp.Api
         /// Enables the embedded ChillSharp MCP API module.
         /// </summary>
         public bool EnableMcpApi { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Configures the combined Chill API and ASP.NET Core Identity-backed auth registration path.
+    /// </summary>
+    public class ChillIdentityApiOptions : ChillApiOptions
+    {
+        /// <summary>
+        /// Gets or sets the lifetime of issued access tokens.
+        /// </summary>
+        public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(20);
+
+        /// <summary>
+        /// Gets or sets the lifetime of issued refresh tokens.
+        /// </summary>
+        public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+
+        /// <summary>
+        /// Gets or sets whether register should also create the matching ChillSharp auth user.
+        /// </summary>
+        public bool CreateChillAuthUserOnRegister { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether the reset-token endpoint returns the generated token in the HTTP response.
+        /// </summary>
+        public bool ReturnPasswordResetTokensInResponse { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets whether password-reset requests should send an email when the target account exposes an email address.
+        /// </summary>
+        public bool SendPasswordResetEmails { get; set; }
+
+        /// <summary>
+        /// Gets or sets the SMTP host used to send password-reset emails.
+        /// </summary>
+        public string? SmtpHost { get; set; }
+
+        /// <summary>
+        /// Gets or sets the SMTP port used to send password-reset emails.
+        /// </summary>
+        public int SmtpPort { get; set; } = 587;
+
+        /// <summary>
+        /// Gets or sets whether the SMTP client should use SSL/TLS.
+        /// </summary>
+        public bool SmtpEnableSsl { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the optional SMTP user name used for authenticated delivery.
+        /// </summary>
+        public string? SmtpUserName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional SMTP password used for authenticated delivery.
+        /// </summary>
+        public string? SmtpPassword { get; set; }
+
+        /// <summary>
+        /// Gets or sets the sender email address used for password-reset messages.
+        /// </summary>
+        public string? PasswordResetFromEmail { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional sender display name used for password-reset messages.
+        /// </summary>
+        public string? PasswordResetFromDisplayName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the subject line used for password-reset emails.
+        /// </summary>
+        public string PasswordResetEmailSubject { get; set; } = "Reset your password";
+
+        /// <summary>
+        /// Gets or sets the optional base URL used to build a clickable password-reset link.
+        /// </summary>
+        public string? PasswordResetUrlBase { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the startup initializer should create a root Identity account when credentials are configured.
+        /// </summary>
+        public bool InitializeRootUserOnStartup { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the root user name to initialize. When empty, the value can be resolved from environment variables.
+        /// </summary>
+        public string? RootUserName { get; set; }
+
+        /// <summary>
+        /// Gets or sets the root password to initialize. When empty, the value can be resolved from environment variables.
+        /// </summary>
+        public string? RootPassword { get; set; }
+
+        /// <summary>
+        /// Gets or sets the optional root email address. When empty, the value can be resolved from environment variables.
+        /// </summary>
+        public string? RootEmail { get; set; }
+
+        /// <summary>
+        /// Gets or sets the display name copied into the matching ChillSharp auth user.
+        /// </summary>
+        public string RootDisplayName { get; set; } = "Root";
+
+        /// <summary>
+        /// Gets or sets whether the startup initializer should also create the matching ChillSharp auth user.
+        /// </summary>
+        public bool CreateChillAuthUserForRoot { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the environment-variable name used to resolve the root user name.
+        /// </summary>
+        public string RootUserNameEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_USERNAME";
+
+        /// <summary>
+        /// Gets or sets the environment-variable name used to resolve the root password.
+        /// </summary>
+        public string RootPasswordEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_PASSWORD";
+
+        /// <summary>
+        /// Gets or sets the environment-variable name used to resolve the optional root email.
+        /// </summary>
+        public string RootEmailEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_EMAIL";
+
+        /// <summary>
+        /// Gets or sets the environment-variable name used to resolve the optional root display name.
+        /// </summary>
+        public string RootDisplayNameEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_DISPLAY_NAME";
     }
 }

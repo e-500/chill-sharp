@@ -297,8 +297,7 @@ namespace ChillSharp.Tests
                         builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
                             .AddChillAuthBearer();
                         builder.Services.AddAuthorization();
-                        builder.Services.AddChillApi<EF.DummyContext>(options => options.ProtectedApi = true);
-                        builder.Services.AddChillAuthIdentityApi<EF.DummyContext, IdentityUser>();
+                        builder.Services.AddChillApi<EF.DummyContext, IdentityUser>(options => options.ProtectedApi = true);
 
                         var app = builder.Build();
                         app.UseAuthentication();

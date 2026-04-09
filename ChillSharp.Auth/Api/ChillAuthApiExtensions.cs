@@ -41,6 +41,7 @@ public static class ChillAuthApiExtensions
     public static IServiceCollection AddChillAuthApi<TContext>(this IServiceCollection services)
         where TContext : DbContext, IChillAuthDbContext
     {
+        services.AddHttpContextAccessor();
         services.AddControllers()
             .AddApplicationPart(Assembly.GetExecutingAssembly())
             .AddControllersAsServices();
