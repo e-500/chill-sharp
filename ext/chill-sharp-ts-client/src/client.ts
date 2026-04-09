@@ -158,6 +158,44 @@ export interface RegisterAuthIdentityRequest extends JsonObject {
   createChillAuthUser: boolean;
 }
 
+export interface LoginAuthIdentityRequest extends JsonObject {
+  userNameOrEmail: string;
+  password: string;
+}
+
+export interface RefreshAuthTokenRequest extends JsonObject {
+  refreshToken: string;
+}
+
+export interface ChangePasswordRequest extends JsonObject {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordResponse extends JsonObject {
+  succeeded: boolean;
+}
+
+export interface RequestPasswordResetRequest extends JsonObject {
+  userNameOrEmail: string;
+}
+
+export interface PasswordResetTokenResponse extends JsonObject {
+  isAccepted: boolean;
+  userId: string | null;
+  resetToken: string | null;
+}
+
+export interface ResetPasswordRequest extends JsonObject {
+  userId: string;
+  resetToken: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse extends JsonObject {
+  succeeded: boolean;
+}
+
 export const PermissionEffect = {
   Allow: 1,
   Deny: 2
@@ -187,6 +225,8 @@ export type PermissionScope = (typeof PermissionScope)[keyof typeof PermissionSc
 
 export interface AuthPermissionRule extends JsonObject {
   guid: string;
+  userGuid: string | null;
+  roleGuid: string | null;
   effect: PermissionEffect;
   action: PermissionAction;
   scope: PermissionScope;
@@ -247,6 +287,35 @@ export interface SetAuthUserRequest extends JsonObject {
   permissions: AuthPermissionRuleItem[];
 }
 
+export interface CreateAuthUserRequest extends JsonObject {
+  externalId: string;
+  email: string;
+  userName: string;
+  displayName: string;
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+  canManageSchema: boolean;
+  menuHierarchy: string;
+}
+
+export interface UpdateAuthUserRequest extends JsonObject {
+  externalId: string;
+  userName: string;
+  displayName: string;
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+  canManageSchema: boolean;
+  menuHierarchy: string;
+}
+
 export interface SetAuthRoleRequest extends JsonObject {
   guid: string | null;
   name: string;
@@ -256,6 +325,30 @@ export interface SetAuthRoleRequest extends JsonObject {
   userGuids: string[];
   permissions: AuthPermissionRuleItem[];
 }
+
+export interface CreateAuthRoleRequest extends JsonObject {
+  name: string;
+  description: string;
+  isActive: boolean;
+  menuHierarchy: string;
+}
+
+export interface UpdateAuthRoleRequest extends CreateAuthRoleRequest {}
+
+export interface CreateAuthPermissionRuleRequest extends JsonObject {
+  userGuid: string | null;
+  roleGuid: string | null;
+  effect: PermissionEffect;
+  action: PermissionAction;
+  scope: PermissionScope;
+  module: string;
+  entityName: string | null;
+  propertyName: string | null;
+  appliesToAllProperties: boolean;
+  description: string;
+}
+
+export interface UpdateAuthPermissionRuleRequest extends CreateAuthPermissionRuleRequest {}
 
 export interface ChillSharpClientOptions {
   accessToken?: string;
@@ -496,13 +589,13 @@ export class ChillSharpClient {
   }
 
   async registerAuthAccount(payload: RegisterAuthIdentityRequest): Promise<AuthTokenResponse> {
-    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "account/register", payload, true, true);
+    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "register", payload, true, true);
     this.applyAuthToken(response, true);
     return response;
   }
 
-  async loginAuthAccount(payload: JsonObject): Promise<AuthTokenResponse> {
-    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "account/login", payload, true, true);
+  async loginAuthAccount(payload: LoginAuthIdentityRequest): Promise<AuthTokenResponse> {
+    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "login", payload, true, true);
     this.applyAuthToken(response, true);
     return response;
   }
@@ -511,16 +604,21 @@ export class ChillSharpClient {
     return this.getAuthTokenIfNecessary(true);
   }
 
-  changeAuthPassword(payload: JsonObject): Promise<JsonObject> {
-    return this.sendAuthJson<JsonObject>("POST", "account/change-password", payload);
+  async logoutAuthAccount(): Promise<void> {
+    await this.sendAuthJson("POST", "logout", undefined, false);
+    this.clearAuthToken();
   }
 
-  requestAuthPasswordReset(payload: JsonObject): Promise<JsonObject> {
-    return this.sendAuthJson<JsonObject>("POST", "account/request-password-reset", payload, true, true);
+  changeAuthPassword(payload: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    return this.sendAuthJson<ChangePasswordResponse>("POST", "change-password", payload);
   }
 
-  resetAuthPassword(payload: JsonObject): Promise<JsonObject> {
-    return this.sendAuthJson<JsonObject>("POST", "account/reset-password", payload, true, true);
+  requestAuthPasswordReset(payload: RequestPasswordResetRequest): Promise<PasswordResetTokenResponse> {
+    return this.sendAuthJson<PasswordResetTokenResponse>("POST", "request-password-reset", payload, true, true);
+  }
+
+  resetAuthPassword(payload: ResetPasswordRequest): Promise<ResetPasswordResponse> {
+    return this.sendAuthJson<ResetPasswordResponse>("POST", "reset-password", payload, true, true);
   }
 
   getAuthPermissions(): Promise<GetAuthPermissionsResponse> {
@@ -531,16 +629,52 @@ export class ChillSharpClient {
     return this.sendAuthJson<AuthUserListItem[]>("GET", "get-user-list");
   }
 
-  getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse> {
+  async getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse> {
     const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
-    return this.sendAuthJson<AuthUserDetailsResponse>(
-      "GET",
-      `get-user?userGuid=${encodeURIComponent(normalizedUserGuid)}`
-    );
+    const [user, roles, permissions] = await Promise.all([
+      this.sendAuthJson<AuthUserListItem>("GET", `users/${encodeURIComponent(normalizedUserGuid)}`),
+      this.getAuthUserRoles(normalizedUserGuid),
+      this.getAuthPermissionRules(normalizedUserGuid, null)
+    ]);
+
+    return {
+      ...user,
+      roles,
+      permissions
+    };
   }
 
-  setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse> {
-    return this.sendAuthJson<AuthUserDetailsResponse>("POST", "set-user", payload);
+  async setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse> {
+    const userGuid = this.normalizeOptionalValue(payload.guid);
+    const basePayload = {
+      externalId: payload.externalId,
+      userName: payload.userName,
+      displayName: payload.displayName,
+      displayCultureName: payload.displayCultureName,
+      displayTimeZone: payload.displayTimeZone,
+      displayDateFormat: payload.displayDateFormat,
+      displayNumberFormat: payload.displayNumberFormat,
+      isActive: payload.isActive,
+      canManagePermissions: payload.canManagePermissions,
+      canManageSchema: payload.canManageSchema,
+      menuHierarchy: payload.menuHierarchy
+    };
+
+    const user = userGuid
+      ? await this.updateAuthUser(userGuid, basePayload)
+      : await this.createAuthUser({
+          ...basePayload,
+          email: "",
+          externalId: payload.externalId
+        });
+
+    if (!user) {
+      throw new ChillSharpClientError("Auth user was not found after setAuthUser execution.");
+    }
+
+    await this.syncUserRoles(user.guid, payload.roleGuids);
+    await this.syncUserPermissions(user.guid, payload.permissions);
+    return this.getAuthUser(user.guid);
   }
 
   getAuthRoleList(): Promise<AuthRoleListItem[]> {
@@ -573,16 +707,128 @@ export class ChillSharpClient {
     return this.sendAuthJson<string[]>("GET", `get-property-list?chillType=${encodeURIComponent(normalizedChillType)}`);
   }
 
-  getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse> {
+  async getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse> {
     const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
-    return this.sendAuthJson<AuthRoleDetailsResponse>(
-      "GET",
-      `get-role?roleGuid=${encodeURIComponent(normalizedRoleGuid)}`
-    );
+    const [role, permissions, users] = await Promise.all([
+      this.sendAuthJson<AuthRoleListItem>("GET", `roles/${encodeURIComponent(normalizedRoleGuid)}`),
+      this.getAuthPermissionRules(null, normalizedRoleGuid),
+      this.getUsersAssignedToRole(normalizedRoleGuid)
+    ]);
+
+    return {
+      ...role,
+      users,
+      permissions
+    };
   }
 
-  setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse> {
-    return this.sendAuthJson<AuthRoleDetailsResponse>("POST", "set-role", payload);
+  async setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse> {
+    const roleGuid = this.normalizeOptionalValue(payload.guid);
+    const basePayload = {
+      name: payload.name,
+      description: payload.description,
+      isActive: payload.isActive,
+      menuHierarchy: payload.menuHierarchy
+    };
+
+    const role = roleGuid
+      ? await this.updateAuthRole(roleGuid, basePayload)
+      : await this.createAuthRole(basePayload);
+
+    if (!role) {
+      throw new ChillSharpClientError("Auth role was not found after setAuthRole execution.");
+    }
+
+    await this.syncRoleUsers(role.guid, payload.userGuids);
+    await this.syncRolePermissions(role.guid, payload.permissions);
+    return this.getAuthRole(role.guid);
+  }
+
+  getAuthUsers(): Promise<AuthUserListItem[]> {
+    return this.sendAuthJson<AuthUserListItem[]>("GET", "users");
+  }
+
+  createAuthUser(payload: CreateAuthUserRequest): Promise<AuthUserListItem> {
+    return this.sendAuthJson<AuthUserListItem>("POST", "users", payload);
+  }
+
+  updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Promise<AuthUserListItem | null> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    return this.sendAuthJson<AuthUserListItem | null>("PUT", `users/${encodeURIComponent(normalizedUserGuid)}`, payload);
+  }
+
+  async deleteAuthUser(userGuid: string): Promise<void> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    await this.sendAuthJson("DELETE", `users/${encodeURIComponent(normalizedUserGuid)}`, undefined, false);
+  }
+
+  getAuthUserRoles(userGuid: string): Promise<AuthRoleListItem[]> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    return this.sendAuthJson<AuthRoleListItem[]>("GET", `users/${encodeURIComponent(normalizedUserGuid)}/roles`);
+  }
+
+  async assignAuthRole(userGuid: string, roleGuid: string): Promise<void> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    await this.sendAuthJson("PUT", `users/${encodeURIComponent(normalizedUserGuid)}/roles/${encodeURIComponent(normalizedRoleGuid)}`, undefined, false);
+  }
+
+  async removeAuthRole(userGuid: string, roleGuid: string): Promise<void> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    await this.sendAuthJson("DELETE", `users/${encodeURIComponent(normalizedUserGuid)}/roles/${encodeURIComponent(normalizedRoleGuid)}`, undefined, false);
+  }
+
+  getAuthRoles(): Promise<AuthRoleListItem[]> {
+    return this.sendAuthJson<AuthRoleListItem[]>("GET", "roles");
+  }
+
+  createAuthRole(payload: CreateAuthRoleRequest): Promise<AuthRoleListItem> {
+    return this.sendAuthJson<AuthRoleListItem>("POST", "roles", payload);
+  }
+
+  updateAuthRole(roleGuid: string, payload: UpdateAuthRoleRequest): Promise<AuthRoleListItem | null> {
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    return this.sendAuthJson<AuthRoleListItem | null>("PUT", `roles/${encodeURIComponent(normalizedRoleGuid)}`, payload);
+  }
+
+  async deleteAuthRole(roleGuid: string): Promise<void> {
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    await this.sendAuthJson("DELETE", `roles/${encodeURIComponent(normalizedRoleGuid)}`, undefined, false);
+  }
+
+  getAuthPermissionRules(userGuid?: string | null, roleGuid?: string | null): Promise<AuthPermissionRule[]> {
+    const queryParts: string[] = [];
+    const normalizedUserGuid = this.normalizeOptionalValue(userGuid);
+    const normalizedRoleGuid = this.normalizeOptionalValue(roleGuid);
+    if (normalizedUserGuid) {
+      queryParts.push(`userGuid=${encodeURIComponent(normalizedUserGuid)}`);
+    }
+    if (normalizedRoleGuid) {
+      queryParts.push(`roleGuid=${encodeURIComponent(normalizedRoleGuid)}`);
+    }
+
+    const suffix = queryParts.length === 0 ? "" : `?${queryParts.join("&")}`;
+    return this.sendAuthJson<AuthPermissionRule[]>("GET", `permissions${suffix}`);
+  }
+
+  getAuthPermissionRule(ruleGuid: string): Promise<AuthPermissionRule | null> {
+    const normalizedRuleGuid = this.normalizeRequiredValue(ruleGuid, "ruleGuid");
+    return this.sendAuthJson<AuthPermissionRule | null>("GET", `permissions/${encodeURIComponent(normalizedRuleGuid)}`);
+  }
+
+  createAuthPermissionRule(payload: CreateAuthPermissionRuleRequest): Promise<AuthPermissionRule> {
+    return this.sendAuthJson<AuthPermissionRule>("POST", "permissions", payload);
+  }
+
+  updateAuthPermissionRule(ruleGuid: string, payload: UpdateAuthPermissionRuleRequest): Promise<AuthPermissionRule | null> {
+    const normalizedRuleGuid = this.normalizeRequiredValue(ruleGuid, "ruleGuid");
+    return this.sendAuthJson<AuthPermissionRule | null>("PUT", `permissions/${encodeURIComponent(normalizedRuleGuid)}`, payload);
+  }
+
+  async deleteAuthPermissionRule(ruleGuid: string): Promise<void> {
+    const normalizedRuleGuid = this.normalizeRequiredValue(ruleGuid, "ruleGuid");
+    await this.sendAuthJson("DELETE", `permissions/${encodeURIComponent(normalizedRuleGuid)}`, undefined, false);
   }
 
   private prepareGetTextRequest(request: GetTextRequest): GetTextRequest {
@@ -716,7 +962,7 @@ export class ChillSharpClient {
       try {
         const refreshed = await this.sendAuthJson<AuthTokenResponse>(
           "POST",
-          "account/refresh",
+          "refresh",
           { refreshToken: this.tokenState.refreshToken },
           true,
           true
@@ -737,10 +983,10 @@ export class ChillSharpClient {
     if (this.username && this.password) {
       const token = await this.sendAuthJson<AuthTokenResponse>(
         "POST",
-        "account/login",
-        {
-          userNameOrEmail: this.username,
-          password: this.password
+          "login",
+          {
+            userNameOrEmail: this.username,
+            password: this.password
         },
         true,
         true
@@ -772,6 +1018,14 @@ export class ChillSharpClient {
     if (forgetPassword) {
       this.password = null;
     }
+  }
+
+  private clearAuthToken(): void {
+    this.tokenState.accessToken = null;
+    this.tokenState.accessTokenIssuedUtc = null;
+    this.tokenState.accessTokenExpiresUtc = null;
+    this.tokenState.refreshToken = null;
+    this.tokenState.refreshTokenExpiresUtc = null;
   }
 
   private canUseAuthentication(): boolean {
@@ -1061,6 +1315,140 @@ export class ChillSharpClient {
 
   private buildEntityChangeRegistrationKey(chillType: string, guid: string | null): string {
     return `${chillType}|${guid ?? ""}`;
+  }
+
+  private async getUsersAssignedToRole(roleGuid: string): Promise<AuthUserListItem[]> {
+    const users = await this.getAuthUsers();
+    const matches = await Promise.all(
+      users.map(async (user) => {
+        const roles = await this.getAuthUserRoles(user.guid);
+        return roles.some((role) => role.guid === roleGuid) ? user : null;
+      })
+    );
+
+    return matches.filter((user): user is AuthUserListItem => user !== null);
+  }
+
+  private async syncUserRoles(userGuid: string, roleGuids: string[]): Promise<void> {
+    const desiredRoleGuids = new Set(roleGuids.map((roleGuid) => this.normalizeRequiredValue(roleGuid, "roleGuid")));
+    const currentRoles = await this.getAuthUserRoles(userGuid);
+    const currentRoleGuids = new Set(currentRoles.map((role) => role.guid));
+
+    for (const roleGuid of desiredRoleGuids) {
+      if (!currentRoleGuids.has(roleGuid)) {
+        await this.assignAuthRole(userGuid, roleGuid);
+      }
+    }
+
+    for (const role of currentRoles) {
+      if (!desiredRoleGuids.has(role.guid)) {
+        await this.removeAuthRole(userGuid, role.guid);
+      }
+    }
+  }
+
+  private async syncUserPermissions(userGuid: string, permissions: AuthPermissionRuleItem[]): Promise<void> {
+    const currentRules = await this.getAuthPermissionRules(userGuid, null);
+    await this.syncPermissionRules(
+      currentRules,
+      permissions,
+      (permission) => ({
+        userGuid,
+        roleGuid: null,
+        effect: permission.effect,
+        action: permission.action,
+        scope: permission.scope,
+        module: permission.module,
+        entityName: permission.entityName,
+        propertyName: permission.propertyName,
+        appliesToAllProperties: permission.appliesToAllProperties,
+        description: permission.description
+      }),
+      (payload) => this.createAuthPermissionRule(payload),
+      (guid, payload) => this.updateAuthPermissionRule(guid, payload),
+      (guid) => this.deleteAuthPermissionRule(guid)
+    );
+  }
+
+  private async syncRoleUsers(roleGuid: string, userGuids: string[]): Promise<void> {
+    const desiredUserGuids = new Set(userGuids.map((userGuid) => this.normalizeRequiredValue(userGuid, "userGuid")));
+    const currentUsers = await this.getUsersAssignedToRole(roleGuid);
+    const currentUserGuids = new Set(currentUsers.map((user) => user.guid));
+
+    for (const userGuid of desiredUserGuids) {
+      if (!currentUserGuids.has(userGuid)) {
+        await this.assignAuthRole(userGuid, roleGuid);
+      }
+    }
+
+    for (const user of currentUsers) {
+      if (!desiredUserGuids.has(user.guid)) {
+        await this.removeAuthRole(user.guid, roleGuid);
+      }
+    }
+  }
+
+  private async syncRolePermissions(roleGuid: string, permissions: AuthPermissionRuleItem[]): Promise<void> {
+    const currentRules = await this.getAuthPermissionRules(null, roleGuid);
+    await this.syncPermissionRules(
+      currentRules,
+      permissions,
+      (permission) => ({
+        userGuid: null,
+        roleGuid,
+        effect: permission.effect,
+        action: permission.action,
+        scope: permission.scope,
+        module: permission.module,
+        entityName: permission.entityName,
+        propertyName: permission.propertyName,
+        appliesToAllProperties: permission.appliesToAllProperties,
+        description: permission.description
+      }),
+      (payload) => this.createAuthPermissionRule(payload),
+      (guid, payload) => this.updateAuthPermissionRule(guid, payload),
+      (guid) => this.deleteAuthPermissionRule(guid)
+    );
+  }
+
+  private async syncPermissionRules(
+    currentRules: AuthPermissionRule[],
+    desiredRules: AuthPermissionRuleItem[],
+    toPayload: (permission: AuthPermissionRuleItem) => CreateAuthPermissionRuleRequest,
+    createRule: (payload: CreateAuthPermissionRuleRequest) => Promise<AuthPermissionRule>,
+    updateRule: (guid: string, payload: UpdateAuthPermissionRuleRequest) => Promise<AuthPermissionRule | null>,
+    deleteRule: (guid: string) => Promise<void>
+  ): Promise<void> {
+    const desiredByGuid = new Map<string, AuthPermissionRuleItem>();
+    const newRules: AuthPermissionRuleItem[] = [];
+
+    for (const permission of desiredRules) {
+      const guid = this.normalizeOptionalValue(permission.guid);
+      if (guid) {
+        desiredByGuid.set(guid, permission);
+      } else {
+        newRules.push(permission);
+      }
+    }
+
+    for (const currentRule of currentRules) {
+      const desiredRule = desiredByGuid.get(currentRule.guid);
+      if (!desiredRule) {
+        await deleteRule(currentRule.guid);
+        continue;
+      }
+
+      await updateRule(currentRule.guid, toPayload(desiredRule));
+      desiredByGuid.delete(currentRule.guid);
+    }
+
+    for (const desiredRule of desiredByGuid.values()) {
+      await createRule(toPayload(desiredRule));
+    }
+
+    for (const desiredRule of newRules) {
+      await createRule(toPayload(desiredRule));
+    }
   }
 }
 

@@ -24,6 +24,12 @@ import type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
   AuthTokenResponse,
+  AuthPermissionRule,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+  CreateAuthPermissionRuleRequest,
+  CreateAuthRoleRequest,
+  CreateAuthUserRequest,
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
@@ -36,10 +42,18 @@ import type {
   GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
+  LoginAuthIdentityRequest,
+  PasswordResetTokenResponse,
+  RequestPasswordResetRequest,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
   RegisterAuthIdentityRequest,
   JsonObject,
   SetAuthRoleRequest,
-  SetAuthUserRequest
+  SetAuthUserRequest,
+  UpdateAuthPermissionRuleRequest,
+  UpdateAuthRoleRequest,
+  UpdateAuthUserRequest
 } from "chill-sharp-ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
@@ -178,7 +192,7 @@ export class ChillSharpNgClient {
     return from(this.client.registerAuthAccount(payload));
   }
 
-  loginAuthAccount(payload: JsonObject): Observable<AuthTokenResponse> {
+  loginAuthAccount(payload: LoginAuthIdentityRequest): Observable<AuthTokenResponse> {
     return from(this.client.loginAuthAccount(payload));
   }
 
@@ -186,15 +200,19 @@ export class ChillSharpNgClient {
     return from(this.client.refreshAuthAccount());
   }
 
-  changeAuthPassword(payload: JsonObject): Observable<JsonObject> {
+  logoutAuthAccount(): Observable<void> {
+    return from(this.client.logoutAuthAccount());
+  }
+
+  changeAuthPassword(payload: ChangePasswordRequest): Observable<ChangePasswordResponse> {
     return from(this.client.changeAuthPassword(payload));
   }
 
-  requestAuthPasswordReset(payload: JsonObject): Observable<JsonObject> {
+  requestAuthPasswordReset(payload: RequestPasswordResetRequest): Observable<PasswordResetTokenResponse> {
     return from(this.client.requestAuthPasswordReset(payload));
   }
 
-  resetAuthPassword(payload: JsonObject): Observable<JsonObject> {
+  resetAuthPassword(payload: ResetPasswordRequest): Observable<ResetPasswordResponse> {
     return from(this.client.resetAuthPassword(payload));
   }
 
@@ -212,6 +230,34 @@ export class ChillSharpNgClient {
 
   setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse> {
     return from(this.client.setAuthUser(payload));
+  }
+
+  getAuthUsers(): Observable<AuthUserListItem[]> {
+    return from(this.client.getAuthUsers());
+  }
+
+  createAuthUser(payload: CreateAuthUserRequest): Observable<AuthUserListItem> {
+    return from(this.client.createAuthUser(payload));
+  }
+
+  updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Observable<AuthUserListItem | null> {
+    return from(this.client.updateAuthUser(userGuid, payload));
+  }
+
+  deleteAuthUser(userGuid: string): Observable<void> {
+    return from(this.client.deleteAuthUser(userGuid));
+  }
+
+  getAuthUserRoles(userGuid: string): Observable<AuthRoleListItem[]> {
+    return from(this.client.getAuthUserRoles(userGuid));
+  }
+
+  assignAuthRole(userGuid: string, roleGuid: string): Observable<void> {
+    return from(this.client.assignAuthRole(userGuid, roleGuid));
+  }
+
+  removeAuthRole(userGuid: string, roleGuid: string): Observable<void> {
+    return from(this.client.removeAuthRole(userGuid, roleGuid));
   }
 
   getAuthRoleList(): Observable<AuthRoleListItem[]> {
@@ -244,6 +290,42 @@ export class ChillSharpNgClient {
 
   setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse> {
     return from(this.client.setAuthRole(payload));
+  }
+
+  getAuthRoles(): Observable<AuthRoleListItem[]> {
+    return from(this.client.getAuthRoles());
+  }
+
+  createAuthRole(payload: CreateAuthRoleRequest): Observable<AuthRoleListItem> {
+    return from(this.client.createAuthRole(payload));
+  }
+
+  updateAuthRole(roleGuid: string, payload: UpdateAuthRoleRequest): Observable<AuthRoleListItem | null> {
+    return from(this.client.updateAuthRole(roleGuid, payload));
+  }
+
+  deleteAuthRole(roleGuid: string): Observable<void> {
+    return from(this.client.deleteAuthRole(roleGuid));
+  }
+
+  getAuthPermissionRules(userGuid?: string | null, roleGuid?: string | null): Observable<AuthPermissionRule[]> {
+    return from(this.client.getAuthPermissionRules(userGuid, roleGuid));
+  }
+
+  getAuthPermissionRule(ruleGuid: string): Observable<AuthPermissionRule | null> {
+    return from(this.client.getAuthPermissionRule(ruleGuid));
+  }
+
+  createAuthPermissionRule(payload: CreateAuthPermissionRuleRequest): Observable<AuthPermissionRule> {
+    return from(this.client.createAuthPermissionRule(payload));
+  }
+
+  updateAuthPermissionRule(ruleGuid: string, payload: UpdateAuthPermissionRuleRequest): Observable<AuthPermissionRule | null> {
+    return from(this.client.updateAuthPermissionRule(ruleGuid, payload));
+  }
+
+  deleteAuthPermissionRule(ruleGuid: string): Observable<void> {
+    return from(this.client.deleteAuthPermissionRule(ruleGuid));
   }
 
   getRawClient(): ChillSharpClient {

@@ -34,6 +34,8 @@ export type {
   AuthTokenResponse,
   AuthUserDetailsResponse,
   AuthUserListItem,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,
   ChillDtoPropertySchema,
@@ -45,15 +47,26 @@ export type {
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
   ChillSharpClientOptions,
+  CreateAuthPermissionRuleRequest,
+  CreateAuthRoleRequest,
+  CreateAuthUserRequest,
   GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
   JsonObject,
   JsonPrimitive,
   JsonValue,
+  LoginAuthIdentityRequest,
+  PasswordResetTokenResponse,
   RegisterAuthIdentityRequest,
+  RequestPasswordResetRequest,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
   SetAuthRoleRequest,
-  SetAuthUserRequest
+  SetAuthUserRequest,
+  UpdateAuthPermissionRuleRequest,
+  UpdateAuthRoleRequest,
+  UpdateAuthUserRequest
 } from "./client.js";
 export { ChillSharpClientError } from "./errors.js";
 

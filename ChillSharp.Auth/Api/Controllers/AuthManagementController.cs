@@ -24,24 +24,34 @@ using Microsoft.AspNetCore.Mvc;
 namespace ChillSharp.Auth.Api.Controllers;
 
 /// <summary>
-/// Exposes the refactored auth management endpoints.
+/// Exposes auth-management endpoints for users, roles, permission rules, and management metadata.
 /// </summary>
 [ApiController]
 [Route("api/chill-auth")]
 public class AuthManagementController : ControllerBase
 {
+    #region Fields
     private readonly IChillAuthService _service;
     private readonly IChillAuthIdentityResolver _identityResolver;
+    private readonly IChillAuthIdentityService? _identityService;
+    #endregion
 
+    #region Construction
     /// <summary>
     /// Initializes the controller with auth services.
     /// </summary>
-    public AuthManagementController(IChillAuthService service, IChillAuthIdentityResolver identityResolver)
+    public AuthManagementController(
+        IChillAuthService service,
+        IChillAuthIdentityResolver identityResolver,
+        IChillAuthIdentityService? identityService = null)
     {
         _service = service;
         _identityResolver = identityResolver;
+        _identityService = identityService;
     }
+    #endregion
 
+    #region Current User
     /// <summary>
     /// Returns the current user's direct permissions, roles, and role permissions.
     /// </summary>
@@ -61,7 +71,9 @@ public class AuthManagementController : ControllerBase
 
         return Ok(await _service.GetPermissionsAsync(externalId, cancellationToken));
     }
+    #endregion
 
+    #region Management UI
     /// <summary>
     /// Returns the simplified user list used by management UIs.
     /// </summary>
@@ -70,27 +82,6 @@ public class AuthManagementController : ControllerBase
     public async Task<IActionResult> GetUserList(CancellationToken cancellationToken)
     {
         return Ok(await _service.GetUserListAsync(cancellationToken));
-    }
-
-    /// <summary>
-    /// Returns the full managed user payload.
-    /// </summary>
-    [HttpGet("get-user")]
-    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
-    public async Task<IActionResult> GetUser([FromQuery] Guid userGuid, CancellationToken cancellationToken)
-    {
-        var user = await _service.GetManagedUserAsync(userGuid, cancellationToken);
-        return user is null ? NotFound() : Ok(user);
-    }
-
-    /// <summary>
-    /// Creates or updates a user together with roles and direct permissions.
-    /// </summary>
-    [HttpPost("set-user")]
-    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
-    public async Task<IActionResult> SetUser([FromBody] SetAuthUserRequest request, CancellationToken cancellationToken)
-    {
-        return Ok(await _service.SetUserAsync(request, cancellationToken));
     }
 
     /// <summary>
@@ -147,25 +138,284 @@ public class AuthManagementController : ControllerBase
 
         return Ok(await _service.GetPropertyListAsync(chillType, cancellationToken));
     }
+    #endregion
+
+    #region Users
+    /// <summary>
+    /// Returns all authorization users.
+    /// </summary>
+    [HttpGet("users")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetUsers(CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetUsersAsync(cancellationToken));
+    }
 
     /// <summary>
-    /// Returns the full managed role payload.
+    /// Returns a single authorization user by identifier.
     /// </summary>
-    [HttpGet("get-role")]
+    [HttpGet("users/{userGuid:guid}")]
     [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
-    public async Task<IActionResult> GetRole([FromQuery] Guid roleGuid, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetUser(Guid userGuid, CancellationToken cancellationToken)
     {
-        var role = await _service.GetManagedRoleAsync(roleGuid, cancellationToken);
+        var user = await _service.GetUserAsync(userGuid, cancellationToken);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    /// <summary>
+    /// Creates a new authorization user.
+    /// </summary>
+    [HttpPost("users")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> CreateUser([FromBody] CreateAuthUserRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (_identityService != null)
+            {
+                request.ExternalId = await _identityService.CreateManagedIdentityUserAsync(request, cancellationToken);
+            }
+
+            var user = await _service.CreateUserAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetUser), new { userGuid = user.Guid }, user);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Updates an existing authorization user.
+    /// </summary>
+    [HttpPut("users/{userGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> UpdateUser(Guid userGuid, [FromBody] UpdateAuthUserRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var user = await _service.UpdateUserAsync(userGuid, request, cancellationToken);
+            return user is null ? NotFound() : Ok(user);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Deletes an authorization user.
+    /// </summary>
+    [HttpDelete("users/{userGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> DeleteUser(Guid userGuid, CancellationToken cancellationToken)
+    {
+        return await _service.DeleteUserAsync(userGuid, cancellationToken) ? NoContent() : NotFound();
+    }
+
+    /// <summary>
+    /// Returns the roles assigned to a user.
+    /// </summary>
+    [HttpGet("users/{userGuid:guid}/roles")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetUserRoles(Guid userGuid, CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetUserRolesAsync(userGuid, cancellationToken));
+    }
+
+    /// <summary>
+    /// Assigns a role to a user.
+    /// </summary>
+    [HttpPut("users/{userGuid:guid}/roles/{roleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> AssignRole(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _service.AssignRoleAsync(userGuid, roleGuid, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Removes a role assignment from a user.
+    /// </summary>
+    [HttpDelete("users/{userGuid:guid}/roles/{roleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> RemoveRole(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _service.RemoveRoleAsync(userGuid, roleGuid, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    #endregion
+
+    #region Roles
+    /// <summary>
+    /// Returns all authorization roles.
+    /// </summary>
+    [HttpGet("roles")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetRoles(CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetRolesAsync(cancellationToken));
+    }
+
+    /// <summary>
+    /// Returns a single authorization role by identifier.
+    /// </summary>
+    [HttpGet("roles/{roleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetRole(Guid roleGuid, CancellationToken cancellationToken)
+    {
+        var role = await _service.GetRoleAsync(roleGuid, cancellationToken);
         return role is null ? NotFound() : Ok(role);
     }
 
     /// <summary>
-    /// Creates or updates a role together with users and direct permissions.
+    /// Creates a new authorization role.
     /// </summary>
-    [HttpPost("set-role")]
+    [HttpPost("roles")]
     [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
-    public async Task<IActionResult> SetRole([FromBody] SetAuthRoleRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateRole([FromBody] CreateAuthRoleRequest request, CancellationToken cancellationToken)
     {
-        return Ok(await _service.SetRoleAsync(request, cancellationToken));
+        try
+        {
+            var role = await _service.CreateRoleAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetRole), new { roleGuid = role.Guid }, role);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
+
+    /// <summary>
+    /// Updates an existing authorization role.
+    /// </summary>
+    [HttpPut("roles/{roleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> UpdateRole(Guid roleGuid, [FromBody] UpdateAuthRoleRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var role = await _service.UpdateRoleAsync(roleGuid, request, cancellationToken);
+            return role is null ? NotFound() : Ok(role);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Deletes an authorization role.
+    /// </summary>
+    [HttpDelete("roles/{roleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> DeleteRole(Guid roleGuid, CancellationToken cancellationToken)
+    {
+        return await _service.DeleteRoleAsync(roleGuid, cancellationToken) ? NoContent() : NotFound();
+    }
+    #endregion
+
+    #region Permission Rules
+    /// <summary>
+    /// Returns permission rules filtered by optional user or role identifiers.
+    /// </summary>
+    [HttpGet("permissions")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetRules([FromQuery] Guid? userGuid, [FromQuery] Guid? roleGuid, CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetPermissionRulesAsync(userGuid, roleGuid, cancellationToken));
+    }
+
+    /// <summary>
+    /// Returns a single permission rule by identifier.
+    /// </summary>
+    [HttpGet("permissions/{ruleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetRule(Guid ruleGuid, CancellationToken cancellationToken)
+    {
+        var rule = await _service.GetPermissionRuleAsync(ruleGuid, cancellationToken);
+        return rule is null ? NotFound() : Ok(rule);
+    }
+
+    /// <summary>
+    /// Creates a new permission rule.
+    /// </summary>
+    [HttpPost("permissions")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> CreateRule([FromBody] CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rule = await _service.CreatePermissionRuleAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetRule), new { ruleGuid = rule.Guid }, rule);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Updates an existing permission rule.
+    /// </summary>
+    [HttpPut("permissions/{ruleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> UpdateRule(Guid ruleGuid, [FromBody] UpdateAuthPermissionRuleRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var rule = await _service.UpdatePermissionRuleAsync(ruleGuid, request, cancellationToken);
+            return rule is null ? NotFound() : Ok(rule);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Deletes a permission rule.
+    /// </summary>
+    [HttpDelete("permissions/{ruleGuid:guid}")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> DeleteRule(Guid ruleGuid, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _service.DeletePermissionRuleAsync(ruleGuid, cancellationToken) ? NoContent() : NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
+    #endregion
 }

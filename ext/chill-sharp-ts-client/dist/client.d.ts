@@ -115,6 +115,36 @@ export interface RegisterAuthIdentityRequest extends JsonObject {
     displayCultureName: string;
     createChillAuthUser: boolean;
 }
+export interface LoginAuthIdentityRequest extends JsonObject {
+    userNameOrEmail: string;
+    password: string;
+}
+export interface RefreshAuthTokenRequest extends JsonObject {
+    refreshToken: string;
+}
+export interface ChangePasswordRequest extends JsonObject {
+    currentPassword: string;
+    newPassword: string;
+}
+export interface ChangePasswordResponse extends JsonObject {
+    succeeded: boolean;
+}
+export interface RequestPasswordResetRequest extends JsonObject {
+    userNameOrEmail: string;
+}
+export interface PasswordResetTokenResponse extends JsonObject {
+    isAccepted: boolean;
+    userId: string | null;
+    resetToken: string | null;
+}
+export interface ResetPasswordRequest extends JsonObject {
+    userId: string;
+    resetToken: string;
+    newPassword: string;
+}
+export interface ResetPasswordResponse extends JsonObject {
+    succeeded: boolean;
+}
 export declare const PermissionEffect: {
     readonly Allow: 1;
     readonly Deny: 2;
@@ -138,6 +168,8 @@ export declare const PermissionScope: {
 export type PermissionScope = (typeof PermissionScope)[keyof typeof PermissionScope];
 export interface AuthPermissionRule extends JsonObject {
     guid: string;
+    userGuid: string | null;
+    roleGuid: string | null;
     effect: PermissionEffect;
     action: PermissionAction;
     scope: PermissionScope;
@@ -191,6 +223,33 @@ export interface SetAuthUserRequest extends JsonObject {
     roleGuids: string[];
     permissions: AuthPermissionRuleItem[];
 }
+export interface CreateAuthUserRequest extends JsonObject {
+    externalId: string;
+    email: string;
+    userName: string;
+    displayName: string;
+    displayCultureName: string;
+    displayTimeZone: string;
+    displayDateFormat: string;
+    displayNumberFormat: string;
+    isActive: boolean;
+    canManagePermissions: boolean;
+    canManageSchema: boolean;
+    menuHierarchy: string;
+}
+export interface UpdateAuthUserRequest extends JsonObject {
+    externalId: string;
+    userName: string;
+    displayName: string;
+    displayCultureName: string;
+    displayTimeZone: string;
+    displayDateFormat: string;
+    displayNumberFormat: string;
+    isActive: boolean;
+    canManagePermissions: boolean;
+    canManageSchema: boolean;
+    menuHierarchy: string;
+}
 export interface SetAuthRoleRequest extends JsonObject {
     guid: string | null;
     name: string;
@@ -199,6 +258,28 @@ export interface SetAuthRoleRequest extends JsonObject {
     menuHierarchy: string;
     userGuids: string[];
     permissions: AuthPermissionRuleItem[];
+}
+export interface CreateAuthRoleRequest extends JsonObject {
+    name: string;
+    description: string;
+    isActive: boolean;
+    menuHierarchy: string;
+}
+export interface UpdateAuthRoleRequest extends CreateAuthRoleRequest {
+}
+export interface CreateAuthPermissionRuleRequest extends JsonObject {
+    userGuid: string | null;
+    roleGuid: string | null;
+    effect: PermissionEffect;
+    action: PermissionAction;
+    scope: PermissionScope;
+    module: string;
+    entityName: string | null;
+    propertyName: string | null;
+    appliesToAllProperties: boolean;
+    description: string;
+}
+export interface UpdateAuthPermissionRuleRequest extends CreateAuthPermissionRuleRequest {
 }
 export interface ChillSharpClientOptions {
     accessToken?: string;
@@ -259,15 +340,23 @@ export declare class ChillSharpClient {
     subscribeToEntityChanges(chillType: string, callback: ChillEntityChangeCallback, guid?: string | null): Promise<ChillEntityChangeSubscription>;
     disconnectEntityChanges(): Promise<void>;
     registerAuthAccount(payload: RegisterAuthIdentityRequest): Promise<AuthTokenResponse>;
-    loginAuthAccount(payload: JsonObject): Promise<AuthTokenResponse>;
+    loginAuthAccount(payload: LoginAuthIdentityRequest): Promise<AuthTokenResponse>;
     refreshAuthAccount(): Promise<AuthTokenResponse>;
-    changeAuthPassword(payload: JsonObject): Promise<JsonObject>;
-    requestAuthPasswordReset(payload: JsonObject): Promise<JsonObject>;
-    resetAuthPassword(payload: JsonObject): Promise<JsonObject>;
+    logoutAuthAccount(): Promise<void>;
+    changeAuthPassword(payload: ChangePasswordRequest): Promise<ChangePasswordResponse>;
+    requestAuthPasswordReset(payload: RequestPasswordResetRequest): Promise<PasswordResetTokenResponse>;
+    resetAuthPassword(payload: ResetPasswordRequest): Promise<ResetPasswordResponse>;
     getAuthPermissions(): Promise<GetAuthPermissionsResponse>;
     getAuthUserList(): Promise<AuthUserListItem[]>;
     getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse>;
     setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse>;
+    getAuthUsers(): Promise<AuthUserListItem[]>;
+    createAuthUser(payload: CreateAuthUserRequest): Promise<AuthUserListItem>;
+    updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Promise<AuthUserListItem | null>;
+    deleteAuthUser(userGuid: string): Promise<void>;
+    getAuthUserRoles(userGuid: string): Promise<AuthRoleListItem[]>;
+    assignAuthRole(userGuid: string, roleGuid: string): Promise<void>;
+    removeAuthRole(userGuid: string, roleGuid: string): Promise<void>;
     getAuthRoleList(): Promise<AuthRoleListItem[]>;
     getAuthModuleList(): Promise<string[]>;
     getAuthEntityList(module?: string | null): Promise<string[]>;
@@ -276,6 +365,15 @@ export declare class ChillSharpClient {
     getAuthPropertyList(chillType: string): Promise<string[]>;
     getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse>;
     setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse>;
+    getAuthRoles(): Promise<AuthRoleListItem[]>;
+    createAuthRole(payload: CreateAuthRoleRequest): Promise<AuthRoleListItem>;
+    updateAuthRole(roleGuid: string, payload: UpdateAuthRoleRequest): Promise<AuthRoleListItem | null>;
+    deleteAuthRole(roleGuid: string): Promise<void>;
+    getAuthPermissionRules(userGuid?: string | null, roleGuid?: string | null): Promise<AuthPermissionRule[]>;
+    getAuthPermissionRule(ruleGuid: string): Promise<AuthPermissionRule | null>;
+    createAuthPermissionRule(payload: CreateAuthPermissionRuleRequest): Promise<AuthPermissionRule>;
+    updateAuthPermissionRule(ruleGuid: string, payload: UpdateAuthPermissionRuleRequest): Promise<AuthPermissionRule | null>;
+    deleteAuthPermissionRule(ruleGuid: string): Promise<void>;
     private prepareGetTextRequest;
     private sendAuthJson;
     private sendJson;
@@ -284,6 +382,7 @@ export declare class ChillSharpClient {
     private getAuthTokenIfNecessary;
     private getAuthTokenIfNecessaryCore;
     private applyAuthToken;
+    private clearAuthToken;
     private canUseAuthentication;
     private hasUsableAccessToken;
     private shouldRefreshAccessToken;
@@ -312,4 +411,10 @@ export declare class ChillSharpClient {
     private isEntityChangeAction;
     private reregisterEntityChangeSubscriptions;
     private buildEntityChangeRegistrationKey;
+    private getUsersAssignedToRole;
+    private syncUserRoles;
+    private syncUserPermissions;
+    private syncRoleUsers;
+    private syncRolePermissions;
+    private syncPermissionRules;
 }

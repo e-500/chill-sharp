@@ -36,7 +36,6 @@ using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Net.Http.Json;
 
 namespace ChillSharp.Tests;
 
@@ -60,6 +59,7 @@ public sealed class AuthApi
         {
             ExternalId = "user-auth-test-001",
             UserName = "auth.test",
+            Email = "dummy@example.com",
             DisplayName = "Auth Test",
             DisplayCultureName = "it-IT",
             DisplayTimeZone = "W. Europe Standard Time",
@@ -102,37 +102,59 @@ public sealed class AuthApi
     /// Verifies that an anonymous caller cannot create auth users, create roles, or assign privileges when the auth API is protected by ASP.NET Core authorization.
     /// </summary>
     [TestMethod]
-    public async Task Step002_AnonymousUserCannotRegisterAndGrantPrivileges()
+    public void Step002_AnonymousUserCannotRegisterAndGrantPrivileges()
     {
         SecuredAuthApiHost.EnsureStarted();
 
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5001/")
-        };
+        var client = new ChillSharpClient("http://localhost:5001/api/chill");
 
         // Attempt to create an auth user without providing any authenticated identity.
-        var createUserResponse = await client.PostAsJsonAsync("api/chill-auth/users", new CreateAuthUserRequest
+        try
         {
-            ExternalId = "anonymous-user",
-            UserName = "anonymous.user",
-            DisplayName = "Anonymous User",
-            IsActive = true
-        });
-        Assert.IsTrue(createUserResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden);
+            client.CreateAuthUser(new CreateAuthUserRequest
+            {
+                ExternalId = "anonymous-user",
+                UserName = "anonymous.user",
+                Email = "dummy@example.com",
+                DisplayName = "Anonymous User",
+                IsActive = true
+            });
+            Assert.Fail("Anonymous user creation should have failed.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                          ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+        }
 
         // Attempt to create a privileged role anonymously.
-        var createRoleResponse = await client.PostAsJsonAsync("api/chill-auth/roles", new CreateAuthRoleRequest
+        try
         {
-            Name = "Administrators",
-            Description = "Anonymous escalation attempt",
-            IsActive = true
-        });
-        Assert.IsTrue(createRoleResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden);
+            client.CreateAuthRole(new CreateAuthRoleRequest
+            {
+                Name = "Administrators",
+                Description = "Anonymous escalation attempt",
+                IsActive = true
+            });
+            Assert.Fail("Anonymous role creation should have failed.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                          ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+        }
 
         // Attempt to self-assign a role anonymously.
-        var assignRoleResponse = await client.PutAsync($"api/chill-auth/users/{Guid.NewGuid()}/roles/{Guid.NewGuid()}", null);
-        Assert.IsTrue(assignRoleResponse.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden);
+        try
+        {
+            client.AssignAuthRole(Guid.NewGuid(), Guid.NewGuid());
+            Assert.Fail("Anonymous role assignment should have failed.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("Unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                          ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>
@@ -188,17 +210,15 @@ public sealed class AuthApi
     }
 
     /// <summary>
-    /// Verifies that the client can register, authenticate, automatically refresh the access token, and complete password flows against the Identity-backed auth endpoints.
+    /// Verifies that the refactored account endpoints can register, authenticate, refresh, logout, and complete password flows.
     /// </summary>
     [TestMethod]
-    public async Task Step004_ClientCanUseIdentityAccountEndpointsAndRefreshToken()
+    public async Task Step004_IdentityAccountEndpointsSupportLifecycleFlows()
     {
         IdentityAuthApiHost.EnsureStarted();
 
-        var client = new ChillSharpClient("http://localhost:5002/api/chill");
-
-        // Register a new Identity account and obtain the first access-token pair.
-        var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityRequest
+        var anonymousClient = new ChillSharpClient("http://localhost:5002/api/chill");
+        var registerResponse = anonymousClient.RegisterAuthAccount(new RegisterAuthIdentityRequest
         {
             UserName = "identity.user",
             Email = "identity.user@test.local",
@@ -211,20 +231,23 @@ public sealed class AuthApi
         Assert.IsFalse(string.IsNullOrWhiteSpace(registerResponse.AccessToken));
         Assert.IsFalse(string.IsNullOrWhiteSpace(registerResponse.RefreshToken));
 
+        var authenticatedClient = new ChillSharpClient("http://localhost:5002/api/chill", AuthToken: registerResponse.AccessToken);
         try
         {
-            client.GetAuthUsers();
-            Assert.Fail("A normal authenticated user should not be allowed to manage the auth API.");
+            authenticatedClient.GetAuthUsers();
+            Assert.Fail("A non-manager should not be allowed to read the auth user list.");
         }
-        catch (ChillClientException)
+        catch (ChillClientException ex)
         {
+            Assert.IsTrue(ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
         }
 
-        // Wait long enough to cross the 75% refresh threshold and force the client to refresh automatically on the next authenticated call.
-        await Task.Delay(TimeSpan.FromSeconds(4));
+        var refreshResponse = anonymousClient.RefreshAuthAccount();
+        Assert.IsFalse(string.IsNullOrWhiteSpace(refreshResponse.AccessToken));
+        Assert.AreNotEqual(registerResponse.RefreshToken, refreshResponse.RefreshToken);
 
-        // Use an authenticated endpoint so the client must attach a valid bearer token and rotate it through refresh-token flow.
-        var changePasswordResponse = client.ChangeAuthPassword(new ChangePasswordRequest
+        var refreshedClient = new ChillSharpClient("http://localhost:5002/api/chill", AuthToken: refreshResponse.AccessToken);
+        var changePasswordResponse = refreshedClient.ChangeAuthPassword(new ChangePasswordRequest
         {
             CurrentPassword = "Pass123$",
             NewPassword = "Pass456$"
@@ -232,8 +255,7 @@ public sealed class AuthApi
 
         Assert.IsTrue(changePasswordResponse.Succeeded);
 
-        // Explicit login with the new password must succeed and return a fresh token pair.
-        var loginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
+        var loginResponse = anonymousClient.LoginAuthAccount(new LoginAuthIdentityRequest
         {
             UserNameOrEmail = "identity.user",
             Password = "Pass456$"
@@ -241,8 +263,7 @@ public sealed class AuthApi
 
         Assert.IsFalse(string.IsNullOrWhiteSpace(loginResponse.AccessToken));
 
-        // Request and consume a password-reset token exposed by the test host configuration.
-        var resetTokenResponse = client.RequestAuthPasswordReset(new RequestPasswordResetRequest
+        var resetTokenResponse = anonymousClient.RequestAuthPasswordReset(new RequestPasswordResetRequest
         {
             UserNameOrEmail = "identity.user"
         });
@@ -251,7 +272,7 @@ public sealed class AuthApi
         Assert.IsFalse(string.IsNullOrWhiteSpace(resetTokenResponse.UserId));
         Assert.IsFalse(string.IsNullOrWhiteSpace(resetTokenResponse.ResetToken));
 
-        var resetPasswordResponse = client.ResetAuthPassword(new ResetPasswordRequest
+        var resetPasswordResponse = anonymousClient.ResetAuthPassword(new ResetPasswordRequest
         {
             UserId = resetTokenResponse.UserId!,
             ResetToken = resetTokenResponse.ResetToken!,
@@ -260,8 +281,8 @@ public sealed class AuthApi
 
         Assert.IsTrue(resetPasswordResponse.Succeeded);
 
-        // Final login with the reset password confirms that the complete account lifecycle works.
-        var finalLoginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
+        var finalClient = new ChillSharpClient("http://localhost:5002/api/chill");
+        var finalLoginResponse = finalClient.LoginAuthAccount(new LoginAuthIdentityRequest
         {
             UserNameOrEmail = "identity.user",
             Password = "Pass789$"
@@ -269,13 +290,18 @@ public sealed class AuthApi
 
         Assert.IsFalse(string.IsNullOrWhiteSpace(finalLoginResponse.AccessToken));
 
-        // Verify that the linked ChillSharp auth user and refresh-token session were both persisted in the shared database.
+        finalClient.LogoutAuthAccount();
+
         await using var verificationContext = IdentityAuthApiHost.CreateDbContext();
         var persistedAuthUser = await verificationContext.Users.FirstOrDefaultAsync(x => x.ExternalId == finalLoginResponse.UserId);
-        var persistedRefreshToken = await verificationContext.RefreshTokens.FirstOrDefaultAsync(x => x.IdentityUserId == finalLoginResponse.UserId);
+        var revokedRefreshToken = await verificationContext.RefreshTokens
+            .Where(x => x.IdentityUserId == finalLoginResponse.UserId)
+            .OrderByDescending(x => x.CreatedUtc)
+            .FirstOrDefaultAsync();
 
         Assert.IsNotNull(persistedAuthUser);
-        Assert.IsNotNull(persistedRefreshToken);
+        Assert.IsNotNull(revokedRefreshToken);
+        Assert.IsTrue(revokedRefreshToken.RevokedUtc.HasValue);
         Assert.AreEqual("it-IT", persistedAuthUser.DisplayCultureName);
         Assert.AreEqual("W. Europe Standard Time", persistedAuthUser.DisplayTimeZone);
         Assert.AreEqual("DD/MM/YYYY", persistedAuthUser.DisplayDateFormat);
@@ -283,10 +309,10 @@ public sealed class AuthApi
     }
 
     /// <summary>
-    /// Verifies that the Identity integration can bootstrap a root account from environment variables during startup.
+    /// Verifies that the Identity integration can bootstrap a root account and create managed users that reset their password through the refactored endpoints.
     /// </summary>
     [TestMethod]
-    public async Task Step005_RootAccountCanBeInitializedFromEnvironment()
+    public async Task Step005_RootAccountCanBootstrapAndProvisionManagedUsers()
     {
         const string rootUserName = "root";
         const string rootPassword = "Pass123$";
@@ -302,8 +328,9 @@ public sealed class AuthApi
         {
             RootBootstrapAuthApiHost.EnsureStarted();
 
-            var client = new ChillSharpClient("http://localhost:5003/api/chill");
-            var loginResponse = client.LoginAuthAccount(new LoginAuthIdentityRequest
+            var anonymousClient = new ChillSharpClient("http://localhost:5003/api/chill");
+            var rootClient = new ChillSharpClient("http://localhost:5003/api/chill");
+            var loginResponse = rootClient.LoginAuthAccount(new LoginAuthIdentityRequest
             {
                 UserNameOrEmail = rootUserName,
                 Password = rootPassword
@@ -311,7 +338,23 @@ public sealed class AuthApi
 
             Assert.AreEqual(rootUserName, loginResponse.UserName);
             Assert.IsFalse(string.IsNullOrWhiteSpace(loginResponse.AccessToken));
-            Assert.HasCount(1, client.GetAuthUsers());
+
+            var usersResponse = rootClient.GetAuthUsers();
+            Assert.AreEqual(1, usersResponse.Count);
+
+            var managedUserResponse = rootClient.CreateAuthUser(new CreateAuthUserRequest
+            {
+                UserName = "invited.user",
+                Email = "invited.user@test.local",
+                DisplayName = "Invited User",
+                DisplayCultureName = "en-US",
+                DisplayTimeZone = "Eastern Standard Time",
+                DisplayDateFormat = "MM/DD/YYYY",
+                DisplayNumberFormat = "1,000.00",
+                IsActive = true
+            });
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(managedUserResponse.ExternalId));
 
             await using var verificationContext = RootBootstrapAuthApiHost.CreateDbContext();
             var persistedIdentityUser = await verificationContext.Set<IdentityUser>().FirstOrDefaultAsync(x => x.UserName == rootUserName);
@@ -323,6 +366,20 @@ public sealed class AuthApi
             Assert.AreEqual(rootDisplayName, persistedAuthUser.DisplayName);
             Assert.IsTrue(persistedAuthUser.CanManagePermissions);
             Assert.IsTrue(persistedAuthUser.CanManageSchema);
+
+            var invitedIdentityUser = await verificationContext.Set<IdentityUser>().FirstOrDefaultAsync(x => x.Id == managedUserResponse.ExternalId);
+            Assert.IsNotNull(invitedIdentityUser);
+            Assert.AreEqual("invited.user", invitedIdentityUser.UserName);
+            Assert.AreEqual("invited.user@test.local", invitedIdentityUser.Email);
+
+            var invitedResetResponse = anonymousClient.RequestAuthPasswordReset(new RequestPasswordResetRequest
+            {
+                UserNameOrEmail = "invited.user@test.local"
+            });
+
+            Assert.IsTrue(invitedResetResponse.IsAccepted);
+            Assert.AreEqual(managedUserResponse.ExternalId, invitedResetResponse.UserId);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(invitedResetResponse.ResetToken));
         }
         finally
         {
@@ -334,39 +391,28 @@ public sealed class AuthApi
     }
 
     /// <summary>
-    /// Verifies the refactored get/set management endpoints and that updates do not duplicate memberships or permission rules.
+    /// Verifies the merged management controller keeps CRUD routes stable and that updates do not duplicate memberships or permission rules.
     /// </summary>
     [TestMethod]
     public async Task Step006_RefactoredManagementEndpointsReturnStructuredPayloads()
     {
-        TestApiHost.EnsureStarted(6002);
+        MergedManagementApiHost.EnsureStarted();
 
-        var client = new ChillSharpClient("http://localhost:6002/api/chill");
+        var client = new ChillSharpClient("http://localhost:6012/api/chill");
 
-        var role = client.SetAuthRole(new SetAuthRoleRequest
+        var role = client.CreateAuthRole(new CreateAuthRoleRequest
         {
             Name = $"ManagedRole-{Guid.NewGuid():N}",
-            Description = "Role created by set-role",
+            Description = "Role created by CRUD route",
             IsActive = true,
-            MenuHierarchy = "BLOG.ADMIN",
-            Permissions =
-            [
-                new AuthPermissionRuleItem
-                {
-                    Effect = PermissionEffect.Allow,
-                    Action = PermissionAction.Query,
-                    Scope = PermissionScope.Entity,
-                    Module = "Blog",
-                    EntityName = "Post",
-                    Description = "Allow blog post query"
-                }
-            ]
+            MenuHierarchy = "BLOG.ADMIN"
         });
 
-        var user = client.SetAuthUser(new SetAuthUserRequest
+        var user = client.CreateAuthUser(new CreateAuthUserRequest
         {
             ExternalId = $"managed-user-{Guid.NewGuid():N}",
             UserName = $"managed.user.{Guid.NewGuid():N}",
+            Email = "custom@example.com",
             DisplayName = "Managed User",
             DisplayCultureName = "en-US",
             DisplayTimeZone = "Eastern Standard Time",
@@ -374,25 +420,37 @@ public sealed class AuthApi
             DisplayNumberFormat = "1,000.00",
             IsActive = true,
             CanManageSchema = true,
-            MenuHierarchy = "BLOG.USER",
-            RoleGuids = [role.Guid],
-            Permissions =
-            [
-                new AuthPermissionRuleItem
-                {
-                    Effect = PermissionEffect.Allow,
-                    Action = PermissionAction.Modify,
-                    Scope = PermissionScope.Property,
-                    Module = "Blog",
-                    EntityName = "Post",
-                    PropertyName = "Title",
-                    Description = "Allow title edits"
-                }
-            ]
+            MenuHierarchy = "BLOG.USER"
         });
 
-        var fetchedUser = client.GetAuthManagedUser(user.Guid);
-        var fetchedRole = client.GetAuthManagedRole(role.Guid);
+        client.AssignAuthRole(user.Guid, role.Guid);
+        var userRule = client.CreateAuthPermissionRule(new CreateAuthPermissionRuleRequest
+        {
+            UserGuid = user.Guid,
+            Effect = PermissionEffect.Allow,
+            Action = PermissionAction.Modify,
+            Scope = PermissionScope.Property,
+            Module = "Blog",
+            EntityName = "Post",
+            PropertyName = "Title",
+            Description = "Allow title edits"
+        });
+        var roleRule = client.CreateAuthPermissionRule(new CreateAuthPermissionRuleRequest
+        {
+            RoleGuid = role.Guid,
+            Effect = PermissionEffect.Allow,
+            Action = PermissionAction.Query,
+            Scope = PermissionScope.Entity,
+            Module = "Blog",
+            EntityName = "Post",
+            Description = "Allow blog post query"
+        });
+
+        var fetchedUser = client.GetAuthUser(user.Guid);
+        var fetchedRole = client.GetAuthRole(role.Guid);
+        var fetchedUserRoles = client.GetAuthUserRoles(user.Guid);
+        var fetchedUserRules = client.GetAuthPermissionRules(userGuid: user.Guid);
+        var fetchedRoleRules = client.GetAuthPermissionRules(roleGuid: role.Guid);
         var userList = client.GetAuthUserList();
         var roleList = client.GetAuthRoleList();
 
@@ -403,16 +461,15 @@ public sealed class AuthApi
         Assert.AreEqual("MM/DD/YYYY", fetchedUser.DisplayDateFormat);
         Assert.AreEqual("1,000.00", fetchedUser.DisplayNumberFormat);
         Assert.AreEqual("BLOG.USER", fetchedUser.MenuHierarchy);
-        Assert.HasCount(1, fetchedUser.Roles);
-        Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
-        Assert.AreEqual("BLOG.ADMIN", fetchedUser.Roles[0].MenuHierarchy);
-        Assert.HasCount(1, fetchedUser.Permissions);
+        Assert.HasCount(1, fetchedUserRoles);
+        Assert.AreEqual(role.Guid, fetchedUserRoles[0].Guid);
+        Assert.AreEqual("BLOG.ADMIN", fetchedUserRoles[0].MenuHierarchy);
+        Assert.HasCount(1, fetchedUserRules);
+        Assert.AreEqual(userRule.Guid, fetchedUserRules[0].Guid);
         Assert.IsNotNull(fetchedRole);
         Assert.AreEqual("BLOG.ADMIN", fetchedRole.MenuHierarchy);
-        Assert.HasCount(1, fetchedRole.Users);
-        Assert.AreEqual(user.Guid, fetchedRole.Users[0].Guid);
-        Assert.AreEqual("BLOG.USER", fetchedRole.Users[0].MenuHierarchy);
-        Assert.HasCount(1, fetchedRole.Permissions);
+        Assert.HasCount(1, fetchedRoleRules);
+        Assert.AreEqual(roleRule.Guid, fetchedRoleRules[0].Guid);
         Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
         Assert.IsTrue(userList!.Single(x => x.Guid == user.Guid).CanManageSchema);
         Assert.AreEqual("en-US", userList!.Single(x => x.Guid == user.Guid).DisplayCultureName);
@@ -423,44 +480,30 @@ public sealed class AuthApi
         Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
         Assert.AreEqual("BLOG.ADMIN", roleList!.Single(x => x.Guid == role.Guid).MenuHierarchy);
 
-        var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;
-        var updatedRole = client.SetAuthRole(new SetAuthRoleRequest
+        var updatedRole = client.UpdateAuthRole(role.Guid, new UpdateAuthRoleRequest
         {
-            Guid = role.Guid,
             Name = role.Name,
-            Description = "Role updated by set-role",
+            Description = "Role updated by CRUD route",
             IsActive = true,
-            MenuHierarchy = "BLOG.EDITOR",
-            UserGuids = [user.Guid],
-            Permissions =
-            [
-                new AuthPermissionRuleItem
-                {
-                    Guid = existingRolePermissionGuid,
-                    Effect = PermissionEffect.Allow,
-                    Action = PermissionAction.Query,
-                    Scope = PermissionScope.Entity,
-                    Module = "Blog",
-                    EntityName = "Post",
-                    Description = "Allow blog post query"
-                },
-                new AuthPermissionRuleItem
-                {
-                    Effect = PermissionEffect.Allow,
-                    Action = PermissionAction.Update,
-                    Scope = PermissionScope.Entity,
-                    Module = "Blog",
-                    EntityName = "Post",
-                    Description = "Allow blog post update"
-                }
-            ]
+            MenuHierarchy = "BLOG.EDITOR"
         });
+        Assert.IsNotNull(updatedRole);
 
-        Assert.HasCount(2, updatedRole.Permissions);
-        Assert.IsTrue(updatedRole.Permissions.Any(x => x.Guid == existingRolePermissionGuid));
+        var updatedRoleRule = client.UpdateAuthPermissionRule(roleRule.Guid, new UpdateAuthPermissionRuleRequest
+        {
+            RoleGuid = role.Guid,
+            Effect = PermissionEffect.Allow,
+            Action = PermissionAction.Update,
+            Scope = PermissionScope.Entity,
+            Module = "Blog",
+            EntityName = "Post",
+            Description = "Allow blog post update"
+        });
+        Assert.IsNotNull(updatedRoleRule);
+
         Assert.AreEqual("BLOG.EDITOR", updatedRole.MenuHierarchy);
 
-        await using var verificationContext = TestApiHost.CreateDbContext();
+        await using var verificationContext = MergedManagementApiHost.CreateDbContext();
         var persistedMemberships = await verificationContext.UserRoles
             .Where(x => x.UserGuid == user.Guid && x.RoleGuid == role.Guid)
             .CountAsync();
@@ -469,7 +512,7 @@ public sealed class AuthApi
             .CountAsync();
 
         Assert.AreEqual(1, persistedMemberships);
-        Assert.AreEqual(2, persistedRoleRules);
+        Assert.AreEqual(1, persistedRoleRules);
     }
 
     /// <summary>
@@ -533,24 +576,24 @@ public sealed class AuthApi
             await seedContext.SaveChangesAsync();
         }
 
-        using var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5001/")
-        };
-        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
+        var client = CreateTestHeaderClient("http://localhost:5001/api/chill", externalId);
 
-        var getPermissions = await httpClient.GetAsync("api/chill-auth/get-permissions");
-        Assert.AreEqual(HttpStatusCode.OK, getPermissions.StatusCode);
-        var permissions = await getPermissions.Content.ReadFromJsonAsync<GetAuthPermissionsResponse>();
-        Assert.IsNotNull(permissions);
+        var permissions = client.GetAuthPermissions();
         Assert.IsNotNull(permissions.User);
         Assert.AreEqual(userGuid, permissions.User.Guid);
         Assert.HasCount(1, permissions.Permissions);
         Assert.HasCount(1, permissions.Roles);
         Assert.HasCount(1, permissions.Roles[0].Permissions);
 
-        var getUserList = await httpClient.GetAsync("api/chill-auth/get-user-list");
-        Assert.AreEqual(HttpStatusCode.Forbidden, getUserList.StatusCode);
+        try
+        {
+            client.GetAuthUserList();
+            Assert.Fail("A non-manager should not be allowed to access auth management endpoints.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>
@@ -655,13 +698,8 @@ public sealed class AuthApi
             await seedContext.SaveChangesAsync();
         }
 
-        using var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5001/")
-        };
-        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
-
-        var response = await httpClient.PutAsJsonAsync($"api/chill-auth/users/{userGuid}", new UpdateAuthUserRequest
+        var client = CreateTestHeaderClient("http://localhost:5001/api/chill", externalId);
+        var response = client.UpdateAuthUser(userGuid, new UpdateAuthUserRequest
         {
             ExternalId = externalId,
             UserName = $"self.update.changed.{Guid.NewGuid():N}",
@@ -676,7 +714,7 @@ public sealed class AuthApi
             MenuHierarchy = "SELF.TEST"
         });
 
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.IsNotNull(response);
 
         await using var verificationContext = SecuredAuthApiHost.CreateDbContext();
         var persistedUser = await verificationContext.Users.FirstAsync(x => x.Guid == userGuid);
@@ -688,10 +726,10 @@ public sealed class AuthApi
     }
 
     /// <summary>
-    /// Verifies that an authenticated permission manager cannot grant themselves roles or direct permission rules through set-user.
+    /// Verifies that an authenticated permission manager cannot grant themselves roles or direct permission rules through the merged CRUD routes.
     /// </summary>
     [TestMethod]
-    public async Task Step010_SelfSetUserCannotGrantRolesOrDirectPermissions()
+    public async Task Step010_SelfCrudCannotGrantRolesOrDirectPermissions()
     {
         SecuredAuthApiHost.EnsureStarted();
 
@@ -721,42 +759,38 @@ public sealed class AuthApi
             await seedContext.SaveChangesAsync();
         }
 
-        using var httpClient = new HttpClient
-        {
-            BaseAddress = new Uri("http://localhost:5001/")
-        };
-        httpClient.DefaultRequestHeaders.Add("X-Test-User", externalId);
+        var client = CreateTestHeaderClient("http://localhost:5001/api/chill", externalId);
 
-        var response = await httpClient.PostAsJsonAsync("api/chill-auth/set-user", new SetAuthUserRequest
+        try
         {
-            Guid = userGuid,
-            ExternalId = externalId,
-            UserName = $"self.set.changed.{Guid.NewGuid():N}",
-            DisplayName = "Self Set User Changed",
-            DisplayCultureName = "en-US",
-            DisplayTimeZone = "Eastern Standard Time",
-            DisplayDateFormat = "MM/DD/YYYY",
-            DisplayNumberFormat = "1,000.00",
-            IsActive = true,
-            CanManagePermissions = true,
-            CanManageSchema = true,
-            MenuHierarchy = "SELF.SET",
-            RoleGuids = [roleGuid],
-            Permissions =
-            [
-                new AuthPermissionRuleItem
-                {
-                    Effect = PermissionEffect.Allow,
-                    Action = PermissionAction.Update,
-                    Scope = PermissionScope.Entity,
-                    Module = "Blog",
-                    EntityName = "Post",
-                    Description = "Attempt to self-grant direct permission"
-                }
-            ]
-        });
+            client.AssignAuthRole(userGuid, roleGuid);
+            Assert.Fail("Self role assignment should have failed.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("BadRequest", StringComparison.OrdinalIgnoreCase) ||
+                          ex.Message.Contains("400", StringComparison.OrdinalIgnoreCase));
+        }
 
-        Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+        try
+        {
+            client.CreateAuthPermissionRule(new CreateAuthPermissionRuleRequest
+            {
+                UserGuid = userGuid,
+                Effect = PermissionEffect.Allow,
+                Action = PermissionAction.Update,
+                Scope = PermissionScope.Entity,
+                Module = "Blog",
+                EntityName = "Post",
+                Description = "Attempt to self-grant direct permission"
+            });
+            Assert.Fail("Self permission assignment should have failed.");
+        }
+        catch (ChillClientException ex)
+        {
+            Assert.IsTrue(ex.Message.Contains("BadRequest", StringComparison.OrdinalIgnoreCase) ||
+                          ex.Message.Contains("400", StringComparison.OrdinalIgnoreCase));
+        }
 
         await using var verificationContext = SecuredAuthApiHost.CreateDbContext();
         var persistedUser = await verificationContext.Users.FirstAsync(x => x.Guid == userGuid);
@@ -770,6 +804,16 @@ public sealed class AuthApi
         Assert.IsFalse(persistedUser.CanManageSchema);
         Assert.AreEqual(0, persistedMemberships);
         Assert.AreEqual(0, persistedRules);
+    }
+
+    private static ChillSharpClient CreateTestHeaderClient(string baseUrl, string externalId)
+    {
+        return new ChillSharpClient(baseUrl, () =>
+        {
+            var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("X-Test-User", externalId);
+            return client;
+        });
     }
 
     private static class SecuredAuthApiHost
@@ -813,6 +857,58 @@ public sealed class AuthApi
                     app.UseAuthentication();
                     app.UseAuthorization();
                     app.MapControllers().RequireAuthorization();
+                    app.Run();
+                });
+
+                apiServer.Wait(5000);
+                _apiServiceUpAndRunning = true;
+            }
+        }
+
+        public static EF.DummyContext CreateDbContext()
+        {
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={DatabasePath}")
+                .Options;
+            return new EF.DummyContext(options);
+        }
+    }
+
+    private static class MergedManagementApiHost
+    {
+        private static readonly object SyncRoot = new();
+        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "merged-management-auth-api-host.db");
+        private static bool _apiServiceUpAndRunning;
+
+        public static void EnsureStarted()
+        {
+            if (_apiServiceUpAndRunning)
+            {
+                return;
+            }
+
+            lock (SyncRoot)
+            {
+                if (_apiServiceUpAndRunning)
+                {
+                    return;
+                }
+
+                var apiServer = Task.Run(() =>
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
+                    var ctx = CreateDbContext();
+                    ctx.Database.EnsureDeleted();
+                    ctx.Database.EnsureCreated();
+
+                    var builder = WebApplication.CreateBuilder(Array.Empty<string>());
+                    builder.WebHost.UseUrls("http://localhost:6012");
+                    builder.Services.AddDbContext<EF.DummyContext>(options =>
+                        options.UseSqlite($"Data Source={DatabasePath}"));
+                    builder.Services.AddChillApi<EF.DummyContext>();
+
+                    var app = builder.Build();
+                    app.MapChillApi();
                     app.Run();
                 });
 
@@ -939,7 +1035,11 @@ public sealed class AuthApi
                     builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
                         .AddChillAuthBearer();
                     builder.Services.AddAuthorization();
-                    builder.Services.AddChillApi<EF.DummyContext, IdentityUser>(options => options.ProtectedApi = true);
+                    builder.Services.AddChillApi<EF.DummyContext, IdentityUser>(options =>
+                    {
+                        options.ProtectedApi = true;
+                        options.ReturnPasswordResetTokensInResponse = true;
+                    });
 
                     var app = builder.Build();
                     app.UseAuthentication();
@@ -988,21 +1088,5 @@ public sealed class AuthApi
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
-    }
-}
-
-internal static class HttpResponseMessageTestExtensions
-{
-    public static HttpResponseMessage EnsureSuccess(this HttpResponseMessage response)
-    {
-        response.EnsureSuccessStatusCode();
-        return response;
-    }
-
-    public static async Task<T> ReadAsAsync<T>(this HttpContent content)
-    {
-        var result = await content.ReadFromJsonAsync<T>();
-        Assert.IsNotNull(result);
-        return result!;
     }
 }

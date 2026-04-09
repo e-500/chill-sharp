@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoMenuItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
+import type { AuthPermissionRule, AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthUserDetailsResponse, AuthUserListItem, ChangePasswordRequest, ChangePasswordResponse, ChillDtoEntityOptions, ChillDtoMenuItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, CreateAuthPermissionRuleRequest, CreateAuthRoleRequest, CreateAuthUserRequest, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, LoginAuthIdentityRequest, PasswordResetTokenResponse, RegisterAuthIdentityRequest, RequestPasswordResetRequest, ResetPasswordRequest, ResetPasswordResponse, JsonObject, SetAuthRoleRequest, SetAuthUserRequest, UpdateAuthPermissionRuleRequest, UpdateAuthRoleRequest, UpdateAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -29,15 +29,23 @@ export declare class ChillSharpNgClient {
     watchEntityChanges(chillType: string, guid?: string | null): Observable<ChillEntityChangeNotification[]>;
     disconnectEntityChanges(): Observable<void>;
     registerAuthAccount(payload: RegisterAuthIdentityRequest): Observable<AuthTokenResponse>;
-    loginAuthAccount(payload: JsonObject): Observable<AuthTokenResponse>;
+    loginAuthAccount(payload: LoginAuthIdentityRequest): Observable<AuthTokenResponse>;
     refreshAuthAccount(): Observable<AuthTokenResponse>;
-    changeAuthPassword(payload: JsonObject): Observable<JsonObject>;
-    requestAuthPasswordReset(payload: JsonObject): Observable<JsonObject>;
-    resetAuthPassword(payload: JsonObject): Observable<JsonObject>;
+    logoutAuthAccount(): Observable<void>;
+    changeAuthPassword(payload: ChangePasswordRequest): Observable<ChangePasswordResponse>;
+    requestAuthPasswordReset(payload: RequestPasswordResetRequest): Observable<PasswordResetTokenResponse>;
+    resetAuthPassword(payload: ResetPasswordRequest): Observable<ResetPasswordResponse>;
     getAuthPermissions(): Observable<GetAuthPermissionsResponse>;
     getAuthUserList(): Observable<AuthUserListItem[]>;
     getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse>;
     setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse>;
+    getAuthUsers(): Observable<AuthUserListItem[]>;
+    createAuthUser(payload: CreateAuthUserRequest): Observable<AuthUserListItem>;
+    updateAuthUser(userGuid: string, payload: UpdateAuthUserRequest): Observable<AuthUserListItem | null>;
+    deleteAuthUser(userGuid: string): Observable<void>;
+    getAuthUserRoles(userGuid: string): Observable<AuthRoleListItem[]>;
+    assignAuthRole(userGuid: string, roleGuid: string): Observable<void>;
+    removeAuthRole(userGuid: string, roleGuid: string): Observable<void>;
     getAuthRoleList(): Observable<AuthRoleListItem[]>;
     getAuthModuleList(): Observable<string[]>;
     getAuthEntityList(module?: string | null): Observable<string[]>;
@@ -46,5 +54,14 @@ export declare class ChillSharpNgClient {
     getAuthPropertyList(chillType: string): Observable<string[]>;
     getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse>;
     setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse>;
+    getAuthRoles(): Observable<AuthRoleListItem[]>;
+    createAuthRole(payload: CreateAuthRoleRequest): Observable<AuthRoleListItem>;
+    updateAuthRole(roleGuid: string, payload: UpdateAuthRoleRequest): Observable<AuthRoleListItem | null>;
+    deleteAuthRole(roleGuid: string): Observable<void>;
+    getAuthPermissionRules(userGuid?: string | null, roleGuid?: string | null): Observable<AuthPermissionRule[]>;
+    getAuthPermissionRule(ruleGuid: string): Observable<AuthPermissionRule | null>;
+    createAuthPermissionRule(payload: CreateAuthPermissionRuleRequest): Observable<AuthPermissionRule>;
+    updateAuthPermissionRule(ruleGuid: string, payload: UpdateAuthPermissionRuleRequest): Observable<AuthPermissionRule | null>;
+    deleteAuthPermissionRule(ruleGuid: string): Observable<void>;
     getRawClient(): ChillSharpClient;
 }

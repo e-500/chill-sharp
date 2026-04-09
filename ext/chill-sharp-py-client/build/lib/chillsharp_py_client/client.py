@@ -197,13 +197,13 @@ class ChillSharpClient:
 
     def register_auth_account(self, payload: JsonDict) -> JsonDict:
         """Register an auth account and store returned tokens."""
-        response = self._send_auth_json("POST", "account/register", payload, allow_anonymous=True)
+        response = self._send_auth_json("POST", "register", payload, allow_anonymous=True)
         self._apply_auth_token(response, forget_password=True)
         return response
 
     def login_auth_account(self, payload: JsonDict) -> JsonDict:
         """Log in an auth account and store returned tokens."""
-        response = self._send_auth_json("POST", "account/login", payload, allow_anonymous=True)
+        response = self._send_auth_json("POST", "login", payload, allow_anonymous=True)
         self._apply_auth_token(response, forget_password=True)
         return response
 
@@ -211,17 +211,22 @@ class ChillSharpClient:
         """Force a refresh of the current auth token state."""
         return self._get_auth_token_if_necessary(force_refresh=True)
 
+    def logout_auth_account(self) -> None:
+        """Log out the current auth account and clear local token state."""
+        self._send_auth_json("POST", "logout", expect_response_body=False)
+        self._clear_auth_token()
+
     def change_auth_password(self, payload: JsonDict) -> JsonDict:
         """Change the password for the current auth account."""
-        return self._send_auth_json("POST", "account/change-password", payload)
+        return self._send_auth_json("POST", "change-password", payload)
 
     def request_auth_password_reset(self, payload: JsonDict) -> JsonDict:
         """Start the password reset flow for an auth account."""
-        return self._send_auth_json("POST", "account/request-password-reset", payload, allow_anonymous=True)
+        return self._send_auth_json("POST", "request-password-reset", payload, allow_anonymous=True)
 
     def reset_auth_password(self, payload: JsonDict) -> JsonDict:
         """Complete the password reset flow with a reset payload."""
-        return self._send_auth_json("POST", "account/reset-password", payload, allow_anonymous=True)
+        return self._send_auth_json("POST", "reset-password", payload, allow_anonymous=True)
 
     def get_auth_permissions(self) -> JsonDict:
         """Return the current user permissions together with role permissions."""
@@ -235,11 +240,50 @@ class ChillSharpClient:
     def get_auth_user(self, user_guid: str) -> JsonDict:
         """Return one auth user with assigned roles and direct permissions."""
         normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
-        return self._send_auth_json("GET", f"get-user?userGuid={quote(normalized_user_guid)}")
+        user = self._send_auth_json("GET", f"users/{quote(normalized_user_guid)}")
+        roles = self.get_auth_user_roles(normalized_user_guid)
+        permissions = self.get_auth_permission_rules(user_guid=normalized_user_guid)
+        return {
+            **user,
+            "roles": roles,
+            "permissions": permissions,
+        }
 
     def set_auth_user(self, payload: JsonDict) -> JsonDict:
         """Create or update an auth user with the full role and permission list."""
-        return self._send_auth_json("POST", "set-user", payload)
+        user_guid = self._normalize_optional_value(self._coerce_string(self._get_payload_value(payload, "guid"))) or None
+        base_payload = {
+            "externalId": self._coerce_string(self._get_payload_value(payload, "externalId")),
+            "userName": self._coerce_string(self._get_payload_value(payload, "userName")),
+            "displayName": self._coerce_string(self._get_payload_value(payload, "displayName")),
+            "displayCultureName": self._coerce_string(self._get_payload_value(payload, "displayCultureName")),
+            "displayTimeZone": self._coerce_string(self._get_payload_value(payload, "displayTimeZone")),
+            "displayDateFormat": self._coerce_string(self._get_payload_value(payload, "displayDateFormat")),
+            "displayNumberFormat": self._coerce_string(self._get_payload_value(payload, "displayNumberFormat")),
+            "isActive": bool(self._get_payload_value(payload, "isActive")),
+            "canManagePermissions": bool(self._get_payload_value(payload, "canManagePermissions")),
+            "canManageSchema": bool(self._get_payload_value(payload, "canManageSchema")),
+            "menuHierarchy": self._coerce_string(self._get_payload_value(payload, "menuHierarchy")),
+        }
+
+        if user_guid:
+            user = self.update_auth_user(user_guid, base_payload)
+        else:
+            user = self.create_auth_user(
+                {
+                    **base_payload,
+                    "email": self._coerce_string(self._get_payload_value(payload, "email")),
+                }
+            )
+
+        if not user:
+            raise ChillSharpClientError("Auth user was not found after set_auth_user execution.")
+
+        role_guids = self._coerce_guid_list(self._get_payload_value(payload, "roleGuids"))
+        permissions = self._coerce_permission_items(self._get_payload_value(payload, "permissions"))
+        self._sync_user_roles(user["guid"], role_guids)
+        self._sync_user_permissions(user["guid"], permissions)
+        return self.get_auth_user(user["guid"])
 
     def get_auth_role_list(self) -> list[JsonDict]:
         """Return the full auth role list."""
@@ -278,11 +322,126 @@ class ChillSharpClient:
     def get_auth_role(self, role_guid: str) -> JsonDict:
         """Return one auth role with assigned users and direct permissions."""
         normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
-        return self._send_auth_json("GET", f"get-role?roleGuid={quote(normalized_role_guid)}")
+        role = self._send_auth_json("GET", f"roles/{quote(normalized_role_guid)}")
+        permissions = self.get_auth_permission_rules(role_guid=normalized_role_guid)
+        users = self._get_users_assigned_to_role(normalized_role_guid)
+        return {
+            **role,
+            "users": users,
+            "permissions": permissions,
+        }
 
     def set_auth_role(self, payload: JsonDict) -> JsonDict:
         """Create or update an auth role with the full user and permission list."""
-        return self._send_auth_json("POST", "set-role", payload)
+        role_guid = self._normalize_optional_value(self._coerce_string(self._get_payload_value(payload, "guid"))) or None
+        base_payload = {
+            "name": self._coerce_string(self._get_payload_value(payload, "name")),
+            "description": self._coerce_string(self._get_payload_value(payload, "description")),
+            "isActive": bool(self._get_payload_value(payload, "isActive")),
+            "menuHierarchy": self._coerce_string(self._get_payload_value(payload, "menuHierarchy")),
+        }
+
+        role = self.update_auth_role(role_guid, base_payload) if role_guid else self.create_auth_role(base_payload)
+        if not role:
+            raise ChillSharpClientError("Auth role was not found after set_auth_role execution.")
+
+        user_guids = self._coerce_guid_list(self._get_payload_value(payload, "userGuids"))
+        permissions = self._coerce_permission_items(self._get_payload_value(payload, "permissions"))
+        self._sync_role_users(role["guid"], user_guids)
+        self._sync_role_permissions(role["guid"], permissions)
+        return self.get_auth_role(role["guid"])
+
+    def get_auth_users(self) -> list[JsonDict]:
+        """Return all auth users."""
+        response = self._send_auth_json("GET", "users")
+        return response if isinstance(response, list) else []
+
+    def create_auth_user(self, payload: JsonDict) -> JsonDict:
+        """Create a new auth user."""
+        return self._send_auth_json("POST", "users", payload)
+
+    def update_auth_user(self, user_guid: str, payload: JsonDict) -> JsonDict | None:
+        """Update an existing auth user."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        return self._send_auth_json("PUT", f"users/{quote(normalized_user_guid)}", payload)
+
+    def delete_auth_user(self, user_guid: str) -> None:
+        """Delete an auth user."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        self._send_auth_json("DELETE", f"users/{quote(normalized_user_guid)}", expect_response_body=False)
+
+    def get_auth_user_roles(self, user_guid: str) -> list[JsonDict]:
+        """Return the roles assigned to a user."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        response = self._send_auth_json("GET", f"users/{quote(normalized_user_guid)}/roles")
+        return response if isinstance(response, list) else []
+
+    def assign_auth_role(self, user_guid: str, role_guid: str) -> None:
+        """Assign a role to a user."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        self._send_auth_json("PUT", f"users/{quote(normalized_user_guid)}/roles/{quote(normalized_role_guid)}", expect_response_body=False)
+
+    def remove_auth_role(self, user_guid: str, role_guid: str) -> None:
+        """Remove a role from a user."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        self._send_auth_json("DELETE", f"users/{quote(normalized_user_guid)}/roles/{quote(normalized_role_guid)}", expect_response_body=False)
+
+    def get_auth_roles(self) -> list[JsonDict]:
+        """Return all auth roles."""
+        response = self._send_auth_json("GET", "roles")
+        return response if isinstance(response, list) else []
+
+    def create_auth_role(self, payload: JsonDict) -> JsonDict:
+        """Create a new auth role."""
+        return self._send_auth_json("POST", "roles", payload)
+
+    def update_auth_role(self, role_guid: str, payload: JsonDict) -> JsonDict | None:
+        """Update an existing auth role."""
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        return self._send_auth_json("PUT", f"roles/{quote(normalized_role_guid)}", payload)
+
+    def delete_auth_role(self, role_guid: str) -> None:
+        """Delete an auth role."""
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        self._send_auth_json("DELETE", f"roles/{quote(normalized_role_guid)}", expect_response_body=False)
+
+    def get_auth_permission_rules(
+        self,
+        user_guid: str | None = None,
+        role_guid: str | None = None,
+    ) -> list[JsonDict]:
+        """Return permission rules filtered by optional user or role."""
+        query_parts: list[str] = []
+        normalized_user_guid = self._normalize_optional_value(user_guid)
+        normalized_role_guid = self._normalize_optional_value(role_guid)
+        if normalized_user_guid:
+            query_parts.append(f"userGuid={quote(normalized_user_guid)}")
+        if normalized_role_guid:
+            query_parts.append(f"roleGuid={quote(normalized_role_guid)}")
+        suffix = f"?{'&'.join(query_parts)}" if query_parts else ""
+        response = self._send_auth_json("GET", f"permissions{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_permission_rule(self, rule_guid: str) -> JsonDict | None:
+        """Return one permission rule by identifier."""
+        normalized_rule_guid = self._normalize_required_value(rule_guid, "rule_guid")
+        return self._send_auth_json("GET", f"permissions/{quote(normalized_rule_guid)}")
+
+    def create_auth_permission_rule(self, payload: JsonDict) -> JsonDict:
+        """Create a permission rule."""
+        return self._send_auth_json("POST", "permissions", payload)
+
+    def update_auth_permission_rule(self, rule_guid: str, payload: JsonDict) -> JsonDict | None:
+        """Update a permission rule."""
+        normalized_rule_guid = self._normalize_required_value(rule_guid, "rule_guid")
+        return self._send_auth_json("PUT", f"permissions/{quote(normalized_rule_guid)}", payload)
+
+    def delete_auth_permission_rule(self, rule_guid: str) -> None:
+        """Delete a permission rule."""
+        normalized_rule_guid = self._normalize_required_value(rule_guid, "rule_guid")
+        self._send_auth_json("DELETE", f"permissions/{quote(normalized_rule_guid)}", expect_response_body=False)
 
     def _prepare_get_text_request(self, request: JsonDict) -> JsonDict:
         """Normalize a get-text request and apply the client default culture when needed."""
@@ -420,7 +579,7 @@ class ChillSharpClient:
             try:
                 refreshed = self._send_auth_json(
                     "POST",
-                    "account/refresh",
+                    "refresh",
                     {"refreshToken": self._token_state.refresh_token},
                     allow_anonymous=True,
                 )
@@ -433,7 +592,7 @@ class ChillSharpClient:
         if self._username and self._password:
             token = self._send_auth_json(
                 "POST",
-                "account/login",
+                "login",
                 {
                     "userNameOrEmail": self._username,
                     "password": self._password,
@@ -468,6 +627,10 @@ class ChillSharpClient:
 
         if forget_password:
             self._password = None
+
+    def _clear_auth_token(self) -> None:
+        """Clear local auth token state."""
+        self._token_state = _TokenState()
 
     def _can_use_authentication(self) -> bool:
         """Check whether the client has enough information to authenticate."""
@@ -523,6 +686,105 @@ class ChillSharpClient:
             "userName": self._username or "",
         }
 
+    def _get_users_assigned_to_role(self, role_guid: str) -> list[JsonDict]:
+        """Resolve the users currently assigned to a role."""
+        matches: list[JsonDict] = []
+        for user in self.get_auth_users():
+            roles = self.get_auth_user_roles(self._coerce_string(self._get_payload_value(user, "guid")))
+            if any(self._coerce_string(self._get_payload_value(role, "guid")) == role_guid for role in roles):
+                matches.append(user)
+        return matches
+
+    def _sync_user_roles(self, user_guid: str, role_guids: list[str]) -> None:
+        """Synchronize a user's assigned roles with the provided target list."""
+        desired = set(role_guids)
+        current_roles = self.get_auth_user_roles(user_guid)
+        current = {self._coerce_string(self._get_payload_value(role, "guid")) for role in current_roles}
+
+        for role_guid in desired - current:
+            self.assign_auth_role(user_guid, role_guid)
+        for role_guid in current - desired:
+            self.remove_auth_role(user_guid, role_guid)
+
+    def _sync_user_permissions(self, user_guid: str, permissions: list[JsonDict]) -> None:
+        """Synchronize a user's direct permissions."""
+        current = self.get_auth_permission_rules(user_guid=user_guid)
+        self._sync_permission_rules(
+            current,
+            permissions,
+            lambda item: {
+                "userGuid": user_guid,
+                "roleGuid": None,
+                "effect": self._get_payload_value(item, "effect"),
+                "action": self._get_payload_value(item, "action"),
+                "scope": self._get_payload_value(item, "scope"),
+                "module": self._coerce_string(self._get_payload_value(item, "module")),
+                "entityName": self._normalize_nullable_payload_string(item, "entityName"),
+                "propertyName": self._normalize_nullable_payload_string(item, "propertyName"),
+                "appliesToAllProperties": bool(self._get_payload_value(item, "appliesToAllProperties")),
+                "description": self._coerce_string(self._get_payload_value(item, "description")),
+            },
+        )
+
+    def _sync_role_users(self, role_guid: str, user_guids: list[str]) -> None:
+        """Synchronize the users assigned to a role."""
+        desired = set(user_guids)
+        current_users = self._get_users_assigned_to_role(role_guid)
+        current = {self._coerce_string(self._get_payload_value(user, "guid")) for user in current_users}
+
+        for user_guid in desired - current:
+            self.assign_auth_role(user_guid, role_guid)
+        for user_guid in current - desired:
+            self.remove_auth_role(user_guid, role_guid)
+
+    def _sync_role_permissions(self, role_guid: str, permissions: list[JsonDict]) -> None:
+        """Synchronize a role's direct permissions."""
+        current = self.get_auth_permission_rules(role_guid=role_guid)
+        self._sync_permission_rules(
+            current,
+            permissions,
+            lambda item: {
+                "userGuid": None,
+                "roleGuid": role_guid,
+                "effect": self._get_payload_value(item, "effect"),
+                "action": self._get_payload_value(item, "action"),
+                "scope": self._get_payload_value(item, "scope"),
+                "module": self._coerce_string(self._get_payload_value(item, "module")),
+                "entityName": self._normalize_nullable_payload_string(item, "entityName"),
+                "propertyName": self._normalize_nullable_payload_string(item, "propertyName"),
+                "appliesToAllProperties": bool(self._get_payload_value(item, "appliesToAllProperties")),
+                "description": self._coerce_string(self._get_payload_value(item, "description")),
+            },
+        )
+
+    def _sync_permission_rules(
+        self,
+        current_rules: list[JsonDict],
+        desired_rules: list[JsonDict],
+        build_payload: Any,
+    ) -> None:
+        """Synchronize permission rules using create, update, and delete operations."""
+        desired_by_guid: dict[str, JsonDict] = {}
+        new_rules: list[JsonDict] = []
+
+        for rule in desired_rules:
+            guid = self._normalize_optional_value(self._coerce_string(self._get_payload_value(rule, "guid")))
+            if guid:
+                desired_by_guid[guid] = rule
+            else:
+                new_rules.append(rule)
+        for current_rule in current_rules:
+            current_guid = self._coerce_string(self._get_payload_value(current_rule, "guid"))
+            desired_rule = desired_by_guid.pop(current_guid, None)
+            if desired_rule is None:
+                self.delete_auth_permission_rule(current_guid)
+                continue
+            self.update_auth_permission_rule(current_guid, build_payload(desired_rule))
+        for desired_rule in desired_by_guid.values():
+            self.create_auth_permission_rule(build_payload(desired_rule))
+        for desired_rule in new_rules:
+            self.create_auth_permission_rule(build_payload(desired_rule))
+
     def _build_chill_url(self, relative_url: str) -> str:
         """Build an absolute URL for the core Chill service."""
         return f"{self._base_url}/{relative_url.lstrip('/')}"
@@ -576,11 +838,36 @@ class ChillSharpClient:
         return value.strip()
 
     @staticmethod
+    def _normalize_nullable_payload_string(payload: JsonDict, key: str) -> str | None:
+        """Read an optional payload string and normalize blank values to None."""
+        value = ChillSharpClient._coerce_string(ChillSharpClient._get_payload_value(payload, key))
+        return value or None
+
+    @staticmethod
     def _coerce_string(value: Any) -> str:
         """Normalize arbitrary values into trimmed strings for endpoint payloads."""
         if value is None:
             return ""
         return str(value).strip()
+
+    @staticmethod
+    def _coerce_guid_list(value: Any) -> list[str]:
+        """Normalize a JSON list into a list of non-empty guid strings."""
+        if not isinstance(value, list):
+            return []
+        result: list[str] = []
+        for item in value:
+            normalized = ChillSharpClient._coerce_string(item)
+            if normalized:
+                result.append(normalized)
+        return result
+
+    @staticmethod
+    def _coerce_permission_items(value: Any) -> list[JsonDict]:
+        """Normalize a JSON list into a list of permission-rule payload dictionaries."""
+        if not isinstance(value, list):
+            return []
+        return [item for item in value if isinstance(item, dict)]
 
     @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:

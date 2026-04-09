@@ -38,9 +38,19 @@ public interface IChillAuthIdentityService
     Task<AuthTokenResponse> LoginAsync(LoginAuthIdentityRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Creates a new Identity-backed account for auth management flows and returns the generated external identity identifier.
+    /// </summary>
+    Task<string> CreateManagedIdentityUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Exchanges a refresh token for a rotated access-token pair.
     /// </summary>
     Task<AuthTokenResponse> RefreshAsync(RefreshAuthTokenRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revokes the current authenticated refresh-token session.
+    /// </summary>
+    Task LogoutAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Changes the password of the currently authenticated user.

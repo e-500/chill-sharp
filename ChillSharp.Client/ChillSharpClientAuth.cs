@@ -20,6 +20,7 @@
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
 using System.Net.Http;
+using System.Linq;
 
 namespace ChillSharp.Client
 {
@@ -33,7 +34,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthTokenResponse RegisterAuthAccount(RegisterAuthIdentityRequest request)
         {
-            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "account/register", request, allowAnonymous: true);
+            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "register", request, allowAnonymous: true);
             if (result == null) throw new ChillClientException("Unexpected null auth register result");
             ApplyAuthToken(result, forgetPassword: true);
             return result;
@@ -44,7 +45,7 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthTokenResponse LoginAuthAccount(LoginAuthIdentityRequest request)
         {
-            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "account/login", request, allowAnonymous: true);
+            var result = SendAuthJson<AuthTokenResponse>(HttpMethod.Post, "login", request, allowAnonymous: true);
             if (result == null) throw new ChillClientException("Unexpected null auth login result");
             ApplyAuthToken(result, forgetPassword: true);
             return result;
@@ -61,11 +62,20 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Revokes the current authenticated session and clears the local token state.
+        /// </summary>
+        public void LogoutAuthAccount()
+        {
+            SendAuthJson<object>(HttpMethod.Post, "logout", payload: null, expectResponseBody: false);
+            ClearAuthToken();
+        }
+
+        /// <summary>
         /// Changes the password of the authenticated user.
         /// </summary>
         public ChangePasswordResponse ChangeAuthPassword(ChangePasswordRequest request)
         {
-            var result = SendAuthJson<ChangePasswordResponse>(HttpMethod.Post, "account/change-password", request);
+            var result = SendAuthJson<ChangePasswordResponse>(HttpMethod.Post, "change-password", request);
             if (result == null) throw new ChillClientException("Unexpected null change-password result");
             return result;
         }
@@ -75,7 +85,7 @@ namespace ChillSharp.Client
         /// </summary>
         public PasswordResetTokenResponse RequestAuthPasswordReset(RequestPasswordResetRequest request)
         {
-            var result = SendAuthJson<PasswordResetTokenResponse>(HttpMethod.Post, "account/request-password-reset", request, allowAnonymous: true);
+            var result = SendAuthJson<PasswordResetTokenResponse>(HttpMethod.Post, "request-password-reset", request, allowAnonymous: true);
             if (result == null) throw new ChillClientException("Unexpected null request-password-reset result");
             return result;
         }
@@ -85,7 +95,7 @@ namespace ChillSharp.Client
         /// </summary>
         public ResetPasswordResponse ResetAuthPassword(ResetPasswordRequest request)
         {
-            var result = SendAuthJson<ResetPasswordResponse>(HttpMethod.Post, "account/reset-password", request, allowAnonymous: true);
+            var result = SendAuthJson<ResetPasswordResponse>(HttpMethod.Post, "reset-password", request, allowAnonymous: true);
             if (result == null) throw new ChillClientException("Unexpected null reset-password result");
             return result;
         }
@@ -113,7 +123,29 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthUserDetailsResponse? GetAuthManagedUser(Guid userGuid)
         {
-            return SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Get, $"get-user?userGuid={Uri.EscapeDataString(userGuid.ToString())}");
+            var user = GetAuthUser(userGuid);
+            if (user == null)
+            {
+                return null;
+            }
+
+            return new AuthUserDetailsResponse
+            {
+                Guid = user.Guid,
+                ExternalId = user.ExternalId,
+                UserName = user.UserName,
+                DisplayName = user.DisplayName,
+                DisplayCultureName = user.DisplayCultureName,
+                DisplayTimeZone = user.DisplayTimeZone,
+                DisplayDateFormat = user.DisplayDateFormat,
+                DisplayNumberFormat = user.DisplayNumberFormat,
+                IsActive = user.IsActive,
+                CanManagePermissions = user.CanManagePermissions,
+                CanManageSchema = user.CanManageSchema,
+                MenuHierarchy = user.MenuHierarchy,
+                Roles = GetAuthUserRoles(userGuid).Select(MapRole).ToList(),
+                Permissions = GetAuthPermissionRules(userGuid: userGuid).Select(MapPermissionRule).ToList()
+            };
         }
 
         /// <summary>
@@ -121,9 +153,49 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthUserDetailsResponse SetAuthUser(SetAuthUserRequest request)
         {
-            var result = SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Post, "set-user", request);
-            if (result == null) throw new ChillClientException("Unexpected null set-user result");
-            return result;
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            AuthUser user;
+            if (request.Guid.HasValue)
+            {
+                user = UpdateAuthUser(request.Guid.Value, new UpdateAuthUserRequest
+                {
+                    ExternalId = request.ExternalId,
+                    UserName = request.UserName,
+                    DisplayName = request.DisplayName,
+                    DisplayCultureName = request.DisplayCultureName,
+                    DisplayTimeZone = request.DisplayTimeZone,
+                    DisplayDateFormat = request.DisplayDateFormat,
+                    DisplayNumberFormat = request.DisplayNumberFormat,
+                    IsActive = request.IsActive,
+                    CanManagePermissions = request.CanManagePermissions,
+                    CanManageSchema = request.CanManageSchema,
+                    MenuHierarchy = request.MenuHierarchy
+                }) ?? throw new ChillClientException("Unexpected null auth user result");
+            }
+            else
+            {
+                user = CreateAuthUser(new CreateAuthUserRequest
+                {
+                    ExternalId = request.ExternalId,
+                    Email = string.Empty,
+                    UserName = request.UserName,
+                    DisplayName = request.DisplayName,
+                    DisplayCultureName = request.DisplayCultureName,
+                    DisplayTimeZone = request.DisplayTimeZone,
+                    DisplayDateFormat = request.DisplayDateFormat,
+                    DisplayNumberFormat = request.DisplayNumberFormat,
+                    IsActive = request.IsActive,
+                    CanManagePermissions = request.CanManagePermissions,
+                    CanManageSchema = request.CanManageSchema,
+                    MenuHierarchy = request.MenuHierarchy
+                });
+            }
+
+            SyncUserRoles(user.Guid, request.RoleGuids);
+            SyncUserPermissionRules(user.Guid, request.Permissions);
+            return GetAuthManagedUser(user.Guid) ?? throw new ChillClientException("Unexpected null managed auth user result");
         }
 
         /// <summary>
@@ -197,7 +269,22 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthRoleDetailsResponse? GetAuthManagedRole(Guid roleGuid)
         {
-            return SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Get, $"get-role?roleGuid={Uri.EscapeDataString(roleGuid.ToString())}");
+            var role = GetAuthRole(roleGuid);
+            if (role == null)
+            {
+                return null;
+            }
+
+            return new AuthRoleDetailsResponse
+            {
+                Guid = role.Guid,
+                Name = role.Name,
+                Description = role.Description,
+                IsActive = role.IsActive,
+                MenuHierarchy = role.MenuHierarchy,
+                Users = GetUsersAssignedToRole(roleGuid).Select(MapUser).ToList(),
+                Permissions = GetAuthPermissionRules(roleGuid: roleGuid).Select(MapPermissionRule).ToList()
+            };
         }
 
         /// <summary>
@@ -205,9 +292,34 @@ namespace ChillSharp.Client
         /// </summary>
         public AuthRoleDetailsResponse SetAuthRole(SetAuthRoleRequest request)
         {
-            var result = SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Post, "set-role", request);
-            if (result == null) throw new ChillClientException("Unexpected null set-role result");
-            return result;
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            AuthRole role;
+            if (request.Guid.HasValue)
+            {
+                role = UpdateAuthRole(request.Guid.Value, new UpdateAuthRoleRequest
+                {
+                    Name = request.Name,
+                    Description = request.Description,
+                    IsActive = request.IsActive,
+                    MenuHierarchy = request.MenuHierarchy
+                }) ?? throw new ChillClientException("Unexpected null auth role result");
+            }
+            else
+            {
+                role = CreateAuthRole(new CreateAuthRoleRequest
+                {
+                    Name = request.Name,
+                    Description = request.Description,
+                    IsActive = request.IsActive,
+                    MenuHierarchy = request.MenuHierarchy
+                });
+            }
+
+            SyncRoleUsers(role.Guid, request.UserGuids);
+            SyncRolePermissionRules(role.Guid, request.Permissions);
+            return GetAuthManagedRole(role.Guid) ?? throw new ChillClientException("Unexpected null managed auth role result");
         }
 
         /// <summary>
@@ -372,9 +484,7 @@ namespace ChillSharp.Client
         /// </summary>
         public PermissionEvaluationResult EvaluateAuthEntityPermission(EvaluateEntityPermissionRequest request)
         {
-            var result = SendAuthJson<PermissionEvaluationResult>(HttpMethod.Post, "permissions/evaluate/entity", request);
-            if (result == null) throw new ChillClientException("Unexpected null entity permission result");
-            return result;
+            throw new ChillClientException("Permission evaluation endpoints are not exposed by the merged auth-management controller.");
         }
 
         /// <summary>
@@ -382,9 +492,7 @@ namespace ChillSharp.Client
         /// </summary>
         public PermissionEvaluationResult EvaluateAuthPropertyPermission(EvaluatePropertyPermissionRequest request)
         {
-            var result = SendAuthJson<PermissionEvaluationResult>(HttpMethod.Post, "permissions/evaluate/property", request);
-            if (result == null) throw new ChillClientException("Unexpected null property permission result");
-            return result;
+            throw new ChillClientException("Permission evaluation endpoints are not exposed by the merged auth-management controller.");
         }
 
         /// <summary>
@@ -392,9 +500,181 @@ namespace ChillSharp.Client
         /// </summary>
         public PropertyPermissionSetResult EvaluateAuthPropertySetPermission(EvaluatePropertySetPermissionRequest request)
         {
-            var result = SendAuthJson<PropertyPermissionSetResult>(HttpMethod.Post, "permissions/evaluate/property-set", request);
-            if (result == null) throw new ChillClientException("Unexpected null property set permission result");
-            return result;
+            throw new ChillClientException("Permission evaluation endpoints are not exposed by the merged auth-management controller.");
+        }
+
+        private static AuthUserListItemResponse MapUser(AuthUser user)
+        {
+            return new AuthUserListItemResponse
+            {
+                Guid = user.Guid,
+                ExternalId = user.ExternalId,
+                UserName = user.UserName,
+                DisplayName = user.DisplayName,
+                DisplayCultureName = user.DisplayCultureName,
+                DisplayTimeZone = user.DisplayTimeZone,
+                DisplayDateFormat = user.DisplayDateFormat,
+                DisplayNumberFormat = user.DisplayNumberFormat,
+                IsActive = user.IsActive,
+                CanManagePermissions = user.CanManagePermissions,
+                CanManageSchema = user.CanManageSchema,
+                MenuHierarchy = user.MenuHierarchy
+            };
+        }
+
+        private static AuthRoleListItemResponse MapRole(AuthRole role)
+        {
+            return new AuthRoleListItemResponse
+            {
+                Guid = role.Guid,
+                Name = role.Name,
+                Description = role.Description,
+                IsActive = role.IsActive,
+                MenuHierarchy = role.MenuHierarchy
+            };
+        }
+
+        private static AuthPermissionRuleResponse MapPermissionRule(AuthPermissionRule rule)
+        {
+            return new AuthPermissionRuleResponse
+            {
+                Guid = rule.Guid,
+                Effect = rule.Effect,
+                Action = rule.Action,
+                Scope = rule.Scope,
+                Module = rule.Module,
+                EntityName = rule.EntityName,
+                PropertyName = rule.PropertyName,
+                AppliesToAllProperties = rule.AppliesToAllProperties,
+                Description = rule.Description,
+                CreatedUtc = rule.CreatedUtc
+            };
+        }
+
+        private List<AuthUser> GetUsersAssignedToRole(Guid roleGuid)
+        {
+            return GetAuthUsers()
+                .Where(user => GetAuthUserRoles(user.Guid).Any(role => role.Guid == roleGuid))
+                .ToList();
+        }
+
+        private void SyncUserRoles(Guid userGuid, IReadOnlyList<Guid> desiredRoleGuids)
+        {
+            var desiredRoleGuidSet = new HashSet<Guid>(desiredRoleGuids);
+            var currentRoleGuidSet = GetAuthUserRoles(userGuid).Select(role => role.Guid).ToHashSet();
+
+            foreach (var roleGuid in desiredRoleGuidSet.Except(currentRoleGuidSet))
+            {
+                AssignAuthRole(userGuid, roleGuid);
+            }
+
+            foreach (var roleGuid in currentRoleGuidSet.Except(desiredRoleGuidSet))
+            {
+                RemoveAuthRole(userGuid, roleGuid);
+            }
+        }
+
+        private void SyncUserPermissionRules(Guid userGuid, IReadOnlyList<AuthPermissionRuleItem> desiredPermissions)
+        {
+            var currentRules = GetAuthPermissionRules(userGuid: userGuid);
+            SyncPermissionRules(
+                currentRules,
+                desiredPermissions,
+                permission => new CreateAuthPermissionRuleRequest
+                {
+                    UserGuid = userGuid,
+                    RoleGuid = null,
+                    Effect = permission.Effect,
+                    Action = permission.Action,
+                    Scope = permission.Scope,
+                    Module = permission.Module,
+                    EntityName = permission.EntityName,
+                    PropertyName = permission.PropertyName,
+                    AppliesToAllProperties = permission.AppliesToAllProperties,
+                    Description = permission.Description
+                });
+        }
+
+        private void SyncRoleUsers(Guid roleGuid, IReadOnlyList<Guid> desiredUserGuids)
+        {
+            var desiredUserGuidSet = new HashSet<Guid>(desiredUserGuids);
+            var currentUserGuidSet = GetUsersAssignedToRole(roleGuid).Select(user => user.Guid).ToHashSet();
+
+            foreach (var userGuid in desiredUserGuidSet.Except(currentUserGuidSet))
+            {
+                AssignAuthRole(userGuid, roleGuid);
+            }
+
+            foreach (var userGuid in currentUserGuidSet.Except(desiredUserGuidSet))
+            {
+                RemoveAuthRole(userGuid, roleGuid);
+            }
+        }
+
+        private void SyncRolePermissionRules(Guid roleGuid, IReadOnlyList<AuthPermissionRuleItem> desiredPermissions)
+        {
+            var currentRules = GetAuthPermissionRules(roleGuid: roleGuid);
+            SyncPermissionRules(
+                currentRules,
+                desiredPermissions,
+                permission => new CreateAuthPermissionRuleRequest
+                {
+                    UserGuid = null,
+                    RoleGuid = roleGuid,
+                    Effect = permission.Effect,
+                    Action = permission.Action,
+                    Scope = permission.Scope,
+                    Module = permission.Module,
+                    EntityName = permission.EntityName,
+                    PropertyName = permission.PropertyName,
+                    AppliesToAllProperties = permission.AppliesToAllProperties,
+                    Description = permission.Description
+                });
+        }
+
+        private void SyncPermissionRules(
+            IReadOnlyList<AuthPermissionRule> currentRules,
+            IReadOnlyList<AuthPermissionRuleItem> desiredPermissions,
+            Func<AuthPermissionRuleItem, CreateAuthPermissionRuleRequest> createRequestFactory)
+        {
+            var desiredByGuid = desiredPermissions
+                .Where(permission => permission.Guid.HasValue)
+                .ToDictionary(permission => permission.Guid!.Value);
+
+            foreach (var currentRule in currentRules)
+            {
+                if (!desiredByGuid.TryGetValue(currentRule.Guid, out var desiredPermission))
+                {
+                    DeleteAuthPermissionRule(currentRule.Guid);
+                    continue;
+                }
+
+                UpdateAuthPermissionRule(currentRule.Guid, new UpdateAuthPermissionRuleRequest
+                {
+                    UserGuid = createRequestFactory(desiredPermission).UserGuid,
+                    RoleGuid = createRequestFactory(desiredPermission).RoleGuid,
+                    Effect = desiredPermission.Effect,
+                    Action = desiredPermission.Action,
+                    Scope = desiredPermission.Scope,
+                    Module = desiredPermission.Module,
+                    EntityName = desiredPermission.EntityName,
+                    PropertyName = desiredPermission.PropertyName,
+                    AppliesToAllProperties = desiredPermission.AppliesToAllProperties,
+                    Description = desiredPermission.Description
+                });
+
+                desiredByGuid.Remove(currentRule.Guid);
+            }
+
+            foreach (var remainingPermission in desiredByGuid.Values)
+            {
+                CreateAuthPermissionRule(createRequestFactory(remainingPermission));
+            }
+
+            foreach (var newPermission in desiredPermissions.Where(permission => !permission.Guid.HasValue))
+            {
+                CreateAuthPermissionRule(createRequestFactory(newPermission));
+            }
         }
     }
 }

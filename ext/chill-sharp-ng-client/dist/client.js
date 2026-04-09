@@ -137,6 +137,9 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     refreshAuthAccount() {
         return from(this.client.refreshAuthAccount());
     }
+    logoutAuthAccount() {
+        return from(this.client.logoutAuthAccount());
+    }
     changeAuthPassword(payload) {
         return from(this.client.changeAuthPassword(payload));
     }
@@ -157,6 +160,27 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     }
     setAuthUser(payload) {
         return from(this.client.setAuthUser(payload));
+    }
+    getAuthUsers() {
+        return from(this.client.getAuthUsers());
+    }
+    createAuthUser(payload) {
+        return from(this.client.createAuthUser(payload));
+    }
+    updateAuthUser(userGuid, payload) {
+        return from(this.client.updateAuthUser(userGuid, payload));
+    }
+    deleteAuthUser(userGuid) {
+        return from(this.client.deleteAuthUser(userGuid));
+    }
+    getAuthUserRoles(userGuid) {
+        return from(this.client.getAuthUserRoles(userGuid));
+    }
+    assignAuthRole(userGuid, roleGuid) {
+        return from(this.client.assignAuthRole(userGuid, roleGuid));
+    }
+    removeAuthRole(userGuid, roleGuid) {
+        return from(this.client.removeAuthRole(userGuid, roleGuid));
     }
     getAuthRoleList() {
         return from(this.client.getAuthRoleList());
@@ -181,6 +205,33 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     }
     setAuthRole(payload) {
         return from(this.client.setAuthRole(payload));
+    }
+    getAuthRoles() {
+        return from(this.client.getAuthRoles());
+    }
+    createAuthRole(payload) {
+        return from(this.client.createAuthRole(payload));
+    }
+    updateAuthRole(roleGuid, payload) {
+        return from(this.client.updateAuthRole(roleGuid, payload));
+    }
+    deleteAuthRole(roleGuid) {
+        return from(this.client.deleteAuthRole(roleGuid));
+    }
+    getAuthPermissionRules(userGuid, roleGuid) {
+        return from(this.client.getAuthPermissionRules(userGuid, roleGuid));
+    }
+    getAuthPermissionRule(ruleGuid) {
+        return from(this.client.getAuthPermissionRule(ruleGuid));
+    }
+    createAuthPermissionRule(payload) {
+        return from(this.client.createAuthPermissionRule(payload));
+    }
+    updateAuthPermissionRule(ruleGuid, payload) {
+        return from(this.client.updateAuthPermissionRule(ruleGuid, payload));
+    }
+    deleteAuthPermissionRule(ruleGuid) {
+        return from(this.client.deleteAuthPermissionRule(ruleGuid));
     }
     getRawClient() {
         return this.client;

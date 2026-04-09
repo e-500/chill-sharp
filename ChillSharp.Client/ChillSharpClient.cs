@@ -383,7 +383,7 @@ namespace ChillSharp.Client
                     {
                         var refreshedToken = SendAuthJson<AuthTokenResponse>(
                             HttpMethod.Post,
-                            "account/refresh",
+                            "refresh",
                             new RefreshAuthTokenRequest { RefreshToken = _RefreshToken },
                             allowAnonymous: true);
 
@@ -404,7 +404,7 @@ namespace ChillSharp.Client
                 {
                     var token = SendAuthJson<AuthTokenResponse>(
                         HttpMethod.Post,
-                        "account/login",
+                        "login",
                         new LoginAuthIdentityRequest
                         {
                             UserNameOrEmail = _UserName,
@@ -447,6 +447,15 @@ namespace ChillSharp.Client
             {
                 _Password = null;
             }
+        }
+
+        internal void ClearAuthToken()
+        {
+            _AccessToken = null;
+            _AccessTokenIssuedUtc = null;
+            _AccessTokenExpiresUtc = null;
+            _RefreshToken = null;
+            _RefreshTokenExpiresUtc = null;
         }
 
         internal string GetAuthBaseUrl()
