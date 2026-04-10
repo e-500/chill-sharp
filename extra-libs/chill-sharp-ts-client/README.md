@@ -393,6 +393,7 @@ Use `setMenu()` to create or update one menu item.
 ```ts
 const savedMenu = await client.setMenu({
   guid: "00000000-0000-0000-0000-000000000000",
+  positionNo: 10,
   title: "Posts",
   description: "Open the post management screen",
   parent: null,
@@ -401,6 +402,8 @@ const savedMenu = await client.setMenu({
   menuHierarchy: "SECTION-A.POSTS"
 });
 ```
+
+`positionNo` is persisted by the backend and controls sibling ordering. Lower values are returned first.
 
 ### Delete menu
 

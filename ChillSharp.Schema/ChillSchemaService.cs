@@ -221,7 +221,8 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
             .AsNoTracking()
             .Include(x => x.Parent)
             .Where(x => x.ParentGuid == parentGuid)
-            .OrderBy(x => x.Title)
+            .OrderBy(x => x.PositionNo)
+            .ThenBy(x => x.Title)
             .ThenBy(x => x.Guid)
             .ToListAsync(cancellationToken);
 
@@ -268,11 +269,12 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         if (parent != null && parent.Guid == row.Guid)
             throw new ArgumentException("A menu item cannot be its own parent.");
 
+        row.PositionNo = menuItem.PositionNo;
         row.Title = NormalizeRequiredText(menuItem.Title, nameof(menuItem.Title), 255);
         row.Description = NormalizeOptionalText(menuItem.Description);
         row.ParentGuid = parent?.Guid;
         row.Parent = parent;
-        row.ComponentName = NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
+        row.ComponentName = menuItem.ComponentName; // NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
         row.ComponentConfigurationJson = NormalizeOptionalText(menuItem.ComponentConfigurationJson);
         row.MenuHierarchy = NormalizeRequiredText(menuItem.MenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
         row.UpdatedUtc = DateTime.UtcNow;
@@ -369,6 +371,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         return new ChillDtoMenuItem
         {
             Guid = row.Guid,
+            PositionNo = row.PositionNo,
             Title = row.Title,
             Description = row.Description,
             Parent = row.Parent == null
@@ -376,6 +379,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
                 : new ChillDtoMenuItem
                 {
                     Guid = row.Parent.Guid,
+                    PositionNo = row.Parent.PositionNo,
                     Title = row.Parent.Title,
                     Description = row.Parent.Description,
                     ComponentName = row.Parent.ComponentName,

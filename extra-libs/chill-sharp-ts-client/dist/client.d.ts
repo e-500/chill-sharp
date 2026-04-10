@@ -66,6 +66,7 @@ export interface ChillDtoEntityOptions extends JsonObject {
 }
 export interface ChillDtoMenuItem extends JsonObject {
     guid: string;
+    positionNo: number;
     title: string;
     description: string | null;
     parent: ChillDtoMenuItem | null;

@@ -61,6 +61,7 @@ public static class ChillSchemaModelBuilderExtensions
 
             builder.HasIndex(x => x.ParentGuid);
             builder.HasIndex(x => x.MenuHierarchy);
+            builder.HasIndex(x => new { x.ParentGuid, x.PositionNo });
 
             builder.HasOne(x => x.Parent)
                 .WithMany(x => x.Children)

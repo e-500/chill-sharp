@@ -25,6 +25,7 @@ namespace ChillSharp.Client.Dto
     public class ChillDtoMenuItem
     {
         public Guid Guid { get; set; }
+        public int PositionNo { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public ChillDtoMenuItem? Parent { get; set; }

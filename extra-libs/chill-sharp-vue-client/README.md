@@ -389,6 +389,6 @@ If you need typed model clients, generate them from your host OpenAPI document a
 
 ## Menu endpoints
 
-When you use the raw client from `useChillSharpClient()`, `getMenu()` loads root menu nodes or the direct children of one menu item, `setMenu()` creates or updates one menu item, and `deleteMenu()` removes one menu item together with its child subtree.
+When you use the raw client from `useChillSharpClient()`, `getMenu()` loads root menu nodes or the direct children of one menu item, `setMenu()` creates or updates one menu item, and `deleteMenu()` removes one menu item together with its child subtree. Menu items include `positionNo`, which the backend persists and uses to order siblings.
 
 For the complete tree model, delete behavior, and `MenuHierarchy` filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).

@@ -262,7 +262,7 @@ namespace ChillSharp.Tests
             Assert.IsInstanceOfType<OkObjectResult>(await controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
             Assert.IsInstanceOfType<OkObjectResult>(await controller.GetMenu(cancellationToken: CancellationToken.None));
             var guid = Guid.NewGuid();
-            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Guid = guid, Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Guid = guid, PositionNo = 1, Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
             Assert.IsInstanceOfType<NoContentResult>(await controller.DeleteMenu(guid, CancellationToken.None));
         }
 
@@ -318,18 +318,21 @@ namespace ChillSharp.Tests
 
             var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 20,
                 Title = "Section A",
                 ComponentName = "CRUD",
                 MenuHierarchy = "SECTION-A"
             });
             var sectionB = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 10,
                 Title = "Section B",
                 ComponentName = "CRUD",
                 MenuHierarchy = "SECTION-B"
             });
             var sectionAChild = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 5,
                 Title = "Section A Child",
                 ComponentName = "CRUD",
                 MenuHierarchy = "SECTION-A.CHILD",
@@ -373,11 +376,13 @@ namespace ChillSharp.Tests
             var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
             Assert.HasCount(1, rootItems);
             Assert.AreEqual(sectionA.Guid, rootItems[0].Guid);
+            Assert.AreEqual(20, rootItems[0].PositionNo);
 
             var childResult = (OkObjectResult)await controller.GetMenu(sectionA.Guid, CancellationToken.None);
             var childItems = (IReadOnlyList<ChillDtoMenuItem>)childResult.Value!;
             Assert.HasCount(1, childItems);
             Assert.AreEqual(sectionAChild.Guid, childItems[0].Guid);
+            Assert.AreEqual(5, childItems[0].PositionNo);
 
             Assert.AreNotEqual(sectionB.Guid, rootItems[0].Guid);
         }
@@ -401,12 +406,14 @@ namespace ChillSharp.Tests
 
             var root = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 10,
                 Title = "Root",
                 ComponentName = "CRUD",
                 MenuHierarchy = "ROOT"
             });
             var child = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 20,
                 Title = "Child",
                 ComponentName = "CRUD",
                 MenuHierarchy = "ROOT.CHILD",
@@ -414,6 +421,7 @@ namespace ChillSharp.Tests
             });
             await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 30,
                 Title = "Grandchild",
                 ComponentName = "CRUD",
                 MenuHierarchy = "ROOT.CHILD.GRANDCHILD",
@@ -421,6 +429,7 @@ namespace ChillSharp.Tests
             });
             var sibling = await schemaService.SetMenuAsync(new ChillDtoMenuItem
             {
+                PositionNo = 5,
                 Title = "Sibling",
                 ComponentName = "CRUD",
                 MenuHierarchy = "SIBLING"
@@ -431,9 +440,62 @@ namespace ChillSharp.Tests
             var remainingRootItems = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
             Assert.HasCount(1, remainingRootItems);
             Assert.AreEqual(sibling.Guid, remainingRootItems[0].Guid);
+            Assert.AreEqual(5, remainingRootItems[0].PositionNo);
 
             var deletedChildren = await schemaService.GetMenuAsync(root.Guid, CancellationToken.None);
             Assert.IsEmpty(deletedChildren);
+        }
+
+        [TestMethod]
+        public async Task Step015_MenuPersistsAndOrdersByPositionNo()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-order-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var later = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Later",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.LATER"
+            });
+
+            var earlier = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Earlier",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.EARLIER"
+            });
+
+            var samePositionButLaterTitle = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Zeta",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.ZETA"
+            });
+
+            var ordered = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
+
+            Assert.HasCount(3, ordered);
+            CollectionAssert.AreEqual(
+                new[] { earlier.Guid, samePositionButLaterTitle.Guid, later.Guid },
+                ordered.Select(x => x.Guid).ToArray());
+            CollectionAssert.AreEqual(
+                new[] { 10, 10, 20 },
+                ordered.Select(x => x.PositionNo).ToArray());
         }
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
         {

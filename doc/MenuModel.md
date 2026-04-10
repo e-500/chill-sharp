@@ -22,6 +22,9 @@ Each menu item contains:
 - `Guid`
   Stable primary key.
 
+- `PositionNo`
+  Required integer sort position. Lower values appear first among siblings. Default: `0`.
+
 - `Title`
   Required display text. Maximum length: 255 characters.
 
@@ -46,6 +49,7 @@ The menu tree is built through the `Parent` relationship.
 
 - root items have `Parent = null`
 - child items point to their parent menu item
+- sibling items are ordered by `PositionNo`, then by `Title`, then by `Guid`
 - the UI builds the full tree by loading root nodes first and then loading children for each node
 
 Typical flow:
@@ -89,6 +93,7 @@ Example payload:
 ```json
 {
   "Guid": "00000000-0000-0000-0000-000000000000",
+  "PositionNo": 10,
   "Title": "Posts",
   "Description": "Open the post management screen",
   "Parent": null,

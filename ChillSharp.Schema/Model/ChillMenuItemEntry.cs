@@ -25,6 +25,7 @@ public class ChillMenuItemEntry
 {
     [Key]
     public Guid Guid { get; set; }
+    public int PositionNo { get; set; } = 0;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Guid? ParentGuid { get; set; }
