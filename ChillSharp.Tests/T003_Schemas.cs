@@ -351,7 +351,7 @@ namespace ChillSharp.Tests
                 ExternalId = "menu-user",
                 UserName = "menu-user",
                 DisplayName = "Menu User",
-                MenuHierarchy = string.Empty
+                MenuHierarchy = "SECTION-A"
             });
 
             await authService.AssignRoleAsync(user.Guid, role.Guid);
@@ -496,6 +496,120 @@ namespace ChillSharp.Tests
             CollectionAssert.AreEqual(
                 new[] { 10, 10, 20 },
                 ordered.Select(x => x.PositionNo).ToArray());
+        }
+
+        [TestMethod]
+        public async Task Step016_SetMenuPreservesCurrentHierarchyWhenPayloadHierarchyIsBlank()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-preserve-hierarchy-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var created = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 1,
+                Title = "Posts",
+                ComponentName = "CRUD",
+                MenuHierarchy = "CONTENT.POSTS"
+            });
+
+            var updated = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Guid = created.Guid,
+                PositionNo = 2,
+                Title = "Posts Updated",
+                ComponentName = "CRUD",
+                MenuHierarchy = "   "
+            });
+
+            Assert.AreEqual("CONTENT.POSTS", updated.MenuHierarchy);
+            Assert.AreEqual(2, updated.PositionNo);
+            Assert.AreEqual("Posts Updated", updated.Title);
+        }
+
+        [TestMethod]
+        public async Task Step017_GetMenuReturnsAllItemsWhenUserHierarchyIsBlank()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-empty-user-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+            var authService = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+            var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Section A",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A"
+            });
+            var sectionB = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Section B",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-B"
+            });
+
+            var role = await authService.CreateRoleAsync(new ChillSharp.Auth.Contracts.CreateAuthRoleRequest
+            {
+                Name = $"menu-open-role-{Guid.NewGuid():N}",
+                Description = "Menu open role",
+                MenuHierarchy = "SECTION-A"
+            });
+
+            var user = await authService.CreateUserAsync(new ChillSharp.Auth.Contracts.CreateAuthUserRequest
+            {
+                ExternalId = "menu-open-user",
+                UserName = "menu-open-user",
+                DisplayName = "Menu Open User",
+                MenuHierarchy = string.Empty
+            });
+
+            await authService.AssignRoleAsync(user.Guid, role.Guid);
+
+            var controller = new ChillSchemaController(
+                context,
+                schemaService,
+                authService,
+                new StubIdentityResolver());
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "menu-open-user")
+                    ], authenticationType: "Test"))
+                }
+            };
+
+            var rootResult = (OkObjectResult)await controller.GetMenu(cancellationToken: CancellationToken.None);
+            var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
+
+            Assert.HasCount(2, rootItems);
+            CollectionAssert.AreEqual(
+                new[] { sectionA.Guid, sectionB.Guid },
+                rootItems.Select(x => x.Guid).ToArray());
         }
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
         {

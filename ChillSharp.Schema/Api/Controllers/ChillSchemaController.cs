@@ -164,6 +164,9 @@ public sealed class ChillSchemaController : ControllerBase
         if (user == null || !user.IsActive)
             return [];
 
+        if (string.IsNullOrWhiteSpace(user.MenuHierarchy))
+            return menuItems;
+
         var hierarchies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         AddMenuHierarchy(hierarchies, user.MenuHierarchy);
 

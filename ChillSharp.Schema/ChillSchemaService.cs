@@ -269,6 +269,10 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         if (parent != null && parent.Guid == row.Guid)
             throw new ArgumentException("A menu item cannot be its own parent.");
 
+        var resolvedMenuHierarchy = string.IsNullOrWhiteSpace(menuItem.MenuHierarchy)
+            ? row.MenuHierarchy
+            : NormalizeRequiredText(menuItem.MenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+
         row.PositionNo = menuItem.PositionNo;
         row.Title = NormalizeRequiredText(menuItem.Title, nameof(menuItem.Title), 255);
         row.Description = NormalizeOptionalText(menuItem.Description);
@@ -276,7 +280,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         row.Parent = parent;
         row.ComponentName = menuItem.ComponentName; // NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
         row.ComponentConfigurationJson = NormalizeOptionalText(menuItem.ComponentConfigurationJson);
-        row.MenuHierarchy = NormalizeRequiredText(menuItem.MenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+        row.MenuHierarchy = NormalizeRequiredText(resolvedMenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
         row.UpdatedUtc = DateTime.UtcNow;
 
         await _schemaContext.SaveChangesAsync(cancellationToken);

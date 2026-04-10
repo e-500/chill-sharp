@@ -85,6 +85,7 @@ Behavior:
 
 - if `Guid` is empty, a new menu item is created
 - if `Guid` already exists, the existing menu item is updated
+- if an existing item is updated with `MenuHierarchy = null` or an empty string, the server keeps the current stored `MenuHierarchy`
 - if `Parent.Guid` is provided, it must reference an existing menu item
 - a menu item cannot be its own parent
 
@@ -158,12 +159,11 @@ This means:
 When `get-menu` is called by an authenticated user:
 
 - the server reads `MenuHierarchy` from the current `AuthUser`
+- if the current user `MenuHierarchy` is null, empty, or whitespace, the full menu is returned
 - the server also reads `MenuHierarchy` from all active roles assigned to that user
 - all allowed prefixes are combined
 - if any prefix is `*`, the full menu is returned
 - otherwise only items whose `MenuHierarchy` starts with one allowed prefix are returned
-
-If the authenticated user has no valid menu hierarchy, the returned menu is empty.
 
 ## Recommended Convention
 
