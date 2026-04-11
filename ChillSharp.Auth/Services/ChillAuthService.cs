@@ -23,6 +23,7 @@ using ChillSharp.Auth.Api;
 using ChillSharp;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace ChillSharp.Auth.Services;
 
@@ -156,6 +157,7 @@ public class ChillAuthService : IChillAuthService
     public async Task<AuthUserDetailsResponse> SetUserAsync(SetAuthUserRequest request, CancellationToken cancellationToken = default)
     {
         ValidateUser(request.ExternalId, request.UserName);
+        ValidateUserDisplayPreferences(request.DisplayCultureName, request.DisplayTimeZone);
 
         var roleGuids = request.RoleGuids
             .Where(x => x != Guid.Empty)
@@ -1093,6 +1095,70 @@ public class ChillAuthService : IChillAuthService
         if (string.IsNullOrWhiteSpace(userName))
         {
             throw new ArgumentException("UserName is required.");
+        }
+    }
+
+    private static void ValidateUserDisplayPreferences(string? displayCultureName, string? displayTimeZone)
+    {
+        var normalizedCultureName = displayCultureName?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedCultureName))
+        {
+            if (!IsSpecificCultureName(normalizedCultureName))
+            {
+                throw new ArgumentException("DisplayCultureName must be a valid culture name in the format ll-RR, for example it-IT or en-GB.");
+            }
+        }
+
+        var normalizedTimeZone = displayTimeZone?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedTimeZone) &&
+            !IsIanaTimeZoneId(normalizedTimeZone))
+        {
+            throw new ArgumentException("DisplayTimeZone must be a valid IANA time zone id, for example Europe/Rome or America/New_York.");
+        }
+    }
+
+    private static bool IsSpecificCultureName(string cultureName)
+    {
+        if (cultureName.Length != 5 ||
+            !char.IsLower(cultureName[0]) ||
+            !char.IsLower(cultureName[1]) ||
+            cultureName[2] != '-' ||
+            !char.IsUpper(cultureName[3]) ||
+            !char.IsUpper(cultureName[4]))
+        {
+            return false;
+        }
+
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(cultureName);
+            return string.Equals(culture.Name, cultureName, StringComparison.Ordinal);
+        }
+        catch (CultureNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsIanaTimeZoneId(string timeZoneId)
+    {
+        if (TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId, out _))
+        {
+            return true;
+        }
+
+        try
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return timeZone.HasIanaId && string.Equals(timeZone.Id, timeZoneId, StringComparison.Ordinal);
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return false;
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return false;
         }
     }
 

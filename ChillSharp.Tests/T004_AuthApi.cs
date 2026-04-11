@@ -806,6 +806,99 @@ public sealed class AuthApi
         Assert.AreEqual(0, persistedRules);
     }
 
+    /// <summary>
+    /// Verifies that set-user rejects invalid display culture casing and non-IANA time-zone identifiers.
+    /// </summary>
+    [TestMethod]
+    public async Task Step011_SetUserRejectsInvalidCultureAndTimeZoneFormats()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"set-user-validation-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+
+        var service = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+        try
+        {
+            await service.SetUserAsync(new SetAuthUserRequest
+            {
+                ExternalId = $"set-user-{Guid.NewGuid():N}",
+                UserName = $"set.user.{Guid.NewGuid():N}",
+                DisplayName = "Invalid Culture User",
+                DisplayCultureName = "en-gb",
+                DisplayTimeZone = "Europe/London"
+            });
+            Assert.Fail("set-user should reject invalid DisplayCultureName casing.");
+        }
+        catch (ArgumentException ex)
+        {
+            StringAssert.Contains(ex.Message, "DisplayCultureName");
+        }
+
+        try
+        {
+            await service.SetUserAsync(new SetAuthUserRequest
+            {
+                ExternalId = $"set-user-{Guid.NewGuid():N}",
+                UserName = $"set.user.{Guid.NewGuid():N}",
+                DisplayName = "Invalid Time Zone User",
+                DisplayCultureName = "en-GB",
+                DisplayTimeZone = "Eastern Standard Time"
+            });
+            Assert.Fail("set-user should reject non-IANA DisplayTimeZone values.");
+        }
+        catch (ArgumentException ex)
+        {
+            StringAssert.Contains(ex.Message, "DisplayTimeZone");
+        }
+    }
+
+    /// <summary>
+    /// Verifies that set-user accepts specific culture names and IANA time-zone identifiers.
+    /// </summary>
+    [TestMethod]
+    public async Task Step012_SetUserAcceptsSpecificCultureAndIanaTimeZone()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"set-user-valid-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+
+        var service = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+        var response = await service.SetUserAsync(new SetAuthUserRequest
+        {
+            ExternalId = $"set-user-{Guid.NewGuid():N}",
+            UserName = $"set.user.{Guid.NewGuid():N}",
+            DisplayName = "Valid Preferences User",
+            DisplayCultureName = "it-IT",
+            DisplayTimeZone = "Europe/Rome",
+            DisplayDateFormat = "DD/MM/YYYY",
+            DisplayNumberFormat = "1.000,00",
+            IsActive = true
+        });
+
+        Assert.AreEqual("it-IT", response.DisplayCultureName);
+        Assert.AreEqual("Europe/Rome", response.DisplayTimeZone);
+
+        var persistedUser = await context.Users.FirstAsync(x => x.Guid == response.Guid);
+        Assert.AreEqual("it-IT", persistedUser.DisplayCultureName);
+        Assert.AreEqual("Europe/Rome", persistedUser.DisplayTimeZone);
+    }
+
     private static ChillSharpClient CreateTestHeaderClient(string baseUrl, string externalId)
     {
         return new ChillSharpClient(baseUrl, () =>

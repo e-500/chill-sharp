@@ -37,6 +37,10 @@ namespace ChillSharp.Dto
             PropertyNameCaseInsensitive = true
         };
 
+        /// <summary>
+        /// Builds a DTO-friendly property bag from the selected CLR properties, resolving entity navigations
+        /// into <see cref="ChillDtoEntity"/> wrappers and converting scalar values using the Chill schema type.
+        /// </summary>
         public static Dictionary<string, object?> BuildProperties(
             IChillContext context,
             object source,
@@ -98,6 +102,10 @@ namespace ChillSharp.Dto
                 });
         }
 
+        /// <summary>
+        /// Applies incoming DTO values onto the target CLR object, inflating entity references from DTO payloads
+        /// and converting scalar values back to the property type defined by the Chill schema.
+        /// </summary>
         public static void ApplyProperties(
             IChillContext context,
             object target,
