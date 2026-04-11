@@ -77,14 +77,20 @@ namespace ChillSharp.EF
             UniquePropertyKeyString: "19604008-C926-4A9C-90C4-73D6FB8D37BB",
             PrimaryLanguageLabel: "Last update timestamp",
             SecondaryLanguageLabel: "Timestamp ultimo aggiornamento")]
-        public DateTime? LastUpdateUtc { get; set; }
+        public DateTime? LastUpdate { get; set; }
+
+        [ChillProperty(
+            UniquePropertyKeyString: "A4F84437-2E55-4637-AF2C-C6CA5B1D5D78",
+            PrimaryLanguageLabel: "Last update UTC offset",
+            SecondaryLanguageLabel: "Offset UTC ultimo aggiornamento")]
+        public int LastUpdateUtcOffset { get; set; }
 
         #region IChillEntity implementation
         #region CREATE
         /// <summary>
         /// Initializes default fields or calculated values when the entity is created.
         /// Called automatically by the <c>CREATE()</c> method.
-        /// <para>Example: <c>CreatedAt = DateTime.UtcNow;</c></para>
+        /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
         public virtual void OnCreate(IChillContext Context) { Guid = Guid.NewGuid(); }
@@ -143,7 +149,10 @@ namespace ChillSharp.EF
         /// <param name="Context">The active database context.</param>
         private void UpdateAuditFields(IChillContext Context)
         {
-            LastUpdateUtc = DateTime.UtcNow;
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+            var serverNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, systemTimeZone);
+            LastUpdate = serverNow.DateTime;
+            LastUpdateUtcOffset = (int)serverNow.Offset.TotalMinutes;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
             Checksum = Context.GetSchemaService().GetEntityOptions(chillType).ChecksumEnabled ? CalculateChecksum() : 0;
@@ -220,7 +229,7 @@ namespace ChillSharp.EF
 
             foreach (var property in chillProperties)
             {
-                if (property.Name is nameof(Checksum) or nameof(LastUpdateUser) or nameof(LastUpdateUtc))
+                if (property.Name is nameof(Checksum) or nameof(LastUpdateUser) or nameof(LastUpdate) or nameof(LastUpdateUtcOffset))
                 {
                     continue;
                 }

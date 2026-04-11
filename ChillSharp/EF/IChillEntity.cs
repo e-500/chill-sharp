@@ -45,13 +45,14 @@ namespace ChillSharp.EF
         string FullTextContent { get; set; }
         long Checksum { get; set; }
         string? LastUpdateUser { get; set; }
-        DateTime? LastUpdateUtc { get; set; }
+        DateTime? LastUpdate { get; set; }
+        int LastUpdateUtcOffset { get; set; }
 
         #region CREATE
         /// <summary>
         /// Initializes default fields or calculated values when the entity is created.
         /// Called automatically by the <c>CREATE()</c> method.
-        /// <para>Example: <c>CreatedAt = DateTime.UtcNow;</c></para>
+        /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
         void OnCreate(IChillContext Context);

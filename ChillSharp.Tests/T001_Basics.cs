@@ -25,6 +25,7 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
@@ -198,11 +199,15 @@ namespace ChillSharp.Tests
             await using var initialContext = TestApiHost.CreateDbContext();
             var createdPost = await initialContext.Post.FirstAsync(x => x.Guid == postGuid);
             var initialChecksum = createdPost.Checksum;
-            var initialLastUpdateUtc = createdPost.LastUpdateUtc;
+            var initialLastUpdate = createdPost.LastUpdate;
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
 
             Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
             Assert.IsGreaterThan(0L, createdPost.Checksum);
-            Assert.IsNotNull(createdPost.LastUpdateUtc);
+            Assert.IsNotNull(createdPost.LastUpdate);
+            Assert.AreEqual(
+                (int)systemTimeZone.GetUtcOffset(createdPost.LastUpdate!.Value).TotalMinutes,
+                createdPost.LastUpdateUtcOffset);
 
             await Task.Delay(20);
 
@@ -218,7 +223,10 @@ namespace ChillSharp.Tests
             var updatedPost = await updatedContext.Post.FirstAsync(x => x.Guid == postGuid);
 
             Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
-            Assert.IsTrue(updatedPost.LastUpdateUtc.HasValue && initialLastUpdateUtc.HasValue && updatedPost.LastUpdateUtc.Value > initialLastUpdateUtc.Value);
+            Assert.IsTrue(updatedPost.LastUpdate.HasValue && initialLastUpdate.HasValue && updatedPost.LastUpdate.Value > initialLastUpdate.Value);
+            Assert.AreEqual(
+                (int)systemTimeZone.GetUtcOffset(updatedPost.LastUpdate!.Value).TotalMinutes,
+                updatedPost.LastUpdateUtcOffset);
             Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
         }
 
@@ -922,10 +930,146 @@ namespace ChillSharp.Tests
             Assert.AreEqual(blog.Guid, post.Blog.Guid);
         }
 
+        [TestMethod]
+        public void Step022_ApplyPropertiesNormalizesTemporalValuesUsingConfiguredSystemTimeZone()
+        {
+            var originalEnvironmentValue = Environment.GetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, "Europe/Rome");
+                ChillSharpInitOptions.Initialize();
+
+                using var db = TestApiHost.CreateDbContext();
+                var target = new TemporalMappingEntity();
+                var sourceValues = new Dictionary<string, object?>
+                {
+                    ["OccurredAtUtc"] = "2024-01-10T12:30:15.000Z",
+                    ["OccurredAtOffset"] = "2024-01-10T12:30:15.000+02:00",
+                    ["RecordedAtOffset"] = "2024-01-10T12:30:15.000+02:00",
+                    ["PublishedOn"] = "2024-01-10T23:59:58.321-05:00",
+                    ["PublishedAt"] = "2024-01-10T23:59:58.321-05:00"
+                };
+
+                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+                Assert.IsNotNull(mapperType);
+
+                var applyPropertiesMethod = mapperType.GetMethod(
+                    "ApplyProperties",
+                    BindingFlags.Public | BindingFlags.Static);
+
+                Assert.IsNotNull(applyPropertiesMethod);
+
+                applyPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    target,
+                    "Tests.TemporalMappingEntity",
+                    sourceValues,
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    "TemporalMappingEntity",
+                    false,
+                    null
+                ]);
+
+                Assert.AreEqual(new DateTime(2024, 1, 10, 13, 30, 15), target.OccurredAtUtc);
+                Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15), target.OccurredAtOffset);
+                Assert.AreEqual(DateTimeOffset.Parse("2024-01-10T12:30:15.000+02:00", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), target.RecordedAtOffset);
+                Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
+                Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, originalEnvironmentValue);
+                ChillSharpInitOptions.Initialize();
+            }
+        }
+
+        [TestMethod]
+        public void Step023_BuildPropertiesSerializesTemporalValuesWithSystemTimeZoneOnlyForDateTimeTypes()
+        {
+            var originalEnvironmentValue = Environment.GetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, "Europe/Rome");
+                ChillSharpInitOptions.Initialize();
+
+                using var db = TestApiHost.CreateDbContext();
+                var source = new TemporalMappingEntity
+                {
+                    OccurredAtUtc = new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Utc),
+                    OccurredAtOffset = new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Unspecified),
+                    RecordedAtOffset = new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2)),
+                    PublishedOn = new DateOnly(2024, 1, 10),
+                    PublishedAt = new TimeOnly(23, 59, 58, 321)
+                };
+
+                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+                Assert.IsNotNull(mapperType);
+
+                var buildPropertiesMethod = mapperType.GetMethod(
+                    "BuildProperties",
+                    BindingFlags.Public | BindingFlags.Static);
+
+                Assert.IsNotNull(buildPropertiesMethod);
+
+                var properties = (Dictionary<string, object?>?)buildPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    source,
+                    "Tests.TemporalMappingEntity",
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    null,
+                    null
+                ]);
+
+                Assert.IsNotNull(properties);
+
+                var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+                var expectedDateTime = TimeZoneInfo.ConvertTime(new DateTimeOffset(source.OccurredAtUtc, TimeSpan.Zero), systemTimeZone)
+                    .ToString("O", CultureInfo.InvariantCulture);
+                var expectedUnspecifiedDateTime = new DateTimeOffset(source.OccurredAtOffset, systemTimeZone.GetUtcOffset(source.OccurredAtOffset))
+                    .ToString("O", CultureInfo.InvariantCulture);
+                Assert.AreEqual(expectedDateTime, properties["OccurredAtUtc"]);
+                Assert.AreEqual(expectedUnspecifiedDateTime, properties["OccurredAtOffset"]);
+                Assert.AreEqual(source.RecordedAtOffset.ToString("O", CultureInfo.InvariantCulture), properties["RecordedAtOffset"]);
+                Assert.AreEqual(source.PublishedOn, properties["PublishedOn"]);
+                Assert.AreEqual(source.PublishedAt, properties["PublishedAt"]);
+
+                var serializedProperties = JsonSerializer.Serialize(properties);
+                StringAssert.Contains(serializedProperties, "\"PublishedOn\":\"2024-01-10\"");
+                StringAssert.Contains(serializedProperties, "\"PublishedAt\":\"23:59:58.3210000\"");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, originalEnvironmentValue);
+                ChillSharpInitOptions.Initialize();
+            }
+        }
+
         private sealed class NullableDateEntity
         {
             [ChillProperty]
             public DateOnly? PublishedOn { get; set; }
+        }
+
+        private sealed class TemporalMappingEntity
+        {
+            [ChillProperty]
+            public DateTime OccurredAtUtc { get; set; }
+
+            [ChillProperty]
+            public DateTime OccurredAtOffset { get; set; }
+
+            [ChillProperty]
+            public DateTimeOffset RecordedAtOffset { get; set; }
+
+            [ChillProperty]
+            public DateOnly PublishedOn { get; set; }
+
+            [ChillProperty]
+            public TimeOnly PublishedAt { get; set; }
         }
 
         private sealed class InflateOnlyEntity

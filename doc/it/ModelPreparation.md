@@ -105,7 +105,8 @@ public class Blog : ChillEntity
 - `FullTextContent`
 - `Checksum`
 - `LastUpdateUser`
-- `LastUpdateUtc`
+- `LastUpdate`
+- `LastUpdateUtcOffset`
 
 ## 3. Annotare Le Proprieta Esposte
 
@@ -160,7 +161,8 @@ Durante il delete, ChillSharp esegue:
 
 - `Checksum`
 - `LastUpdateUser`
-- `LastUpdateUtc`
+- `LastUpdate`
+- `LastUpdateUtcOffset`
 
 Il checksum viene calcolato da tutti i valori `[ChillProperty]` tranne i campi di audit stessi.
 

@@ -17,6 +17,9 @@ This folder contains the reference documentation for ChillSharp.
 - [Configuration/README.md](./Configuration/README.md)
   Quick reference for the example host configuration options and their environment variables.
 
+- [DateTimeSerialization.md](./DateTimeSerialization.md)
+  How ChillSharp serializes and parses `DateTimeOffset`, `DateTime`, `DateOnly`, and `TimeOnly`, including comparisons with default ASP.NET Core behavior.
+
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 
@@ -100,7 +103,7 @@ Different contexts can coexist with different values. ChillSharp does not assume
 
 - `Guid`
 - `Label`, `ShortLabel`, `FullTextContent`
-- `Checksum`, `LastUpdateUser`, `LastUpdateUtc`
+- `Checksum`, `LastUpdateUser`, `LastUpdate`, `LastUpdateUtcOffset`
 - default lifecycle behavior
 
 Lifecycle hooks are:
@@ -134,7 +137,8 @@ After updates, ChillSharp automatically stores:
 
 - `Checksum`
 - `LastUpdateUser`
-- `LastUpdateUtc`
+- `LastUpdate`
+- `LastUpdateUtcOffset`
 
 The audit logic is enforced through the `IChillEntity` interface path used by `ChillEngine`, so a derived class can override `OnAfterUpdate()` without bypassing the base audit update.
 
