@@ -383,24 +383,7 @@ namespace ChillSharp.Schema.Contracts
             }
             catch
             {
-                var fallbackType = candidateQueryType.EndsWith("Query", StringComparison.Ordinal)
-                    ? candidateQueryType[..^"Query".Length]
-                    : string.Empty;
-
-                if (string.IsNullOrEmpty(fallbackType))
-                {
-                    return string.Empty;
-                }
-
-                try
-                {
-                    ChillTypeResolver.ResolveType(assembly, fallbackType, chillTypePrefix);
-                    return fallbackType;
-                }
-                catch
-                {
-                    return string.Empty;
-                }
+                return string.Empty;
             }
         }
 

@@ -37,6 +37,11 @@ namespace ChillSharp.Client.Dto
         public bool ChecksumEnabled { get; set; } = true;
 
         /// <summary>
+        /// Enables client-side attachment handling for the entity type.
+        /// </summary>
+        public bool HandleAttachments { get; set; }
+
+        /// <summary>
         /// Optional label format string reserved for future runtime label composition.
         /// </summary>
         public string? LabelFormatString { get; set; }

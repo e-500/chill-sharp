@@ -42,6 +42,7 @@ namespace ChillSharp.Dto
         public ChillDtoEntity(IChillContext Context, IChillEntity Entity, List<ChillDtoProperty>? RequiredProperties = null)
         {
             Guid = Entity.Guid;
+            Position = Entity.Position;
             ChillType = _TestEntityAndGetChillType(Context, Entity);
             Label = Entity.Label;
             ShortLabel = Entity.ShortLabel;
@@ -53,6 +54,11 @@ namespace ChillSharp.Dto
         /// This corresponds to the entity's primary key in EF Core.
         /// </summary>
         public Guid Guid { get; set; }
+
+        /// <summary>
+        /// Optional position used by default ordering.
+        /// </summary>
+        public int Position { get; set; }
 
         /// <summary>
         /// Optional string identifying the entity type or category.
@@ -83,6 +89,7 @@ namespace ChillSharp.Dto
         {
             var mock = new ChillDtoEntity();
             mock.Guid = Guid;
+            mock.Position = Position;
             mock.ChillType = ChillType;
             mock.Label = Label;
             mock.ShortLabel = ShortLabel;
@@ -112,6 +119,7 @@ namespace ChillSharp.Dto
             // Test and get main fields from chill entity
             ChillType = _TestEntityAndGetChillType(Context, Entity);
             Guid = Entity.Guid;
+            Position = Entity.Position;
             Label = Entity.Label;
             ShortLabel = Entity.ShortLabel;
 
@@ -147,6 +155,7 @@ namespace ChillSharp.Dto
             if (ChillType != EntityChillType)
                 throw new ChillException($"Entity ChillType ({EntityChillType}) differs from Dto ChillType ({ChillType})");
             Entity.Guid = Guid;
+            Entity.Position = Position;
             Entity.Label = Label ?? "";
             Entity.ShortLabel = ShortLabel ?? "";
 

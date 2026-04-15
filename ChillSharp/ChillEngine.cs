@@ -105,7 +105,7 @@ namespace ChillSharp
         /// <summary>
         /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
         /// <para>
-        /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods
+        /// The query is processed through <c>OnQuery</c>, <c>OnOrderingBy</c>, and <c>OnPaginate</c> methods
         /// before execution. After retrieval, <c>OnSelect</c> is called on each entity.
         /// </para>
         /// </summary>
@@ -217,7 +217,7 @@ namespace ChillSharp
         /// <summary>
         /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
         /// <para>
-        /// The query is processed through <c>OnQuery</c>, <c>OnSort</c>, and <c>OnPaginate</c> methods
+        /// The query is processed through <c>OnQuery</c>, <c>OnOrderingBy</c>, and <c>OnPaginate</c> methods
         /// before execution. After retrieval, <c>OnSelect</c> is called on each entity.
         /// </para>
         /// </summary>
@@ -236,7 +236,7 @@ namespace ChillSharp
             {
                 var q = Query.OnQuery(_Context);
                 q = Query.OnSearch(_Context, q);
-                q = Query.OnSort(_Context, q);
+                q = Query.OnOrderingBy(_Context, q);
                 q = Query.OnPaginate(_Context, q);
                 var res = q.ToList();
                 res.ForEach(x => x.OnSelect(_Context));
@@ -259,7 +259,7 @@ namespace ChillSharp
         /// <param name="fullTextSearch">The tokenized full-text search string.</param>
         /// <param name="pagination">Optional pagination settings.</param>
         /// <returns>The matching entities.</returns>
-        public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null)
+        public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null, ChillOrdering? ordering = null)
         {
             var query = GetQueryable(_Context, chillType);
 
@@ -278,7 +278,8 @@ namespace ChillSharp
                 }
             }
 
-            query = query.OrderBy(x => x.Guid);
+            var entityType = ActivateDetachedChillEntity(chillType).GetType();
+            query = ChillOrderingApplier.ApplyOrdering(query, ordering, entityType);
 
             if (pagination != null)
                 query = query.Skip((pagination.Page - 1) * pagination.PageResults).Take(pagination.PageResults);

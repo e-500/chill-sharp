@@ -73,6 +73,11 @@ namespace ChillSharp.Client.Dto
         /// </summary>
         public ChillPagination? Pagination { get; set; } = null;
 
+        /// <summary>
+        /// Optional ordering settings for the query results.
+        /// </summary>
+        public ChillOrdering? Ordering { get; set; } = new();
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.

@@ -38,6 +38,9 @@ public class ChillEntityOptionsEntry
     [Column("checksum-enabled")]
     public bool ChecksumEnabled { get; set; } = true;
 
+    [Column("handle-attachments")]
+    public bool HandleAttachments { get; set; }
+
     [Column("label-format-string")]
     public string? LabelFormatString { get; set; }
 

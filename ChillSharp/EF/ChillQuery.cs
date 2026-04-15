@@ -63,6 +63,11 @@ namespace ChillSharp.EF
         /// </summary>
         public ChillPagination? Pagination { get; set; } = null;
 
+        /// <summary>
+        /// Optional ordering settings for the query results.
+        /// </summary>
+        public ChillOrdering? Ordering { get; set; } = new();
+
         #region IChillQuery implementation
         /// <summary>
         /// Applies additional filtering to the query.
@@ -115,17 +120,15 @@ namespace ChillSharp.EF
         }
         
         /// <summary>
-        /// Applies default sorting to the query.
-        /// <para>
-        /// By default, sorts by <see cref="Guid"/>. Override to implement custom sorting.
-        /// </para>
+        /// Applies default ordering to the query.
         /// </summary>
         /// <param name="Context">The active Chill database context.</param>
-        /// <param name="Query">The query to sort.</param>
-        /// <returns>The sorted <see cref="IQueryable{IChillEntity}"/>.</returns>
-        public virtual IQueryable<IChillEntity> OnSort(IChillContext Context, IQueryable<IChillEntity> Query)
+        /// <param name="Query">The query to order.</param>
+        /// <returns>The ordered <see cref="IQueryable{IChillEntity}"/>.</returns>
+        public virtual IQueryable<IChillEntity> OnOrderingBy(IChillContext Context, IQueryable<IChillEntity> Query)
         {
-            return Query.OrderBy(x => x.Guid);
+            var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(GetType()) ?? typeof(IChillEntity);
+            return ChillOrderingApplier.ApplyOrdering(Query, Ordering, entityType);
         }
 
         /// <summary>

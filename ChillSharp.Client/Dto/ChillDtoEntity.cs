@@ -42,6 +42,11 @@ namespace ChillSharp.Client.Dto
         public Guid Guid { get; set; }
 
         /// <summary>
+        /// Optional position used by default ordering.
+        /// </summary>
+        public int Position { get; set; }
+
+        /// <summary>
         /// Optional string identifying the entity type or category.
         /// Useful for polymorphic handling of different entity types in a generic web model.
         /// </summary>
@@ -69,6 +74,7 @@ namespace ChillSharp.Client.Dto
         {
             var mock = new ChillDtoEntity();
             mock.Guid = Guid;
+            mock.Position = Position;
             mock.ChillType = ChillType;
             mock.Label = Label;
             mock.ShortLabel = ShortLabel;

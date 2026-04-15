@@ -81,15 +81,22 @@ If the service supports ChillSharp auth endpoints, the client can log in and ref
 
 ## Core ChillSharp Operations
 
+Query payloads can include an `Ordering` object with `PropertyName` and `Direction`.
+If you omit `Ordering`, the backend defaults to `Position`. Entity payloads also include `Position`, with default value `0`.
+
 ### Query
 
 Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
 
-`python
+```python
 result = client.query({
     "ChillType": "Query.PostQuery",
     "Properties": {
         "Title": "Hello"
+    },    
+    "Ordering": {
+        "PropertyName": "Position",
+        "Direction": "ASC",
     },
     "ResultProperties": [
         {"Name": "Guid"},
@@ -98,6 +105,8 @@ result = client.query({
     ],
 })
 ```
+
+If `Ordering.PropertyName` points to a Chill entity reference such as `Blog`, the backend orders by `Blog.Label`.
 
 ### Lookup
 
@@ -108,6 +117,10 @@ result = client.lookup({
     "ChillType": "Model.Post",
     "Properties": {
         "FullTextSearch": "Ada Lovelace"
+    },
+    "Ordering": {
+        "PropertyName": "Blog",
+        "Direction": "ASC",
     },
     "ResultProperties": [
         {"Name": "Guid"},
@@ -132,6 +145,7 @@ entity = client.find({
 entity = client.create({
     "ChillType": "Model.Post",
     "Guid": "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+    "Position": 10,
     "Properties": {
         "Title": "New title",
         "Author": "Grace Hopper",
@@ -145,6 +159,7 @@ entity = client.create({
 updated = client.update({
     "ChillType": "Model.Post",
     "Guid": "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+    "Position": 20,
     "Properties": {
         "Title": "Updated title",
     },
@@ -272,6 +287,7 @@ Use this pattern only for the operations that must share the same database trans
 
 ```python
 schema = client.get_schema("Model.Post", "default")
+handle_attachments = schema.get("HandleAttachments") or schema.get("handleAttachments")
 
 # Override the constructor default for one call
 english_schema = client.get_schema("Model.Post", "default", culture_name="en-GB")
@@ -304,6 +320,7 @@ client.set_schema({
 
 ```python
 options = client.get_entity_options("Model.Post")
+handle_attachments = options.get("HandleAttachments") or options.get("handleAttachments")
 ```
 
 ### Set entity options
@@ -312,12 +329,15 @@ options = client.get_entity_options("Model.Post")
 options = client.set_entity_options({
     "ChillType": "Model.Post",
     "ChecksumEnabled": True,
+    "HandleAttachments": True,
     "LabelFormatString": "{Title}",
     "ShortLabelFormatString": "{Title}",
     "FullTextContentFormatString": "{Title} {Author}",
     "ChangeLogEnabled": True,
 })
 ```
+
+The Python client uses plain dictionaries for schema payloads, so `HandleAttachments` is available without any client-side model regeneration.
 
 ## I18n Operations
 

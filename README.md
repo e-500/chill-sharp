@@ -66,6 +66,30 @@ ChillSharp is not only about exposing CRUD endpoints quickly. It also helps you 
 - `ChillSharp.Schema` exposes schema information that UI layers can use to build forms, lists, labels, and editors with a single source of truth.
 - Together, auth and schema metadata make it easier to build frontends that are not only fast to develop, but also consistent in behavior, permissions, and presentation.
 
+## Ordering And Position
+
+ChillSharp query DTOs now include an `Ordering` object alongside `Pagination`.
+
+- `Ordering.PropertyName` selects the property to sort by.
+- `Ordering.Direction` selects the direction, typically `ASC` or `DESC`.
+- when a query does not specify ordering, ChillSharp defaults to `Position`
+- `Position` is part of `ChillEntity` and `ChillDtoEntity`, with default value `0`
+- when ordering by a reference to another Chill entity, ChillSharp sorts by the referenced entity `Label`
+
+Example:
+
+```csharp
+var query = new ChillDtoQuery
+{
+    ChillType = "Model.Post",
+    Ordering = new ChillOrdering
+    {
+        PropertyName = "Blog",
+        Direction = "ASC"
+    }
+};
+```
+
 ## Documentation
 
 Start here:

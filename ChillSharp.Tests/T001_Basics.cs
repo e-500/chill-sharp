@@ -1048,6 +1048,150 @@ namespace ChillSharp.Tests
             }
         }
 
+        [TestMethod]
+        public void Step024_DefaultQueryOrderingUsesPosition()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-ordering-position-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 20,
+                Title = "Second",
+                Author = "Author 2",
+                FullTextContent = "Second",
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 10,
+                Title = "First",
+                Author = "Author 1",
+                FullTextContent = "First",
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+            var result = dtoEngine.Query(new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title"])
+            });
+
+            Assert.HasCount(2, result.Results);
+            Assert.AreEqual("First", result.Results[0].Properties["Title"]?.ToString());
+            Assert.AreEqual("Second", result.Results[1].Properties["Title"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step025_QueryOrderingUsesReferenceLabelForEntityColumns()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-ordering-reference-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var zBlog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Label = "Z Blog",
+                Title = "Z Blog",
+                Url = "https://z.local"
+            };
+            var aBlog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Label = "A Blog",
+                Title = "A Blog",
+                Url = "https://a.local"
+            };
+
+            db.Blog.AddRange(zBlog, aBlog);
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 0,
+                Blog = zBlog,
+                Title = "Post linked to Z",
+                Author = "Author Z",
+                FullTextContent = "Post linked to Z",
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 0,
+                Blog = aBlog,
+                Title = "Post linked to A",
+                Author = "Author A",
+                FullTextContent = "Post linked to A",
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+            var result = dtoEngine.Query(new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                Ordering = new ChillSharp.EF.ChillOrdering
+                {
+                    PropertyName = "Blog",
+                    Direction = ChillSharp.EF.ChillOrdering.AscendingDirection
+                },
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Blog"])
+            });
+
+            Assert.HasCount(2, result.Results);
+            Assert.AreEqual("Post linked to A", result.Results[0].Properties["Title"]?.ToString());
+            Assert.AreEqual("Post linked to Z", result.Results[1].Properties["Title"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step026_DtoEntityMapsPositionDuringCreateAndUpdate()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-dto-position-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var dtoEngine = new ChillDtoEngine(db);
+            var created = dtoEngine.Create(new ChillSharp.Dto.ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Position = 12,
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "Positioned post",
+                    ["Author"] = "Position author"
+                }
+            });
+
+            Assert.AreEqual(12, created.Position);
+
+            created.Position = 34;
+            created.Properties["Title"] = "Positioned post updated";
+
+            var updated = dtoEngine.Update(created);
+
+            Assert.AreEqual(34, updated.Position);
+            Assert.AreEqual("Positioned post updated", updated.Properties["Title"]?.ToString());
+        }
+
         private sealed class NullableDateEntity
         {
             [ChillProperty]
@@ -1096,9 +1240,9 @@ namespace ChillSharp.Tests
                 return OnQuery(Context).Cast<Post>();
             }
 
-            IQueryable<Post> IChillQuery<Post>.OnSort(IChillContext Context, IQueryable<Post> Query)
+            IQueryable<Post> IChillQuery<Post>.OnOrderingBy(IChillContext Context, IQueryable<Post> Query)
             {
-                return Query.OrderBy(x => x.Guid);
+                return Query.OrderBy(x => x.Position).ThenBy(x => x.Guid);
             }
 
             IQueryable<Post> IChillQuery<Post>.OnPaginate(IChillContext Context, IQueryable<Post> Query)

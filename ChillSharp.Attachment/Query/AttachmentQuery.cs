@@ -20,7 +20,7 @@
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 
-namespace ChillSharp.Attachment.Query;
+namespace ChillSharp.Attachment.Model;
 
 /// <summary>
 /// Lists attachments linked to a specific Chill entity.
@@ -61,7 +61,7 @@ public sealed class AttachmentQuery : ChillQuery
         return query;
     }
 
-    public override IQueryable<IChillEntity> OnSort(IChillContext Context, IQueryable<IChillEntity> Query)
+    public override IQueryable<IChillEntity> OnOrderingBy(IChillContext Context, IQueryable<IChillEntity> Query)
     {
         return Query
             .OfType<Model.Attachment>()

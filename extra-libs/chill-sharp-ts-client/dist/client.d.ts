@@ -46,6 +46,7 @@ export interface ChillDtoSchema extends JsonObject {
     chillType: string;
     chillViewCode: string;
     displayName: string;
+    handleAttachments: boolean;
     metadata: Record<string, string>;
     queryRelatedChillType: string | null;
     properties: ChillDtoPropertySchema[];
@@ -59,10 +60,38 @@ export interface ChillDtoSchemaListItem extends JsonObject {
 export interface ChillDtoEntityOptions extends JsonObject {
     chillType: string;
     checksumEnabled: boolean;
+    handleAttachments: boolean;
     labelFormatString: string | null;
     shortLabelFormatString: string | null;
     fullTextContentFormatString: string | null;
     changeLogEnabled: boolean;
+}
+export interface ChillOrdering extends JsonObject {
+    propertyName: string;
+    direction: string;
+}
+export interface ChillPagination extends JsonObject {
+    pageSize: number;
+    pageNumber: number;
+}
+export interface ChillDtoProperty extends JsonObject {
+    name: string;
+}
+export interface ChillDtoEntity extends JsonObject {
+    guid: string;
+    position: number;
+    chillType: string;
+    label: string | null;
+    shortLabel: string | null;
+    properties: Record<string, JsonValue>;
+}
+export interface ChillDtoQuery extends JsonObject {
+    chillType: string;
+    properties: Record<string, JsonValue>;
+    resultProperties: ChillDtoProperty[] | null;
+    pagination: ChillPagination | null;
+    ordering: ChillOrdering | null;
+    results: ChillDtoEntity[];
 }
 export interface ChillDtoMenuItem extends JsonObject {
     guid: string;

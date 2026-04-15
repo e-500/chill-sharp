@@ -170,7 +170,8 @@ public sealed class AttachmentController : ControllerBase
             return null;
         }
 
-        var isAllowed = await _entityAclService.AuthorizeAsync(User, "Attachment", "Attachment", action, cancellationToken);
+        var moduleName = typeof(Model.Attachment).Namespace ?? "ChillSharp.Attachment.Model";
+        var isAllowed = await _entityAclService.AuthorizeAsync(User, moduleName, nameof(Model.Attachment), action, cancellationToken);
         return isAllowed ? null : Forbid();
     }
 }

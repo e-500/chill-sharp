@@ -108,6 +108,7 @@ Different contexts can coexist with different values. ChillSharp does not assume
 `ChillEntity` is the recommended base class for model types exposed through ChillSharp. It already provides:
 
 - `Guid`
+- `Position`
 - `Label`, `ShortLabel`, `FullTextContent`
 - `Checksum`, `LastUpdateUser`, `LastUpdate`, `LastUpdateUtcOffset`
 - default lifecycle behavior
@@ -147,6 +148,17 @@ After updates, ChillSharp automatically stores:
 - `LastUpdateUtcOffset`
 
 The audit logic is enforced through the `IChillEntity` interface path used by `ChillEngine`, so a derived class can override `OnAfterUpdate()` without bypassing the base audit update.
+
+### Query Ordering
+
+`ChillDtoQuery` includes an `Ordering` object that mirrors `Pagination`:
+
+- `PropertyName`
+- `Direction`
+
+If the client does not send an explicit ordering, ChillSharp applies `Position` by default. `Position` is part of both `ChillEntity` and `ChillDtoEntity`, and defaults to `0`.
+
+When `PropertyName` points to a referenced Chill entity, ordering is applied using the referenced entity `Label`. This keeps generic list screens readable without requiring clients to know the foreign-key internals.
 
 ## API Surface
 

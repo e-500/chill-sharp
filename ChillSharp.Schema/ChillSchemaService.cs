@@ -99,6 +99,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
 
         if (schema != null)
         {
+            await ApplyEntityOptionsToSchemaAsync(schema, cancellationToken);
             return _schemaCache.SetSchema(schema, effectiveCultureName);
         }
 
@@ -158,6 +159,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         {
             ChillType = row.ChillType,
             ChecksumEnabled = row.ChecksumEnabled,
+            HandleAttachments = row.HandleAttachments,
             LabelFormatString = row.LabelFormatString,
             ShortLabelFormatString = row.ShortLabelFormatString,
             FullTextContentFormatString = row.FullTextContentFormatString,
@@ -189,6 +191,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         }
 
         row.ChecksumEnabled = entityOptions.ChecksumEnabled;
+        row.HandleAttachments = entityOptions.HandleAttachments;
         row.LabelFormatString = NormalizeOptionalText(entityOptions.LabelFormatString);
         row.ShortLabelFormatString = NormalizeOptionalText(entityOptions.ShortLabelFormatString);
         row.FullTextContentFormatString = NormalizeOptionalText(entityOptions.FullTextContentFormatString);
@@ -198,13 +201,14 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         row.UpdatedUtc = DateTime.UtcNow;
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
-        _schemaCache.InvalidateEntityOptions(chillType);
+        _schemaCache.InvalidateAll();
         ChillEntityOptionsRuntimeCache.Invalidate(_runtimeContext.RuntimeContextKey, chillType);
 
         return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
         {
             ChillType = chillType,
             ChecksumEnabled = row.ChecksumEnabled,
+            HandleAttachments = row.HandleAttachments,
             LabelFormatString = row.LabelFormatString,
             ShortLabelFormatString = row.ShortLabelFormatString,
             FullTextContentFormatString = row.FullTextContentFormatString,
@@ -404,6 +408,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         {
             ChillType = chillType,
             ChecksumEnabled = true,
+            HandleAttachments = false,
             LabelFormatString = defaults.LabelFormatString,
             ShortLabelFormatString = defaults.ShortLabelFormatString,
             FullTextContentFormatString = defaults.FullTextContentFormatString,
@@ -443,6 +448,18 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         return string.IsNullOrWhiteSpace(cultureName)
             ? NormalizeKey(_runtimeContext.DefaultUserCultureName)
             : NormalizeKey(cultureName);
+    }
+
+    private async Task ApplyEntityOptionsToSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken)
+    {
+        if (schema.QueryRelatedChillType != null)
+        {
+            schema.HandleAttachments = false;
+            return;
+        }
+
+        var entityOptions = await GetEntityOptionsAsync(schema.ChillType, cancellationToken);
+        schema.HandleAttachments = entityOptions.HandleAttachments;
     }
 
     private static JsonSerializerOptions CreateSerializerOptions()

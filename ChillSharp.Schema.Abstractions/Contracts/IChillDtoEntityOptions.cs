@@ -7,6 +7,7 @@ public interface IChillDtoEntityOptions
 {
     string ChillType { get; }
     bool ChecksumEnabled { get; }
+    bool HandleAttachments { get; }
     string? LabelFormatString { get; }
     string? ShortLabelFormatString { get; }
     string? FullTextContentFormatString { get; }

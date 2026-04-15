@@ -75,6 +75,11 @@ namespace ChillSharp.Dto
         /// </summary>
         public EF.ChillPagination? Pagination { get; set; } = null;
 
+        /// <summary>
+        /// Optional ordering settings for the query results.
+        /// </summary>
+        public EF.ChillOrdering? Ordering { get; set; } = new();
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.
@@ -127,6 +132,19 @@ namespace ChillSharp.Dto
             {
                 Pagination = null;
             }
+
+            if (Query.Ordering != null)
+            {
+                Ordering = new EF.ChillOrdering
+                {
+                    PropertyName = Query.Ordering.PropertyName,
+                    Direction = Query.Ordering.Direction
+                };
+            }
+            else
+            {
+                Ordering = null;
+            }
 		}
 
         /// <summary>
@@ -166,6 +184,19 @@ namespace ChillSharp.Dto
             else
             {
                 Query.Pagination = null;
+            }
+
+            if (Ordering != null)
+            {
+                Query.Ordering = new EF.ChillOrdering
+                {
+                    PropertyName = Ordering.PropertyName,
+                    Direction = Ordering.Direction
+                };
+            }
+            else
+            {
+                Query.Ordering = null;
             }
         }
         #endregion

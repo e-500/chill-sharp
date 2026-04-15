@@ -197,6 +197,7 @@ namespace ChillSharp.Tests
             var defaultOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.AreEqual("Model.Post", defaultOptions.ChillType);
             Assert.IsTrue(defaultOptions.ChecksumEnabled);
+            Assert.IsFalse(defaultOptions.HandleAttachments);
             Assert.IsFalse(defaultOptions.ChangeLogEnabled);
             Assert.IsFalse(defaultOptions.EnableMCP);
             Assert.AreEqual("Post resource exposed to MCP clients.", defaultOptions.MCPDescription);
@@ -208,6 +209,7 @@ namespace ChillSharp.Tests
             {
                 ChillType = "Model.Post",
                 ChecksumEnabled = false,
+                HandleAttachments = true,
                 LabelFormatString = "{Title} - {Author}",
                 ShortLabelFormatString = "{Author}.{Title}",
                 FullTextContentFormatString = "{Title}::{Author}",
@@ -218,6 +220,7 @@ namespace ChillSharp.Tests
 
             Assert.AreEqual("Model.Post", updatedOptions.ChillType);
             Assert.IsFalse(updatedOptions.ChecksumEnabled);
+            Assert.IsTrue(updatedOptions.HandleAttachments);
             Assert.IsTrue(updatedOptions.ChangeLogEnabled);
             Assert.IsTrue(updatedOptions.EnableMCP);
             Assert.AreEqual("Post MCP runtime description.", updatedOptions.MCPDescription);
@@ -227,12 +230,28 @@ namespace ChillSharp.Tests
 
             var persistedOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.IsFalse(persistedOptions.ChecksumEnabled);
+            Assert.IsTrue(persistedOptions.HandleAttachments);
             Assert.IsTrue(persistedOptions.ChangeLogEnabled);
             Assert.IsTrue(persistedOptions.EnableMCP);
             Assert.AreEqual("Post MCP runtime description.", persistedOptions.MCPDescription);
             Assert.AreEqual("{Title} - {Author}", persistedOptions.LabelFormatString);
             Assert.AreEqual("{Author}.{Title}", persistedOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title}::{Author}", persistedOptions.FullTextContentFormatString);
+
+            var schema = await schemaService.GetSchemaAsync("Model.Post", "default");
+            Assert.IsNotNull(schema);
+            Assert.IsTrue(schema.HandleAttachments);
+
+            await schemaService.SetSchemaAsync(new ChillDtoSchema
+            {
+                ChillType = "Model.Post",
+                ChillViewCode = "compact",
+                DisplayName = "Compact post"
+            });
+
+            var compactSchema = await schemaService.GetSchemaAsync("Model.Post", "compact");
+            Assert.IsNotNull(compactSchema);
+            Assert.IsTrue(compactSchema.HandleAttachments);
         }
 
         [TestMethod]
@@ -637,6 +656,8 @@ namespace ChillSharp.Tests
 
             public ChillPagination? Pagination { get; set; }
 
+            public ChillOrdering? Ordering { get; set; } = new();
+
             public IQueryable<IChillEntity> OnPaginate(IChillContext Context, IQueryable<IChillEntity> Query)
             {
                 return Query;
@@ -647,7 +668,7 @@ namespace ChillSharp.Tests
                 return Array.Empty<IChillEntity>().AsQueryable();
             }
 
-            public IQueryable<IChillEntity> OnSort(IChillContext Context, IQueryable<IChillEntity> Query)
+            public IQueryable<IChillEntity> OnOrderingBy(IChillContext Context, IQueryable<IChillEntity> Query)
             {
                 return Query;
             }
@@ -662,7 +683,7 @@ namespace ChillSharp.Tests
                 return Array.Empty<Blog>().AsQueryable();
             }
 
-            IQueryable<Blog> IChillQuery<Blog>.OnSort(IChillContext Context, IQueryable<Blog> Query)
+            IQueryable<Blog> IChillQuery<Blog>.OnOrderingBy(IChillContext Context, IQueryable<Blog> Query)
             {
                 return Query;
             }

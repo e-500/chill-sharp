@@ -205,7 +205,8 @@ namespace ChillSharp
             DtoQuery.Results = _Engine.Lookup(
                     DtoQuery.ChillType,
                     DtoQuery.Properties.GetValueOrDefault(nameof(ChillQuery.FullTextSearch))?.ToString(),
-                    DtoQuery.Pagination)
+                    DtoQuery.Pagination,
+                    DtoQuery.Ordering)
                 .Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties))
                 .ToList();
 
