@@ -538,10 +538,10 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
-        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
-        {
-            throw new InvalidOperationException("Users cannot change their own role assignments.");
-        }
+        //if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        //{
+        //    throw new InvalidOperationException("Users cannot change their own role assignments.");
+        //}
 
         var userExists = await _context.Users.AnyAsync(x => x.Guid == userGuid, cancellationToken);
         var roleExists = await _context.Roles.AnyAsync(x => x.Guid == roleGuid, cancellationToken);
@@ -571,10 +571,10 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
-        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
-        {
-            throw new InvalidOperationException("Users cannot change their own role assignments.");
-        }
+        //if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        //{
+        //    throw new InvalidOperationException("Users cannot change their own role assignments.");
+        //}
 
         var membership = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserGuid == userGuid && x.RoleGuid == roleGuid, cancellationToken);
         if (membership is null)
@@ -840,15 +840,15 @@ public class ChillAuthService : IChillAuthService
             return;
         }
 
-        if (userGuid == actor.Guid)
-        {
-            throw new InvalidOperationException("Users cannot change permission rules that affect themselves.");
-        }
+        //if (userGuid == actor.Guid)
+        //{
+        //    throw new InvalidOperationException("Users cannot change permission rules that affect themselves.");
+        //}
 
-        if (roleGuid.HasValue && await _context.UserRoles.AnyAsync(x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid, cancellationToken))
-        {
-            throw new InvalidOperationException("Users cannot change permission rules that affect their own roles.");
-        }
+        //if (roleGuid.HasValue && await _context.UserRoles.AnyAsync(x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid, cancellationToken))
+        //{
+        //    throw new InvalidOperationException("Users cannot change permission rules that affect their own roles.");
+        //}
     }
 
     private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)

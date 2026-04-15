@@ -86,7 +86,17 @@ namespace ChillSharp.Dto
 
                         if (navigation != null)
                         {
+                            // Load and serialize any kind of collection
                             dbx.Entry(source).Collection(propertyName).Load();
+
+                            //if (dbx.Entry(source).Collection(propertyName).IsImplicitManyToMany())
+                            //{
+                            //    dbx.Entry(source).Collection(propertyName).Load();
+                            //}
+                            //else 
+                            //{
+                            //    return null; // Not loaded and not an implicit many-to-many, return null to avoid unintended loading
+                            //}
                         }
 
                         var collection = (IEnumerable<IChillEntity>?)property.GetValue(source);
@@ -133,6 +143,14 @@ namespace ChillSharp.Dto
                     continue;
                 }
 
+                // Can handle only implicit many-to-many relations, skip other type of collections.
+                // Them should be managed separately
+                if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType) &&
+                    !dbx.Entry(target).Collection(propertyName).IsImplicitManyToMany())
+                {
+                    continue;
+                }
+
                 try
                 {
                     var parsedValue = ConvertIncomingValue(
@@ -146,6 +164,12 @@ namespace ChillSharp.Dto
                         loadTrackedCollections);
 
                     property.SetValue(target, parsedValue);
+
+                    // Additional: To ensure to write null even if reference is not loaded
+                    if (value == null && typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                    {
+                        dbx.Entry(target).Reference(propertyName).ClearForeignKey(); 
+                    }
                 }
                 catch (Exception ex)
                 {

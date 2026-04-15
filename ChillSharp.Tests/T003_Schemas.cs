@@ -297,9 +297,27 @@ namespace ChillSharp.Tests
             Assert.AreEqual("json", schema.CustomFormat);
         }
 
+        [TestMethod]
+        public void Step013_PropertySchemaInfersReferenceTypeForEnumerableAndArrayEntityCollections()
+        {
+            var enumerableProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.EnumerableTargets));
+            var arrayProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.ArrayTargets));
+
+            Assert.IsNotNull(enumerableProperty);
+            Assert.IsNotNull(arrayProperty);
+
+            var enumerableSchema = ChillDtoPropertySchema.FromPropertyInfo(enumerableProperty!, "ChillSharp.Tests");
+            var arraySchema = ChillDtoPropertySchema.FromPropertyInfo(arrayProperty!, "ChillSharp.Tests");
+
+            Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, enumerableSchema.PropertyType);
+            Assert.AreEqual("Schemas+FallbackLookupTarget", enumerableSchema.ReferenceChillType);
+            Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, arraySchema.PropertyType);
+            Assert.AreEqual("Schemas+FallbackLookupTarget", arraySchema.ReferenceChillType);
+        }
+
 
         [TestMethod]
-        public async Task Step013_MenuEndpointsFilterByUserAndRoleHierarchy()
+        public async Task Step014_MenuEndpointsFilterByUserAndRoleHierarchy()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -388,7 +406,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public async Task Step014_DeleteMenuRemovesDescendants()
+        public async Task Step015_DeleteMenuRemovesDescendants()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-delete-menu-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -447,7 +465,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public async Task Step015_MenuPersistsAndOrdersByPositionNo()
+        public async Task Step016_MenuPersistsAndOrdersByPositionNo()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-order-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -499,7 +517,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public async Task Step016_SetMenuPreservesCurrentHierarchyWhenPayloadHierarchyIsBlank()
+        public async Task Step017_SetMenuPreservesCurrentHierarchyWhenPayloadHierarchyIsBlank()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-preserve-hierarchy-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -538,7 +556,7 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public async Task Step017_GetMenuReturnsAllItemsWhenUserHierarchyIsBlank()
+        public async Task Step018_GetMenuReturnsAllItemsWhenUserHierarchyIsBlank()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-empty-user-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -835,6 +853,15 @@ namespace ChillSharp.Tests
 
             [ChillProperty]
             public Blog? BlogWithoutQuery { get; set; }
+        }
+
+        private sealed class CollectionReferenceHolder
+        {
+            [ChillProperty]
+            public IEnumerable<FallbackLookupTarget>? EnumerableTargets { get; set; }
+
+            [ChillProperty]
+            public FallbackLookupTarget[]? ArrayTargets { get; set; }
         }
 
         private sealed class TestChillContext : IChillContext

@@ -102,25 +102,14 @@ namespace ChillSharp.Schema.Contracts
             }
             else if (schema.PropertyType == ChillDtoPropertyType.ChillEntityCollection)
             {
-                var collectionType = new[] { propertyType }
-                    .Concat(propertyType.GetInterfaces())
-                    .FirstOrDefault(t =>
-                        t.IsGenericType &&
-                        t.GetGenericTypeDefinition() == typeof(ICollection<>));
-
-                if (collectionType != null)
+                var itemType = GetChillEntityCollectionElementType(propertyType);
+                if (itemType != null)
                 {
-                    var itemType = collectionType.GetGenericArguments()[0];
-
-                    if (typeof(IChillEntity).IsAssignableFrom(itemType))
+                    var itemFullName = itemType.FullName;
+                    if (!string.IsNullOrEmpty(itemFullName))
                     {
-                        var itemFullName = itemType.FullName;
-
-                        if (!string.IsNullOrEmpty(itemFullName))
-                        {
-                            itemFullName = itemFullName.Replace(shrinkTypePrefix, string.Empty);
-                            schema.ReferenceChillType = itemFullName;
-                        }
+                        itemFullName = itemFullName.Replace(shrinkTypePrefix, string.Empty);
+                        schema.ReferenceChillType = itemFullName;
                     }
                 }
             }
@@ -394,8 +383,78 @@ namespace ChillSharp.Schema.Contracts
             }
             catch
             {
-                return string.Empty;
+                var fallbackType = candidateQueryType.EndsWith("Query", StringComparison.Ordinal)
+                    ? candidateQueryType[..^"Query".Length]
+                    : string.Empty;
+
+                if (string.IsNullOrEmpty(fallbackType))
+                {
+                    return string.Empty;
+                }
+
+                try
+                {
+                    ChillTypeResolver.ResolveType(assembly, fallbackType, chillTypePrefix);
+                    return fallbackType;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
             }
+        }
+
+        private static Type? GetChillEntityCollectionElementType(Type? type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+
+            if (type.IsArray)
+            {
+                var elementType = UnwrapProxy(type.GetElementType());
+                return elementType != null && typeof(IChillEntity).IsAssignableFrom(elementType)
+                    ? elementType
+                    : null;
+            }
+
+            var typesToCheck = new[] { type }.Concat(type.GetInterfaces());
+            foreach (var candidateType in typesToCheck)
+            {
+                if (!candidateType.IsGenericType)
+                {
+                    continue;
+                }
+
+                if (candidateType.GetGenericTypeDefinition() != typeof(IEnumerable<>))
+                {
+                    continue;
+                }
+
+                var elementType = UnwrapProxy(candidateType.GetGenericArguments()[0]);
+                if (elementType != null && typeof(IChillEntity).IsAssignableFrom(elementType))
+                {
+                    return elementType;
+                }
+            }
+
+            return null;
+        }
+
+        private static Type? UnwrapProxy(Type? type)
+        {
+            if (type == null)
+            {
+                return null;
+            }
+
+            if (type.Namespace != null && type.Namespace.Contains("Castle.Proxies"))
+            {
+                return type.BaseType ?? type;
+            }
+
+            return type;
         }
 
         private static void ApplyPrecisionFallbacks(PropertyInfo propInfo, ChillDtoPropertySchema schema)
