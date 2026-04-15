@@ -183,6 +183,30 @@ await client.delete({
 });
 ```
 
+### Attachments
+
+Use the attachment helpers when the host enables `ChillSharp.Attachment`.
+
+```ts
+const post = {
+  ChillType: "Model.Post",
+  Guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11"
+};
+
+const uploaded = await client.uploadAttachment(post, {
+  fileName: "contract.txt",
+  content: new Blob(["hello attachment"], { type: "text/plain" }),
+  contentType: "text/plain"
+}, {
+  title: "Contract",
+  description: "Signed draft",
+  isPublic: false
+});
+
+const attachments = await client.getAttachments(post);
+const fileBlob = await client.downloadAttachment(uploaded[0]);
+```
+
 ### Chunk
 
 Use `chunk()` when several operations should be sent in one HTTP request.

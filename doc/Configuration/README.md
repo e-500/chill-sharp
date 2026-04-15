@@ -28,6 +28,7 @@ Use it as a quick reference when configuring Docker, `docker compose`, or anothe
 | Enable schema module | `CHILLSHARP_ENABLE_SCHEMA` | Registers `ChillSharp.Schema` services. | `true` |
 | Enable auth module | `CHILLSHARP_ENABLE_AUTH` | Registers `ChillSharp.Auth` account and auth-management services. | `true` |
 | Enable i18n module | `CHILLSHARP_ENABLE_I18N` | Registers `ChillSharp.I18n` services. | `true` |
+| Attachment archive root | `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` | Root folder used by `ChillSharp.Attachment` to read and store archived files. | `attachments` under the host base directory |
 
 ## Auth Tokens And Password Flows
 

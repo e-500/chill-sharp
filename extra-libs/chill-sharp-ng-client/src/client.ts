@@ -36,6 +36,8 @@ import type {
   ChillDtoMenuItem,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
+  ChillAttachmentUploadFile,
+  ChillAttachmentUploadOptions,
   ChillValidationError,
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
@@ -98,6 +100,30 @@ export class ChillSharpNgClient {
 
   chunk(operations: JsonObject[]): Observable<JsonObject[]> {
     return from(this.client.chunk(operations));
+  }
+
+  uploadAttachment(
+    targetEntity: JsonObject,
+    file: ChillAttachmentUploadFile,
+    options?: ChillAttachmentUploadOptions
+  ): Observable<JsonObject[]> {
+    return from(this.client.uploadAttachment(targetEntity, file, options));
+  }
+
+  uploadAttachments(
+    targetEntity: JsonObject,
+    files: ChillAttachmentUploadFile[],
+    options?: ChillAttachmentUploadOptions
+  ): Observable<JsonObject[]> {
+    return from(this.client.uploadAttachments(targetEntity, files, options));
+  }
+
+  getAttachments(targetEntity: JsonObject): Observable<JsonObject[]> {
+    return from(this.client.getAttachments(targetEntity));
+  }
+
+  downloadAttachment(attachmentOrGuid: JsonObject | string): Observable<Blob> {
+    return from(this.client.downloadAttachment(attachmentOrGuid));
   }
 
   version(): string {

@@ -92,14 +92,7 @@ namespace ChillSharp.Dto
         /// <exception cref="ChillException">Thrown if the query type name is invalid or improperly prefixed.</exception>
         private string _TestEntityAndGetChillType(IChillContext Context, IChillQuery<IChillEntity> Query)
         {
-            var chillType = Query.GetType().FullName;
-            var chillTypePrefix = Context.GetChillTypePrefix();
-            if (string.IsNullOrEmpty(chillType))
-                throw new ChillException($"Entity type full name ({chillType}) is invalid");
-            if (!chillType.StartsWith(chillTypePrefix))
-                throw new ChillException($"Entity type full name ({chillType}) doesn't start with {chillTypePrefix}");
-
-            return chillType.Substring(chillTypePrefix.Length + 1);
+            return ChillTypeResolver.NormalizeChillType(Query.GetType(), Context.GetChillTypePrefix());
         }
 
 		/// <summary>

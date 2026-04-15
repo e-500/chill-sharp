@@ -160,6 +160,32 @@ client.delete({
 })
 ```
 
+### Attachments
+
+Use the attachment helpers when the host enables `ChillSharp.Attachment`.
+
+```python
+post = {
+    "ChillType": "Model.Post",
+    "Guid": "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+}
+
+uploaded = client.upload_attachment(
+    post,
+    {
+        "fileName": "contract.txt",
+        "content": b"hello attachment",
+        "contentType": "text/plain",
+    },
+    title="Contract",
+    description="Signed draft",
+    is_public=False,
+)
+
+attachments = client.get_attachments(post)
+file_bytes = client.download_attachment(uploaded[0])
+```
+
 ### Chunk
 
 Use `chunk()` when several operations should be sent in one HTTP request.

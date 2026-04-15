@@ -43,7 +43,7 @@
     </ItemGroup>
 
     <Target Name="BuildBuiltinModuleProjects">
-        <MSBuild Projects="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+        <MSBuild Projects="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;..\ChillSharp.Attachment\ChillSharp.Attachment.csproj;..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
     </Target>
 
     <Target Name="IncludeBuiltinModuleOutputs" DependsOnTargets="BuildBuiltinModuleProjects">
@@ -53,6 +53,7 @@
             <BuildOutputInPackage Include="..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
             <BuildOutputInPackage Include="..\ChillSharp.Schema\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.dll" />
             <BuildOutputInPackage Include="..\ChillSharp.Mcp\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Mcp.dll" />
+            <BuildOutputInPackage Include="..\ChillSharp.Attachment\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Attachment.dll" />
             <BuildOutputInPackage Include="..\ChillSharp.AspNetCore\bin\$(Configuration)\$(TargetFramework)\ChillSharp.AspNetCore.dll" />
         </ItemGroup>
     </Target>

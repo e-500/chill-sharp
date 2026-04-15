@@ -17,27 +17,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Schema;
-using ChillSharp.Schema.Model;
-using ChillSharp.Attachment;
-using ChillSharp.I18n;
-using Microsoft.EntityFrameworkCore;
+namespace ChillSharp.Attachment.Services;
 
-namespace ChillSharp.Tests.EF
+/// <summary>
+/// Configures where attachment files are stored on disk.
+/// </summary>
+public sealed class ChillAttachmentOptions
 {
-    public partial class DummyContext : IChillSchemaDbContext
-    {
-        public DbSet<ChillSchemaEntry> SchemaEntries { get; set; }
+    public const string ArchiveRootEnvironmentVariableName = "CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT";
 
-        public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; set; }
-
-        public DbSet<ChillMenuItemEntry> MenuItems { get; set; }
-
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
-        {
-            modelBuilder.AddChillSchemaModel();
-            modelBuilder.AddChillAttachmentModel();
-            modelBuilder.AddChillI18nModel();
-        }
-    }
+    /// <summary>
+    /// Absolute or relative directory used as the attachment archive root.
+    /// </summary>
+    public string ArchiveRoot { get; set; } = Path.Combine(AppContext.BaseDirectory, "attachments");
 }

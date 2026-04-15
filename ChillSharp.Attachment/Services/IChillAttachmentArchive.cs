@@ -17,27 +17,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Schema;
-using ChillSharp.Schema.Model;
-using ChillSharp.Attachment;
-using ChillSharp.I18n;
-using Microsoft.EntityFrameworkCore;
+using ChillSharp.Attachment.Model;
 
-namespace ChillSharp.Tests.EF
+namespace ChillSharp.Attachment.Services;
+
+/// <summary>
+/// Provides filesystem operations for attachment content.
+/// </summary>
+public interface IChillAttachmentArchive
 {
-    public partial class DummyContext : IChillSchemaDbContext
-    {
-        public DbSet<ChillSchemaEntry> SchemaEntries { get; set; }
-
-        public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; set; }
-
-        public DbSet<ChillMenuItemEntry> MenuItems { get; set; }
-
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
-        {
-            modelBuilder.AddChillSchemaModel();
-            modelBuilder.AddChillAttachmentModel();
-            modelBuilder.AddChillI18nModel();
-        }
-    }
+    string BuildPath(Model.Attachment attachment);
+    Task SaveAsync(Model.Attachment attachment, Stream content, CancellationToken cancellationToken = default);
+    Stream OpenRead(Model.Attachment attachment);
+    bool Exists(Model.Attachment attachment);
+    void DeleteIfExists(Model.Attachment attachment);
 }

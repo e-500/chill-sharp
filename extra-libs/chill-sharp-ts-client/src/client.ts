@@ -360,6 +360,18 @@ export interface ChillSharpClientOptions {
   signalRWithCredentials?: boolean;
 }
 
+export interface ChillAttachmentUploadFile {
+  fileName: string;
+  content: Blob | ArrayBuffer | Uint8Array | string;
+  contentType?: string;
+}
+
+export interface ChillAttachmentUploadOptions {
+  title?: string | null;
+  description?: string | null;
+  isPublic?: boolean;
+}
+
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
 
 export interface ChillEntityChangeNotification extends JsonObject {
@@ -394,6 +406,8 @@ interface LocalEntityChangeSubscription {
 }
 
 export class ChillSharpClient {
+  private static readonly attachmentEntityChillType = "ChillSharp.Attachment.Model.Attachment";
+  private static readonly attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly cultureName: string | null;
@@ -458,6 +472,86 @@ export class ChillSharpClient {
 
   chunk(operations: JsonObject[]): Promise<JsonObject[]> {
     return this.sendJson<JsonObject[]>("POST", this.buildChillUrl("chunk"), operations);
+  }
+
+  uploadAttachment(
+    targetEntity: JsonObject,
+    file: ChillAttachmentUploadFile,
+    options: ChillAttachmentUploadOptions = {}
+  ): Promise<JsonObject[]> {
+    return this.uploadAttachments(targetEntity, [file], options);
+  }
+
+  async uploadAttachments(
+    targetEntity: JsonObject,
+    files: ChillAttachmentUploadFile[],
+    options: ChillAttachmentUploadOptions = {}
+  ): Promise<JsonObject[]> {
+    const target = this.getAttachmentTargetInfo(targetEntity);
+    if (!Array.isArray(files) || files.length === 0) {
+      throw new Error("files is required.");
+    }
+
+    const form = new FormData();
+    form.append("attachToChillType", target.chillType);
+    form.append("attachToGuid", target.guid);
+
+    const normalizedTitle = this.normalizeOptionalValue(options.title ?? undefined);
+    if (normalizedTitle) {
+      form.append("title", normalizedTitle);
+    }
+
+    const normalizedDescription = this.normalizeOptionalValue(options.description ?? undefined);
+    if (normalizedDescription) {
+      form.append("description", normalizedDescription);
+    }
+
+    form.append("public", options.isPublic ? "true" : "false");
+
+    for (const file of files) {
+      form.append(
+        "file",
+        this.toAttachmentBlob(file),
+        this.normalizeRequiredValue(file.fileName, "file.fileName")
+      );
+    }
+
+    return this.sendJson<JsonObject[]>(
+      "POST",
+      this.buildAttachmentUrl("attachment/upload"),
+      form,
+      true,
+      false,
+      false
+    );
+  }
+
+  async getAttachments(targetEntity: JsonObject): Promise<JsonObject[]> {
+    const target = this.getAttachmentTargetInfo(targetEntity);
+    const response = await this.query({
+      chillType: ChillSharpClient.attachmentQueryChillType,
+      properties: {
+        attachToChillType: target.chillType,
+        attachToGuid: target.guid
+      }
+    });
+
+    const results = this.readValue(response, "results");
+    return Array.isArray(results)
+      ? results.filter((item): item is JsonObject => !!item && typeof item === "object" && !Array.isArray(item))
+      : [];
+  }
+
+  downloadAttachment(attachmentOrGuid: JsonObject | string): Promise<Blob> {
+    const attachmentGuid = typeof attachmentOrGuid === "string"
+      ? this.normalizeRequiredValue(attachmentOrGuid, "attachmentGuid")
+      : this.getAttachmentGuid(attachmentOrGuid);
+
+    return this.sendBlob(
+      "GET",
+      this.buildAttachmentUrl(`attachment/download?guid=${encodeURIComponent(attachmentGuid)}`),
+      this.canUseAuthentication() ? false : true
+    );
   }
 
   version(): string {
@@ -865,7 +959,7 @@ export class ChillSharpClient {
   private async sendJson<T extends JsonValue | null>(
     method: string,
     url: string,
-    payload?: JsonValue,
+    payload?: JsonValue | FormData,
     expectResponseBody = true,
     allowAnonymous = false,
     allowRetry = true
@@ -893,10 +987,20 @@ export class ChillSharpClient {
     return await response.text();
   }
 
+  private async sendBlob(
+    method: string,
+    url: string,
+    allowAnonymous = false,
+    allowRetry = true
+  ): Promise<Blob> {
+    const response = await this.sendRequest(method, url, undefined, allowAnonymous, allowRetry);
+    return await response.blob();
+  }
+
   private async sendRequest(
     method: string,
     url: string,
-    payload?: JsonValue,
+    payload?: JsonValue | FormData,
     allowAnonymous = false,
     allowRetry = true
   ): Promise<Response> {
@@ -909,14 +1013,18 @@ export class ChillSharpClient {
       if (!allowAnonymous && this.tokenState.accessToken) {
         headers.set("Authorization", `Bearer ${this.tokenState.accessToken}`);
       }
-      if (payload !== undefined) {
+      if (payload !== undefined && !this.isFormDataPayload(payload)) {
         headers.set("Content-Type", "application/json");
       }
 
       const response = await this.fetchImpl(url, {
         method,
         headers,
-        body: payload === undefined ? undefined : JSON.stringify(payload)
+        body: payload === undefined
+          ? undefined
+          : this.isFormDataPayload(payload)
+            ? payload
+            : JSON.stringify(payload)
       });
 
       if ((response.status === 401 || response.status === 403) && !allowAnonymous && allowRetry && await this.tryRefreshAuthentication()) {
@@ -1110,6 +1218,10 @@ export class ChillSharpClient {
     return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
 
+  private buildAttachmentUrl(relativeUrl: string): string {
+    return `${this.getAttachmentBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+  }
+
   private getAuthBaseUrl(): string {
     const suffix = "/chill";
     if (this.baseUrl.toLowerCase().endsWith(suffix)) {
@@ -1135,6 +1247,15 @@ export class ChillSharpClient {
     }
 
     return `${this.baseUrl.replace(/\/$/, "")}-i18n`;
+  }
+
+  private getAttachmentBaseUrl(): string {
+    const suffix = "/chill";
+    if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+      return `${this.baseUrl.slice(0, -suffix.length)}/chill-attachment`;
+    }
+
+    return `${this.baseUrl.replace(/\/$/, "")}-attachment`;
   }
 
   private normalizeRequiredValue(value: string | null | undefined, argumentName: string): string {
@@ -1179,6 +1300,70 @@ export class ChillSharpClient {
 
     const matchedKey = Object.keys(payload).find((candidate) => candidate.toLowerCase() === key.toLowerCase());
     return matchedKey ? payload[matchedKey] : undefined;
+  }
+
+  private getAttachmentTargetInfo(targetEntity: JsonObject): { guid: string; chillType: string } {
+    const guid = this.readString(targetEntity, "guid");
+    if (!guid) {
+      throw new Error("targetEntity.guid is required.");
+    }
+
+    const chillType = this.readString(targetEntity, "chillType");
+    if (!chillType) {
+      throw new Error("targetEntity.chillType is required.");
+    }
+
+    return {
+      guid,
+      chillType
+    };
+  }
+
+  private getAttachmentGuid(attachmentEntity: JsonObject): string {
+    const guid = this.readString(attachmentEntity, "guid");
+    if (!guid) {
+      throw new Error("attachmentEntity.guid is required.");
+    }
+
+    const chillType = this.readString(attachmentEntity, "chillType");
+    if (chillType && chillType !== ChillSharpClient.attachmentEntityChillType) {
+      const normalizedChillType = chillType.split(".").pop() ?? chillType;
+      const normalizedAttachmentType = ChillSharpClient.attachmentEntityChillType.split(".").pop() ?? ChillSharpClient.attachmentEntityChillType;
+      if (normalizedChillType !== normalizedAttachmentType) {
+        throw new Error("attachmentEntity must point to an attachment.");
+      }
+    }
+
+    return guid;
+  }
+
+  private toAttachmentBlob(file: ChillAttachmentUploadFile): Blob {
+    if (!file || typeof file !== "object") {
+      throw new Error("file is required.");
+    }
+
+    const contentType = this.normalizeOptionalValue(file.contentType) ?? "application/octet-stream";
+    if (file.content instanceof Blob) {
+      return file.content;
+    }
+
+    if (typeof file.content === "string" || file.content instanceof ArrayBuffer) {
+      return new Blob([file.content], { type: contentType });
+    }
+
+    if (file.content instanceof Uint8Array) {
+      const buffer = file.content.buffer.slice(
+        file.content.byteOffset,
+        file.content.byteOffset + file.content.byteLength
+      ) as ArrayBuffer;
+      return new Blob([buffer], { type: contentType });
+    }
+
+    return new Blob([String(file.content)], { type: contentType });
+  }
+
+  private isFormDataPayload(payload: JsonValue | FormData): payload is FormData {
+    return typeof FormData !== "undefined" && payload instanceof FormData;
   }
 
   private parseDate(value: JsonValue | undefined): Date | null {

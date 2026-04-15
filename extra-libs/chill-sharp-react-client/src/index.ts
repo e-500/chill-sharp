@@ -55,6 +55,8 @@ export type {
   ChillDtoPropertySchema,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
+  ChillAttachmentUploadFile,
+  ChillAttachmentUploadOptions,
   ChillEntityChangeAction,
   ChillEntityChangeCallback,
   ChillEntityChangeNotification,

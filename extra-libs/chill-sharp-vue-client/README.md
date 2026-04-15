@@ -288,6 +288,36 @@ await createPost.execute({
 });
 ```
 
+## Attachments
+
+Use the raw client from `useChillSharpClient()` for attachment helpers:
+
+```ts
+const client = useChillSharpClient();
+
+await client.uploadAttachment(
+  {
+    ChillType: "Model.Post",
+    Guid: postGuid
+  },
+  {
+    fileName: "contract.txt",
+    content: new Blob(["hello attachment"], { type: "text/plain" }),
+    contentType: "text/plain"
+  },
+  {
+    title: "Contract",
+    description: "Signed draft",
+    isPublic: false
+  }
+);
+
+const attachments = await client.getAttachments({
+  ChillType: "Model.Post",
+  Guid: postGuid
+});
+```
+
 ## Chunk batches
 
 Call `chunk()` through `useChillSharpClient()` when several operations should be sent in one request.

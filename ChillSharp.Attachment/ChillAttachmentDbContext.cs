@@ -17,27 +17,30 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Schema;
-using ChillSharp.Schema.Model;
-using ChillSharp.Attachment;
-using ChillSharp.I18n;
+using ChillSharp.Attachment.Model;
 using Microsoft.EntityFrameworkCore;
 
-namespace ChillSharp.Tests.EF
+namespace ChillSharp.Attachment;
+
+/// <summary>
+/// Minimal standalone DbContext for the attachment module.
+/// </summary>
+public class ChillAttachmentDbContext : DbContext, IChillAttachmentDbContext, IChillContext
 {
-    public partial class DummyContext : IChillSchemaDbContext
+    public ChillAttachmentDbContext(DbContextOptions<ChillAttachmentDbContext> options) : base(options)
     {
-        public DbSet<ChillSchemaEntry> SchemaEntries { get; set; }
+    }
 
-        public DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; set; }
+    public DbSet<Model.Attachment> Attachments => Set<Model.Attachment>();
 
-        public DbSet<ChillMenuItemEntry> MenuItems { get; set; }
+    public string GetChillTypePrefix()
+    {
+        return "ChillSharp.Attachment";
+    }
 
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
-        {
-            modelBuilder.AddChillSchemaModel();
-            modelBuilder.AddChillAttachmentModel();
-            modelBuilder.AddChillI18nModel();
-        }
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.AddChillAttachmentModel();
     }
 }

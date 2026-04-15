@@ -17,6 +17,9 @@ This folder contains the reference documentation for ChillSharp.
 - [Configuration/README.md](./Configuration/README.md)
   Quick reference for the example host configuration options and their environment variables.
 
+- [AttachmentModel/README.md](./AttachmentModel/README.md)
+  Attachment entity model, archive layout, configuration, and upload/download endpoint behavior.
+
 - [DateTimeSerialization.md](./DateTimeSerialization.md)
   How ChillSharp serializes and parses `DateTimeOffset`, `DateTime`, `DateOnly`, and `TimeOnly`, including comparisons with default ASP.NET Core behavior.
 
@@ -60,6 +63,9 @@ This folder contains the reference documentation for ChillSharp.
 
 - `ChillSharp.Schema`
   Schema generation, persistence, and schema cache.
+
+- `ChillSharp.Attachment`
+  Attachment entity model, archive storage, and upload/download endpoints.
 
 - `ChillSharp.Auth`
   Authorization model, permission rules, role/user management, and optional ASP.NET Core Identity integration.
@@ -158,6 +164,7 @@ This maps the Chill API controllers and also includes:
 Depending on which modules are registered, the same host can also expose:
 
 - schema services through `ChillSharp.Schema`
+- attachment upload/download services through `ChillSharp.Attachment`
 - auth/account and permission-management services through `ChillSharp.Auth`
 - i18n text endpoints through `ChillSharp.I18n`
 

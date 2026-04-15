@@ -290,6 +290,16 @@ export interface ChillSharpClientOptions {
     fetchImpl?: typeof fetch;
     signalRWithCredentials?: boolean;
 }
+export interface ChillAttachmentUploadFile {
+    fileName: string;
+    content: Blob | ArrayBuffer | Uint8Array | string;
+    contentType?: string;
+}
+export interface ChillAttachmentUploadOptions {
+    title?: string | null;
+    description?: string | null;
+    isPublic?: boolean;
+}
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
 export interface ChillEntityChangeNotification extends JsonObject {
     chillType: string;
@@ -303,6 +313,8 @@ export interface ChillEntityChangeSubscription {
     unsubscribe(): Promise<void>;
 }
 export declare class ChillSharpClient {
+    private static readonly attachmentEntityChillType;
+    private static readonly attachmentQueryChillType;
     private readonly baseUrl;
     private readonly fetchImpl;
     private readonly cultureName;
@@ -325,6 +337,10 @@ export declare class ChillSharpClient {
     autocomplete(dto: JsonObject): Promise<JsonObject>;
     validate(dto: JsonObject): Promise<ChillValidationError[]>;
     chunk(operations: JsonObject[]): Promise<JsonObject[]>;
+    uploadAttachment(targetEntity: JsonObject, file: ChillAttachmentUploadFile, options?: ChillAttachmentUploadOptions): Promise<JsonObject[]>;
+    uploadAttachments(targetEntity: JsonObject, files: ChillAttachmentUploadFile[], options?: ChillAttachmentUploadOptions): Promise<JsonObject[]>;
+    getAttachments(targetEntity: JsonObject): Promise<JsonObject[]>;
+    downloadAttachment(attachmentOrGuid: JsonObject | string): Promise<Blob>;
     version(): string;
     test(): Promise<string>;
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null>;
@@ -379,6 +395,7 @@ export declare class ChillSharpClient {
     private sendAuthJson;
     private sendJson;
     private sendText;
+    private sendBlob;
     private sendRequest;
     private getAuthTokenIfNecessary;
     private getAuthTokenIfNecessaryCore;
@@ -394,15 +411,21 @@ export declare class ChillSharpClient {
     private buildAuthUrl;
     private buildSchemaUrl;
     private buildI18nUrl;
+    private buildAttachmentUrl;
     private getAuthBaseUrl;
     private getSchemaBaseUrl;
     private getI18nBaseUrl;
+    private getAttachmentBaseUrl;
     private normalizeRequiredValue;
     private normalizeOptionalValue;
     private normalizeQueryValue;
     private readString;
     private readDate;
     private readValue;
+    private getAttachmentTargetInfo;
+    private getAttachmentGuid;
+    private toAttachmentBlob;
+    private isFormDataPayload;
     private parseDate;
     private formatDate;
     private ensureNotificationConnection;

@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
 using ChillSharp.EF;
@@ -114,16 +115,16 @@ public sealed class ChillSchemaController : ControllerBase
     }
     private List<ChillDtoSchemaListItem> BuildSchemaList(string? cultureName)
     {
-        var assembly = _context.GetType().Assembly;
+        var assemblies = ChillAssemblyDiscovery.GetCandidateAssemblies(_context.GetType().Assembly);
         var shrinkTypePrefix = _context.GetChillTypePrefix();
 
-        var entityItems = assembly
-            .GetTypes()
+        var entityItems = assemblies
+            .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
             .Where(IsRegisteredEntityType)
             .Select(type => ChillDtoSchemaListItem.FromEntityType(type, shrinkTypePrefix, _context, cultureName));
 
-        var queryItems = assembly
-            .GetTypes()
+        var queryItems = assemblies
+            .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
             .Where(IsRegisteredQueryType)
             .Select(type => ChillDtoSchemaListItem.CreateFromQueryType(type, shrinkTypePrefix, _context, cultureName));
 

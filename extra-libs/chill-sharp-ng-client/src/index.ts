@@ -40,6 +40,8 @@ export type {
   ChillEntityChangeCallback,
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
+  ChillAttachmentUploadFile,
+  ChillAttachmentUploadOptions,
   ChillSharpClientOptions,
   GetAuthPermissionsResponse,
   GetTextRequest,

@@ -98,14 +98,7 @@ namespace ChillSharp.Dto
         /// <exception cref="ChillException"></exception>
         private string _TestEntityAndGetChillType(IChillContext Context, IChillEntity Entity)
         {
-            var chillType = Entity.GetType().FullName;
-            var chillTypePrefix = Context.GetChillTypePrefix();
-            if (string.IsNullOrEmpty(chillType))
-                throw new ChillException($"Entity type full name ({chillType}) is invalid");
-            if (!chillType.StartsWith(chillTypePrefix))
-                throw new ChillException($"Entity type full name ({chillType}) doesn't start with {chillTypePrefix}");
-
-            return chillType.Substring(chillTypePrefix.Length + 1);
+            return ChillTypeResolver.NormalizeChillType(Entity.GetType(), Context.GetChillTypePrefix());
         }
 
         /// <summary>

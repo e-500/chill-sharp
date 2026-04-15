@@ -18,6 +18,8 @@
  */
 
 using ChillSharp.Api.Controllers;
+using ChillSharp.Attachment;
+using ChillSharp.Attachment.Api;
 using ChillSharp.Auth;
 using ChillSharp.Auth.Api;
 using ChillSharp.I18n;
@@ -103,6 +105,11 @@ namespace ChillSharp.Api
                 InvokeModuleRegistration<TContext>(services, typeof(ChillMcpServiceCollectionExtensions), nameof(ChillMcpServiceCollectionExtensions.AddChillMcpApi));
             }
 
+            if (options.EnableAttachmentApi)
+            {
+                InvokeModuleRegistration<TContext>(services, typeof(ChillAttachmentApiExtensions), nameof(ChillAttachmentApiExtensions.AddChillAttachmentApi));
+            }
+
             return services;
         }
 
@@ -123,6 +130,7 @@ namespace ChillSharp.Api
                 apiOptions.EnableI18nApi = options.EnableI18nApi;
                 apiOptions.EnableSchemaApi = options.EnableSchemaApi;
                 apiOptions.EnableMcpApi = options.EnableMcpApi;
+                apiOptions.EnableAttachmentApi = options.EnableAttachmentApi;
             });
 
             services.AddChillAuthIdentityApi<TContext, TUser>(identityOptions =>
@@ -215,6 +223,12 @@ namespace ChillSharp.Api
                 throw new InvalidOperationException(
                     $"{optionName} requires {contextType.Name} to implement {nameof(IChillSchemaDbContext)}.");
             }
+
+            if (options.EnableAttachmentApi && !typeof(IChillAttachmentDbContext).IsAssignableFrom(contextType))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ChillApiOptions.EnableAttachmentApi)} requires {contextType.Name} to implement {nameof(IChillAttachmentDbContext)}.");
+            }
         }
 
         private static void InvokeModuleRegistration<TContext>(IServiceCollection services, Type extensionType, string methodName)
@@ -264,6 +278,11 @@ namespace ChillSharp.Api
         /// Enables the embedded ChillSharp MCP API module.
         /// </summary>
         public bool EnableMcpApi { get; set; } = true;
+
+        /// <summary>
+        /// Enables the embedded ChillSharp attachment API module.
+        /// </summary>
+        public bool EnableAttachmentApi { get; set; } = true;
     }
 
     /// <summary>

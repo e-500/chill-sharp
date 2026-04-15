@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
     <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-    <Title>ChillSharp ASP.NET Core integration</Title>
+    <Title>ChillSharp Attachment library</Title>
     <Copyright>© 2025 Andrea Piovesan</Copyright>
     <PackageIcon>logo.png</PackageIcon>
     <RepositoryUrl>https://github.com/e-500/chill-sharp</RepositoryUrl>
@@ -15,7 +15,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
-    <Description>ASP.NET Core integration entry point for ChillSharp and built-in modules.</Description>
+    <Description>Attachment storage module for ChillSharp.</Description>
     <Version>1.0.0</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
@@ -39,15 +39,13 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" />
     <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
-    <ProjectReference Include="..\ChillSharp.Attachment\ChillSharp.Attachment.csproj" />
     <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
-    <ProjectReference Include="..\ChillSharp.I18n\ChillSharp.I18n.csproj" />
-    <ProjectReference Include="..\ChillSharp.Schema\ChillSharp.Schema.csproj" />
-    <ProjectReference Include="..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" />
   </ItemGroup>
 
 </Project>

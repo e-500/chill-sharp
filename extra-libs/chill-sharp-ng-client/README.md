@@ -128,6 +128,10 @@ providers: [
 - `create()`
 - `update()`
 - `delete()`
+- `uploadAttachment()`
+- `uploadAttachments()`
+- `getAttachments()`
+- `downloadAttachment()`
 - `chunk()`
 - `test()`
 - `getSchema()`
@@ -196,6 +200,32 @@ this.chill.create({
     Author: "Grace Hopper"
   }
 }).subscribe();
+```
+
+### Attachments
+
+```ts
+readonly uploaded$ = this.chill.uploadAttachment(
+  {
+    ChillType: "Model.Post",
+    Guid: this.postGuid
+  },
+  {
+    fileName: "contract.txt",
+    content: new Blob(["hello attachment"], { type: "text/plain" }),
+    contentType: "text/plain"
+  },
+  {
+    title: "Contract",
+    description: "Signed draft",
+    isPublic: false
+  }
+);
+
+readonly attachments$ = this.chill.getAttachments({
+  ChillType: "Model.Post",
+  Guid: this.postGuid
+});
 ```
 
 ### Test endpoint
