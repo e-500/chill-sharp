@@ -1,0 +1,494 @@
+# ChillSharp MCP Module
+
+This document describes the `ChillSharp.Mcp` module, how to register it in an ASP.NET Core host, and how to prepare a `DbContext` and model so AI agents can consume the exposed schema and query surface efficiently.
+
+`ChillSharp.Mcp` uses the official MCP C# SDK and exposes a Model Context Protocol server backed by your ChillSharp context.
+
+## Goals
+
+After setup, an MCP client can:
+
+- discover the MCP-enabled schemas exposed by your host
+- inspect full entity and query schemas before sending requests
+- read schema-level and property-level MCP descriptions
+- execute only the queries that you explicitly expose through `EnableMCP`
+- operate under bearer-authenticated user permissions and API-key limitations
+
+## Registered Tools
+
+The module registers these MCP tools:
+
+- `ChillSharp get-schema-list`
+- `ChillSharp get-schema`
+- `ChillSharp query`
+
+### `ChillSharp get-schema-list`
+
+Returns only the schemas that are MCP-enabled.
+
+Use this as the discovery entry point. It tells the AI which entities and queries are intended to be consumed through MCP.
+
+### `ChillSharp get-schema`
+
+Returns the full `ChillDtoSchema` for one MCP-enabled entity or query type.
+
+This is the most important introspection tool. It includes:
+
+- schema metadata
+- query related type information
+- schema-level `MCPDescription`
+- all schema properties
+- property-level `MCPDescription` for each property
+- reference type information
+
+In practice, this is how an AI learns:
+
+- what the object represents
+- what each property means
+- which query returns which entity type
+- which properties are references to other Chill types
+
+### `ChillSharp query`
+
+Executes a ChillSharp query only when the target query schema is MCP-enabled.
+
+The recommended workflow is:
+
+1. call `ChillSharp get-schema-list`
+2. call `ChillSharp get-schema` on the selected query type
+3. read descriptions, properties, and returned type
+4. send a `ChillDtoQuery` payload to `ChillSharp query`
+
+## Basic host setup
+
+```csharp
+using ChillSharp.Api;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite("Data Source=app.db"));
+
+builder.Services.AddChillApi<AppDbContext>(options =>
+{
+    options.ProtectedApi = true;
+});
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapChillApi();
+app.Run();
+```
+
+When `EnableMcpApi` remains `true`, the MCP module is enabled by default as part of `AddChillApi<TContext>()`.
+
+## Disable MCP globally
+
+```csharp
+builder.Services.AddChillApi<AppDbContext>(options =>
+{
+    options.EnableMcpApi = false;
+});
+```
+
+## Register the module directly
+
+If you need direct module registration:
+
+```csharp
+using ChillSharp.Mcp.Api;
+
+builder.Services.AddChillMcpApi<AppDbContext>(options =>
+{
+    options.Enabled = true;
+    options.RoutePattern = "/api/chill-mcp";
+});
+```
+
+## Context requirements
+
+Your host context must:
+
+- inherit from `DbContext`
+- implement `IChillContext`
+- implement `IChillSchemaDbContext`
+- include the Chill schema model in `OnModelCreating`
+
+Typical shape:
+
+```csharp
+using ChillSharp;
+using ChillSharp.Schema;
+using Microsoft.EntityFrameworkCore;
+
+public class AppDbContext : DbContext, IChillContext, IChillSchemaDbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+    public string GetChillTypePrefix()
+    {
+        return "MyCompany.MyProduct.Data";
+    }
+
+    public string GetPrimaryCultureName()
+    {
+        return "en-US";
+    }
+
+    public string GetSecondaryCultureName()
+    {
+        return "it-IT";
+    }
+
+    public string GetCurrentUserName()
+    {
+        return Environment.UserName;
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.AddChillSchemaModel();
+    }
+}
+```
+
+## Authentication
+
+The MCP endpoint is meant to run behind bearer authentication.
+
+If the host uses:
+
+```csharp
+builder.Services.AddChillApi<AppDbContext>(options =>
+{
+    options.ProtectedApi = true;
+});
+```
+
+then the mapped MCP endpoint also requires authentication.
+
+This is important because MCP exposure should usually be scoped to a user or API key, not to anonymous callers.
+
+## How `EnableMCP` Works
+
+The MCP tools only expose schemas whose MCP visibility is enabled.
+
+A schema is considered MCP-enabled when either:
+
+- `schema.EnableMCP` is `true`
+- runtime entity options enable MCP for that Chill type
+
+That means:
+
+- `get-schema-list` shows only enabled schemas
+- `get-schema` returns only enabled schemas
+- `query` executes only enabled query types
+
+This gives you an explicit publish/unpublish mechanism for AI-facing database capabilities.
+
+## Preparing A DbContext For Efficient AI Consumption
+
+This is the most important part of the module.
+
+An AI does not understand your model the way a human teammate does. It depends heavily on metadata, naming, descriptions, and a constrained query surface. A database can be technically exposed through MCP and still be hard for an AI to use well.
+
+If you want an AI to consume a ChillSharp host efficiently, prepare the model intentionally.
+
+## 1. Use clear Chill type names
+
+Short type names like `Model.Blog`, `Model.Invoice`, and `Query.PostSearchQuery` are easier for an AI to reason about than opaque names.
+
+Prefer:
+
+- `Model.Customer`
+- `Model.Invoice`
+- `Query.InvoiceSearchQuery`
+- `Query.ActiveCustomerQuery`
+
+Avoid names that require internal team knowledge to decode.
+
+Less efficient:
+
+- `Model.TbAnag`
+- `Query.Q1`
+- `Query.RunDefault`
+
+## 2. Annotate every exposed property intentionally
+
+Use `[ChillProperty]` consistently on the properties you want in the AI-facing surface.
+
+This affects:
+
+- schema generation
+- query payload expectations
+- DTO mapping
+- the list of fields an AI sees when it inspects a schema
+
+If a property matters to queries, search, filtering, or results, it should usually be explicitly annotated.
+
+## 3. Write strong `MCPDescription` text on entities
+
+Entity and query descriptions are not decoration. They are how an AI learns business meaning.
+
+Good entity-level descriptions explain:
+
+- what the object is
+- when it should be queried
+- what it represents in business terms
+- whether it is a primary record, a lookup table, or a derived/query-only surface
+
+Example:
+
+```csharp
+[ChillEntity(
+    UniquePropertyKeyString: "4E16F6C0-6B95-4D67-98BC-9F4D0D63EAF1",
+    PrimaryLanguageLabel: "Invoice",
+    SecondaryLanguageLabel: "Fattura",
+    EnableMCP = true,
+    MCPDescription = "Customer invoice header. Use this schema to inspect invoice number, issue date, customer, total amount, and payment state.")]
+public class Invoice : ChillEntity
+{
+}
+```
+
+That is much more useful than:
+
+- `"Invoice entity"`
+- `"Main table"`
+
+## 4. Write strong `MCPDescription` text on properties
+
+Property descriptions matter even more.
+
+When an AI receives `get-schema`, each property can carry its own `MCPDescription`. This is often the difference between a correct query and a wrong one.
+
+Good property descriptions explain:
+
+- the business meaning
+- allowed or expected content
+- units or format
+- whether the field is a lookup, reference, status, code, or free text
+- whether the field is returned, filterable, computed, or informational
+
+Example:
+
+```csharp
+[ChillProperty(
+    UniquePropertyKeyString: "50B1BB6C-D794-41E4-A85C-D4F9D7A6FA7E",
+    PrimaryLanguageLabel: "Invoice number",
+    SecondaryLanguageLabel: "Numero fattura",
+    MCPDescription = "Human-readable accounting document number shown to users and used in external communication.")]
+public string InvoiceNumber { get; set; } = string.Empty;
+```
+
+And:
+
+```csharp
+[ChillProperty(
+    UniquePropertyKeyString: "A18E7754-D8F7-45FE-B8A8-EA762A4EC9E6",
+    PrimaryLanguageLabel: "Payment status",
+    SecondaryLanguageLabel: "Stato pagamento",
+    MCPDescription = "Current payment lifecycle status. Expected values are Draft, Issued, PartiallyPaid, Paid, and Cancelled.")]
+public string PaymentStatus { get; set; } = string.Empty;
+```
+
+These descriptions are returned by `ChillSharp get-schema`.
+
+## 5. Prefer purpose-built query types over exposing everything
+
+AI works better when it has a small number of well-described queries instead of one giant ambiguous surface.
+
+Prefer several clear query types such as:
+
+- `Query.OpenInvoiceQuery`
+- `Query.InvoiceByCustomerQuery`
+- `Query.ActiveSubscriptionQuery`
+
+instead of forcing the AI to infer everything from one generic catch-all query.
+
+Each query should have:
+
+- a clear name
+- a clear purpose
+- well-described input properties
+- a predictable related entity type
+
+## 6. Keep query inputs narrow and meaningful
+
+A query with twenty optional inputs and vague meanings is hard for humans and harder for AI.
+
+Prefer a query surface where each input has a strong purpose.
+
+Good:
+
+- `Customer`
+- `FromIssueDate`
+- `ToIssueDate`
+- `PaymentStatus`
+
+Less good:
+
+- `Key1`
+- `Filter`
+- `Mode`
+- `ExtraData`
+
+## 7. Expose references intentionally
+
+References are useful because they tell an AI how tables and entities relate.
+
+If a property references another Chill type, make sure that:
+
+- the reference is represented through Chill metadata
+- the target type has a useful schema
+- the property description explains the relationship
+
+Example:
+
+- `"Customer that owns the invoice."`
+- `"Warehouse from which this shipment is fulfilled."`
+
+This helps an AI navigate the graph of your database instead of treating every object as isolated.
+
+## 8. Keep labels useful
+
+`Label`, `ShortLabel`, and schema display names help an AI choose the right object when many related types exist.
+
+A good label is:
+
+- stable
+- human-readable
+- derived from the business identity of the record
+
+Examples:
+
+- invoice number
+- customer name
+- product code and title
+
+This improves both UI behavior and AI comprehension.
+
+## 9. Separate internal-only objects from AI-facing objects
+
+Not every entity should be MCP-enabled.
+
+A good rule is:
+
+- enable MCP only for objects that are understandable and safe to expose to an AI workflow
+- keep low-level infrastructure entities, log tables, or sensitive internals disabled unless there is a real reason to publish them
+
+This reduces confusion, token waste, and accidental misuse.
+
+## 10. Design with permission boundaries in mind
+
+The authenticated API-key user can be restricted by permissions and other limitations.
+
+That means a good AI-facing host should align:
+
+- MCP-enabled schemas
+- query visibility
+- auth permissions
+- API key ownership
+
+If different clients need different visibility, use different identities or permission profiles rather than one global unrestricted MCP surface.
+
+## 11. Think in “AI reading order”
+
+A typical agent workflow is:
+
+1. list schemas
+2. choose one by name and description
+3. inspect schema and property descriptions
+4. infer related entity type
+5. build a query
+6. read results
+
+So the model should support that sequence cleanly.
+
+Ask yourself:
+
+- can the agent identify the right schema by reading the name and description?
+- can it understand the properties without hidden tribal knowledge?
+- can it tell which query returns which entity?
+- can it avoid irrelevant schemas?
+
+If not, enrich the metadata.
+
+## 12. Optimize for fewer round trips
+
+AI systems pay a price for each discovery step.
+
+To keep consumption efficient:
+
+- provide rich schema descriptions
+- describe properties well the first time
+- keep query surfaces focused
+- expose the result properties that are commonly needed
+- avoid forcing the agent to guess meanings and retry
+
+Good metadata lowers token usage, lowers retries, and produces more reliable results.
+
+## Practical AI-Ready Checklist
+
+Before exposing a model through `ChillSharp.Mcp`, check that:
+
+- entity names are clear
+- query names are clear
+- all AI-facing properties are annotated with `[ChillProperty]`
+- MCP-enabled schemas have useful `MCPDescription`
+- important properties have useful `MCPDescription`
+- queries are focused and purpose-built
+- references are described
+- labels are meaningful
+- sensitive or noisy schemas remain non-MCP
+- auth and permission boundaries match the intended AI use case
+
+## Example AI-Friendly Model Fragment
+
+```csharp
+using ChillSharp.Annotations;
+using ChillSharp.EF;
+
+[ChillEntity(
+    UniquePropertyKeyString: "4E16F6C0-6B95-4D67-98BC-9F4D0D63EAF1",
+    PrimaryLanguageLabel: "Invoice",
+    SecondaryLanguageLabel: "Fattura",
+    EnableMCP = true,
+    MCPDescription = "Customer invoice header. Use it to inspect invoice identity, customer, dates, totals, and payment state.")]
+public class Invoice : ChillEntity
+{
+    [ChillProperty(
+        UniquePropertyKeyString: "50B1BB6C-D794-41E4-A85C-D4F9D7A6FA7E",
+        PrimaryLanguageLabel: "Invoice number",
+        SecondaryLanguageLabel: "Numero fattura",
+        MCPDescription = "Human-readable invoice number used by accountants and customers.")]
+    public string InvoiceNumber { get; set; } = string.Empty;
+
+    [ChillProperty(
+        UniquePropertyKeyString: "A18E7754-D8F7-45FE-B8A8-EA762A4EC9E6",
+        PrimaryLanguageLabel: "Customer",
+        SecondaryLanguageLabel: "Cliente",
+        MCPDescription = "Customer that owns this invoice.",
+        ReferenceChillTypeQuery = "Query.CustomerQuery")]
+    public Customer? Customer { get; set; }
+
+    [ChillProperty(
+        UniquePropertyKeyString: "D6A6A0B6-3C22-4E18-B2AE-34D6EBE56EC8",
+        PrimaryLanguageLabel: "Payment status",
+        SecondaryLanguageLabel: "Stato pagamento",
+        MCPDescription = "Current payment lifecycle status such as Draft, Issued, Paid, or Cancelled.")]
+    public string PaymentStatus { get; set; } = string.Empty;
+}
+```
+
+## Related Documents
+
+- [../README.md](../README.md)
+- [../RegisterContext.md](../RegisterContext.md)
+- [../ModelPreparation.md](../ModelPreparation.md)
+- [../AIAssistedDevelopment/README.md](../AIAssistedDevelopment/README.md)
+- [../../ChillSharp.Mcp/README.md](../../ChillSharp.Mcp/README.md)

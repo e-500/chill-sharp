@@ -24,6 +24,7 @@ using ChillSharp.Auth;
 using ChillSharp.Auth.Api;
 using ChillSharp.I18n;
 using ChillSharp.I18n.Api;
+using ChillSharp.Mcp;
 using ChillSharp.Mcp.Api;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Api;
@@ -31,6 +32,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol.AspNetCore;
 using System.Reflection;
 
 namespace ChillSharp.Api
@@ -197,7 +199,36 @@ namespace ChillSharp.Api
                 chillEntityChangeHub.RequireAuthorization();
             }
 
+            var mcpOptions = endpoints.ServiceProvider.GetService<ChillMcpOptions>();
+            if (options.EnableMcpApi && mcpOptions?.Enabled == true)
+            {
+                var routePattern = NormalizeRoutePattern(mcpOptions.RoutePattern);
+                var mcpEndpoint = endpoints.MapMcp(routePattern);
+                if (options.ProtectedApi)
+                {
+                    mcpEndpoint.RequireAuthorization();
+                }
+            }
+
             return endpoints;
+        }
+
+        private static string NormalizeRoutePattern(string routePattern)
+        {
+            var normalized = routePattern?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return "/";
+            }
+
+            if (!normalized.StartsWith("/"))
+            {
+                normalized = "/" + normalized;
+            }
+
+            return normalized.Length > 1
+                ? normalized.TrimEnd('/')
+                : normalized;
         }
 
         private static void ValidateEnabledModules<TContext>(ChillApiOptions options)

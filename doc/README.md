@@ -38,6 +38,9 @@ This folder contains the reference documentation for ChillSharp.
 - [AIAssistedDevelopment/README.md](./AIAssistedDevelopment/README.md)
   How ChillSharp supports AI-assisted development by reducing repetitive CRUD code, stabilizing the API surface, and keeping model growth more uniform.
 
+- [Mcp/README.md](./Mcp/README.md)
+  Model Context Protocol module, MCP tool behavior, registration, `EnableMCP`, and guidance for preparing an AI-friendly `DbContext`.
+
 - [ClientGeneration/README.md](./ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
 
@@ -75,6 +78,9 @@ This folder contains the reference documentation for ChillSharp.
 
 - `ChillSharp.Client`
   .NET client for ChillSharp and ChillSharp.Auth endpoints.
+
+- `ChillSharp.Mcp`
+  MCP server module built on the official C# SDK, exposing ChillSharp schema discovery and query tools for AI clients.
 
 - `ext/chill-sharp-ts-client`
   Generic TypeScript client package.
