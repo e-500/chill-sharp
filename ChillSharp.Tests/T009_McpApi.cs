@@ -20,10 +20,30 @@ public sealed class McpApi
         var getSchemaList = GetToolMethod(nameof(ChillMcpTools.GetSchemaList));
         var getSchema = GetToolMethod(nameof(ChillMcpTools.GetSchemaAsync));
         var query = GetToolMethod(nameof(ChillMcpTools.Query));
+        var lookup = GetToolMethod(nameof(ChillMcpTools.Lookup));
+        var find = GetToolMethod(nameof(ChillMcpTools.Find));
+        var create = GetToolMethod(nameof(ChillMcpTools.Create));
+        var update = GetToolMethod(nameof(ChillMcpTools.Update));
+        var delete = GetToolMethod(nameof(ChillMcpTools.Delete));
+        var autocompleteEntity = GetToolMethod(nameof(ChillMcpTools.AutocompleteEntity));
+        var autocompleteQuery = GetToolMethod(nameof(ChillMcpTools.AutocompleteQuery));
+        var validateEntity = GetToolMethod(nameof(ChillMcpTools.ValidateEntity));
+        var validateQuery = GetToolMethod(nameof(ChillMcpTools.ValidateQuery));
+        var chunk = GetToolMethod(nameof(ChillMcpTools.Chunk));
 
         AssertToolMetadata(getSchemaList, "ChillSharp get-schema-list", "MCP-enabled", "bearer token");
         AssertToolMetadata(getSchema, "ChillSharp get-schema", "MCP-enabled", "properties");
         AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery");
+        AssertToolMetadata(lookup, "ChillSharp lookup", "MCP-enabled", "full-text");
+        AssertToolMetadata(find, "ChillSharp find", "MCP-enabled", "Guid");
+        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity");
+        AssertToolMetadata(update, "ChillSharp update", "MCP-enabled", "Guid");
+        AssertToolMetadata(delete, "ChillSharp delete", "MCP-enabled", "mutating");
+        AssertToolMetadata(autocompleteEntity, "ChillSharp autocomplete-entity", "MCP-enabled", "entity DTO");
+        AssertToolMetadata(autocompleteQuery, "ChillSharp autocomplete-query", "MCP-enabled", "query DTO");
+        AssertToolMetadata(validateEntity, "ChillSharp validate-entity", "MCP-enabled", "validation errors");
+        AssertToolMetadata(validateQuery, "ChillSharp validate-query", "MCP-enabled", "validation errors");
+        AssertToolMetadata(chunk, "ChillSharp chunk", "MCP-enabled", "ChillOperation");
     }
 
     [TestMethod]
@@ -128,6 +148,156 @@ public sealed class McpApi
         Assert.AreEqual("Ada", result.Results[0].Properties["Author"]?.ToString());
     }
 
+    [TestMethod]
+    public async Task Step004_McpCrudAndChunkOperateOnlyOnEnabledSchemas()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-crud-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var schemaService = CreateSchemaService(context);
+        ((IChillContext)context).RegisterSchemaService(schemaService);
+
+        var tools = new ChillMcpTools(
+            new ChillMcpSchemaDiscoveryService(context, schemaService),
+            new ChillDtoEngine(context));
+
+        var created = await tools.Create(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "MCP CRUD",
+                [nameof(Blog.Url)] = "https://example.test/mcp-crud"
+            }
+        });
+
+        Assert.AreNotEqual(Guid.Empty, created.Guid);
+        Assert.AreEqual("MCP CRUD", created.Properties[nameof(Blog.Title)]?.ToString());
+
+        var found = await tools.Find(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        Assert.IsNotNull(found);
+        Assert.AreEqual("https://example.test/mcp-crud", found.Properties[nameof(Blog.Url)]?.ToString());
+
+        var updated = await tools.Update(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid,
+            Properties =
+            {
+                [nameof(Blog.Title)] = "MCP CRUD Updated"
+            }
+        });
+
+        Assert.AreEqual("MCP CRUD Updated", updated.Properties[nameof(Blog.Title)]?.ToString());
+
+        var autocomplete = await tools.AutocompleteEntity(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "Needs Url"
+            }
+        });
+
+        Assert.AreEqual("https://autocomplete.local/needs-url", autocomplete.Properties[nameof(Blog.Url)]?.ToString());
+
+        var validationErrors = await tools.ValidateEntity(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "invalid"
+            }
+        });
+
+        Assert.IsTrue(validationErrors.Any(x => x.FieldName == nameof(Blog.Title)));
+
+        context.ChangeTracker.Clear();
+
+        var chunk = await tools.Chunk(
+        [
+            new ChillOperation
+            {
+                Index = 0,
+                Verb = ChillOperationVerb.CREATE,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Properties =
+                    {
+                        [nameof(Blog.Title)] = "Chunk Blog",
+                        [nameof(Blog.Url)] = "https://example.test/chunk"
+                    }
+                }
+            },
+            new ChillOperation
+            {
+                Index = 1,
+                Verb = ChillOperationVerb.FIND,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = created.Guid
+                }
+            }
+        ]);
+
+        Assert.AreEqual("Chunk Blog", chunk[0].Entity?.Properties[nameof(Blog.Title)]?.ToString());
+        Assert.AreEqual("MCP CRUD Updated", chunk[1].Entity?.Properties[nameof(Blog.Title)]?.ToString());
+
+        await tools.Delete(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        var deleted = await tools.Find(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        Assert.IsNull(deleted);
+
+        await AssertInvalidOperationAsync(() => tools.Create(new ChillDtoEntity
+        {
+            ChillType = "Model.Post",
+            Properties =
+            {
+                [nameof(Post.Title)] = "Hidden",
+                [nameof(Post.Author)] = "Ada"
+            }
+        }));
+
+        await AssertInvalidOperationAsync(() => tools.Chunk(
+        [
+            new ChillOperation
+            {
+                Index = 0,
+                Verb = ChillOperationVerb.CREATE,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Properties =
+                    {
+                        [nameof(Post.Title)] = "Hidden",
+                        [nameof(Post.Author)] = "Ada"
+                    }
+                }
+            }
+        ]));
+    }
+
     private static ChillSharp.Schema.ChillSchemaService CreateSchemaService(EF.DummyContext context)
     {
         return new ChillSharp.Schema.ChillSchemaService(
@@ -139,6 +309,20 @@ public sealed class McpApi
     private static System.Reflection.MethodInfo GetToolMethod(string methodName)
     {
         return typeof(ChillMcpTools).GetMethod(methodName) ?? throw new AssertFailedException($"Method {methodName} was not found.");
+    }
+
+    private static async Task AssertInvalidOperationAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        Assert.Fail("Expected InvalidOperationException.");
     }
 
     private static void AssertToolMetadata(System.Reflection.MethodInfo method, string expectedName, params string[] expectedDescriptionSnippets)
