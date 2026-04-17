@@ -16,9 +16,13 @@ services:
       CHILLSHARP_PRIMARY_CULTURE: ${CHILLSHARP_PRIMARY_CULTURE:-en-GB}
       CHILLSHARP_SECONDARY_CULTURE: ${CHILLSHARP_SECONDARY_CULTURE:-it-IT}
       CHILLSHARP_API_PROTECTED: ${CHILLSHARP_API_PROTECTED:-true}
+      CHILL_SHARP_SYSTEM_TIMEZONE: ${CHILL_SHARP_SYSTEM_TIMEZONE:-Europe/Rome}
       CHILLSHARP_ENABLE_SCHEMA: ${CHILLSHARP_ENABLE_SCHEMA:-true}
       CHILLSHARP_ENABLE_AUTH: ${CHILLSHARP_ENABLE_AUTH:-true}
       CHILLSHARP_ENABLE_I18N: ${CHILLSHARP_ENABLE_I18N:-true}
+      CHILLSHARP_ENABLE_MCP: ${CHILLSHARP_ENABLE_MCP:-true}
+      CHILLSHARP_ENABLE_ATTACHMENT: ${CHILLSHARP_ENABLE_ATTACHMENT:-false}
+      CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT: ${CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT:-/attachments}
       CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES: ${CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES:-20}
       CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS: ${CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS:-14}
       CHILLSHARP_AUTH_RETURN_PASSWORD_RESET_TOKENS: ${CHILLSHARP_AUTH_RETURN_PASSWORD_RESET_TOKENS:-false}
@@ -46,9 +50,13 @@ services:
     volumes:
       # Persist the SQLite database outside the container lifecycle.
       - chillsharp-blogging-data:/data
+      # Persist uploaded files when the attachment module is enabled.
+      - chillsharp-blogging-attachments:/attachments
 
     restart: unless-stopped
 
 volumes:
   # Named volume used by CHILLSHARP_DB_PATH=/data/blogging.db.
   chillsharp-blogging-data:
+  # Named volume used by CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT=/attachments.
+  chillsharp-blogging-attachments:

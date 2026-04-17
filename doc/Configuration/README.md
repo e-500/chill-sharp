@@ -28,6 +28,13 @@ Use it as a quick reference when configuring Docker, `docker compose`, or anothe
 | Enable schema module | `CHILLSHARP_ENABLE_SCHEMA` | Registers `ChillSharp.Schema` services. | `true` |
 | Enable auth module | `CHILLSHARP_ENABLE_AUTH` | Registers `ChillSharp.Auth` account and auth-management services. | `true` |
 | Enable i18n module | `CHILLSHARP_ENABLE_I18N` | Registers `ChillSharp.I18n` services. | `true` |
+| Enable MCP module | `CHILLSHARP_ENABLE_MCP` | Registers `ChillSharp.Mcp` services and maps the MCP endpoint when the host context supports schema metadata. | `true` |
+| Enable attachment module | `CHILLSHARP_ENABLE_ATTACHMENT` | Registers `ChillSharp.Attachment` services and endpoints when the host context supports attachments. | `false` in the example host, set `true` when the context implements attachments |
+
+## Attachment Storage
+
+| Option | ENV variable | Description | Default |
+| --- | --- | --- | --- |
 | Attachment archive root | `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` | Root folder used by `ChillSharp.Attachment` to read and store archived files. | `attachments` under the host base directory |
 
 ## Auth Tokens And Password Flows
@@ -71,6 +78,7 @@ These variables are read by `ChillAuthRootUserInitializer<TUser>` during startup
 ## Notes
 
 - Most variables listed here use the example host's `CHILLSHARP_*` prefix. `CHILL_SHARP_SYSTEM_TIMEZONE` is a core ChillSharp runtime variable used directly by DTO date/time mapping.
+- `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` is read by `ChillSharp.Attachment` directly and should point at a persistent volume in Docker.
 - `CHILL_SHARP_SYSTEM_TIMEZONE` expects an IANA time-zone id such as `Europe/Rome` or `America/New_York`.
 - `CHILL_SHARP_SYSTEM_TIMEZONE` affects `DateTime` and some `DateTimeOffset` normalization paths. `DateOnly` and `TimeOnly` keep standard .NET string output.
 - The `CHILLSHARP_*` variables listed here are the ones currently consumed by the example host and the built-in root-user initializer.
