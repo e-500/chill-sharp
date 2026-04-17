@@ -284,7 +284,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         row.Parent = parent;
         row.ComponentName = menuItem.ComponentName; // NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
         row.ComponentConfigurationJson = NormalizeOptionalText(menuItem.ComponentConfigurationJson);
-        row.MenuHierarchy = NormalizeRequiredText(resolvedMenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+        row.MenuHierarchy = NormalizeOptionalText(resolvedMenuHierarchy, nameof(menuItem.MenuHierarchy), 512) ?? string.Empty;
         row.UpdatedUtc = DateTime.UtcNow;
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
@@ -360,6 +360,15 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     private static string? NormalizeOptionalText(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? NormalizeOptionalText(string? value, string parameterName, int maxLength)
+    {
+        var normalized = NormalizeOptionalText(value);
+        if (normalized != null && normalized.Length > maxLength)
+            throw new ArgumentException($"'{parameterName}' cannot exceed {maxLength} characters.", parameterName);
+
+        return normalized;
     }
 
     private static string NormalizeRequiredText(string? value, string parameterName, int maxLength)

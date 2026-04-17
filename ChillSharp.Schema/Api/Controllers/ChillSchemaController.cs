@@ -165,14 +165,17 @@ public sealed class ChillSchemaController : ControllerBase
         if (user == null || !user.IsActive)
             return [];
 
-        if (string.IsNullOrWhiteSpace(user.MenuHierarchy))
+        var roles = (await _authService.GetUserRolesAsync(user.Guid, cancellationToken))
+            .Where(x => x.IsActive)
+            .ToList();
+
+        if (string.IsNullOrWhiteSpace(user.MenuHierarchy) || roles.Any(x => string.IsNullOrWhiteSpace(x.MenuHierarchy)))
             return menuItems;
 
         var hierarchies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         AddMenuHierarchy(hierarchies, user.MenuHierarchy);
 
-        var roles = await _authService.GetUserRolesAsync(user.Guid, cancellationToken);
-        foreach (var role in roles.Where(x => x.IsActive))
+        foreach (var role in roles)
         {
             AddMenuHierarchy(hierarchies, role.MenuHierarchy);
         }
@@ -198,7 +201,7 @@ public sealed class ChillSchemaController : ControllerBase
     {
         var normalizedHierarchy = menuHierarchy?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedHierarchy))
-            return false;
+            return true;
 
         return allowedHierarchies.Any(prefix => normalizedHierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
     }
