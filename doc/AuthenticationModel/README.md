@@ -83,8 +83,11 @@ These endpoints manage:
 
 `MenuHierarchy` is used by the schema menu endpoints to filter which menu nodes are visible to the current user.
 
+- values can be single codes or comma-separated lists
+- user and active role values are merged before filtering
 - `*` means full menu access
 - any other value works as a prefix match, for example `SECTION-A` allows nodes whose menu hierarchy starts with `SECTION-A`
+- an empty merged menu hierarchy set means no menu access
 
 For the full menu-tree model and endpoint behavior, see [doc/MenuModel.md](../MenuModel.md).
 

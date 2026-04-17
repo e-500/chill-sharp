@@ -169,15 +169,12 @@ public sealed class ChillSchemaController : ControllerBase
             .Where(x => x.IsActive)
             .ToList();
 
-        if (string.IsNullOrWhiteSpace(user.MenuHierarchy) || roles.Any(x => string.IsNullOrWhiteSpace(x.MenuHierarchy)))
-            return menuItems;
-
         var hierarchies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        AddMenuHierarchy(hierarchies, user.MenuHierarchy);
+        AddMenuHierarchies(hierarchies, user.MenuHierarchy);
 
         foreach (var role in roles)
         {
-            AddMenuHierarchy(hierarchies, role.MenuHierarchy);
+            AddMenuHierarchies(hierarchies, role.MenuHierarchy);
         }
 
         if (hierarchies.Contains("*"))
@@ -191,18 +188,33 @@ public sealed class ChillSchemaController : ControllerBase
             .ToList();
     }
 
-    private static void AddMenuHierarchy(HashSet<string> hierarchies, string? value)
+    private static void AddMenuHierarchies(HashSet<string> hierarchies, string? value)
     {
-        if (!string.IsNullOrWhiteSpace(value))
-            hierarchies.Add(value.Trim());
+        foreach (var hierarchy in SplitMenuHierarchies(value))
+        {
+            hierarchies.Add(hierarchy);
+        }
     }
 
     private static bool IsMenuAllowed(string? menuHierarchy, IReadOnlyCollection<string> allowedHierarchies)
     {
-        var normalizedHierarchy = menuHierarchy?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedHierarchy))
+        var menuHierarchies = SplitMenuHierarchies(menuHierarchy).ToList();
+        if (menuHierarchies.Count == 0)
             return true;
 
-        return allowedHierarchies.Any(prefix => normalizedHierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return menuHierarchies.Any(hierarchy =>
+            allowedHierarchies.Any(prefix => hierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static IEnumerable<string> SplitMenuHierarchies(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            yield break;
+
+        foreach (var hierarchy in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!string.IsNullOrWhiteSpace(hierarchy))
+                yield return hierarchy;
+        }
     }
 }
