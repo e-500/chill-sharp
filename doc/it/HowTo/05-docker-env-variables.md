@@ -12,7 +12,7 @@ Costruire una sola immagine container riusabile in ambienti diversi cambiando so
 
 ASP.NET Core mappa gia le variabili d'ambiente in `builder.Configuration`. Usa quello invece di hardcodare il path SQLite, i toggle dei moduli, le durate dei token, le impostazioni SMTP o le credenziali root.
 
-Per il mapper DTO di date e orari, ChillSharp legge anche `CHILL_SHARP_SYSTEM_TIMEZONE` direttamente dall'ambiente del processo. Deve essere un id IANA, per esempio `Europe/Rome`.
+Per il mapper DTO di date e orari, ChillSharp legge anche `CHILLSHARP_SYSTEM_TIMEZONE` direttamente dall'ambiente del processo. Deve essere un id IANA, per esempio `Europe/Rome`.
 
 Questa impostazione viene usata per la gestione `DateTime` di ChillSharp e per la normalizzazione UTC-locale di alcuni input `DateTimeOffset`. `DateOnly` e `TimeOnly` mantengono l'output stringa standard di .NET.
 
@@ -121,7 +121,7 @@ Questi nomi sono una buona base container per i moduli integrati attuali:
 
 ```text
 CHILLSHARP_DB_PATH
-CHILL_SHARP_SYSTEM_TIMEZONE
+CHILLSHARP_SYSTEM_TIMEZONE
 CHILLSHARP_API_PROTECTED
 CHILLSHARP_ENABLE_SCHEMA
 CHILLSHARP_ENABLE_AUTH
@@ -131,7 +131,7 @@ CHILLSHARP_ENABLE_ATTACHMENT
 CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT
 ```
 
-Le variabili `CHILLSHARP_ENABLE_*` sono variabili dell'host di esempio: l'app le legge da `IConfiguration` e le mappa su `ChillApiOptions`. `CHILL_SHARP_SYSTEM_TIMEZONE`, `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` e le variabili dell'utente root sotto sono lette direttamente anche dai servizi ChillSharp.
+Le variabili `CHILLSHARP_ENABLE_*` sono variabili dell'host di esempio: l'app le legge da `IConfiguration` e le mappa su `ChillApiOptions`. `CHILLSHARP_SYSTEM_TIMEZONE`, `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` e le variabili dell'utente root sotto sono lette direttamente anche dai servizi ChillSharp.
 
 Quando abilitati, gli endpoint predefiniti includono:
 
@@ -176,7 +176,7 @@ COPY --from=build /app/out ./
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV CHILLSHARP_DB_PATH=/data/blogging.db
-ENV CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome
+ENV CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome
 ENV CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT=/attachments
 
 VOLUME ["/data"]
@@ -201,7 +201,7 @@ docker run --rm -p 8080:8080 \
   -v myblogapp-data:/data \
   -v myblogapp-attachments:/attachments \
   -e CHILLSHARP_DB_PATH=/data/blogging.db \
-  -e CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome \
+  -e CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome \
   -e CHILLSHARP_API_PROTECTED=true \
   -e CHILLSHARP_ENABLE_SCHEMA=true \
   -e CHILLSHARP_ENABLE_AUTH=true \
@@ -238,7 +238,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       CHILLSHARP_DB_PATH: /data/blogging.db
-      CHILL_SHARP_SYSTEM_TIMEZONE: Europe/Rome
+      CHILLSHARP_SYSTEM_TIMEZONE: Europe/Rome
       CHILLSHARP_API_PROTECTED: "true"
       CHILLSHARP_ENABLE_SCHEMA: "true"
       CHILLSHARP_ENABLE_AUTH: "true"

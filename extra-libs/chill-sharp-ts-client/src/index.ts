@@ -18,6 +18,7 @@
  */
 
 export {
+  API_BASE_PATH,
   ChillSharpClient,
   ChillDtoPropertyType,
   PermissionAction,

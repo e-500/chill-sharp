@@ -12,7 +12,7 @@ Build one container image that can be reused across environments by changing onl
 
 ASP.NET Core already maps environment variables into `builder.Configuration`. Use that instead of hardcoding the SQLite path, module toggles, token lifetimes, SMTP settings, or root-user credentials.
 
-For the DTO date/time mapper, ChillSharp also reads `CHILL_SHARP_SYSTEM_TIMEZONE` directly from the process environment. It should be an IANA id such as `Europe/Rome`.
+For the DTO date/time mapper, ChillSharp also reads `CHILLSHARP_SYSTEM_TIMEZONE` directly from the process environment. It should be an IANA id such as `Europe/Rome`.
 
 This setting is used for ChillSharp `DateTime` handling and for UTC-to-local normalization of some `DateTimeOffset` inputs. `DateOnly` and `TimeOnly` keep normal .NET string output.
 
@@ -47,6 +47,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddChillApi<BloggingContext>(options =>
 {
     options.ProtectedApi = GetBool("CHILLSHARP_API_PROTECTED", true);
+    options.ApiBasePath = builder.Configuration["CHILLSHARP_API_BASE_PATH"] ?? "/api";
     options.EnableSchemaApi = GetBool("CHILLSHARP_ENABLE_SCHEMA", true);
     options.EnableAuthApi = GetBool("CHILLSHARP_ENABLE_AUTH", true);
     options.EnableI18nApi = GetBool("CHILLSHARP_ENABLE_I18N", true);
@@ -121,8 +122,9 @@ These names are a good container baseline for the current built-in modules:
 
 ```text
 CHILLSHARP_DB_PATH
-CHILL_SHARP_SYSTEM_TIMEZONE
+CHILLSHARP_SYSTEM_TIMEZONE
 CHILLSHARP_API_PROTECTED
+CHILLSHARP_API_BASE_PATH
 CHILLSHARP_ENABLE_SCHEMA
 CHILLSHARP_ENABLE_AUTH
 CHILLSHARP_ENABLE_I18N
@@ -131,7 +133,7 @@ CHILLSHARP_ENABLE_ATTACHMENT
 CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT
 ```
 
-`CHILLSHARP_ENABLE_*` variables are example-host variables: your app reads them from `IConfiguration` and maps them to `ChillApiOptions`. `CHILL_SHARP_SYSTEM_TIMEZONE`, `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT`, and the root-user variables below are read directly by ChillSharp services too.
+`CHILLSHARP_ENABLE_*` variables are example-host variables: your app reads them from `IConfiguration` and maps them to `ChillApiOptions`. `CHILLSHARP_API_BASE_PATH` defaults to `/api` and is also read by ChillSharp when you do not set `ChillApiOptions.ApiBasePath` explicitly. `CHILLSHARP_SYSTEM_TIMEZONE`, `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT`, and the root-user variables below are read directly by ChillSharp services too.
 
 When enabled, the default endpoints include:
 
@@ -176,7 +178,7 @@ COPY --from=build /app/out ./
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV CHILLSHARP_DB_PATH=/data/blogging.db
-ENV CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome
+ENV CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome
 ENV CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT=/attachments
 
 VOLUME ["/data"]
@@ -201,7 +203,7 @@ docker run --rm -p 8080:8080 \
   -v myblogapp-data:/data \
   -v myblogapp-attachments:/attachments \
   -e CHILLSHARP_DB_PATH=/data/blogging.db \
-  -e CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome \
+  -e CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome \
   -e CHILLSHARP_API_PROTECTED=true \
   -e CHILLSHARP_ENABLE_SCHEMA=true \
   -e CHILLSHARP_ENABLE_AUTH=true \
@@ -238,8 +240,9 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       CHILLSHARP_DB_PATH: /data/blogging.db
-      CHILL_SHARP_SYSTEM_TIMEZONE: Europe/Rome
+      CHILLSHARP_SYSTEM_TIMEZONE: Europe/Rome
       CHILLSHARP_API_PROTECTED: "true"
+      CHILLSHARP_API_BASE_PATH: /api
       CHILLSHARP_ENABLE_SCHEMA: "true"
       CHILLSHARP_ENABLE_AUTH: "true"
       CHILLSHARP_ENABLE_I18N: "true"

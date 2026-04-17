@@ -25,6 +25,8 @@ import {
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 
+export const API_BASE_PATH = "api/";
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export interface JsonObject {
@@ -390,6 +392,7 @@ export interface ChillSharpClientOptions {
   username?: string;
   password?: string;
   cultureName?: string;
+  apiBasePath?: string;
   fetchImpl?: typeof fetch;
   signalRWithCredentials?: boolean;
 }
@@ -440,6 +443,7 @@ interface LocalEntityChangeSubscription {
 }
 
 export class ChillSharpClient {
+  static readonly API_BASE_PATH = API_BASE_PATH;
   private static readonly attachmentEntityChillType = "ChillSharp.Attachment.Model.Attachment";
   private static readonly attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
   private readonly baseUrl: string;
@@ -457,7 +461,7 @@ export class ChillSharpClient {
   private entityChangeSubscriptionSequence = 0;
 
   constructor(baseUrl: string, options: ChillSharpClientOptions = {}) {
-    this.baseUrl = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/$/, "");
+    this.baseUrl = this.normalizeBaseUrl(baseUrl, options.apiBasePath);
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.username = this.normalizeOptionalValue(options.username);
     this.password = this.normalizeOptionalValue(options.password);
@@ -593,7 +597,7 @@ export class ChillSharpClient {
   }
 
   test(): Promise<string> {
-    return this.sendText("GET", this.buildChillUrl("test"), true);
+    return this.sendText("GET", this.buildApiUrl("test"), true);
   }
 
   getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null> {
@@ -1237,7 +1241,11 @@ export class ChillSharpClient {
   }
 
   private buildNotifyUrl(): string {
-    return `${this.baseUrl.replace(/\/$/, "")}/notify`;
+    return `${this.getApiBaseUrl().replace(/\/$/, "")}/notify`;
+  }
+
+  private buildApiUrl(relativeUrl: string): string {
+    return `${this.getApiBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
 
   private buildAuthUrl(relativeUrl: string): string {
@@ -1290,6 +1298,51 @@ export class ChillSharpClient {
     }
 
     return `${this.baseUrl.replace(/\/$/, "")}-attachment`;
+  }
+
+  private getApiBaseUrl(): string {
+    const suffix = "/chill";
+    if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+      return this.baseUrl.slice(0, -suffix.length);
+    }
+
+    return this.baseUrl.replace(/\/$/, "");
+  }
+
+  private normalizeBaseUrl(baseUrl: string, apiBasePath?: string): string {
+    const normalized = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/+$/, "");
+    if (this.isKnownChillSharpEndpointBase(normalized)) {
+      return normalized;
+    }
+
+    const normalizedApiBasePath = this.normalizeApiBasePath(apiBasePath);
+    if (!normalizedApiBasePath) {
+      return `${normalized}/chill`;
+    }
+
+    if (this.endsWithPathSegment(normalized, normalizedApiBasePath)) {
+      return `${normalized}/chill`;
+    }
+
+    return `${normalized}/${normalizedApiBasePath}/chill`;
+  }
+
+  private normalizeApiBasePath(apiBasePath?: string): string {
+    const normalized = this.normalizeOptionalValue(apiBasePath) ?? API_BASE_PATH;
+    return normalized.replace(/^\/+|\/+$/g, "");
+  }
+
+  private isKnownChillSharpEndpointBase(baseUrl: string): boolean {
+    const lowerBaseUrl = baseUrl.toLowerCase();
+    return lowerBaseUrl.endsWith("/chill") ||
+      lowerBaseUrl.endsWith("/chill-auth") ||
+      lowerBaseUrl.endsWith("/chill-schema") ||
+      lowerBaseUrl.endsWith("/chill-i18n") ||
+      lowerBaseUrl.endsWith("/chill-attachment");
+  }
+
+  private endsWithPathSegment(value: string, segment: string): boolean {
+    return value.toLowerCase().endsWith(`/${segment.toLowerCase()}`);
   }
 
   private normalizeRequiredValue(value: string | null | undefined, argumentName: string): string {

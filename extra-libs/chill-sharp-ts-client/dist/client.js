@@ -19,6 +19,7 @@
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
+export const API_BASE_PATH = "api/";
 export const ChillDtoPropertyType = {
     Unknown: 0,
     Guid: 1,
@@ -55,6 +56,7 @@ export const PermissionScope = {
     Property: 3
 };
 export class ChillSharpClient {
+    static API_BASE_PATH = API_BASE_PATH;
     static attachmentEntityChillType = "ChillSharp.Attachment.Model.Attachment";
     static attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
     baseUrl;
@@ -70,7 +72,7 @@ export class ChillSharpClient {
     entityChangeRegistrationCounts = new Map();
     entityChangeSubscriptionSequence = 0;
     constructor(baseUrl, options = {}) {
-        this.baseUrl = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/$/, "");
+        this.baseUrl = this.normalizeBaseUrl(baseUrl, options.apiBasePath);
         this.fetchImpl = options.fetchImpl ?? fetch;
         this.username = this.normalizeOptionalValue(options.username);
         this.password = this.normalizeOptionalValue(options.password);
@@ -160,7 +162,7 @@ export class ChillSharpClient {
         return CHILL_SHARP_TS_CLIENT_VERSION;
     }
     test() {
-        return this.sendText("GET", this.buildChillUrl("test"), true);
+        return this.sendText("GET", this.buildApiUrl("test"), true);
     }
     getSchema(chillType, chillViewCode, cultureName) {
         const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
@@ -643,7 +645,10 @@ export class ChillSharpClient {
         return `${this.baseUrl}/${relativeUrl.replace(/^\/+/, "")}`;
     }
     buildNotifyUrl() {
-        return `${this.baseUrl.replace(/\/$/, "")}/notify`;
+        return `${this.getApiBaseUrl().replace(/\/$/, "")}/notify`;
+    }
+    buildApiUrl(relativeUrl) {
+        return `${this.getApiBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
     buildAuthUrl(relativeUrl) {
         return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
@@ -684,6 +689,42 @@ export class ChillSharpClient {
             return `${this.baseUrl.slice(0, -suffix.length)}/chill-attachment`;
         }
         return `${this.baseUrl.replace(/\/$/, "")}-attachment`;
+    }
+    getApiBaseUrl() {
+        const suffix = "/chill";
+        if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+            return this.baseUrl.slice(0, -suffix.length);
+        }
+        return this.baseUrl.replace(/\/$/, "");
+    }
+    normalizeBaseUrl(baseUrl, apiBasePath) {
+        const normalized = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/+$/, "");
+        if (this.isKnownChillSharpEndpointBase(normalized)) {
+            return normalized;
+        }
+        const normalizedApiBasePath = this.normalizeApiBasePath(apiBasePath);
+        if (!normalizedApiBasePath) {
+            return `${normalized}/chill`;
+        }
+        if (this.endsWithPathSegment(normalized, normalizedApiBasePath)) {
+            return `${normalized}/chill`;
+        }
+        return `${normalized}/${normalizedApiBasePath}/chill`;
+    }
+    normalizeApiBasePath(apiBasePath) {
+        const normalized = this.normalizeOptionalValue(apiBasePath) ?? API_BASE_PATH;
+        return normalized.replace(/^\/+|\/+$/g, "");
+    }
+    isKnownChillSharpEndpointBase(baseUrl) {
+        const lowerBaseUrl = baseUrl.toLowerCase();
+        return lowerBaseUrl.endsWith("/chill") ||
+            lowerBaseUrl.endsWith("/chill-auth") ||
+            lowerBaseUrl.endsWith("/chill-schema") ||
+            lowerBaseUrl.endsWith("/chill-i18n") ||
+            lowerBaseUrl.endsWith("/chill-attachment");
+    }
+    endsWithPathSegment(value, segment) {
+        return value.toLowerCase().endsWith(`/${segment.toLowerCase()}`);
     }
     normalizeRequiredValue(value, argumentName) {
         const normalized = this.normalizeOptionalValue(value);

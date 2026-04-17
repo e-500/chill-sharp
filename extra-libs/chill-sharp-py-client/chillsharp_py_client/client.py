@@ -31,6 +31,7 @@ from .exceptions import ChillSharpClientError
 
 
 CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
+API_BASE_PATH = "api/"
 JsonDict = dict[str, Any]
 ATTACHMENT_ENTITY_CHILL_TYPE = "ChillSharp.Attachment.Model.Attachment"
 ATTACHMENT_QUERY_CHILL_TYPE = "ChillSharp.Attachment.Query.AttachmentQuery"
@@ -82,11 +83,12 @@ class ChillSharpClient:
         username: str | None = None,
         password: str | None = None,
         culture_name: str | None = None,
+        api_base_path: str = API_BASE_PATH,
         timeout: float = 30.0,
         session: requests.Session | None = None,
     ) -> None:
         """Initialize the client with endpoint, auth, and session settings."""
-        self._base_url = self._normalize_required_value(base_url, "base_url").rstrip("/")
+        self._base_url = self._normalize_base_url(base_url, api_base_path)
         self._username = username.strip() if username else None
         self._password = password.strip() if password else None
         self._culture_name = culture_name.strip() if culture_name else None
@@ -230,7 +232,7 @@ class ChillSharpClient:
 
     def test(self) -> str:
         """Call the Chill test endpoint and return the raw response text."""
-        return self._send_text("GET", self._build_chill_url("test"), allow_anonymous=True)
+        return self._send_text("GET", self._build_api_url("test"), allow_anonymous=True)
 
     def get_schema(self, chill_type: str, chill_view_code: str, culture_name: str | None = None) -> JsonDict | None:
         """Retrieve schema metadata for a type and view."""
@@ -931,6 +933,10 @@ class ChillSharpClient:
         """Build an absolute URL for the core Chill service."""
         return f"{self._base_url}/{relative_url.lstrip('/')}"
 
+    def _build_api_url(self, relative_url: str) -> str:
+        """Build an absolute URL for the configured ChillSharp API base path."""
+        return f"{self._get_api_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
+
     def _build_auth_url(self, relative_url: str) -> str:
         """Build an absolute URL for the auth service."""
         return f"{self._get_auth_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
@@ -974,6 +980,49 @@ class ChillSharpClient:
         if self._base_url.lower().endswith(suffix):
             return self._base_url[: -len(suffix)] + "/chill-attachment"
         return self._base_url.rstrip("/") + "-attachment"
+
+    def _get_api_base_url(self) -> str:
+        """Resolve the configured API base URL from the Chill base URL."""
+        suffix = "/chill"
+        if self._base_url.lower().endswith(suffix):
+            return self._base_url[: -len(suffix)]
+        return self._base_url.rstrip("/")
+
+    @classmethod
+    def _normalize_base_url(cls, base_url: str, api_base_path: str | None) -> str:
+        """Normalize a server root, API base URL, or specific ChillSharp endpoint URL."""
+        normalized = cls._normalize_required_value(base_url, "base_url").rstrip("/")
+        if cls._is_known_chillsharp_endpoint_base(normalized):
+            return normalized
+
+        normalized_api_base_path = cls._normalize_api_base_path(api_base_path)
+        if not normalized_api_base_path:
+            return f"{normalized}/chill"
+
+        if cls._ends_with_path_segment(normalized, normalized_api_base_path):
+            return f"{normalized}/chill"
+
+        return f"{normalized}/{normalized_api_base_path}/chill"
+
+    @staticmethod
+    def _normalize_api_base_path(api_base_path: str | None) -> str:
+        normalized = api_base_path.strip() if api_base_path else API_BASE_PATH
+        return normalized.strip("/")
+
+    @staticmethod
+    def _is_known_chillsharp_endpoint_base(base_url: str) -> bool:
+        lower_base_url = base_url.lower()
+        return (
+            lower_base_url.endswith("/chill")
+            or lower_base_url.endswith("/chill-auth")
+            or lower_base_url.endswith("/chill-schema")
+            or lower_base_url.endswith("/chill-i18n")
+            or lower_base_url.endswith("/chill-attachment")
+        )
+
+    @staticmethod
+    def _ends_with_path_segment(value: str, segment: str) -> bool:
+        return value.lower().endswith(f"/{segment.lower()}")
 
     @staticmethod
     def _normalize_required_value(value: str, argument_name: str) -> str:

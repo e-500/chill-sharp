@@ -19,7 +19,7 @@ Use it as a quick reference when configuring Docker, `docker compose`, or anothe
 | Primary culture | `CHILLSHARP_PRIMARY_CULTURE` | Value returned by `IChillContext.GetPrimaryCultureName()`. | `en-GB` |
 | Secondary culture | `CHILLSHARP_SECONDARY_CULTURE` | Value returned by `IChillContext.GetSecondaryCultureName()`. | `it-IT` |
 | Protected core API | `CHILLSHARP_API_PROTECTED` | Requires authentication for the core ChillSharp API when `true`. | `true` when auth is enabled |
-| DTO system time zone | `CHILL_SHARP_SYSTEM_TIMEZONE` | IANA time-zone id used by ChillSharp DTO `DateTime` and `DateTimeOffset` parsing and serialization helpers. | `Europe/Rome` |
+| DTO system time zone | `CHILLSHARP_SYSTEM_TIMEZONE` | IANA time-zone id used by ChillSharp DTO `DateTime` and `DateTimeOffset` parsing and serialization helpers. | `Europe/Rome` |
 
 ## Module Toggles
 
@@ -77,10 +77,10 @@ These variables are read by `ChillAuthRootUserInitializer<TUser>` during startup
 
 ## Notes
 
-- Most variables listed here use the example host's `CHILLSHARP_*` prefix. `CHILL_SHARP_SYSTEM_TIMEZONE` is a core ChillSharp runtime variable used directly by DTO date/time mapping.
+- Most variables listed here use the example host's `CHILLSHARP_*` prefix. `CHILLSHARP_SYSTEM_TIMEZONE` is a core ChillSharp runtime variable used directly by DTO date/time mapping.
 - `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` is read by `ChillSharp.Attachment` directly and should point at a persistent volume in Docker.
-- `CHILL_SHARP_SYSTEM_TIMEZONE` expects an IANA time-zone id such as `Europe/Rome` or `America/New_York`.
-- `CHILL_SHARP_SYSTEM_TIMEZONE` affects `DateTime` and some `DateTimeOffset` normalization paths. `DateOnly` and `TimeOnly` keep standard .NET string output.
+- `CHILLSHARP_SYSTEM_TIMEZONE` expects an IANA time-zone id such as `Europe/Rome` or `America/New_York`.
+- `CHILLSHARP_SYSTEM_TIMEZONE` affects `DateTime` and some `DateTimeOffset` normalization paths. `DateOnly` and `TimeOnly` keep standard .NET string output.
 - The `CHILLSHARP_*` variables listed here are the ones currently consumed by the example host and the built-in root-user initializer.
 - If you build your own host application, you can keep these names or map configuration differently in your own startup code.
 - For deployment examples, also see [doc/HowTo/05-docker-env-variables.md](../HowTo/05-docker-env-variables.md).

@@ -35,6 +35,7 @@ export type { ChillSharpProviderProps } from "./context.js";
 export type { UseChillAsyncState, UseChillMutationState, UseChillSubscriptionState } from "./hooks.js";
 export { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 export {
+  API_BASE_PATH,
   ChillSharpClient,
   ChillSharpClientError,
   PermissionAction,

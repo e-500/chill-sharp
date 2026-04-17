@@ -1,3 +1,4 @@
+export declare const API_BASE_PATH = "api/";
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export interface JsonObject {
@@ -316,6 +317,7 @@ export interface ChillSharpClientOptions {
     username?: string;
     password?: string;
     cultureName?: string;
+    apiBasePath?: string;
     fetchImpl?: typeof fetch;
     signalRWithCredentials?: boolean;
 }
@@ -342,6 +344,7 @@ export interface ChillEntityChangeSubscription {
     unsubscribe(): Promise<void>;
 }
 export declare class ChillSharpClient {
+    static readonly API_BASE_PATH = "api/";
     private static readonly attachmentEntityChillType;
     private static readonly attachmentQueryChillType;
     private readonly baseUrl;
@@ -437,6 +440,7 @@ export declare class ChillSharpClient {
     private createCurrentTokenResponse;
     private buildChillUrl;
     private buildNotifyUrl;
+    private buildApiUrl;
     private buildAuthUrl;
     private buildSchemaUrl;
     private buildI18nUrl;
@@ -445,6 +449,11 @@ export declare class ChillSharpClient {
     private getSchemaBaseUrl;
     private getI18nBaseUrl;
     private getAttachmentBaseUrl;
+    private getApiBaseUrl;
+    private normalizeBaseUrl;
+    private normalizeApiBasePath;
+    private isKnownChillSharpEndpointBase;
+    private endsWithPathSegment;
     private normalizeRequiredValue;
     private normalizeOptionalValue;
     private normalizeQueryValue;

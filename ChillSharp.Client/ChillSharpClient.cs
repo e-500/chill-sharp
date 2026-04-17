@@ -55,8 +55,13 @@ namespace ChillSharp.Client
         /// </summary>
         /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
         public ChillSharpClient(string BaseUrl, string? CultureName = null)
+            : this(BaseUrl, options: null, CultureName)
         {
-            _BaseUrl = NormalizeBaseUrl(BaseUrl);
+        }
+
+        public ChillSharpClient(string BaseUrl, ChillSharpClientOptions? options, string? CultureName = null)
+        {
+            _BaseUrl = NormalizeBaseUrl(BaseUrl, options?.ApiBasePath);
             _CultureName = NormalizeOptionalValue(CultureName);
         }
 
@@ -73,6 +78,12 @@ namespace ChillSharp.Client
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
+        public ChillSharpClient(string BaseUrl, Func<HttpClient> httpClientFactory, ChillSharpClientOptions? options, string? CultureName = null)
+            : this(BaseUrl, options, CultureName)
+        {
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+        }
+
         /// <summary>
         /// Initializes the client with a pre-issued bearer token.
         /// </summary>
@@ -80,6 +91,12 @@ namespace ChillSharp.Client
         /// <param name="AuthToken">Bearer token applied to outgoing requests.</param>
         public ChillSharpClient(string BaseUrl, string AuthToken, string? CultureName = null)
             : this(BaseUrl, CultureName)
+        {
+            _AccessToken = NormalizeRequiredValue(AuthToken, nameof(AuthToken));
+        }
+
+        public ChillSharpClient(string BaseUrl, string AuthToken, ChillSharpClientOptions? options, string? CultureName = null)
+            : this(BaseUrl, options, CultureName)
         {
             _AccessToken = NormalizeRequiredValue(AuthToken, nameof(AuthToken));
         }
@@ -92,6 +109,13 @@ namespace ChillSharp.Client
         /// <param name="Password">Password used to authenticate.</param>
         public ChillSharpClient(string BaseUrl, string UserName, string Password, string? CultureName = null)
             : this(BaseUrl, CultureName)
+        {
+            _UserName = NormalizeRequiredValue(UserName, nameof(UserName));
+            _Password = NormalizeRequiredValue(Password, nameof(Password));
+        }
+
+        public ChillSharpClient(string BaseUrl, string UserName, string Password, ChillSharpClientOptions? options, string? CultureName = null)
+            : this(BaseUrl, options, CultureName)
         {
             _UserName = NormalizeRequiredValue(UserName, nameof(UserName));
             _Password = NormalizeRequiredValue(Password, nameof(Password));
@@ -539,6 +563,11 @@ namespace ChillSharp.Client
             return $"{_BaseUrl}/{relativeUrl.TrimStart('/')}";
         }
 
+        private string BuildApiUrl(string relativeUrl)
+        {
+            return $"{GetApiBaseUrl().TrimEnd('/')}/{relativeUrl.TrimStart('/')}";
+        }
+
         private string BuildAuthUrl(string relativeUrl)
         {
             return $"{GetAuthBaseUrl().TrimEnd('/')}/{relativeUrl.TrimStart('/')}";
@@ -558,6 +587,17 @@ namespace ChillSharp.Client
             }
 
             return _BaseUrl.TrimEnd('/') + "-schema";
+        }
+
+        internal string GetApiBaseUrl()
+        {
+            const string chillSuffix = "/chill";
+            if (_BaseUrl.EndsWith(chillSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return _BaseUrl.Substring(0, _BaseUrl.Length - chillSuffix.Length);
+            }
+
+            return _BaseUrl.TrimEnd('/');
         }
 
         private bool CanUseAuthentication()
@@ -631,10 +671,49 @@ namespace ChillSharp.Client
             };
         }
 
-        private static string NormalizeBaseUrl(string baseUrl)
+        private static string NormalizeBaseUrl(string baseUrl, string? apiBasePath)
         {
             var normalized = NormalizeRequiredValue(baseUrl, nameof(baseUrl));
-            return normalized.EndsWith("/") ? normalized[..^1] : normalized;
+            normalized = normalized.TrimEnd('/');
+
+            if (IsKnownChillSharpEndpointBase(normalized))
+            {
+                return normalized;
+            }
+
+            var normalizedApiBasePath = NormalizeApiBasePath(apiBasePath);
+            if (string.IsNullOrWhiteSpace(normalizedApiBasePath))
+            {
+                return $"{normalized}/chill";
+            }
+
+            if (EndsWithPathSegment(normalized, normalizedApiBasePath))
+            {
+                return $"{normalized}/chill";
+            }
+
+            return $"{normalized}/{normalizedApiBasePath}/chill";
+        }
+
+        private static string NormalizeApiBasePath(string? apiBasePath)
+        {
+            var normalized = NormalizeOptionalValue(apiBasePath) ?? ChillSharpClientOptions.DefaultApiBasePath;
+            return normalized.Trim('/');
+        }
+
+        private static bool IsKnownChillSharpEndpointBase(string baseUrl)
+        {
+            return baseUrl.EndsWith("/chill", StringComparison.OrdinalIgnoreCase) ||
+                baseUrl.EndsWith("/chill-auth", StringComparison.OrdinalIgnoreCase) ||
+                baseUrl.EndsWith("/chill-schema", StringComparison.OrdinalIgnoreCase) ||
+                baseUrl.EndsWith("/chill-i18n", StringComparison.OrdinalIgnoreCase) ||
+                baseUrl.EndsWith("/chill-attachment", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool EndsWithPathSegment(string value, string segment)
+        {
+            var normalizedSegment = segment.Trim('/');
+            return value.EndsWith($"/{normalizedSegment}", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string? NormalizeOptionalValue(string? value)
