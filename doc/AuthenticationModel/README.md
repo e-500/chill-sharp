@@ -91,6 +91,32 @@ These endpoints manage:
 
 For the full menu-tree model and endpoint behavior, see [doc/MenuModel.md](../MenuModel.md).
 
+## Token Lifetimes
+
+ChillSharp auth account endpoints issue protected bearer access tokens and refresh tokens. These access tokens are not JWTs, but they are used in the same `Authorization: Bearer ...` header shape.
+
+Default lifetimes:
+
+- access token: 20 minutes
+- refresh token: 14 days
+
+Built-in environment variables:
+
+- `CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES`
+  Positive integer number of minutes before an access token expires.
+- `CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS`
+  Positive integer number of days before a refresh token expires.
+
+These variables are read by `ChillAuthIdentityApiOptions` and `ChillIdentityApiOptions` when the options object is created. Explicit code configuration still wins:
+
+```csharp
+builder.Services.AddChillAuthIdentityApi<AppDbContext, IdentityUser>(options =>
+{
+    options.AccessTokenLifetime = TimeSpan.FromMinutes(30);
+    options.RefreshTokenLifetime = TimeSpan.FromDays(7);
+});
+```
+
 ## Context Requirements
 
 The host context must:

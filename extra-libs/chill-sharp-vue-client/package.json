@@ -1,6 +1,6 @@
 {
   "name": "chill-sharp-vue-client",
-  "version": "1.0.85",
+  "version": "1.0.86",
   "description": "Vue client helpers for generic ChillSharp services",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -33,7 +33,7 @@
   "author": "Andrea Piovesan",
   "peerDependencies": {
     "vue": "^3.4.0",
-    "chill-sharp-ts-client": "^1.0.85"
+    "chill-sharp-ts-client": "^1.0.86"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

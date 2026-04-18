@@ -899,6 +899,43 @@ public sealed class AuthApi
         Assert.AreEqual("Europe/Rome", persistedUser.DisplayTimeZone);
     }
 
+    [TestMethod]
+    public void Step013_IdentityTokenLifetimesCanDefaultFromEnvironment()
+    {
+        var originalAccessTokenLifetime = Environment.GetEnvironmentVariable(ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable);
+        var originalRefreshTokenLifetime = Environment.GetEnvironmentVariable(ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable);
+
+        try
+        {
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable, "7");
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable, "3");
+
+            var identityOptions = new ChillAuthIdentityApiOptions();
+            var combinedOptions = new ChillIdentityApiOptions();
+
+            Assert.AreEqual(TimeSpan.FromMinutes(7), identityOptions.AccessTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromDays(3), identityOptions.RefreshTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromMinutes(7), combinedOptions.AccessTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromDays(3), combinedOptions.RefreshTokenLifetime);
+
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable, "0");
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable, "not-a-number");
+
+            var fallbackIdentityOptions = new ChillAuthIdentityApiOptions();
+            var fallbackCombinedOptions = new ChillIdentityApiOptions();
+
+            Assert.AreEqual(TimeSpan.FromMinutes(20), fallbackIdentityOptions.AccessTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromDays(14), fallbackIdentityOptions.RefreshTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromMinutes(20), fallbackCombinedOptions.AccessTokenLifetime);
+            Assert.AreEqual(TimeSpan.FromDays(14), fallbackCombinedOptions.RefreshTokenLifetime);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable, originalAccessTokenLifetime);
+            Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable, originalRefreshTokenLifetime);
+        }
+    }
+
     private static ChillSharpClient CreateTestHeaderClient(string baseUrl, string externalId)
     {
         return new ChillSharpClient(baseUrl, () =>

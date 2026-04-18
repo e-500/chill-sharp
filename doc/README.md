@@ -44,6 +44,9 @@ This folder contains the reference documentation for ChillSharp.
 - [ClientGeneration/README.md](./ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
 
+- [ChillSharpClient.md](./ChillSharpClient.md)
+  Use the .NET `ChillSharp.Client` library for core entity operations, auth, schema/menu, i18n, and attachments.
+
 - [../ext/chill-sharp-ts-client/README.md](../ext/chill-sharp-ts-client/README.md)
   Generic TypeScript client for ChillSharp services.
 

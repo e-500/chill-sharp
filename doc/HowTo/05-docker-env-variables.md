@@ -57,6 +57,9 @@ builder.Services.AddChillApi<BloggingContext>(options =>
 
 builder.Services.AddChillAuthIdentityApi<BloggingContext, IdentityUser>(options =>
 {
+    // ChillSharp reads these two environment variables as defaults:
+    // CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES and CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS.
+    // Set them here only when you want this host startup code to control the mapping explicitly.
     options.AccessTokenLifetime = TimeSpan.FromMinutes(GetInt("CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES", 20));
     options.RefreshTokenLifetime = TimeSpan.FromDays(GetInt("CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS", 14));
     options.ReturnPasswordResetTokensInResponse = GetBool("CHILLSHARP_AUTH_RETURN_PASSWORD_RESET_TOKENS", false);
@@ -269,4 +272,3 @@ volumes:
 - For production, inject secrets through your container platform or secret manager instead of hardcoding them in `docker run` history or `compose` files.
 
 Next example: [Handle a one-to-many Blog-Posts relation and fetch it in one client call](05-blog-posts-one-to-many.md)
-
