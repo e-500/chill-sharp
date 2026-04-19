@@ -20,6 +20,7 @@
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using Microsoft.EntityFrameworkCore;
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
@@ -29,7 +30,7 @@ namespace ChillSharp.Schema;
 
 internal static class ChillEntityLabelFormatter
 {
-    private static readonly Regex PlaceholderRegex = new(@"\{(?<field>[A-Za-z_][A-Za-z0-9_]*)\}", RegexOptions.Compiled);
+    private static readonly Regex PlaceholderRegex = new(@"\{(?<field>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\}", RegexOptions.Compiled);
 
     private enum FormatTarget
     {
@@ -86,13 +87,67 @@ internal static class ChillEntityLabelFormatter
 
         return PlaceholderRegex.Replace(format, match =>
         {
-            var propertyName = match.Groups["field"].Value;
-            var property = entity.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
-            if (property == null || !property.IsDefined(typeof(ChillPropertyAttribute), inherit: true))
-                return string.Empty;
-
-            return FormatValue(property.GetValue(entity));
+            return ResolvePlaceholderValue(entity, context, match.Groups["field"].Value);
         });
+    }
+
+    private static string ResolvePlaceholderValue(IChillEntity entity, IChillContext context, string fieldPath)
+    {
+        var segments = fieldPath.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return FormatValue(ResolvePathValue(entity, context, segments, 0));
+    }
+
+    private static object? ResolvePathValue(object? source, IChillContext context, IReadOnlyList<string> segments, int segmentIndex)
+    {
+        if (source == null)
+            return null;
+
+        if (segmentIndex >= segments.Count)
+            return source;
+
+        if (source is IEnumerable values and not string)
+        {
+            return values
+                .Cast<object?>()
+                .Select(item => ResolvePathValue(item, context, segments, segmentIndex))
+                .ToList();
+        }
+
+        var next = ResolvePathSegment(source, context, segments[segmentIndex]);
+        return ResolvePathValue(next, context, segments, segmentIndex + 1);
+    }
+
+    private static object? ResolvePathSegment(object? source, IChillContext context, string propertyName)
+    {
+        if (source == null)
+            return null;
+
+        var property = source.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+        if (property == null || !property.IsDefined(typeof(ChillPropertyAttribute), inherit: true))
+            return null;
+
+        if (source is IChillEntity chillEntity)
+        {
+            var attr = property.GetCustomAttribute<ChillPropertyAttribute>(inherit: true);
+            if (attr?.CallOnInflate == true)
+                chillEntity.OnInflate(context, propertyName);
+        }
+
+        if (context is DbContext dbContext && typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+            TryLoadReference(dbContext, source, propertyName);
+
+        return property.GetValue(source);
+    }
+
+    private static void TryLoadReference(DbContext dbContext, object source, string propertyName)
+    {
+        try
+        {
+            dbContext.Entry(source).Reference(propertyName).Exist(true);
+        }
+        catch
+        {
+        }
     }
 
     private static bool HasCustomFullTextContentOverride(IChillEntity entity)

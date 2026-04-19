@@ -342,6 +342,48 @@ namespace ChillSharp.Tests
                 await using var updatedVerificationContext = TestApiHost.CreateDbContext();
                 var updatedPost = await updatedVerificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
                 Assert.AreEqual("Configured title updated|dummy-user|", updatedPost.FullTextContent);
+
+                var blog = client.Create(new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = Guid.NewGuid(),
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = "Related blog",
+                        ["Url"] = "https://related.example"
+                    }
+                });
+
+                client.SetEntityOptions(new ChillDtoEntityOptions
+                {
+                    ChillType = chillType,
+                    ChecksumEnabled = originalOptions.ChecksumEnabled,
+                    ChangeLogEnabled = originalOptions.ChangeLogEnabled,
+                    EnableMCP = originalOptions.EnableMCP,
+                    MCPDescription = originalOptions.MCPDescription,
+                    LabelFormatString = "{Blog.Title} - {Title}",
+                    ShortLabelFormatString = "{Blog.Url}",
+                    FullTextContentFormatString = "{Blog.Title} {Blog.Url} {Author}"
+                });
+
+                var related = client.Create(new ChillDtoEntity
+                {
+                    ChillType = chillType,
+                    Guid = Guid.NewGuid(),
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = "Related post",
+                        ["Author"] = "Related author",
+                        ["Blog"] = blog.Mock()
+                    }
+                });
+
+                Assert.AreEqual("Related blog - Related post", related.Label);
+                Assert.AreEqual("https://related.example", related.ShortLabel);
+
+                await using var relatedVerificationContext = TestApiHost.CreateDbContext();
+                var relatedPost = await relatedVerificationContext.Post.FirstAsync(x => x.Guid == related.Guid);
+                Assert.AreEqual("Related blog https://related.example Related author", relatedPost.FullTextContent);
             }
             finally
             {

@@ -152,7 +152,7 @@ namespace ChillSharp.EF
         {
             var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
             var serverNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, systemTimeZone);
-            LastUpdate = serverNow.DateTime;
+            LastUpdate = serverNow.UtcDateTime;
             LastUpdateUtcOffset = (int)serverNow.Offset.TotalMinutes;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
