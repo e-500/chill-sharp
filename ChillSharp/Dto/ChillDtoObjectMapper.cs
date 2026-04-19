@@ -51,6 +51,8 @@ namespace ChillSharp.Dto
         {
             var defaultSchema = ResolveDefaultSchema(context, chillType);
             var dbx = (DbContext)context;
+            var sourceEntityType = dbx.Model.FindEntityType(source.GetType());
+            var sourceIsMappedEntity = sourceEntityType != null;
 
             return properties.ToDictionary(
                 property => property.Name,
@@ -66,7 +68,7 @@ namespace ChillSharp.Dto
 
                     if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                     {
-                        if (dbx.Entry(source).Reference(propertyName).Exist(true))
+                        if (!sourceIsMappedEntity || dbx.Entry(source).Reference(propertyName).Exist(true))
                         {
                             var entity = (IChillEntity?)property.GetValue(source);
                             if (entity == null)
@@ -81,8 +83,7 @@ namespace ChillSharp.Dto
                     if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
                     {
                         // Check if property is mapped in EF model
-                        var entityType = dbx.Model.FindEntityType(source.GetType());
-                        var navigation = entityType?.FindNavigation(propertyName);
+                        var navigation = sourceEntityType?.FindNavigation(propertyName);
 
                         if (navigation != null)
                         {
@@ -128,6 +129,7 @@ namespace ChillSharp.Dto
         {
             var dbx = (DbContext)context;
             var defaultSchema = ResolveDefaultSchema(context, chillType);
+            var targetIsMappedEntity = dbx.Model.FindEntityType(target.GetType()) != null;
 
             foreach (var property in properties)
             {
@@ -145,7 +147,8 @@ namespace ChillSharp.Dto
 
                 // Can handle only implicit many-to-many relations, skip other type of collections.
                 // Them should be managed separately
-                if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType) &&
+                if (targetIsMappedEntity &&
+                    typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType) &&
                     !dbx.Entry(target).Collection(propertyName).IsImplicitManyToMany())
                 {
                     continue;
@@ -166,7 +169,9 @@ namespace ChillSharp.Dto
                     property.SetValue(target, parsedValue);
 
                     // Additional: To ensure to write null even if reference is not loaded
-                    if (value == null && typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                    if (targetIsMappedEntity &&
+                        value == null &&
+                        typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                     {
                         dbx.Entry(target).Reference(propertyName).ClearForeignKey(); 
                     }

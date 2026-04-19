@@ -1200,7 +1200,75 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step026_DtoEntityMapsPositionDuringCreateAndUpdate()
+        public void Step026_DtoQueryAcceptsEntityReferenceFilterOnUnmappedQueryObject()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-query-reference-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var selectedBlog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Label = "Selected Blog",
+                Title = "Selected Blog",
+                Url = "https://selected.local"
+            };
+            var otherBlog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Label = "Other Blog",
+                Title = "Other Blog",
+                Url = "https://other.local"
+            };
+
+            db.Blog.AddRange(selectedBlog, otherBlog);
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 0,
+                Blog = selectedBlog,
+                Title = "Matching post",
+                Author = "Author 1",
+                FullTextContent = "Matching post",
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 0,
+                Blog = otherBlog,
+                Title = "Other post",
+                Author = "Author 2",
+                FullTextContent = "Other post",
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+            var result = dtoEngine.Query(new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Blog"] = new ChillSharp.Dto.ChillDtoEntity
+                    {
+                        ChillType = "Model.Blog",
+                        Guid = selectedBlog.Guid
+                    }
+                },
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title"])
+            });
+
+            Assert.HasCount(1, result.Results);
+            Assert.AreEqual("Matching post", result.Results[0].Properties["Title"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step027_DtoEntityMapsPositionDuringCreateAndUpdate()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-dto-position-{Guid.NewGuid():N}.db");
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -1232,6 +1300,47 @@ namespace ChillSharp.Tests
 
             Assert.AreEqual(34, updated.Position);
             Assert.AreEqual("Positioned post updated", updated.Properties["Title"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step028_AutocompleteSerializesEntityReferenceOnUnmappedQueryObject()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-query-autocomplete-reference-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var selectedBlog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Label = "Autocomplete Blog",
+                Title = "Autocomplete Blog",
+                Url = "https://autocomplete-reference.local"
+            };
+
+            db.Blog.Add(selectedBlog);
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+            var result = dtoEngine.Autocomplete(new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Blog"] = new ChillSharp.Dto.ChillDtoEntity
+                    {
+                        ChillType = "Model.Blog",
+                        Guid = selectedBlog.Guid
+                    }
+                }
+            });
+
+            Assert.IsNotNull(result);
+            Assert.IsInstanceOfType<ChillSharp.Dto.ChillDtoEntity>(result.Properties["Blog"]);
+            Assert.AreEqual(selectedBlog.Guid, ((ChillSharp.Dto.ChillDtoEntity)result.Properties["Blog"]!).Guid);
         }
 
         private sealed class NullableDateEntity
