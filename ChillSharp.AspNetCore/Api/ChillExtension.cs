@@ -35,6 +35,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.AspNetCore;
+using System.Collections;
 using System.Reflection;
 
 namespace ChillSharp.Api
@@ -51,6 +52,8 @@ namespace ChillSharp.Api
         public static IServiceCollection AddChillApi<TContext>(this IServiceCollection services, Action<ChillApiOptions>? configureOptions = null)
             where TContext : DbContext, IChillContext
         {
+            PrintChillSharpEnvironmentVariables();
+
             var options = new ChillApiOptions();
             configureOptions?.Invoke(options);
 
@@ -168,6 +171,45 @@ namespace ChillSharp.Api
             });
 
             return services;
+        }
+
+        private static void PrintChillSharpEnvironmentVariables()
+        {
+            var variables = Environment.GetEnvironmentVariables()
+                .Cast<DictionaryEntry>()
+                .Select(entry => new
+                {
+                    Name = entry.Key?.ToString() ?? string.Empty,
+                    Value = entry.Value?.ToString() ?? string.Empty
+                })
+                .Where(entry => IsChillSharpEnvironmentVariable(entry.Name))
+                .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            Console.WriteLine("ChillSharp environment variables:");
+            if (variables.Count == 0)
+            {
+                Console.WriteLine("  (none)");
+                return;
+            }
+
+            foreach (var variable in variables)
+            {
+                Console.WriteLine($"  {variable.Name}={MaskEnvironmentValue(variable.Name, variable.Value)}");
+            }
+        }
+
+        private static bool IsChillSharpEnvironmentVariable(string variableName)
+        {
+            return variableName.StartsWith("CHILLSHARP_", StringComparison.OrdinalIgnoreCase) ||
+                variableName.StartsWith("CHILL_SHARP_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string MaskEnvironmentValue(string variableName, string value)
+        {
+            return variableName.Contains("PASSWORD", StringComparison.OrdinalIgnoreCase)
+                ? "********"
+                : value;
         }
 
         /// <summary>

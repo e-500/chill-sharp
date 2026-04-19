@@ -4,6 +4,8 @@ This document lists the environment variables currently used by ChillSharp and b
 
 Use it as a quick reference when configuring Docker, `docker compose`, or another deployment target.
 
+At startup, `AddChillApi<TContext>()` writes all `CHILLSHARP_` and `CHILL_SHARP_` process environment variables to the console. Variable names containing `PASSWORD` are masked as `********`.
+
 ## Hosting
 
 | Option | ENV variable | Description | Default |
@@ -78,6 +80,7 @@ These variables are read by `ChillAuthRootUserInitializer<TUser>` during startup
 ## Notes
 
 - Most variables listed here use the example host's `CHILLSHARP_*` prefix. `CHILLSHARP_SYSTEM_TIMEZONE` is a core ChillSharp runtime variable used directly by DTO date/time mapping.
+- Startup console output includes both `CHILLSHARP_*` and `CHILL_SHARP_*` variables. `PASSWORD` values are masked, but other values are printed as-is.
 - `CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES` and `CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS` are built-in ChillSharp auth defaults. Positive integer values are accepted; invalid, zero, or negative values fall back to the code defaults.
 - `CHILLSHARP_ATTACHMENT_ARCHIVE_ROOT` is read by `ChillSharp.Attachment` directly and should point at a persistent volume in Docker.
 - `CHILLSHARP_SYSTEM_TIMEZONE` expects an IANA time-zone id such as `Europe/Rome` or `America/New_York`.
