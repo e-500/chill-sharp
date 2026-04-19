@@ -23,6 +23,9 @@ This folder contains the reference documentation for ChillSharp.
 - [DateTimeSerialization.md](./DateTimeSerialization.md)
   How ChillSharp serializes and parses `DateTimeOffset`, `DateTime`, `DateOnly`, and `TimeOnly`, including comparisons with default ASP.NET Core behavior.
 
+- [DateTimePolicy/README.md](./DateTimePolicy/README.md)
+  Current DTO policy for `DateTime` and `DateTimeOffset`, including configured timezone handling, UTC normalization, and server-managed audit fields.
+
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 

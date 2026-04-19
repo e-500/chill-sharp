@@ -231,6 +231,52 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public void Step005_DtoEntityIgnoresServerManagedAuditFields()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-audit-dto-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var initialLastUpdate = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Unspecified);
+            var post = new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = "Original title",
+                Author = "Original author",
+                Checksum = 123,
+                LastUpdateUser = "server-user",
+                LastUpdate = initialLastUpdate,
+                LastUpdateUtcOffset = 60
+            };
+
+            var dto = new ChillSharp.Dto.ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = post.Guid,
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "Changed title",
+                    ["Checksum"] = 999L,
+                    ["LastUpdateUser"] = "dto-user",
+                    ["LastUpdate"] = "1999-12-31T23:59:59",
+                    ["LastUpdateUtcOffset"] = -720
+                }
+            };
+
+            dto.ToEntity(db, post);
+
+            Assert.AreEqual("Changed title", post.Title);
+            Assert.AreEqual(123, post.Checksum);
+            Assert.AreEqual("server-user", post.LastUpdateUser);
+            Assert.AreEqual(initialLastUpdate, post.LastUpdate);
+            Assert.AreEqual(60, post.LastUpdateUtcOffset);
+        }
+
+        [TestMethod]
         public void Step006_ChecksumCalculationCanBeDisabledAndReEnabledPerEntityType()
         {
             TestApiHost.EnsureStarted(6002);
@@ -1014,11 +1060,39 @@ namespace ChillSharp.Tests
                     null
                 ]);
 
-                Assert.AreEqual(new DateTime(2024, 1, 10, 13, 30, 15), target.OccurredAtUtc);
-                Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15), target.OccurredAtOffset);
+                Assert.AreEqual(new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Utc), target.OccurredAtUtc);
+                Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtUtc.Kind);
+                Assert.AreEqual(new DateTime(2024, 1, 10, 10, 30, 15, DateTimeKind.Utc), target.OccurredAtOffset);
+                Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtOffset.Kind);
                 Assert.AreEqual(DateTimeOffset.Parse("2024-01-10T12:30:15.000+02:00", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), target.RecordedAtOffset);
                 Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
                 Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
+
+                var targetWithoutOffsets = new TemporalMappingEntity();
+                var sourceValuesWithoutOffsets = new Dictionary<string, object?>
+                {
+                    ["OccurredAtUtc"] = "2024-01-10T12:30:15.000",
+                    ["OccurredAtOffset"] = "2024-01-10T12:30:15.000",
+                    ["RecordedAtOffset"] = "2024-01-10T12:30:15.000"
+                };
+
+                applyPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    targetWithoutOffsets,
+                    "Tests.TemporalMappingEntity",
+                    sourceValuesWithoutOffsets,
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    "TemporalMappingEntity",
+                    false,
+                    null
+                ]);
+
+                Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtUtc);
+                Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtUtc.Kind);
+                Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtOffset);
+                Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtOffset.Kind);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(1)), targetWithoutOffsets.RecordedAtOffset);
             }
             finally
             {
@@ -1080,6 +1154,9 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(source.PublishedAt, properties["PublishedAt"]);
 
                 var serializedProperties = JsonSerializer.Serialize(properties);
+                StringAssert.Contains(serializedProperties, "\"OccurredAtUtc\":\"2024-01-10T13:30:15.0000000\\u002B01:00\"");
+                StringAssert.Contains(serializedProperties, "\"OccurredAtOffset\":\"2024-01-10T12:30:15.0000000\\u002B01:00\"");
+                StringAssert.Contains(serializedProperties, "\"RecordedAtOffset\":\"2024-01-10T12:30:15.0000000\\u002B02:00\"");
                 StringAssert.Contains(serializedProperties, "\"PublishedOn\":\"2024-01-10\"");
                 StringAssert.Contains(serializedProperties, "\"PublishedAt\":\"23:59:58.3210000\"");
             }

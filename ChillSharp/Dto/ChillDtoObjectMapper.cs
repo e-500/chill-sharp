@@ -37,6 +37,14 @@ namespace ChillSharp.Dto
             PropertyNameCaseInsensitive = true
         };
 
+        private static readonly HashSet<string> ServerManagedEntityProperties = new(StringComparer.Ordinal)
+        {
+            nameof(IChillEntity.Checksum),
+            nameof(IChillEntity.LastUpdateUser),
+            nameof(IChillEntity.LastUpdate),
+            nameof(IChillEntity.LastUpdateUtcOffset)
+        };
+
         /// <summary>
         /// Builds a DTO-friendly property bag from the selected CLR properties, resolving entity navigations
         /// into <see cref="ChillDtoEntity"/> wrappers and converting scalar values using the Chill schema type.
@@ -137,6 +145,9 @@ namespace ChillSharp.Dto
                 var propertyName = property.Name;
 
                 if (!TryGetSourceValue(sourceValues, propertyName, out var value))
+                    continue;
+
+                if (target is IChillEntity && ServerManagedEntityProperties.Contains(propertyName))
                     continue;
 
                 if (attr.CallOnInflate)
@@ -510,35 +521,21 @@ namespace ChillSharp.Dto
 
             if (targetType == typeof(DateTimeOffset))
             {
-                if (hasUtcDesignator)
-                {
-                    return ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
-                }
-
-                if (hasExplicitOffset)
-                {
+                if (hasUtcDesignator || hasExplicitOffset)
                     return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-                }
 
-                var unspecifiedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-                var localDateTime = DateTime.SpecifyKind(unspecifiedDateTime, DateTimeKind.Unspecified);
+                var localDateTime = ParseUnspecifiedDateTime(text);
                 return new DateTimeOffset(localDateTime, systemTimeZone.GetUtcOffset(localDateTime));
             }
 
             if (hasUtcDesignator || hasExplicitOffset)
-            {
-                var converted = ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
-                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
-            }
+                return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).UtcDateTime;
 
-            var parsedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-            if (parsedDateTime.Kind == DateTimeKind.Utc)
-            {
-                var converted = ConvertToSystemTimeZone(new DateTimeOffset(parsedDateTime, TimeSpan.Zero), systemTimeZone);
-                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
-            }
-
-            return parsedDateTime;
+            var unspecifiedDateTime = ParseUnspecifiedDateTime(text);
+            return new DateTimeOffset(
+                unspecifiedDateTime,
+                systemTimeZone.GetUtcOffset(unspecifiedDateTime))
+                .UtcDateTime;
         }
 
         private static object ConvertDuration(object value, Type targetType)
@@ -629,6 +626,12 @@ namespace ChillSharp.Dto
 
             var dateTimeValue = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
             return TimeOnly.FromDateTime(dateTimeValue);
+        }
+
+        private static DateTime ParseUnspecifiedDateTime(string text)
+        {
+            var parsedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            return DateTime.SpecifyKind(parsedDateTime, DateTimeKind.Unspecified);
         }
 
         private static bool HasUtcDesignator(string text)
