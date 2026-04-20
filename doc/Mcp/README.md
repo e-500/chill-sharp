@@ -187,6 +187,74 @@ app.Run();
 
 When `EnableMcpApi` remains `true`, the MCP module is enabled by default as part of `AddChillApi<TContext>()`.
 
+## Agent connection URL
+
+Agents and MCP clients connect to the MCP HTTP transport endpoint, not to the normal ChillSharp REST endpoints.
+
+With the default configuration, use:
+
+```text
+{host}/api/chill-mcp
+```
+
+Local examples:
+
+```text
+http://localhost:5000/api/chill-mcp
+https://localhost:5001/api/chill-mcp
+```
+
+Do not configure agents to use `/api/chill`, `/api/chill/query`, or the Swagger URL. Those are regular REST API endpoints. The MCP SDK endpoint is `/api/chill-mcp` by default.
+
+The final URL is based on two settings:
+
+- `ChillApiOptions.ApiBasePath`, default `/api`
+- `ChillMcpOptions.RoutePattern`, default `/api/chill-mcp`
+
+The default MCP route is normalized to the current API base path. That means:
+
+| API base path | MCP route to use |
+| --- | --- |
+| `/api` | `/api/chill-mcp` |
+| `/backend` | `/backend/chill-mcp` |
+| empty base path | `/chill-mcp` |
+
+If you configure a custom MCP route:
+
+```csharp
+builder.Services.AddChillMcpApi<AppDbContext>(options =>
+{
+    options.RoutePattern = "mcp";
+});
+```
+
+then the route is relative to the ChillSharp API base path, so the default API base path produces:
+
+```text
+{host}/api/mcp
+```
+
+If you configure an absolute route:
+
+```csharp
+builder.Services.AddChillMcpApi<AppDbContext>(options =>
+{
+    options.RoutePattern = "/mcp";
+});
+```
+
+then agents should connect to:
+
+```text
+{host}/mcp
+```
+
+When `ProtectedApi = true`, the MCP endpoint requires authentication. Configure the agent or MCP client to send:
+
+```http
+Authorization: Bearer <access-token>
+```
+
 ## Disable MCP globally
 
 ```csharp

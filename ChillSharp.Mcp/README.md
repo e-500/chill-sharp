@@ -4,6 +4,47 @@
 
 The module is enabled by default when `EnableMcpApi` stays `true`. You can disable it globally through `AddChillApi(..., options => options.EnableMcpApi = false)` or directly on the module with `AddChillMcpApi<TContext>(options => options.Enabled = false)`.
 
+## Agent connection URL
+
+Agents and MCP clients should connect to the ChillSharp MCP HTTP transport URL:
+
+```text
+{host}/api/chill-mcp
+```
+
+For a local host running on port `5000`, use:
+
+```text
+http://localhost:5000/api/chill-mcp
+```
+
+For HTTPS on port `5001`, use:
+
+```text
+https://localhost:5001/api/chill-mcp
+```
+
+This is the MCP endpoint. It is different from the regular ChillSharp REST endpoints such as `/api/chill/query` and `/api/chill/create`.
+
+The default MCP route is `/api/chill-mcp` because:
+
+- the default ChillSharp API base path is `/api`
+- the default MCP route segment is `chill-mcp`
+
+If the host changes `ChillApiOptions.ApiBasePath`, keep the same route segment under that base path. For example, with `ApiBasePath = "/backend"`:
+
+```text
+https://example.com/backend/chill-mcp
+```
+
+If the host sets `ChillMcpOptions.RoutePattern` directly, use that configured route. A relative route such as `mcp` is placed under the ChillSharp API base path, while an absolute route such as `/mcp` is used as-is.
+
+If the ChillSharp API is protected, the MCP client must send the same bearer token style used by the host:
+
+```http
+Authorization: Bearer <access-token>
+```
+
 ## Registered tools
 
 The module registers these tools:
