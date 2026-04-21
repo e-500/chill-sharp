@@ -53,6 +53,7 @@ This is the most important introspection tool. It includes:
 - all schema properties
 - property-level `MCPDescription` for each property
 - reference type information
+- `simplePropertyType`, an agent-friendly type string for payload construction
 
 In practice, this is how an AI learns:
 
@@ -60,10 +61,31 @@ In practice, this is how an AI learns:
 - what each property means
 - which query returns which entity type
 - which properties are references to other Chill types
+- which value shape each request property requires
+
+Agents should not invent request objects. Use `get-schema` as the contract, copy exact property names from the schema, and send values that match each property's `simplePropertyType`.
+
+Common `simplePropertyType` values are:
+
+| simplePropertyType | Payload value |
+| --- | --- |
+| `guid` | GUID string |
+| `int` | JSON number without decimals |
+| `decimal` | JSON number |
+| `date` | date string |
+| `time` | time string |
+| `datetime` | date-time string |
+| `duration` | duration string or numeric value accepted by the host |
+| `bool` | JSON boolean |
+| `string`, `text` | JSON string |
+| `json` | JSON object, array, or JSON string according to the field contract |
+| `chill-entity` | `ChillDtoEntity` reference with `ChillType` and `Guid` |
+| `chill-entity-collection` | array of `ChillDtoEntity` references |
+| `chill-query` | query DTO matching the referenced query schema |
 
 ### `ChillSharp query`
 
-Executes a ChillSharp query only when the target query schema is MCP-enabled.
+Executes a ChillSharp query only when its related returned entity is MCP-enabled.
 
 The recommended workflow is:
 
@@ -71,6 +93,12 @@ The recommended workflow is:
 2. call `ChillSharp get-schema` on the selected query type
 3. read descriptions, properties, and returned type
 4. send a `ChillDtoQuery` payload to `ChillSharp query`
+
+The `Properties` object must contain only accepted input property names from the query schema. For each value, follow `simplePropertyType`; for example, send a string for `string`, a number for `int` or `decimal`, and a `ChillDtoEntity` reference for `chill-entity`.
+
+Read each query property's `MCPDescription` to infer how that input searches. Descriptions should tell the agent whether a property behaves as an exact value, contains-style text search, range boundary, lookup reference, status selector, or another custom query rule. If the description is missing or does not specify matching behavior, assume exact-match equals.
+
+Every Chill query also supports `Properties.FullTextSearch`. Use it for broad keyword search across the query target when the user is not asking for a specific structured filter.
 
 ### `ChillSharp lookup`
 
@@ -423,11 +451,13 @@ A schema is considered MCP-enabled when either:
 - `schema.EnableMCP` is `true`
 - runtime entity options enable MCP for that Chill type
 
+For query schemas, MCP visibility is controlled by the related returned entity. A query that returns `Model.Invoice` is visible and executable through MCP only when `Model.Invoice` is MCP-enabled. Enabling only the query type does not publish a hidden entity.
+
 That means:
 
 - `get-schema-list` shows only enabled schemas
 - `get-schema` returns only enabled schemas
-- `query` executes only enabled query types
+- `query` executes only queries whose related returned entity is enabled
 - entity tools operate only on enabled entity schemas
 - `chunk` checks every targeted query or entity before executing the batch
 
@@ -516,6 +546,9 @@ Good property descriptions explain:
 - units or format
 - whether the field is a lookup, reference, status, code, or free text
 - whether the field is returned, filterable, computed, or informational
+- for query properties, whether matching is exact, contains-style, range-based, lookup-based, or custom
+
+When a query property's `MCPDescription` does not explain matching behavior, agents should assume exact-match equals. If you want contains, prefix, range, fuzzy, or domain-specific behavior, say so explicitly in the description.
 
 Example:
 

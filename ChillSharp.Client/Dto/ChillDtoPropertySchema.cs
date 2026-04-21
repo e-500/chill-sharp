@@ -36,6 +36,11 @@ namespace ChillSharp.Client.Dto
         public ChillDtoPropertyType Type { get; set; } = new ChillDtoPropertyType();
 
         /// <summary>
+        /// Agent-friendly string form of the property type for request payload construction.
+        /// </summary>
+        public string SimplePropertyType { get; set; } = string.Empty;
+
+        /// <summary>
         /// Property name
         /// </summary>
         public string Name { get; set; } = string.Empty;

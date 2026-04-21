@@ -75,6 +75,13 @@ Returns the full schema for one MCP-enabled ChillSharp entity or query type.
 
 Use this tool to understand the structure of the database and the available query surface. Schemas contain descriptions of queries and entities, their own properties, reference types, and returned types. Query schemas also describe the related entity type returned by the query.
 
+Each property includes both:
+
+- `propertyType`: the stable numeric Chill property type id
+- `simplePropertyType`: an agent-friendly string such as `int`, `decimal`, `string`, `json`, `chill-entity`, or `chill-entity-collection`
+
+Agents should use `simplePropertyType` when constructing request payloads.
+
 ### `ChillSharp query`
 
 Executes the ChillSharp query endpoint through MCP for MCP-enabled query types.
@@ -82,10 +89,16 @@ Executes the ChillSharp query endpoint through MCP for MCP-enabled query types.
 Use `ChillSharp get-schema` first so you know which query properties are accepted, which result properties are available, and which entity type is returned. Then send a `ChillDtoQuery` payload with:
 
 - `ChillType` set to a query type such as `Query.PostQuery`
-- `Properties` containing the input filters or parameters
+- `Properties` containing only schema property names and values that match each property's `simplePropertyType`
 - optional `ResultProperties`, `Pagination`, and `Ordering`
 
-Only schemas with `EnableMCP` enabled, either directly in the schema or through runtime entity options, are exposed by these MCP tools.
+Do not invent request object shapes or property names. Use the schema as the contract. For reference values with `simplePropertyType = "chill-entity"`, send a `ChillDtoEntity` reference with `ChillType` and `Guid`. For `ResultProperties`, send objects such as `{ "name": "Title" }` using fields from the returned entity schema.
+
+For query input properties, read each property's `mcpDescription` to infer search behavior. A description may indicate contains-style matching, range boundaries, lookup behavior, or other custom semantics implemented by the query. When a query property's description is missing or does not explain matching behavior, assume exact-match equals by default.
+
+Every Chill query also supports `Properties.FullTextSearch` for generic full-text search. Use it when the user asks for broad keyword search across the query target instead of a specific structured filter.
+
+For query schemas, MCP visibility follows the related returned entity. Enabling a query alone does not publish a hidden entity.
 
 ### `ChillSharp lookup`
 
@@ -116,7 +129,7 @@ Use `ChillSharp get-schema` first, then send a `ChillDtoEntity` payload with:
 
 - `ChillType` set to an entity type such as `Model.Blog`
 - optional `Guid` when the client needs to choose the identifier
-- `Properties` containing annotated field values
+- `Properties` containing only schema property names and values that match each property's `simplePropertyType`
 
 ### `ChillSharp update`
 

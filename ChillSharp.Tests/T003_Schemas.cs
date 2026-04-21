@@ -317,6 +317,7 @@ namespace ChillSharp.Tests
             var schema = ChillDtoPropertySchema.FromPropertyInfo(property!, "ChillSharp.Tests");
 
             Assert.AreEqual(ChillDtoPropertyType.Json, schema.PropertyType);
+            Assert.AreEqual("json", schema.SimplePropertyType);
             Assert.AreEqual("json", schema.CustomFormat);
         }
 
@@ -333,8 +334,10 @@ namespace ChillSharp.Tests
             var arraySchema = ChillDtoPropertySchema.FromPropertyInfo(arrayProperty!, "ChillSharp.Tests");
 
             Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, enumerableSchema.PropertyType);
+            Assert.AreEqual("chill-entity-collection", enumerableSchema.SimplePropertyType);
             Assert.AreEqual("Schemas+FallbackLookupTarget", enumerableSchema.ReferenceChillType);
             Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, arraySchema.PropertyType);
+            Assert.AreEqual("chill-entity-collection", arraySchema.SimplePropertyType);
             Assert.AreEqual("Schemas+FallbackLookupTarget", arraySchema.ReferenceChillType);
         }
 

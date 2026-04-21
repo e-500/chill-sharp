@@ -39,6 +39,7 @@ export interface ChillDtoPropertySchema extends JsonObject {
     name: string;
     displayName: string;
     propertyType: ChillDtoPropertyType;
+    simplePropertyType: string;
     referenceChillType: string | null;
     referenceChillTypeQuery: string | null;
     mcpDescription: string;

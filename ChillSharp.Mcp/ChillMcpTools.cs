@@ -34,6 +34,13 @@ public sealed class ChillMcpTools
     private const string AuthenticationAndPermissionsNotice =
         "Authentication with a bearer token is required by the host API. Permissions and other limitations can be applied through the authenticated API-key user, so tool results may be filtered or denied based on that identity.";
 
+    private const string RequestPayloadGuidance =
+        "Do not invent request objects or property names. First inspect the target schema with 'ChillSharp get-schema', then build payloads from that schema only. " +
+        "For Properties, use exact schema property names and values matching each property's simplePropertyType: guid, int, decimal, date, time, datetime, duration, bool, string, text, json, chill-entity, chill-entity-collection, or chill-query. " +
+        "For query Properties, read each property's mcpDescription to infer search behavior such as equals, contains, range, lookup, or custom matching; when mcpDescription is missing or does not specify matching behavior, assume exact-match equals. " +
+        "Every Chill query also supports a FullTextSearch property for generic full-text search; use Properties.FullTextSearch when the user asks for broad keyword search instead of a specific structured filter. " +
+        "For chill-entity values, send a ChillDtoEntity reference with ChillType and Guid. For resultProperties, send objects such as { name: 'Title' } using property names from the returned entity schema. ";
+
     private readonly ChillMcpSchemaDiscoveryService _schemaDiscoveryService;
     private readonly IChillDtoEngine _dtoEngine;
 
@@ -59,6 +66,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp get-schema"), Description(
         "Returns the full ChillSharp schema for one MCP-enabled entity or query type. " +
         "Use this tool to understand the structure of the database before querying: schemas describe entities, query types, their properties, descriptions, reference types, and for query schemas the related returned entity type. " +
+        "Each property includes propertyType as a stable numeric id and simplePropertyType as an agent-friendly string to use when constructing request payloads. " +
         "This is the best tool for learning which fields exist and how a query is expected to behave. " +
         AuthenticationAndPermissionsNotice)]
     public Task<ChillDtoSchema?> GetSchemaAsync(
@@ -76,7 +84,8 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp query"), Description(
         "Executes a ChillSharp query for an MCP-enabled query schema and returns the ChillDtoQuery payload populated with results. " +
         "Before calling this tool, inspect the target query schema with 'ChillSharp get-schema' to understand accepted input properties, available result properties, and the returned entity type. " +
-        "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
+        "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, use Properties.FullTextSearch for generic keyword search, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoQuery> Query(
         [Description("The full ChillSharp query payload. ChillType should usually be a query type such as 'Query.PostQuery'.")]
@@ -94,6 +103,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp lookup"), Description(
         "Executes a generic full-text lookup against an MCP-enabled entity schema and returns a ChillDtoQuery payload populated with matching entities. " +
         "Use an entity ChillType such as 'Model.Blog', provide the search text in Properties.FullTextSearch, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoQuery> Lookup(
         [Description("The lookup payload. ChillType should be an MCP-enabled entity type such as 'Model.Blog'.")]
@@ -120,6 +130,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp create"), Description(
         "Creates a new MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the persisted DTO. " +
         "Inspect the target entity schema first so required and meaningful Properties are supplied correctly. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoEntity> Create(
         [Description("The entity payload to create. ChillType must be an MCP-enabled entity type; Properties contains values for annotated fields.")]
@@ -133,6 +144,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp update"), Description(
         "Updates an existing MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the updated DTO. " +
         "Guid must identify an existing record and Properties should contain the fields to update. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoEntity> Update(
         [Description("The entity payload to update. ChillType must be an MCP-enabled entity type and Guid must identify the existing record.")]
@@ -159,6 +171,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp autocomplete-entity"), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled entity DTO without explicitly choosing create or update. " +
         "Use this before create or update when the model calculates labels, URLs, references, or other derived values. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoEntity> AutocompleteEntity(
         [Description("The entity payload to autocomplete. ChillType must be an MCP-enabled entity type.")]
@@ -172,6 +185,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp autocomplete-query"), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled query DTO without executing the query. " +
         "Use this when query inputs have dependent or calculated values. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoQuery> AutocompleteQuery(
         [Description("The query payload to autocomplete. ChillType must be an MCP-enabled query type.")]
@@ -185,6 +199,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp validate-entity"), Description(
         "Validates an MCP-enabled entity DTO and returns ChillSharp validation errors without persisting changes. " +
         "Use this before create or update when the host model exposes validation rules. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<IEnumerable<ChillValidationError>> ValidateEntity(
         [Description("The entity payload to validate. ChillType must be an MCP-enabled entity type.")]
@@ -198,6 +213,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp validate-query"), Description(
         "Validates an MCP-enabled query DTO and returns ChillSharp validation errors without executing the query. " +
         "Use this before query execution when the query type exposes validation rules. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<IEnumerable<ChillValidationError>> ValidateQuery(
         [Description("The query payload to validate. ChillType must be an MCP-enabled query type.")]
@@ -212,6 +228,7 @@ public sealed class ChillMcpTools
         "Executes a list of ChillOperation items against MCP-enabled ChillSharp schemas and returns the updated operation list. " +
         "Supported verbs are transaction, query, find, create, update, delete, autocomplete, validate, and commit. " +
         "Each operation is checked for MCP visibility before any operation is executed, so unpublished schemas are rejected for the whole chunk. " +
+        RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<List<ChillOperation>> Chunk(
         [Description("Ordered ChillOperation items. Use Index for client-side ordering and Verb to choose the operation; provide Query or Entity according to the verb.")]

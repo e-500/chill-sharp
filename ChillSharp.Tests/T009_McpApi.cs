@@ -32,11 +32,11 @@ public sealed class McpApi
         var chunk = GetToolMethod(nameof(ChillMcpTools.Chunk));
 
         AssertToolMetadata(getSchemaList, "ChillSharp get-schema-list", "MCP-enabled", "bearer token");
-        AssertToolMetadata(getSchema, "ChillSharp get-schema", "MCP-enabled", "properties");
-        AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery");
+        AssertToolMetadata(getSchema, "ChillSharp get-schema", "MCP-enabled", "properties", "SimplePropertyType");
+        AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery", "Do not invent request objects", "simplePropertyType", "FullTextSearch", "exact-match equals");
         AssertToolMetadata(lookup, "ChillSharp lookup", "MCP-enabled", "full-text");
         AssertToolMetadata(find, "ChillSharp find", "MCP-enabled", "Guid");
-        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity");
+        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity", "exact schema property names");
         AssertToolMetadata(update, "ChillSharp update", "MCP-enabled", "Guid");
         AssertToolMetadata(delete, "ChillSharp delete", "MCP-enabled", "mutating");
         AssertToolMetadata(autocompleteEntity, "ChillSharp autocomplete-entity", "MCP-enabled", "entity DTO");
@@ -62,6 +62,7 @@ public sealed class McpApi
 
         var schemaList = await discoveryService.GetSchemaListAsync("it-IT");
         Assert.IsTrue(schemaList.Any(x => x.ChillType == "Model.Blog"));
+        Assert.IsTrue(schemaList.Any(x => x.ChillType == "Query.BlogQuery"));
         Assert.IsFalse(schemaList.Any(x => x.ChillType == "Model.Post"));
         Assert.IsFalse(schemaList.Any(x => x.ChillType == "Query.PostQuery"));
 
@@ -125,6 +126,18 @@ public sealed class McpApi
         await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
         {
             ChillType = "Query.PostQuery",
+            EnableMCP = true
+        });
+
+        Assert.IsNull(await tools.GetSchemaAsync("Query.PostQuery"));
+        await AssertInvalidOperationAsync(() => tools.Query(new ChillDtoQuery
+        {
+            ChillType = "Query.PostQuery"
+        }));
+
+        await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
+        {
+            ChillType = "Model.Post",
             EnableMCP = true
         });
 

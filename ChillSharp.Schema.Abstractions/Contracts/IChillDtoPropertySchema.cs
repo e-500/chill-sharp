@@ -8,6 +8,7 @@ namespace ChillSharp.Schema.Contracts;
 public interface IChillDtoPropertySchema
 {
     ChillDtoPropertyType PropertyType { get; }
+    string SimplePropertyType { get; }
     string Name { get; }
     string DisplayName { get; }
     string MCPDescription { get; }

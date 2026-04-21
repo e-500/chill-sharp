@@ -103,8 +103,26 @@ public sealed class ChillMcpSchemaDiscoveryService
             return false;
         }
 
-        var entityOptions = await _schemaService.GetEntityOptionsAsync(schema.ChillType, cancellationToken);
-        return schema.EnableMCP || entityOptions.EnableMCP;
+        if (!string.IsNullOrWhiteSpace(schema.QueryRelatedChillType))
+        {
+            return await IsEntityMcpEnabledAsync(schema.QueryRelatedChillType, cultureName, cancellationToken);
+        }
+
+        return await IsEntityMcpEnabledAsync(schema.ChillType, cultureName, cancellationToken);
+    }
+
+    private async Task<bool> IsEntityMcpEnabledAsync(
+        string chillType,
+        string? cultureName,
+        CancellationToken cancellationToken)
+    {
+        var schema = await _schemaService.GetSchemaAsync(chillType, "default", cultureName, cancellationToken);
+        if (schema == null || !string.IsNullOrWhiteSpace(schema.QueryRelatedChillType))
+        {
+            return false;
+        }
+
+        return schema.EnableMCP;
     }
 
     private static bool IsRegisteredEntityType(Type type)

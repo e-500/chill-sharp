@@ -130,6 +130,11 @@ namespace ChillSharp.Schema.Contracts
         public ChillDtoPropertyType PropertyType { get; set; } = new ChillDtoPropertyType();
 
         /// <summary>
+        /// Agent-friendly string form of <see cref="PropertyType"/> for request payload construction.
+        /// </summary>
+        public string SimplePropertyType => ToSimplePropertyType(PropertyType);
+
+        /// <summary>
         /// CLR property name.
         /// </summary>
         public string Name { get; set; } = string.Empty;
@@ -547,6 +552,28 @@ namespace ChillSharp.Schema.Contracts
             {
                 schema.PropertyType = ChillDtoPropertyType.Json;
             }
+        }
+
+        private static string ToSimplePropertyType(ChillDtoPropertyType propertyType)
+        {
+            return propertyType switch
+            {
+                ChillDtoPropertyType.Guid => "guid",
+                ChillDtoPropertyType.Integer => "int",
+                ChillDtoPropertyType.Decimal => "decimal",
+                ChillDtoPropertyType.Date => "date",
+                ChillDtoPropertyType.Time => "time",
+                ChillDtoPropertyType.DateTime => "datetime",
+                ChillDtoPropertyType.Duration => "duration",
+                ChillDtoPropertyType.Boolean => "bool",
+                ChillDtoPropertyType.String => "string",
+                ChillDtoPropertyType.Text => "text",
+                ChillDtoPropertyType.Json => "json",
+                ChillDtoPropertyType.ChillEntity => "chill-entity",
+                ChillDtoPropertyType.ChillEntityCollection => "chill-entity-collection",
+                ChillDtoPropertyType.ChillQuery => "chill-query",
+                _ => "unknown"
+            };
         }
 
         private static string ResolveRegexPattern(PropertyInfo propInfo)

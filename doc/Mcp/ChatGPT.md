@@ -176,6 +176,17 @@ public class Invoice : ChillEntity
 
 Use clear `MCPDescription` text on entities, queries, and properties. ChatGPT relies heavily on those descriptions when choosing tools and building query payloads.
 
+ChatGPT should not invent ChillSharp request objects. The intended workflow is:
+
+1. call `ChillSharp get-schema-list`
+2. call `ChillSharp get-schema` for the entity or query
+3. use exact schema property names in `Properties`
+4. match values to each property's `simplePropertyType`
+
+For example, use JSON strings for `string`, JSON numbers for `int` and `decimal`, JSON booleans for `bool`, and `ChillDtoEntity` references with `ChillType` and `Guid` for `chill-entity` properties. For `ResultProperties`, use objects such as `{ "name": "InvoiceNumber" }` from the returned entity schema.
+
+For query properties, ChatGPT should read each property's `MCPDescription` to infer the search behavior. If a query property has no description, or the description does not explain matching behavior, assume exact-match equals. Every Chill query also accepts `Properties.FullTextSearch`; use it for broad keyword search when the user is not asking for a specific structured filter.
+
 ## 6. Connect from ChatGPT
 
 In ChatGPT, add a custom connector or remote MCP server using your public HTTPS MCP URL:
@@ -208,7 +219,7 @@ That means:
 
 - a user blocked from a normal protected ChillSharp operation is also blocked through ChatGPT
 - a role-limited user keeps the same limitations through MCP
-- MCP visibility still requires `EnableMCP`
+- MCP visibility still requires `EnableMCP`; query visibility follows the related returned entity
 - OAuth scopes do not currently create a separate permission layer
 
 ## Useful public URLs to test
