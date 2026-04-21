@@ -4,6 +4,8 @@ This document describes the `ChillSharp.Mcp` module, how to register it in an AS
 
 `ChillSharp.Mcp` uses the official MCP C# SDK and exposes a Model Context Protocol server backed by your ChillSharp context.
 
+For a focused guide to connecting this MCP server from ChatGPT, see [HOW-TO: Connect ChillSharp MCP to ChatGPT](ChatGPT.md).
+
 ## Goals
 
 After setup, an MCP client can:
@@ -343,6 +345,75 @@ then the mapped MCP endpoint also requires authentication.
 
 This is important because MCP exposure should usually be scoped to a user or API key, not to anonymous callers.
 
+## ChatGPT OAuth Connection
+
+When connecting ChatGPT to a protected remote MCP server, configure ChatGPT with the public HTTPS MCP endpoint:
+
+```text
+https://your-domain.example/api/chill-mcp
+```
+
+If you use the ASP.NET Core Identity-backed ChillSharp auth module, ChillSharp exposes a built-in OAuth authorization-code flow with PKCE for ChatGPT and other remote MCP clients.
+
+The default OAuth endpoints are:
+
+| Purpose | URL |
+| --- | --- |
+| OAuth authorization-server metadata | `https://your-domain.example/.well-known/oauth-authorization-server` |
+| MCP protected-resource metadata | `https://your-domain.example/.well-known/oauth-protected-resource` |
+| Dynamic client registration | `https://your-domain.example/api/chill-auth/oauth/register` |
+| User authorization and consent | `https://your-domain.example/api/chill-auth/oauth/authorize` |
+| Token exchange | `https://your-domain.example/api/chill-auth/oauth/token` |
+
+The flow is:
+
+1. ChatGPT discovers the protected-resource and authorization-server metadata.
+2. ChatGPT dynamically registers itself as a public OAuth client.
+3. The user is redirected to the ChillSharp authorization page.
+4. The user signs in with the ASP.NET Core Identity account.
+5. ChillSharp redirects ChatGPT back with an authorization code.
+6. ChatGPT exchanges the code and PKCE verifier for a ChillSharp bearer access token.
+7. ChatGPT calls the MCP endpoint with:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+So OAuth is used for user consent and token acquisition. The MCP server itself still validates the resulting bearer token through the normal ChillSharp bearer authentication handler.
+
+Typical protected setup:
+
+```csharp
+builder.Services.AddIdentityCore<IdentityUser>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddSignInManager()
+    .AddDefaultTokenProviders();
+
+builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
+    .AddChillAuthBearer();
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddChillApi<AppDbContext, IdentityUser>(options =>
+{
+    options.ProtectedApi = true;
+});
+```
+
+The OAuth endpoints are enabled by default for the Identity-backed auth module. You can configure them through `ChillIdentityApiOptions`:
+
+```csharp
+builder.Services.AddChillApi<AppDbContext, IdentityUser>(options =>
+{
+    options.ProtectedApi = true;
+    options.OAuthBasePath = "/api/chill-auth/oauth";
+    options.OAuthProtectedResourcePath = "/api/chill-mcp";
+    options.OAuthAuthorizationCodeLifetime = TimeSpan.FromMinutes(5);
+});
+```
+
+If you disable or replace the built-in OAuth endpoints, you can still use ChillSharp as the MCP resource server as long as your authentication handler validates the final bearer token and ChatGPT can complete an OAuth authorization-code flow elsewhere.
+
 ## How `EnableMCP` Works
 
 The MCP tools only expose schemas whose MCP visibility is enabled.
@@ -659,6 +730,7 @@ public class Invoice : ChillEntity
 
 ## Related Documents
 
+- [ChatGPT connection how-to](ChatGPT.md)
 - [../README.md](../README.md)
 - [../RegisterContext.md](../RegisterContext.md)
 - [../ModelPreparation.md](../ModelPreparation.md)

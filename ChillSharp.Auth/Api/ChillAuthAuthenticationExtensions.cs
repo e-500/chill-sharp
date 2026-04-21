@@ -19,6 +19,7 @@
 
 using ChillSharp.Auth.Services;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -37,13 +38,29 @@ public static class ChillAuthIdentityDefaults
     public const string AuthenticationScheme = "Bearer";
 }
 
-internal sealed class ChillAuthBearerAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+/// <summary>
+/// Configures the ChillSharp bearer authentication handler.
+/// </summary>
+public sealed class ChillAuthBearerOptions : AuthenticationSchemeOptions
+{
+    /// <summary>
+    /// Gets or sets whether 401 responses should advertise OAuth protected-resource metadata.
+    /// </summary>
+    public bool AdvertiseOAuthProtectedResource { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the protected-resource metadata path advertised in the bearer challenge.
+    /// </summary>
+    public string OAuthProtectedResourceMetadataPath { get; set; } = "/.well-known/oauth-protected-resource";
+}
+
+internal sealed class ChillAuthBearerAuthenticationHandler : AuthenticationHandler<ChillAuthBearerOptions>
 {
     private readonly IChillAuthTokenService _tokenService;
 
     public ChillAuthBearerAuthenticationHandler(
         IChillAuthTokenService tokenService,
-        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        IOptionsMonitor<ChillAuthBearerOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder) : base(options, logger, encoder)
     {
@@ -94,6 +111,31 @@ internal sealed class ChillAuthBearerAuthenticationHandler : AuthenticationHandl
 
         return null;
     }
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.StatusCode = StatusCodes.Status401Unauthorized;
+
+        var challenge = "Bearer";
+        if (Options.AdvertiseOAuthProtectedResource)
+        {
+            challenge += $" resource_metadata=\"{BuildAbsoluteUrl(Options.OAuthProtectedResourceMetadataPath)}\"";
+        }
+
+        Response.Headers.WWWAuthenticate = challenge;
+        return Task.CompletedTask;
+    }
+
+    private string BuildAbsoluteUrl(string path)
+    {
+        var normalizedPath = string.IsNullOrWhiteSpace(path) ? "/.well-known/oauth-protected-resource" : path.Trim();
+        if (!normalizedPath.StartsWith('/'))
+        {
+            normalizedPath = "/" + normalizedPath;
+        }
+
+        return $"{Request.Scheme}://{Request.Host}{Request.PathBase}{normalizedPath}";
+    }
 }
 
 /// <summary>
@@ -109,6 +151,21 @@ public static class ChillAuthAuthenticationExtensions
     /// <returns>The updated authentication builder.</returns>
     public static AuthenticationBuilder AddChillAuthBearer(this AuthenticationBuilder builder, string authenticationScheme = ChillAuthIdentityDefaults.AuthenticationScheme)
     {
-        return builder.AddScheme<AuthenticationSchemeOptions, ChillAuthBearerAuthenticationHandler>(authenticationScheme, _ => { });
+        return builder.AddChillAuthBearer(authenticationScheme, _ => { });
+    }
+
+    /// <summary>
+    /// Registers the ChillSharp opaque bearer-token authentication handler on the current authentication builder.
+    /// </summary>
+    /// <param name="builder">The authentication builder receiving the ChillSharp bearer handler.</param>
+    /// <param name="authenticationScheme">The scheme name used by the host application. Defaults to <c>Bearer</c>.</param>
+    /// <param name="configureOptions">Optional handler configuration.</param>
+    /// <returns>The updated authentication builder.</returns>
+    public static AuthenticationBuilder AddChillAuthBearer(
+        this AuthenticationBuilder builder,
+        string authenticationScheme,
+        Action<ChillAuthBearerOptions> configureOptions)
+    {
+        return builder.AddScheme<ChillAuthBearerOptions, ChillAuthBearerAuthenticationHandler>(authenticationScheme, configureOptions);
     }
 }

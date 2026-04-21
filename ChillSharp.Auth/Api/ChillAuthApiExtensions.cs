@@ -103,6 +103,8 @@ public static class ChillAuthApiExtensions
 
         services.AddScoped<IChillAuthTokenService, ChillAuthTokenService>();
         services.AddScoped<IChillAuthIdentityService, ChillAuthIdentityService<TUser>>();
+        services.AddSingleton<IChillAuthOAuthClientRegistry, ChillAuthOAuthClientRegistry>();
+        services.AddScoped<IChillAuthOAuthService, ChillAuthOAuthService<TUser>>();
         services.AddScoped<IChillAuthPasswordResetEmailSender, ChillAuthPasswordResetEmailSender>();
         services.AddHostedService<ChillAuthRootUserInitializer<TUser>>();
         return services;

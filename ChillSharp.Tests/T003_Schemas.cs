@@ -241,6 +241,8 @@ namespace ChillSharp.Tests
             var schema = await schemaService.GetSchemaAsync("Model.Post", "default");
             Assert.IsNotNull(schema);
             Assert.IsTrue(schema.HandleAttachments);
+            Assert.IsTrue(schema.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", schema.MCPDescription);
 
             await schemaService.SetSchemaAsync(new ChillDtoSchema
             {
@@ -252,6 +254,8 @@ namespace ChillSharp.Tests
             var compactSchema = await schemaService.GetSchemaAsync("Model.Post", "compact");
             Assert.IsNotNull(compactSchema);
             Assert.IsTrue(compactSchema.HandleAttachments);
+            Assert.IsTrue(compactSchema.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", compactSchema.MCPDescription);
         }
 
         [TestMethod]

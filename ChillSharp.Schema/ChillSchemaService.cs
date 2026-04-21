@@ -135,6 +135,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         await _schemaContext.SaveChangesAsync(cancellationToken);
         _schemaCache.InvalidateAll();
         ChillEntityOptionsRuntimeCache.InvalidateAll();
+        await ApplyEntityOptionsToSchemaAsync(schema, cancellationToken);
         return _schemaCache.SetSchema(schema, NormalizeCultureName(null));
     }
 
@@ -469,6 +470,8 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
 
         var entityOptions = await GetEntityOptionsAsync(schema.ChillType, cancellationToken);
         schema.HandleAttachments = entityOptions.HandleAttachments;
+        schema.EnableMCP = schema.EnableMCP || entityOptions.EnableMCP;
+        schema.MCPDescription = entityOptions.MCPDescription ?? schema.MCPDescription;
     }
 
     private static JsonSerializerOptions CreateSerializerOptions()

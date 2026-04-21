@@ -295,6 +295,8 @@ client.set_schema({
 ```python
 options = client.get_entity_options("Model.Post")
 handle_attachments = options.get("HandleAttachments") or options.get("handleAttachments")
+mcp_enabled = options.get("EnableMCP") or options.get("enableMCP")
+mcp_description = options.get("MCPDescription") or options.get("mcpDescription")
 ```
 
 ### Set entity options
@@ -307,11 +309,13 @@ options = client.set_entity_options({
     "LabelFormatString": "{Title}",
     "ShortLabelFormatString": "{Title}",
     "FullTextContentFormatString": "{Title} {Author}",
+    "EnableMCP": True,
+    "MCPDescription": "Post resource exposed to MCP clients.",
     "ChangeLogEnabled": True,
 })
 ```
 
-The Python client uses plain dictionaries for schema payloads, so `HandleAttachments` is available without any client-side model regeneration.
+The Python client uses plain dictionaries for schema payloads, so `HandleAttachments`, `EnableMCP`, and `MCPDescription` are available without any client-side model regeneration.
 
 ## I18n Operations
 

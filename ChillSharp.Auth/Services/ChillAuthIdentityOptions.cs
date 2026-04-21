@@ -28,6 +28,8 @@ public class ChillAuthIdentityApiOptions
 
     public const string RefreshTokenLifetimeDaysEnvironmentVariable = "CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS";
 
+    public const string OAuthAuthorizationCodeLifetimeMinutesEnvironmentVariable = "CHILLSHARP_AUTH_OAUTH_CODE_MINUTES";
+
     /// <summary>
     /// Gets or sets the lifetime of issued access tokens. Defaults to
     /// <c>CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES</c> when present, otherwise 20 minutes.
@@ -45,6 +47,29 @@ public class ChillAuthIdentityApiOptions
         RefreshTokenLifetimeDaysEnvironmentVariable,
         value => TimeSpan.FromDays(value),
         TimeSpan.FromDays(14));
+
+    /// <summary>
+    /// Gets or sets whether OAuth endpoints for ChatGPT and remote MCP clients are enabled.
+    /// </summary>
+    public bool EnableOAuthEndpoints { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the route prefix used by the OAuth endpoints. Defaults to <c>/api/chill-auth/oauth</c>.
+    /// </summary>
+    public string OAuthBasePath { get; set; } = "/api/chill-auth/oauth";
+
+    /// <summary>
+    /// Gets or sets the relative MCP resource path advertised to MCP OAuth clients.
+    /// </summary>
+    public string OAuthProtectedResourcePath { get; set; } = "/api/chill-mcp";
+
+    /// <summary>
+    /// Gets or sets the lifetime of one-time authorization codes issued by the OAuth authorize endpoint.
+    /// </summary>
+    public TimeSpan OAuthAuthorizationCodeLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+        OAuthAuthorizationCodeLifetimeMinutesEnvironmentVariable,
+        value => TimeSpan.FromMinutes(value),
+        TimeSpan.FromMinutes(5));
 
     /// <summary>
     /// Gets or sets whether register should also create the matching ChillSharp auth user.

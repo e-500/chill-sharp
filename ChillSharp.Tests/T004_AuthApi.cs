@@ -29,12 +29,17 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.Extensions;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.Encodings.Web;
 
 namespace ChillSharp.Tests;
@@ -934,6 +939,85 @@ public sealed class AuthApi
             Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable, originalAccessTokenLifetime);
             Environment.SetEnvironmentVariable(ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable, originalRefreshTokenLifetime);
         }
+    }
+
+    [TestMethod]
+    public async Task Step014_OAuthAuthorizationCodeFlowIssuesBearerTokenForMcpClients()
+    {
+        IdentityAuthApiHost.EnsureStarted();
+
+        var accountClient = new ChillSharpClient("http://localhost:5002/api/chill");
+        var userName = $"oauth.user.{Guid.NewGuid():N}";
+        accountClient.RegisterAuthAccount(new RegisterAuthIdentityRequest
+        {
+            UserName = userName,
+            Email = $"{userName}@test.local",
+            Password = "Pass123$",
+            DisplayName = "OAuth User",
+            CreateChillAuthUser = true
+        });
+
+        using var httpClient = new HttpClient(new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        })
+        {
+            BaseAddress = new Uri("http://localhost:5002")
+        };
+
+        var registrationResponse = await httpClient.PostAsJsonAsync("/api/chill-auth/oauth/register", new
+        {
+            redirect_uris = new[] { "https://chat.openai.com/aip/plugin/oauth/callback" },
+            client_name = "ChatGPT"
+        });
+        registrationResponse.EnsureSuccessStatusCode();
+
+        using var registrationJson = JsonDocument.Parse(await registrationResponse.Content.ReadAsStringAsync());
+        var clientId = registrationJson.RootElement.GetProperty("client_id").GetString();
+        Assert.IsFalse(string.IsNullOrWhiteSpace(clientId));
+
+        var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var challenge = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        var authorizeResponse = await httpClient.PostAsync("/api/chill-auth/oauth/authorize", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["response_type"] = "code",
+            ["client_id"] = clientId!,
+            ["redirect_uri"] = "https://chat.openai.com/aip/plugin/oauth/callback",
+            ["code_challenge"] = challenge,
+            ["code_challenge_method"] = "S256",
+            ["scope"] = "mcp",
+            ["state"] = "state-123",
+            ["username"] = userName,
+            ["password"] = "Pass123$"
+        }));
+
+        Assert.AreEqual(HttpStatusCode.Redirect, authorizeResponse.StatusCode);
+        var redirectLocation = authorizeResponse.Headers.Location;
+        Assert.IsNotNull(redirectLocation);
+        var query = QueryHelpers.ParseQuery(redirectLocation.Query);
+        var code = query["code"].ToString();
+        Assert.IsFalse(string.IsNullOrWhiteSpace(code));
+        Assert.AreEqual("state-123", query["state"].ToString());
+
+        var tokenResponse = await httpClient.PostAsync("/api/chill-auth/oauth/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "authorization_code",
+            ["client_id"] = clientId!,
+            ["redirect_uri"] = "https://chat.openai.com/aip/plugin/oauth/callback",
+            ["code"] = code,
+            ["code_verifier"] = verifier
+        }));
+        tokenResponse.EnsureSuccessStatusCode();
+
+        using var tokenJson = JsonDocument.Parse(await tokenResponse.Content.ReadAsStringAsync());
+        var accessToken = tokenJson.RootElement.GetProperty("access_token").GetString();
+        Assert.IsFalse(string.IsNullOrWhiteSpace(accessToken));
+        Assert.AreEqual("Bearer", tokenJson.RootElement.GetProperty("token_type").GetString());
+
+        var protectedRequest = new HttpRequestMessage(HttpMethod.Get, "/api/test");
+        protectedRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        var protectedResponse = await httpClient.SendAsync(protectedRequest);
+        protectedResponse.EnsureSuccessStatusCode();
     }
 
     private static ChillSharpClient CreateTestHeaderClient(string baseUrl, string externalId)

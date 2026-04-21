@@ -409,13 +409,15 @@ console.log(options.handleAttachments);
 
 ```ts
 const options = await client.setEntityOptions({
-  ChillType: "Model.Post",
-  ChecksumEnabled: true,
-  HandleAttachments: true,
-  LabelFormatString: "{Title}",
-  ShortLabelFormatString: "{Title}",
-  FullTextContentFormatString: "{Title} {Author}",
-  ChangeLogEnabled: true
+  chillType: "Model.Post",
+  checksumEnabled: true,
+  handleAttachments: true,
+  labelFormatString: "{Title}",
+  shortLabelFormatString: "{Title}",
+  fullTextContentFormatString: "{Title} {Author}",
+  enableMCP: true,
+  mcpDescription: "Post resource exposed to MCP clients.",
+  changeLogEnabled: true
 });
 ```
 
