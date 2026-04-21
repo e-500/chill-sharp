@@ -18,9 +18,11 @@
  */
 
 using ChillSharp.Auth.Contracts;
+using ChillSharp.Auth.Model;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
@@ -31,16 +33,23 @@ namespace ChillSharp.Auth.Services;
 
 internal interface IChillAuthOAuthClientRegistry
 {
-    OAuthClientRegistrationResponse Register(OAuthClientRegistrationRequest request);
+    Task<OAuthClientRegistrationResponse> RegisterAsync(OAuthClientRegistrationRequest request, CancellationToken cancellationToken = default);
 
-    bool AllowsRedirectUri(string clientId, string redirectUri);
+    Task<bool> AllowsRedirectUriAsync(string clientId, string redirectUri, CancellationToken cancellationToken = default);
 }
 
 internal sealed class ChillAuthOAuthClientRegistry : IChillAuthOAuthClientRegistry
 {
-    private readonly ConcurrentDictionary<string, OAuthClientRegistrationResponse> _clients = new();
+    private readonly IChillAuthDbContext _context;
+    private readonly DbSet<AuthOAuthClient> _clients;
 
-    public OAuthClientRegistrationResponse Register(OAuthClientRegistrationRequest request)
+    public ChillAuthOAuthClientRegistry(IChillAuthDbContext context)
+    {
+        _context = context;
+        _clients = ((DbContext)context).Set<AuthOAuthClient>();
+    }
+
+    public async Task<OAuthClientRegistrationResponse> RegisterAsync(OAuthClientRegistrationRequest request, CancellationToken cancellationToken = default)
     {
         if (request.RedirectUris.Count == 0 ||
             request.RedirectUris.Any(x => !Uri.TryCreate(x, UriKind.Absolute, out _)))
@@ -57,22 +66,50 @@ internal sealed class ChillAuthOAuthClientRegistry : IChillAuthOAuthClientRegist
             ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
 
-        _clients[clientId] = response;
+        _clients.Add(new AuthOAuthClient
+        {
+            Guid = Guid.NewGuid(),
+            ClientId = response.ClientId,
+            ClientName = response.ClientName,
+            RedirectUrisJson = JsonSerializer.Serialize(response.RedirectUris),
+            ClientIdIssuedAt = response.ClientIdIssuedAt
+        });
+        await _context.SaveChangesAsync(cancellationToken);
         return response;
     }
 
-    public bool AllowsRedirectUri(string clientId, string redirectUri)
+    public async Task<bool> AllowsRedirectUriAsync(string clientId, string redirectUri, CancellationToken cancellationToken = default)
     {
-        return _clients.TryGetValue(clientId, out var client) &&
-            client.RedirectUris.Any(x => string.Equals(x, redirectUri, StringComparison.Ordinal));
+        var client = await _clients
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ClientId == clientId, cancellationToken);
+        if (client == null)
+        {
+            return false;
+        }
+
+        var redirectUris = DeserializeRedirectUris(client.RedirectUrisJson);
+        return redirectUris.Any(x => string.Equals(x, redirectUri, StringComparison.Ordinal));
+    }
+
+    private static List<string> DeserializeRedirectUris(string redirectUrisJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<List<string>>(redirectUrisJson) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 }
 
 public interface IChillAuthOAuthService
 {
-    OAuthClientRegistrationResponse RegisterClient(OAuthClientRegistrationRequest request);
+    Task<OAuthClientRegistrationResponse> RegisterClientAsync(OAuthClientRegistrationRequest request, CancellationToken cancellationToken = default);
 
-    string BuildAuthorizationPage(OAuthAuthorizeRequest request, string? errorMessage = null);
+    Task<string> BuildAuthorizationPageAsync(OAuthAuthorizeRequest request, string? errorMessage = null, CancellationToken cancellationToken = default);
 
     Task<Uri> AuthorizeAsync(OAuthAuthorizeRequest request, string userNameOrEmail, string password, CancellationToken cancellationToken = default);
 
@@ -108,14 +145,14 @@ internal sealed class ChillAuthOAuthService<TUser> : IChillAuthOAuthService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public OAuthClientRegistrationResponse RegisterClient(OAuthClientRegistrationRequest request)
+    public Task<OAuthClientRegistrationResponse> RegisterClientAsync(OAuthClientRegistrationRequest request, CancellationToken cancellationToken = default)
     {
-        return _clientRegistry.Register(request);
+        return _clientRegistry.RegisterAsync(request, cancellationToken);
     }
 
-    public string BuildAuthorizationPage(OAuthAuthorizeRequest request, string? errorMessage = null)
+    public async Task<string> BuildAuthorizationPageAsync(OAuthAuthorizeRequest request, string? errorMessage = null, CancellationToken cancellationToken = default)
     {
-        ValidateAuthorizeRequest(request);
+        await ValidateAuthorizeRequestAsync(request, cancellationToken);
 
         var title = Html("Authorize ChillSharp MCP");
         var error = string.IsNullOrWhiteSpace(errorMessage)
@@ -159,7 +196,7 @@ internal sealed class ChillAuthOAuthService<TUser> : IChillAuthOAuthService
 
     public async Task<Uri> AuthorizeAsync(OAuthAuthorizeRequest request, string userNameOrEmail, string password, CancellationToken cancellationToken = default)
     {
-        ValidateAuthorizeRequest(request);
+        await ValidateAuthorizeRequestAsync(request, cancellationToken);
 
         var user = await FindUserAsync(userNameOrEmail.Trim());
         if (user == null || !await _userManager.CheckPasswordAsync(user, password))
@@ -236,7 +273,7 @@ internal sealed class ChillAuthOAuthService<TUser> : IChillAuthOAuthService
         };
     }
 
-    private void ValidateAuthorizeRequest(OAuthAuthorizeRequest request)
+    private async Task ValidateAuthorizeRequestAsync(OAuthAuthorizeRequest request, CancellationToken cancellationToken)
     {
         if (!string.Equals(request.ResponseType, "code", StringComparison.Ordinal))
         {
@@ -255,7 +292,7 @@ internal sealed class ChillAuthOAuthService<TUser> : IChillAuthOAuthService
             throw new ArgumentException("Only the S256 PKCE challenge method is supported.");
         }
 
-        if (!_clientRegistry.AllowsRedirectUri(request.ClientId, request.RedirectUri))
+        if (!await _clientRegistry.AllowsRedirectUriAsync(request.ClientId, request.RedirectUri, cancellationToken))
         {
             throw new ArgumentException("The redirect_uri is not registered for this client.");
         }

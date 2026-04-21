@@ -61,6 +61,11 @@ public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
     public DbSet<AuthRefreshToken> RefreshTokens => Set<AuthRefreshToken>();
 
     /// <summary>
+    /// Gets the set of dynamically registered OAuth clients.
+    /// </summary>
+    public DbSet<AuthOAuthClient> OAuthClients => Set<AuthOAuthClient>();
+
+    /// <summary>
     /// Returns the namespace prefix used by ChillSharp to resolve auth entity types dynamically.
     /// </summary>
     public string GetChillTypePrefix()

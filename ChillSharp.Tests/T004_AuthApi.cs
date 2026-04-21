@@ -965,9 +965,10 @@ public sealed class AuthApi
             BaseAddress = new Uri("http://localhost:5002")
         };
 
+        var redirectUri = "https://chatgpt.com/connector/oauth/test-client";
         var registrationResponse = await httpClient.PostAsJsonAsync("/api/chill-auth/oauth/register", new
         {
-            redirect_uris = new[] { "https://chat.openai.com/aip/plugin/oauth/callback" },
+            redirect_uris = new[] { redirectUri },
             client_name = "ChatGPT"
         });
         registrationResponse.EnsureSuccessStatusCode();
@@ -976,13 +977,20 @@ public sealed class AuthApi
         var clientId = registrationJson.RootElement.GetProperty("client_id").GetString();
         Assert.IsFalse(string.IsNullOrWhiteSpace(clientId));
 
+        await using (var verificationContext = IdentityAuthApiHost.CreateDbContext())
+        {
+            var persistedClient = await verificationContext.Set<AuthOAuthClient>().AsNoTracking().SingleOrDefaultAsync(x => x.ClientId == clientId);
+            Assert.IsNotNull(persistedClient);
+            Assert.IsTrue(persistedClient.RedirectUrisJson.Contains(redirectUri, StringComparison.Ordinal));
+        }
+
         var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var challenge = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
         var authorizeResponse = await httpClient.PostAsync("/api/chill-auth/oauth/authorize", new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["response_type"] = "code",
             ["client_id"] = clientId!,
-            ["redirect_uri"] = "https://chat.openai.com/aip/plugin/oauth/callback",
+            ["redirect_uri"] = redirectUri,
             ["code_challenge"] = challenge,
             ["code_challenge_method"] = "S256",
             ["scope"] = "mcp",
@@ -1003,7 +1011,7 @@ public sealed class AuthApi
         {
             ["grant_type"] = "authorization_code",
             ["client_id"] = clientId!,
-            ["redirect_uri"] = "https://chat.openai.com/aip/plugin/oauth/callback",
+            ["redirect_uri"] = redirectUri,
             ["code"] = code,
             ["code_verifier"] = verifier
         }));

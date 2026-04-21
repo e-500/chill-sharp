@@ -86,7 +86,7 @@ public sealed class AuthOAuthController : ControllerBase
     }
 
     [HttpPost("register")]
-    public IActionResult Register([FromBody] OAuthClientRegistrationRequest request)
+    public async Task<IActionResult> Register([FromBody] OAuthClientRegistrationRequest request, CancellationToken cancellationToken)
     {
         if (!_options.EnableOAuthEndpoints)
         {
@@ -95,7 +95,7 @@ public sealed class AuthOAuthController : ControllerBase
 
         try
         {
-            return StatusCode(StatusCodes.Status201Created, _service.RegisterClient(request));
+            return StatusCode(StatusCodes.Status201Created, await _service.RegisterClientAsync(request, cancellationToken));
         }
         catch (ArgumentException ex)
         {
@@ -104,14 +104,15 @@ public sealed class AuthOAuthController : ControllerBase
     }
 
     [HttpGet("authorize")]
-    public IActionResult Authorize(
+    public async Task<IActionResult> Authorize(
         [FromQuery(Name = "response_type")] string responseType,
         [FromQuery(Name = "client_id")] string clientId,
         [FromQuery(Name = "redirect_uri")] string redirectUri,
         [FromQuery(Name = "code_challenge")] string codeChallenge,
         [FromQuery(Name = "code_challenge_method")] string codeChallengeMethod,
         [FromQuery] string? scope,
-        [FromQuery] string? state)
+        [FromQuery] string? state,
+        CancellationToken cancellationToken)
     {
         if (!_options.EnableOAuthEndpoints)
         {
@@ -120,7 +121,7 @@ public sealed class AuthOAuthController : ControllerBase
 
         try
         {
-            return Content(_service.BuildAuthorizationPage(new OAuthAuthorizeRequest
+            return Content(await _service.BuildAuthorizationPageAsync(new OAuthAuthorizeRequest
             {
                 ResponseType = responseType,
                 ClientId = clientId,
@@ -129,7 +130,7 @@ public sealed class AuthOAuthController : ControllerBase
                 CodeChallengeMethod = string.IsNullOrWhiteSpace(codeChallengeMethod) ? "S256" : codeChallengeMethod,
                 Scope = scope ?? string.Empty,
                 State = state ?? string.Empty
-            }), "text/html");
+            }, cancellationToken: cancellationToken), "text/html");
         }
         catch (ArgumentException ex)
         {
@@ -168,7 +169,7 @@ public sealed class AuthOAuthController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Content(_service.BuildAuthorizationPage(request, ex.Message), "text/html");
+            return Content(await _service.BuildAuthorizationPageAsync(request, ex.Message, cancellationToken), "text/html");
         }
         catch (ArgumentException ex)
         {

@@ -104,6 +104,14 @@ public static class ChillAuthModelBuilderExtensions
             builder.HasIndex(x => x.ExpiresUtc);
         });
 
+        modelBuilder.Entity<AuthOAuthClient>(builder =>
+        {
+            builder.Property(x => x.ClientId).HasMaxLength(256);
+            builder.Property(x => x.ClientName).HasMaxLength(256);
+
+            builder.HasIndex(x => x.ClientId).IsUnique();
+        });
+
         return modelBuilder;
     }
 }
