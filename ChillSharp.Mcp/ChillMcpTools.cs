@@ -39,15 +39,99 @@ public sealed class ChillMcpTools
         WriteIndented = true
     };
 
+    private static readonly JsonSerializerOptions ExampleJsonSerializerOptions = new()
+    {
+        WriteIndented = true
+    };
+
+    private static readonly string DtoExampleStructure = JsonSerializer.Serialize(new
+    {
+        ChillDtoQuery = new ChillDtoQuery
+        {
+            ChillType = "Query.PostQuery",
+            Properties =
+            {
+                ["FullTextSearch"] = "search terms",
+                ["Blog"] = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = Guid.Parse("11111111-1111-1111-1111-111111111111")
+                }
+            },
+            ResultProperties =
+            [
+                new ChillDtoProperty("Guid"),
+                new ChillDtoProperty("Title"),
+                new ChillDtoProperty("Blog",
+                [
+                    new ChillDtoProperty("Guid"),
+                    new ChillDtoProperty("Title")
+                ])
+            ],
+            Pagination = new ChillPagination
+            {
+                Page = 1,
+                PageResults = 20
+            },
+            Ordering = new ChillOrdering
+            {
+                PropertyName = "Title",
+                Direction = ChillOrdering.AscendingDirection
+            },
+            Results =
+            [
+                new ChillDtoEntity
+                {
+                    Guid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                    Position = 1,
+                    ChillType = "Model.Post",
+                    Label = "Example post",
+                    ShortLabel = "Example",
+                    Properties =
+                    {
+                        ["Title"] = "Example post",
+                        ["Blog"] = new ChillDtoEntity
+                        {
+                            ChillType = "Model.Blog",
+                            Guid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                            Label = "Example blog"
+                        }
+                    }
+                }
+            ]
+        },
+        ChillDtoEntity = new ChillDtoEntity
+        {
+            Guid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            Position = 1,
+            ChillType = "Model.Post",
+            Label = "Example post",
+            ShortLabel = "Example",
+            Properties =
+            {
+                ["Title"] = "Example post",
+                ["Author"] = "Ada",
+                ["Blog"] = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = Guid.Parse("11111111-1111-1111-1111-111111111111")
+                }
+            }
+        }
+    }, ExampleJsonSerializerOptions);
+
     private const string AuthenticationAndPermissionsNotice =
         "Authentication with a bearer token is required by the host API. Permissions and other limitations can be applied through the authenticated API-key user, so tool results may be filtered or denied based on that identity.";
 
     private const string RequestPayloadGuidance =
         "Do not invent request objects or property names. First inspect the target schema with 'ChillSharp get-schema', then build payloads from that schema only. " +
+        "Call 'ChillSharp get-dto-examples' when you need a concrete serialized ChillDtoQuery and ChillDtoEntity example structure. " +
+        "ChillDtoQuery payload properties are ChillType, Properties, ResultProperties, Pagination, Ordering, and Results; Pagination contains Page and PageResults; Ordering contains PropertyName and Direction. " +
+        "ChillDtoEntity payload properties are Guid, Position, ChillType, Label, ShortLabel, and Properties. " +
         "For Properties, use exact schema property names and values matching each property's simplePropertyType: guid, int, decimal, date, time, datetime, duration, bool, string, text, json, chill-entity, chill-entity-collection, or chill-query. " +
         "For query Properties, read each property's mcpDescription to infer search behavior such as equals, contains, range, lookup, or custom matching; when mcpDescription is missing or does not specify matching behavior, assume exact-match equals. " +
         "Every Chill query also supports a FullTextSearch property for generic full-text search; use Properties.FullTextSearch when the user asks for broad keyword search instead of a specific structured filter. " +
-        "For chill-entity values, send a ChillDtoEntity reference with ChillType and Guid. For resultProperties, send objects such as { name: 'Title' } using property names from the returned entity schema. ";
+        "For chill-entity values, send a ChillDtoEntity reference with ChillType and Guid. For ResultProperties, send ChillDtoProperty objects with PropertyName and optional SubProperties using property names from the returned entity schema. ";
 
     private readonly ChillMcpSchemaDiscoveryService _schemaDiscoveryService;
     private readonly IChillDtoEngine _dtoEngine;
@@ -87,6 +171,14 @@ public sealed class ChillMcpTools
         CancellationToken cancellationToken = default)
     {
         return _schemaDiscoveryService.GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken);
+    }
+
+    [McpServerTool(Name = "ChillSharp get-dto-examples"), Description(
+        "Returns a static serialized JSON object showing example ChillDtoQuery and ChillDtoEntity payload structures. " +
+        "Use this tool when constructing MCP requests that need exact DTO property names, including ResultProperties with PropertyName and SubProperties, Pagination with Page and PageResults, and Ordering with PropertyName and Direction.")]
+    public string GetDtoExamples()
+    {
+        return DtoExampleStructure;
     }
 
     [McpServerTool(Name = "ChillSharp query"), Description(

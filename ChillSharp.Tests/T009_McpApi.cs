@@ -5,6 +5,7 @@ using ChillSharp.Schema.Contracts;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
 using ModelContextProtocol.Server;
+using System.Text.Json;
 
 namespace ChillSharp.Tests;
 
@@ -19,6 +20,7 @@ public sealed class McpApi
 
         var getSchemaList = GetToolMethod(nameof(ChillMcpTools.GetSchemaList));
         var getSchema = GetToolMethod(nameof(ChillMcpTools.GetSchemaAsync));
+        var getDtoExamples = GetToolMethod(nameof(ChillMcpTools.GetDtoExamples));
         var query = GetToolMethod(nameof(ChillMcpTools.Query));
         var lookup = GetToolMethod(nameof(ChillMcpTools.Lookup));
         var find = GetToolMethod(nameof(ChillMcpTools.Find));
@@ -33,10 +35,11 @@ public sealed class McpApi
 
         AssertToolMetadata(getSchemaList, "ChillSharp get-schema-list", "MCP-enabled", "bearer token");
         AssertToolMetadata(getSchema, "ChillSharp get-schema", "MCP-enabled", "properties", "SimplePropertyType");
-        AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery", "Do not invent request objects", "simplePropertyType", "FullTextSearch", "exact-match equals");
+        AssertToolMetadata(getDtoExamples, "ChillSharp get-dto-examples", "ChillDtoQuery", "ChillDtoEntity", "Pagination with Page and PageResults", "Ordering with PropertyName and Direction");
+        AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery", "Do not invent request objects", "simplePropertyType", "FullTextSearch", "exact-match equals", "Pagination contains Page and PageResults", "Ordering contains PropertyName and Direction", "ChillSharp get-dto-examples");
         AssertToolMetadata(lookup, "ChillSharp lookup", "MCP-enabled", "full-text");
         AssertToolMetadata(find, "ChillSharp find", "MCP-enabled", "Guid");
-        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity", "exact schema property names");
+        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity", "exact schema property names", "Guid, Position, ChillType, Label, ShortLabel, and Properties");
         AssertToolMetadata(update, "ChillSharp update", "MCP-enabled", "Guid");
         AssertToolMetadata(delete, "ChillSharp delete", "MCP-enabled", "mutating");
         AssertToolMetadata(autocompleteEntity, "ChillSharp autocomplete-entity", "MCP-enabled", "entity DTO");
@@ -47,7 +50,40 @@ public sealed class McpApi
     }
 
     [TestMethod]
-    public async Task Step002_SchemaDiscoveryReturnsOnlyMcpEnabledSchemas()
+    public void Step002_StaticDtoExamplesReturnSerializedPayloadStructures()
+    {
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite("Data Source=:memory:")
+            .Options;
+
+        using var context = new EF.DummyContext(options);
+        var schemaService = CreateSchemaService(context);
+        var tools = new ChillMcpTools(
+            new ChillMcpSchemaDiscoveryService(context, schemaService),
+            new ChillDtoEngine(context));
+
+        using var document = JsonDocument.Parse(tools.GetDtoExamples());
+        var root = document.RootElement;
+
+        Assert.IsTrue(root.TryGetProperty("ChillDtoQuery", out var queryExample));
+        Assert.AreEqual("Query.PostQuery", queryExample.GetProperty("ChillType").GetString());
+        Assert.AreEqual(1, queryExample.GetProperty("Pagination").GetProperty("Page").GetInt32());
+        Assert.AreEqual(20, queryExample.GetProperty("Pagination").GetProperty("PageResults").GetInt32());
+        Assert.AreEqual("Title", queryExample.GetProperty("Ordering").GetProperty("PropertyName").GetString());
+        Assert.AreEqual("ASC", queryExample.GetProperty("Ordering").GetProperty("Direction").GetString());
+
+        var resultProperty = queryExample.GetProperty("ResultProperties")[2];
+        Assert.AreEqual("Blog", resultProperty.GetProperty("PropertyName").GetString());
+        Assert.AreEqual("Guid", resultProperty.GetProperty("SubProperties")[0].GetProperty("PropertyName").GetString());
+
+        Assert.IsTrue(root.TryGetProperty("ChillDtoEntity", out var entityExample));
+        Assert.AreEqual("Model.Post", entityExample.GetProperty("ChillType").GetString());
+        Assert.AreEqual("Example post", entityExample.GetProperty("Properties").GetProperty("Title").GetString());
+        Assert.AreEqual("Model.Blog", entityExample.GetProperty("Properties").GetProperty("Blog").GetProperty("ChillType").GetString());
+    }
+
+    [TestMethod]
+    public async Task Step003_SchemaDiscoveryReturnsOnlyMcpEnabledSchemas()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -75,7 +111,7 @@ public sealed class McpApi
     }
 
     [TestMethod]
-    public async Task Step003_RuntimeEntityOptionsCanEnableMcpSchemasAndQueryExecution()
+    public async Task Step004_RuntimeEntityOptionsCanEnableMcpSchemasAndQueryExecution()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-query-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -162,7 +198,7 @@ public sealed class McpApi
     }
 
     [TestMethod]
-    public async Task Step004_McpCrudAndChunkOperateOnlyOnEnabledSchemas()
+    public async Task Step005_McpCrudAndChunkOperateOnlyOnEnabledSchemas()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-crud-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
