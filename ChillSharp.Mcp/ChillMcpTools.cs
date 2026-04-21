@@ -18,6 +18,7 @@
  */
 
 using System.ComponentModel;
+using System.Text.Json;
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using ChillSharp.Schema.Contracts;
@@ -31,6 +32,13 @@ namespace ChillSharp.Mcp;
 [McpServerToolType]
 public sealed class ChillMcpTools
 {
+    private const int MaxLoggedDtoQueryLength = 1024;
+
+    private static readonly JsonSerializerOptions LogJsonSerializerOptions = new()
+    {
+        WriteIndented = true
+    };
+
     private const string AuthenticationAndPermissionsNotice =
         "Authentication with a bearer token is required by the host API. Permissions and other limitations can be applied through the authenticated API-key user, so tool results may be filtered or denied based on that identity.";
 
@@ -92,12 +100,21 @@ public sealed class ChillMcpTools
         ChillDtoQuery query,
         CancellationToken cancellationToken = default)
     {
+        // DEBUG
+        //var logId = Guid.NewGuid().ToString("N");
+        //LogMcpQueryPayload(logId, "request", query);
+
         if (!await _schemaDiscoveryService.IsMcpEnabledAsync(query.ChillType, "default", cancellationToken: cancellationToken))
         {
             throw new InvalidOperationException($"ChillSharp query '{query.ChillType}' is not MCP-enabled.");
         }
 
         return _dtoEngine.Query(query);
+
+        // DEBUG
+        //var response = _dtoEngine.Query(query);
+        //LogMcpQueryPayload(logId, "response", response);
+        //return response;
     }
 
     [McpServerTool(Name = "ChillSharp lookup"), Description(
@@ -275,5 +292,24 @@ public sealed class ChillMcpTools
                 await EnsureMcpEnabledAsync(operation.Entity.ChillType, isQueryType: false, cancellationToken);
                 break;
         }
+    }
+
+    private static void LogMcpQueryPayload(string logId, string direction, ChillDtoQuery query)
+    {
+        Console.WriteLine($"ChillSharp MCP query {direction} [{logId}]");
+        Console.WriteLine(TruncateSerializedPayload(JsonSerializer.Serialize(query, LogJsonSerializerOptions)));
+    }
+
+    private static string TruncateSerializedPayload(string serializedPayload)
+    {
+        if (serializedPayload.Length <= MaxLoggedDtoQueryLength)
+        {
+            return serializedPayload;
+        }
+
+        const string truncationMarker = "...";
+        return string.Concat(
+            serializedPayload.AsSpan(0, MaxLoggedDtoQueryLength - truncationMarker.Length),
+            truncationMarker);
     }
 }
