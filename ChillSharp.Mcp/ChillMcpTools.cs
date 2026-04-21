@@ -125,8 +125,9 @@ public sealed class ChillMcpTools
 
     private const string RequestPayloadGuidance =
         "Do not invent request objects or property names. First inspect the target schema with 'ChillSharp get-schema', then build payloads from that schema only. " +
-        "Call 'ChillSharp get-dto-examples' when you need a concrete serialized ChillDtoQuery and ChillDtoEntity example structure. " +
-        "ChillDtoQuery payload properties are ChillType, Properties, ResultProperties, Pagination, Ordering, and Results; Pagination contains Page and PageResults; Ordering contains PropertyName and Direction. " +
+        "Call the MCP endpoint/tool 'ChillSharp get-dto-examples' to obtain the correct serialized ChillDtoQuery and ChillDtoEntity data structures before building requests. " +
+        "ChillDtoQuery payload properties are ChillType, Properties, ResultProperties, Pagination, Ordering, and Results; " +
+        "ChillDtoQuery payload Pagination contains Page and PageResults and Ordering contains PropertyName and Direction. " +
         "ChillDtoEntity payload properties are Guid, Position, ChillType, Label, ShortLabel, and Properties. " +
         "For Properties, use exact schema property names and values matching each property's simplePropertyType: guid, int, decimal, date, time, datetime, duration, bool, string, text, json, chill-entity, chill-entity-collection, or chill-query. " +
         "For query Properties, read each property's mcpDescription to infer search behavior such as equals, contains, range, lookup, or custom matching; when mcpDescription is missing or does not specify matching behavior, assume exact-match equals. " +
