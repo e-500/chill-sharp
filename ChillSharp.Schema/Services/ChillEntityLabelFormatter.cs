@@ -51,12 +51,11 @@ internal static class ChillEntityLabelFormatter
     public static string ResolveFullTextContent(IChillEntity entity, IChillContext context)
     {
         var configuredValue = TryResolveConfiguredFullTextContent(entity, context);
-        if (configuredValue != null)
-            return configuredValue;
-
-        return HasCustomFullTextContentOverride(entity)
+        var fullTextContent = configuredValue ?? (HasCustomFullTextContentOverride(entity)
             ? entity.GetFullTextContent(context)
-            : entity.GetLabel(context);
+            : entity.GetLabel(context));
+
+        return ChillFullTextSearchNormalizer.Normalize(fullTextContent);
     }
 
     public static string? TryResolveConfiguredLabel(IChillEntity entity, IChillContext context, bool useShortLabel)

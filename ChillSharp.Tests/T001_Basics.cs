@@ -357,7 +357,7 @@ namespace ChillSharp.Tests
                 await using (var verificationContext = TestApiHost.CreateDbContext())
                 {
                     var createdPost = await verificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
-                    Assert.AreEqual($"Configured author::Configured title::{createdPost.Checksum}", createdPost.FullTextContent);
+                    Assert.AreEqual($"configured author::configured title::{createdPost.Checksum}", createdPost.FullTextContent);
                 }
 
                 client.SetEntityOptions(new ChillDtoEntityOptions
@@ -387,7 +387,7 @@ namespace ChillSharp.Tests
 
                 await using var updatedVerificationContext = TestApiHost.CreateDbContext();
                 var updatedPost = await updatedVerificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
-                Assert.AreEqual("Configured title updated|dummy-user|", updatedPost.FullTextContent);
+                Assert.AreEqual("configured title updated|dummy-user|", updatedPost.FullTextContent);
 
                 var blog = client.Create(new ChillDtoEntity
                 {
@@ -429,7 +429,7 @@ namespace ChillSharp.Tests
 
                 await using var relatedVerificationContext = TestApiHost.CreateDbContext();
                 var relatedPost = await relatedVerificationContext.Post.FirstAsync(x => x.Guid == related.Guid);
-                Assert.AreEqual("Related blog https://related.example Related author", relatedPost.FullTextContent);
+                Assert.AreEqual("related blog https://related.example related author", relatedPost.FullTextContent);
             }
             finally
             {
@@ -558,8 +558,8 @@ namespace ChillSharp.Tests
             TestApiHost.EnsureStarted(6002);
 
             var client = new ChillSharpClient("http://localhost:6002/api/chill");
-            var tokenA = $"alpha-{Guid.NewGuid():N}";
-            var tokenB = $"beta-{Guid.NewGuid():N}";
+            var tokenA = $"Perché-{Guid.NewGuid():N}";
+            var tokenB = $"Beta-{Guid.NewGuid():N}";
 
             client.SetEntityOptions(new ChillDtoEntityOptions
             {
@@ -567,7 +567,7 @@ namespace ChillSharp.Tests
                 FullTextContentFormatString = "{Title} {Author}"
             });
 
-            client.Create(new ChillDtoEntity
+            var matchingPost = client.Create(new ChillDtoEntity
             {
                 ChillType = "Model.Post",
                 Guid = Guid.NewGuid(),
@@ -605,7 +605,7 @@ namespace ChillSharp.Tests
                 ChillType = "Query.PostQuery",
                 ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
             };
-            query.Properties.Add("FullTextSearch", $"{tokenA} {tokenB}");
+            query.Properties.Add("FullTextSearch", $"{tokenA.Replace("é", "è", StringComparison.Ordinal)} {tokenB}");
 
             var result = client.Query(query);
 
@@ -614,6 +614,12 @@ namespace ChillSharp.Tests
             Assert.HasCount(1, result.Results);
             Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
             Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
+
+            using var db = TestApiHost.CreateDbContext();
+            var persistedPost = db.Post.First(x => x.Guid == matchingPost.Guid);
+            Assert.IsTrue(persistedPost.FullTextContent.Contains("perche", StringComparison.Ordinal));
+            Assert.IsFalse(persistedPost.FullTextContent.Contains('é'));
+            Assert.IsFalse(persistedPost.FullTextContent.Contains('è'));
         }
 
         [TestMethod]

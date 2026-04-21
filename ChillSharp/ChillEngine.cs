@@ -273,7 +273,7 @@ namespace ChillSharp
 
                 foreach (var token in tokens)
                 {
-                    var currentToken = token;
+                    var currentToken = ChillFullTextSearchNormalizer.Normalize(token);
                     query = query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(currentToken));
                 }
             }
