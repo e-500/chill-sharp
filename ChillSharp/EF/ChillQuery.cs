@@ -55,7 +55,17 @@ namespace ChillSharp.EF
         /// <summary>
         /// Optional free-text search string applied against entity full-text content.
         /// </summary>
-        [ChillProperty]
+        [ChillProperty(
+            UniquePropertyKeyString: "4A01F180-A5DD-41CE-AD5B-58452F83192B",
+            PrimaryLanguageLabel: "Full-text search",
+            SecondaryLanguageLabel: "Ricerca full-text",
+            MinLength: 0,
+            MaxLength: 4096,
+            MCPDescription = "Generic full-text search terms for this query. " +
+                "Use this property when the user asks for broad keyword search instead of a specific structured filter. " +
+                "ChillSharp splits the text on whitespace, trims empty tokens, ignores duplicate tokens case-insensitively, " +
+                "normalizes each token with ChillFullTextSearchNormalizer, and applies AND matching against " +
+                "IChillEntity.FullTextContent so every token must be present. Empty or whitespace-only values are ignored.")]
         public virtual string FullTextSearch { get; set; } = string.Empty;
 
         /// <summary>

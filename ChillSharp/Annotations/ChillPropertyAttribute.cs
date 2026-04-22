@@ -54,16 +54,54 @@ namespace ChillSharp.Annotations
         /// Automatically filled in by the compiler when not manually provided.
         /// </param>
         /// <param name="CallOnInflate">
-        /// If set ChillSharp call OnInflate() asking to load the collection or the property in general
+        /// When <see langword="true"/>, ChillSharp calls <c>OnInflate()</c> so the application can populate this property manually.
+        /// Use it for calculated, not-mapped, lazily loaded, or collection properties that Entity Framework cannot hydrate directly.
         /// </param>
-        /// <param name="UniquePropertyKey">
-        /// Unique key for the property to store the label for translation purposes
+        /// <param name="IsNullable">
+        /// Optional nullability override for schema generation. Use <see cref="ChillPropertyOptionalBoolean.True"/> or
+        /// <see cref="ChillPropertyOptionalBoolean.False"/> when reflection/nullability attributes are not enough.
         /// </param>
-        /// <param name="PrimaryLanguageLabel">
-        /// Primary language label text (International english)
+        /// <param name="IsReadOnly">
+        /// Optional read-only override for schema generation. Use it to tell clients whether this property should be edited.
         /// </param>
-        /// <param name="SecondaryLanguageLabel">
-        /// Secondary language label text (Software house / Developer language)
+        /// <param name="MinLength">
+        /// Minimum allowed length for string or text values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="MaxLength">
+        /// Maximum allowed length for string or text values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="IntegerMinValue">
+        /// Minimum allowed value for integer-like properties. Use <see cref="long.MinValue"/> to leave it unspecified.
+        /// </param>
+        /// <param name="IntegerMaxValue">
+        /// Maximum allowed value for integer-like properties. Use <see cref="long.MinValue"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalMinValue">
+        /// Minimum allowed value for decimal-like properties. Use <see cref="double.NaN"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalMaxValue">
+        /// Maximum allowed value for decimal-like properties. Use <see cref="double.NaN"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalPlaces">
+        /// Preferred number of decimal places for UI and schema consumers. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="Precision">
+        /// Total precision for decimal-like values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="Scale">
+        /// Decimal scale for decimal-like values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="DateFormat">
+        /// Preferred date, time, or datetime format hint exposed through the schema.
+        /// </param>
+        /// <param name="RegexPattern">
+        /// Regular expression pattern hint for validating or rendering text values.
+        /// </param>
+        /// <param name="CustomFormat">
+        /// Custom semantic format hint for clients, for example <c>json</c>, <c>email</c>, <c>url</c>, or an application-specific value.
+        /// </param>
+        /// <param name="EnumValues">
+        /// Optional ordered list of allowed or suggested string values to expose in schema metadata.
         /// </param>
         public ChillPropertyAttribute(
             [CallerMemberName] string? PropertyName = null, 
@@ -108,21 +146,68 @@ namespace ChillSharp.Annotations
         /// The optional CallerMemberName attribute automatically supplies the name of the member
         /// (e.g., a property or method) to which this attribute is applied, unless explicitly provided.
         /// </summary>
-        /// <param name="UniquePropertyKey">
-        /// Unique key for the property to store the label for translation purposes
+        /// <param name="UniquePropertyKeyString">
+        /// Stable GUID string used as the translation key for this property label.
         /// </param>
         /// <param name="PrimaryLanguageLabel">
-        /// Primary language label text (International english)
+        /// Primary language label text, usually international English.
         /// </param>
         /// <param name="SecondaryLanguageLabel">
-        /// Secondary language label text (Software house / Developer language)
+        /// Secondary language label text, usually the developer or software-house language.
         /// </param>
         /// <param name="PropertyName">
         /// The name of the property this attribute is applied to.
         /// Automatically filled in by the compiler when not manually provided.
         /// </param>
         /// <param name="CallOnInflate">
-        /// If set ChillSharp call OnInflate() asking to load the collection or the property in general
+        /// When <see langword="true"/>, ChillSharp calls <c>OnInflate()</c> so the application can populate this property manually.
+        /// Use it for calculated, not-mapped, lazily loaded, or collection properties that Entity Framework cannot hydrate directly.
+        /// </param>
+        /// <param name="IsNullable">
+        /// Optional nullability override for schema generation. Use <see cref="ChillPropertyOptionalBoolean.True"/> or
+        /// <see cref="ChillPropertyOptionalBoolean.False"/> when reflection/nullability attributes are not enough.
+        /// </param>
+        /// <param name="IsReadOnly">
+        /// Optional read-only override for schema generation. Use it to tell clients whether this property should be edited.
+        /// </param>
+        /// <param name="MinLength">
+        /// Minimum allowed length for string or text values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="MaxLength">
+        /// Maximum allowed length for string or text values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="IntegerMinValue">
+        /// Minimum allowed value for integer-like properties. Use <see cref="long.MinValue"/> to leave it unspecified.
+        /// </param>
+        /// <param name="IntegerMaxValue">
+        /// Maximum allowed value for integer-like properties. Use <see cref="long.MinValue"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalMinValue">
+        /// Minimum allowed value for decimal-like properties. Use <see cref="double.NaN"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalMaxValue">
+        /// Maximum allowed value for decimal-like properties. Use <see cref="double.NaN"/> to leave it unspecified.
+        /// </param>
+        /// <param name="DecimalPlaces">
+        /// Preferred number of decimal places for UI and schema consumers. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="Precision">
+        /// Total precision for decimal-like values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="Scale">
+        /// Decimal scale for decimal-like values. Use <c>-1</c> to leave it unspecified.
+        /// </param>
+        /// <param name="DateFormat">
+        /// Preferred date, time, or datetime format hint exposed through the schema.
+        /// </param>
+        /// <param name="RegexPattern">
+        /// Regular expression pattern hint for validating or rendering text values.
+        /// </param>
+        /// <param name="CustomFormat">
+        /// Custom semantic format hint for clients, for example <c>json</c>, <c>email</c>, <c>url</c>, or an application-specific value.
+        /// </param>
+        /// <param name="EnumValues">
+        /// Optional ordered list of allowed or suggested string values to expose in schema metadata.
         /// </param>
         public ChillPropertyAttribute(
             string UniquePropertyKeyString,

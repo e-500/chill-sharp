@@ -341,6 +341,33 @@ namespace ChillSharp.Tests
             Assert.AreEqual("Schemas+FallbackLookupTarget", arraySchema.ReferenceChillType);
         }
 
+        [TestMethod]
+        public void Step021_ChillQueryFullTextSearchExposesDetailedSchemaHints()
+        {
+            var property = typeof(ChillQuery).GetProperty(nameof(ChillQuery.FullTextSearch));
+
+            Assert.IsNotNull(property);
+
+            var schema = ChillDtoPropertySchema.FromPropertyInfo(property!);
+
+            Assert.AreEqual("Full-text search", schema.DisplayName);
+            Assert.AreEqual(ChillDtoPropertyType.String, schema.PropertyType);
+            Assert.AreEqual("string", schema.SimplePropertyType);
+            Assert.AreEqual(false, schema.IsNullable);
+            Assert.AreEqual(false, schema.IsReadOnly);
+            Assert.AreEqual(0, schema.MinLength);
+            Assert.AreEqual(4096, schema.MaxLength);
+            Assert.AreEqual("full-text-search", schema.CustomFormat);
+            StringAssert.Contains(schema.MCPDescription, "broad keyword search");
+            StringAssert.Contains(schema.MCPDescription, "AND matching");
+            StringAssert.Contains(schema.MCPDescription, "IChillEntity.FullTextContent");
+            Assert.AreEqual("Properties.FullTextSearch", schema.Metadata["payloadPath"]);
+            Assert.AreEqual("full-text-contains", schema.Metadata["matching"]);
+            Assert.AreEqual("AND", schema.Metadata["matchLogic"]);
+            Assert.AreEqual("ChillFullTextSearchNormalizer", schema.Metadata["normalizer"]);
+            Assert.AreEqual("ignored", schema.Metadata["emptyBehavior"]);
+        }
+
 
         [TestMethod]
         public async Task Step014_MenuEndpointsFilterByUserAndRoleHierarchy()
