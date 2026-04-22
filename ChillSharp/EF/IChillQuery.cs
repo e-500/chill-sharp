@@ -52,7 +52,7 @@ namespace ChillSharp.EF
         Guid? Guid { get; set; }
 
         /// <summary>
-        /// Search string to perform aquick full-text search
+        /// Search string used for generic full-text search.
         /// </summary>
         string FullTextSearch { get; set; }
 

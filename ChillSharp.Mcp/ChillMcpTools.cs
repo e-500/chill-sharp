@@ -51,7 +51,7 @@ public sealed class ChillMcpTools
             ChillType = "Query.PostQuery",
             Properties =
             {
-                ["FullTextSearch"] = "search terms",
+                ["FullTextSearch"] = "\"la nazione\"",
                 ["Blog"] = new ChillDtoEntity
                 {
                     ChillType = "Model.Blog",
@@ -123,6 +123,13 @@ public sealed class ChillMcpTools
     private const string AuthenticationAndPermissionsNotice =
         "Authentication with a bearer token is required by the host API. Permissions and other limitations can be applied through the authenticated API-key user, so tool results may be filtered or denied based on that identity.";
 
+    private const string FullTextSearchGuidance =
+        "FullTextSearch is generic full-text search against IChillEntity.FullTextContent. " +
+        "Unquoted text is normalized, split on whitespace, and AND-matched so every token must be present. " +
+        "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
+        "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
+        "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. ";
+
     private const string RequestPayloadGuidance =
         "Do not invent request objects or property names. First inspect the target schema with 'ChillSharp get-schema', then build payloads from that schema only. " +
         "Call the MCP endpoint/tool 'ChillSharp get-dto-examples' to obtain the correct serialized ChillDtoQuery and ChillDtoEntity data structures before building requests. " +
@@ -131,7 +138,8 @@ public sealed class ChillMcpTools
         "ChillDtoEntity payload properties are Guid, Position, ChillType, Label, ShortLabel, and Properties. " +
         "For Properties, use exact schema property names and values matching each property's simplePropertyType: guid, int, decimal, date, time, datetime, duration, bool, string, text, json, chill-entity, chill-entity-collection, or chill-query. " +
         "For query Properties, read each property's mcpDescription to infer search behavior such as equals, contains, range, lookup, or custom matching; when mcpDescription is missing or does not specify matching behavior, assume exact-match equals. " +
-        "Every Chill query also supports a FullTextSearch property for generic full-text search; use Properties.FullTextSearch when the user asks for broad keyword search instead of a specific structured filter. " +
+        "Every Chill query also supports a FullTextSearch property; use Properties.FullTextSearch when the user asks for broad keyword search instead of a specific structured filter. " +
+        FullTextSearchGuidance +
         "For chill-entity values, send a ChillDtoEntity reference with ChillType and Guid. For ResultProperties, send ChillDtoProperty objects with PropertyName and optional SubProperties using property names from the returned entity schema. ";
 
     private readonly ChillMcpSchemaDiscoveryService _schemaDiscoveryService;
@@ -185,7 +193,7 @@ public sealed class ChillMcpTools
     [McpServerTool(Name = "ChillSharp query"), Description(
         "Executes a ChillSharp query for an MCP-enabled query schema and returns the ChillDtoQuery payload populated with results. " +
         "Before calling this tool, inspect the target query schema with 'ChillSharp get-schema' to understand accepted input properties, available result properties, and the returned entity type. " +
-        "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, use Properties.FullTextSearch for generic keyword search, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
+        "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, use Properties.FullTextSearch for generic keyword or quoted phrase search, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoQuery> Query(
@@ -212,7 +220,7 @@ public sealed class ChillMcpTools
 
     [McpServerTool(Name = "ChillSharp lookup"), Description(
         "Executes a generic full-text lookup against an MCP-enabled entity schema and returns a ChillDtoQuery payload populated with matching entities. " +
-        "Use an entity ChillType such as 'Model.Blog', provide the search text in Properties.FullTextSearch, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering. " +
+        "Use an entity ChillType such as 'Model.Blog', provide keyword or quoted phrase search text in Properties.FullTextSearch, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillDtoQuery> Lookup(

@@ -256,7 +256,7 @@ namespace ChillSharp
         /// Executes a generic full-text lookup against the specified Chill entity type.
         /// </summary>
         /// <param name="chillType">The Chill entity type to search.</param>
-        /// <param name="fullTextSearch">The tokenized full-text search string.</param>
+        /// <param name="fullTextSearch">The generic full-text search string. Unquoted tokens use AND matching; quoted phrases are matched with word-boundary rules.</param>
         /// <param name="pagination">Optional pagination settings.</param>
         /// <returns>The matching entities.</returns>
         public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null, ChillOrdering? ordering = null)
@@ -265,17 +265,8 @@ namespace ChillSharp
 
             if (!string.IsNullOrWhiteSpace(fullTextSearch))
             {
-                var tokens = fullTextSearch
-                    .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Where(x => !string.IsNullOrWhiteSpace(x))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-
-                foreach (var token in tokens)
-                {
-                    var currentToken = ChillFullTextSearchNormalizer.Normalize(token);
-                    query = query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(currentToken));
-                }
+                foreach (var term in ChillFullTextSearchNormalizer.NormalizeSearchTerms(fullTextSearch))
+                    query = ChillFullTextSearchNormalizer.ApplySearchTerm(query, term);
             }
 
             var entityType = ActivateDetachedChillEntity(chillType).GetType();

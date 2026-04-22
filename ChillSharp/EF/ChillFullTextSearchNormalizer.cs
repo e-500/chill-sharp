@@ -27,6 +27,8 @@ namespace ChillSharp.EF;
 /// </summary>
 public static class ChillFullTextSearchNormalizer
 {
+    private static readonly char[] TokenSeparators = [' ', '\t', '\r', '\n', '*', '%'];
+
     /// <summary>
     /// Converts text to the normalized form stored and queried by generic full-text search.
     /// </summary>
@@ -50,6 +52,118 @@ public static class ChillFullTextSearchNormalizer
         }
 
         return builder.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Returns normalized full-text search terms. Text enclosed by matching single or double quotes is searched as one phrase.
+    /// </summary>
+    public static ChillFullTextSearchTerm[] NormalizeSearchTerms(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return [];
+
+        var trimmed = value.Trim();
+        if (IsQuotedPhrase(trimmed))
+            return NormalizeQuotedPhrase(trimmed[1..^1]);
+
+        return NormalizeTokenTerms(trimmed);
+    }
+
+    /// <summary>
+    /// Applies a normalized full-text search term to a query.
+    /// </summary>
+    public static IQueryable<IChillEntity> ApplySearchTerm(IQueryable<IChillEntity> query, ChillFullTextSearchTerm term)
+    {
+        var value = term.Value;
+        if (!term.MatchStartBoundary && !term.MatchEndBoundary)
+            return query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(value));
+
+        if (term.MatchStartBoundary && term.MatchEndBoundary)
+        {
+            var startValue = value + " ";
+            var middleValue = " " + value + " ";
+            var endValue = " " + value;
+            return query.Where(x => !string.IsNullOrEmpty(x.FullTextContent)
+                && (x.FullTextContent == value
+                    || x.FullTextContent.StartsWith(startValue)
+                    || x.FullTextContent.Contains(middleValue)
+                    || x.FullTextContent.EndsWith(endValue)));
+        }
+
+        if (term.MatchStartBoundary)
+        {
+            var startValue = value;
+            var middleValue = " " + value;
+            return query.Where(x => !string.IsNullOrEmpty(x.FullTextContent)
+                && (x.FullTextContent.StartsWith(startValue)
+                    || x.FullTextContent.Contains(middleValue)));
+        }
+
+        var endTermValue = value;
+        var beforeEndValue = value + " ";
+        return query.Where(x => !string.IsNullOrEmpty(x.FullTextContent)
+            && (x.FullTextContent.EndsWith(endTermValue)
+                || x.FullTextContent.Contains(beforeEndValue)));
+    }
+
+    private static ChillFullTextSearchTerm[] NormalizeQuotedPhrase(string value)
+    {
+        var phrase = value.Trim();
+        if (string.IsNullOrWhiteSpace(phrase))
+            return [];
+
+        if (ContainsMiddleWildcard(phrase))
+            return NormalizeTokenTerms(phrase);
+
+        var matchStartBoundary = !IsWildcard(phrase[0]);
+        var matchEndBoundary = !IsWildcard(phrase[^1]);
+        var startIndex = matchStartBoundary ? 0 : 1;
+        var endIndex = matchEndBoundary ? phrase.Length : phrase.Length - 1;
+
+        if (endIndex < startIndex)
+            return [];
+
+        var normalized = Normalize(phrase[startIndex..endIndex].Trim());
+        return string.IsNullOrWhiteSpace(normalized)
+            ? []
+            : [new ChillFullTextSearchTerm(normalized, matchStartBoundary, matchEndBoundary)];
+    }
+
+    private static ChillFullTextSearchTerm[] NormalizeTokenTerms(string value)
+    {
+        return value
+            .Split(TokenSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(Normalize)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(x => new ChillFullTextSearchTerm(x, false, false))
+            .ToArray();
+    }
+
+    private static bool IsQuotedPhrase(string value)
+    {
+        if (value.Length < 2)
+            return false;
+
+        return (value[0] == '"' && value[^1] == '"')
+            || (value[0] == '\'' && value[^1] == '\'');
+    }
+
+    private static bool ContainsMiddleWildcard(string value)
+    {
+        for (var index = 0; index < value.Length; index++)
+        {
+            if (IsWildcard(value[index]) && index != 0 && index != value.Length - 1)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsWildcard(char value)
+    {
+        return value is '*' or '%';
     }
 
     private static void AppendFoldedCharacter(StringBuilder builder, char character)
@@ -93,3 +207,8 @@ public static class ChillFullTextSearchNormalizer
         }
     }
 }
+
+public readonly record struct ChillFullTextSearchTerm(
+    string Value,
+    bool MatchStartBoundary,
+    bool MatchEndBoundary);

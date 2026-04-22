@@ -63,9 +63,11 @@ namespace ChillSharp.EF
             MaxLength: 4096,
             MCPDescription = "Generic full-text search terms for this query. " +
                 "Use this property when the user asks for broad keyword search instead of a specific structured filter. " +
-                "ChillSharp splits the text on whitespace, trims empty tokens, ignores duplicate tokens case-insensitively, " +
-                "normalizes each token with ChillFullTextSearchNormalizer, and applies AND matching against " +
-                "IChillEntity.FullTextContent so every token must be present. Empty or whitespace-only values are ignored.")]
+                "Unquoted text is normalized, split on whitespace, trimmed, de-duplicated case-insensitively, and AND-matched against IChillEntity.FullTextContent so every token must be present. " +
+                "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
+                "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
+                "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. " +
+                "All search terms are normalized with ChillFullTextSearchNormalizer. Empty or whitespace-only values are ignored.")]
         public virtual string FullTextSearch { get; set; } = string.Empty;
 
         /// <summary>
@@ -103,8 +105,8 @@ namespace ChillSharp.EF
         }
 
         /// <summary>
-        /// Applies tokenized full-text filtering against <see cref="IChillEntity.FullTextContent"/>.
-        /// Each token must be present for the entity to match.
+        /// Applies generic full-text filtering against <see cref="IChillEntity.FullTextContent"/>.
+        /// Unquoted tokens use AND matching; quoted phrases are matched with word-boundary rules.
         /// </summary>
         /// <param name="Context">The active Chill database context.</param>
         /// <param name="Query">The query to filter.</param>
@@ -114,17 +116,8 @@ namespace ChillSharp.EF
             if (string.IsNullOrWhiteSpace(FullTextSearch))
                 return Query;
 
-            var tokens = FullTextSearch
-                .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-
-            foreach (var token in tokens)
-            {
-                var currentToken = ChillFullTextSearchNormalizer.Normalize(token);
-                Query = Query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(currentToken));
-            }
+            foreach (var term in ChillFullTextSearchNormalizer.NormalizeSearchTerms(FullTextSearch))
+                Query = ChillFullTextSearchNormalizer.ApplySearchTerm(Query, term);
 
             return Query;
         }
