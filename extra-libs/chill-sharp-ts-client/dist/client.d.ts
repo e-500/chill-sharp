@@ -381,7 +381,7 @@ export declare class ChillSharpClient {
     downloadAttachment(attachmentOrGuid: JsonObject | string): Promise<Blob>;
     version(): string;
     test(): Promise<string>;
-    getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null>;
+    getSchema(chillType: string, chillViewCode: string, cultureName?: string, update?: boolean): Promise<ChillDtoSchema | null>;
     getSchemaList(cultureName?: string): Promise<ChillDtoSchemaListItem[]>;
     setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null>;
     getEntityOptions(chillType: string): Promise<ChillDtoEntityOptions>;

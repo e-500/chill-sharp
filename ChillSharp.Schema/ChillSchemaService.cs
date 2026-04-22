@@ -64,11 +64,11 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
     }
 
     /// <inheritdoc />
-    public async Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
+    public async Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default, bool update = false)
     {
         var effectiveCultureName = NormalizeCultureName(cultureName);
 
-        if (_schemaCache.TryGet(chillType, chillViewCode, effectiveCultureName, out ChillDtoSchema? cachedSchema))
+        if (!update && _schemaCache.TryGet(chillType, chillViewCode, effectiveCultureName, out ChillDtoSchema? cachedSchema))
         {
             return cachedSchema;
         }
@@ -85,7 +85,21 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         {
             schema = JsonSerializer.Deserialize<ChillDtoSchema>(row.Json, CreateSerializerOptions());
         }
-        else
+
+        if (update)
+        {
+            try
+            {
+                var runtimeSchema = BuildSchema(chillType, chillViewCode, effectiveCultureName);
+                schema = MergeSchemaProperties(schema, runtimeSchema);
+                schema = await SaveSchemaAsync(schema, cancellationToken);
+            }
+            catch
+            {
+                schema = null;
+            }
+        }
+        else if (row == null)
         {
             try
             {
@@ -112,6 +126,13 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         if (schema == null)
             throw new ArgumentNullException(nameof(schema));
 
+        await SaveSchemaAsync(schema, cancellationToken);
+        await ApplyEntityOptionsToSchemaAsync(schema, cancellationToken);
+        return _schemaCache.SetSchema(schema, NormalizeCultureName(null));
+    }
+
+    private async Task<ChillDtoSchema> SaveSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken)
+    {
         var chillType = NormalizeKey(schema.ChillType);
         var chillViewCode = NormalizeKey(schema.ChillViewCode);
 
@@ -135,8 +156,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         await _schemaContext.SaveChangesAsync(cancellationToken);
         _schemaCache.InvalidateAll();
         ChillEntityOptionsRuntimeCache.InvalidateAll();
-        await ApplyEntityOptionsToSchemaAsync(schema, cancellationToken);
-        return _schemaCache.SetSchema(schema, NormalizeCultureName(null));
+        return schema;
     }
 
     /// <inheritdoc />
@@ -156,18 +176,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
             return _schemaCache.SetEntityOptions(CreateDefaultEntityOptions(normalizedType));
         }
 
-        return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
-        {
-            ChillType = row.ChillType,
-            ChecksumEnabled = row.ChecksumEnabled,
-            HandleAttachments = row.HandleAttachments,
-            LabelFormatString = row.LabelFormatString,
-            ShortLabelFormatString = row.ShortLabelFormatString,
-            FullTextContentFormatString = row.FullTextContentFormatString,
-            EnableMCP = row.EnableMCP,
-            MCPDescription = row.MCPDescription,
-            ChangeLogEnabled = row.ChangeLogEnabled
-        });
+        return _schemaCache.SetEntityOptions(MapEntityOptions(row));
     }
 
     /// <inheritdoc />
@@ -348,6 +357,27 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
         throw new ChillException($"The runtime schema builder returned '{schema.GetType().FullName}' instead of {nameof(ChillDtoSchema)} for '{fullChillType}'.");
     }
 
+    private static ChillDtoSchema MergeSchemaProperties(ChillDtoSchema? persistedSchema, ChillDtoSchema runtimeSchema)
+    {
+        if (persistedSchema == null)
+        {
+            return runtimeSchema;
+        }
+
+        var persistedPropertiesByName = persistedSchema.Properties
+            .Where(x => !string.IsNullOrWhiteSpace(x.Name))
+            .GroupBy(x => x.Name, StringComparer.Ordinal)
+            .ToDictionary(x => x.Key, x => x.First(), StringComparer.Ordinal);
+
+        persistedSchema.Properties = runtimeSchema.Properties
+            .Select(runtimeProperty => persistedPropertiesByName.TryGetValue(runtimeProperty.Name, out var persistedProperty)
+                ? persistedProperty
+                : runtimeProperty)
+            .ToList();
+
+        return persistedSchema;
+    }
+
     private string PrepareFullChillType(string chillType)
     {
         return ChillTypeResolver.PrepareFullChillType(chillType, _runtimeContext.ChillTypePrefix);
@@ -468,10 +498,36 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
             return;
         }
 
-        var entityOptions = await GetEntityOptionsAsync(schema.ChillType, cancellationToken);
+        var normalizedType = NormalizeKey(schema.ChillType);
+        var entityOptionsRow = await _schemaContext.EntityOptionsEntries
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ChillType == normalizedType, cancellationToken);
+
+        if (entityOptionsRow == null)
+        {
+            return;
+        }
+
+        var entityOptions = MapEntityOptions(entityOptionsRow);
         schema.HandleAttachments = entityOptions.HandleAttachments;
         schema.EnableMCP = schema.EnableMCP || entityOptions.EnableMCP;
         schema.MCPDescription = entityOptions.MCPDescription ?? schema.MCPDescription;
+    }
+
+    private static ChillDtoEntityOptions MapEntityOptions(ChillEntityOptionsEntry row)
+    {
+        return new ChillDtoEntityOptions
+        {
+            ChillType = row.ChillType,
+            ChecksumEnabled = row.ChecksumEnabled,
+            HandleAttachments = row.HandleAttachments,
+            LabelFormatString = row.LabelFormatString,
+            ShortLabelFormatString = row.ShortLabelFormatString,
+            FullTextContentFormatString = row.FullTextContentFormatString,
+            EnableMCP = row.EnableMCP,
+            MCPDescription = row.MCPDescription,
+            ChangeLogEnabled = row.ChangeLogEnabled
+        };
     }
 
     private static JsonSerializerOptions CreateSerializerOptions()

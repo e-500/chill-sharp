@@ -291,6 +291,11 @@ handle_attachments = schema.get("HandleAttachments") or schema.get("handleAttach
 
 # Override the constructor default for one call
 english_schema = client.get_schema("Model.Post", "default", culture_name="en-GB")
+
+# Refresh a persisted schema from the current runtime model for one call.
+# Existing properties keep their saved metadata, new model properties are added,
+# and properties no longer present on the model are removed.
+refreshed_schema = client.get_schema("Model.Post", "default", update=True)
 ```
 
 ### Get schema list

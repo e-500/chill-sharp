@@ -134,8 +134,8 @@ export class ChillSharpNgClient {
     return from(this.client.test());
   }
 
-  getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<ChillDtoSchema | null> {
-    return from(this.client.getSchema(chillType, chillViewCode, cultureName));
+  getSchema(chillType: string, chillViewCode: string, cultureName?: string, update = false): Observable<ChillDtoSchema | null> {
+    return from(this.client.getSchema(chillType, chillViewCode, cultureName, update));
   }
 
   getSchemaList(cultureName?: string): Observable<ChillDtoSchemaListItem[]> {

@@ -59,15 +59,25 @@ namespace ChillSharp.EF
             UniquePropertyKeyString: "4A01F180-A5DD-41CE-AD5B-58452F83192B",
             PrimaryLanguageLabel: "Full-text search",
             SecondaryLanguageLabel: "Ricerca full-text",
+            IsReadOnly: ChillPropertyOptionalBoolean.False,
             MinLength: 0,
             MaxLength: 4096,
+            CustomFormat: "full-text-search",
             MCPDescription = "Generic full-text search terms for this query. " +
                 "Use this property when the user asks for broad keyword search instead of a specific structured filter. " +
-                "Unquoted text is normalized, split on whitespace, trimmed, de-duplicated case-insensitively, and AND-matched against IChillEntity.FullTextContent so every token must be present. " +
+                "Unquoted text uses AND matching: it is normalized, split on whitespace, trimmed, de-duplicated case-insensitively, and matched against IChillEntity.FullTextContent so every token must be present. " +
                 "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
                 "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
                 "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. " +
-                "All search terms are normalized with ChillFullTextSearchNormalizer. Empty or whitespace-only values are ignored.")]
+                "All search terms are normalized with ChillFullTextSearchNormalizer. Empty or whitespace-only values are ignored.",
+            MetadataEntries =
+            [
+                "payloadPath=Properties.FullTextSearch",
+                "matching=full-text-contains",
+                "matchLogic=AND",
+                "normalizer=ChillFullTextSearchNormalizer",
+                "emptyBehavior=ignored"
+            ])]
         public virtual string FullTextSearch { get; set; } = string.Empty;
 
         /// <summary>

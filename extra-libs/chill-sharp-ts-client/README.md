@@ -373,6 +373,11 @@ console.log(schema.handleAttachments);
 
 // Override the constructor default for one call
 const englishSchema = await client.getSchema("Model.Post", "default", "en-GB");
+
+// Refresh a persisted schema from the current runtime model for one call.
+// Existing properties keep their saved metadata, new model properties are added,
+// and properties no longer present on the model are removed.
+const refreshedSchema = await client.getSchema("Model.Post", "default", undefined, true);
 ```
 
 ### Get schema list

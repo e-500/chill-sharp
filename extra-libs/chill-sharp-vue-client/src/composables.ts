@@ -52,7 +52,8 @@ export interface UseChillSubscriptionState {
 export function useSchema(
   chillType: Ref<string> | string,
   chillViewCode: Ref<string> | string = "default",
-  cultureName?: Ref<string | undefined> | string
+  cultureName?: Ref<string | undefined> | string,
+  update: Ref<boolean | undefined> | boolean = false
 ): UseChillAsyncState<JsonObject> {
   const client = useChillSharpClient();
   const data = ref<JsonObject | null>(null);
@@ -67,7 +68,8 @@ export function useSchema(
       const response = await client.getSchema(
         readRef(chillType),
         readRef(chillViewCode),
-        cultureName === undefined ? undefined : readRef(cultureName)
+        cultureName === undefined ? undefined : readRef(cultureName),
+        readRef(update) ?? false
       );
       data.value = response;
       return response;

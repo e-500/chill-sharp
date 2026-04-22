@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
-export function useSchema(chillType, chillViewCode = "default", cultureName) {
+export function useSchema(chillType, chillViewCode = "default", cultureName, update = false) {
     const client = useChillSharpClient();
     const [data, setData] = useState(null);
     const [error, setError] = useState(null);
@@ -28,7 +28,7 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await client.getSchema(chillType, chillViewCode, cultureName);
+            const response = await client.getSchema(chillType, chillViewCode, cultureName, update);
             setData(response);
             return response;
         }
@@ -42,7 +42,7 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
     };
     useEffect(() => {
         void load();
-    }, [client, chillType, chillViewCode, cultureName]);
+    }, [client, chillType, chillViewCode, cultureName, update]);
     return {
         data,
         error,

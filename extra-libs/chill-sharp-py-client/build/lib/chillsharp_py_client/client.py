@@ -137,7 +137,7 @@ class ChillSharpClient:
         """Call the Chill test endpoint and return the raw response text."""
         return self._send_text("GET", self._build_chill_url("test"), allow_anonymous=True)
 
-    def get_schema(self, chill_type: str, chill_view_code: str, culture_name: str | None = None) -> JsonDict | None:
+    def get_schema(self, chill_type: str, chill_view_code: str, culture_name: str | None = None, update: bool = False) -> JsonDict | None:
         """Retrieve schema metadata for a type and view."""
         encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
         encoded_view = quote(self._normalize_required_value(chill_view_code, "chill_view_code"))
@@ -145,6 +145,8 @@ class ChillSharpClient:
         url = self._build_schema_url(f"get-schema?chillType={encoded_type}&chillViewCode={encoded_view}")
         if effective_culture_name:
             url += f"&cultureName={quote(effective_culture_name)}"
+        if update:
+            url += "&update=true"
         return self._send_json("GET", url)
 
     def set_schema(self, schema: JsonDict) -> JsonDict:

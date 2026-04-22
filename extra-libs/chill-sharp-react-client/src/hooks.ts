@@ -54,7 +54,8 @@ export interface UseChillSubscriptionState {
 export function useSchema(
   chillType: string,
   chillViewCode = "default",
-  cultureName?: string
+  cultureName?: string,
+  update = false
 ): UseChillAsyncState<ChillDtoSchema> {
   const client = useChillSharpClient();
   const [data, setData] = useState<ChillDtoSchema | null>(null);
@@ -66,7 +67,7 @@ export function useSchema(
     setError(null);
 
     try {
-      const response = await client.getSchema(chillType, chillViewCode, cultureName);
+      const response = await client.getSchema(chillType, chillViewCode, cultureName, update);
       setData(response);
       return response;
     } catch (err) {
@@ -79,7 +80,7 @@ export function useSchema(
 
   useEffect(() => {
     void load();
-  }, [client, chillType, chillViewCode, cultureName]);
+  }, [client, chillType, chillViewCode, cultureName, update]);
 
   return {
     data,

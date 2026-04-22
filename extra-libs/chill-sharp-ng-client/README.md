@@ -257,7 +257,10 @@ readonly status$ = this.chill.test();
 ```ts
 readonly schema$ = this.chill.getSchema("Model.Post", "default");
 readonly englishSchema$ = this.chill.getSchema("Model.Post", "default", "en-GB");
+readonly refreshedSchema$ = this.chill.getSchema("Model.Post", "default", undefined, true);
 ```
+
+Pass `update: true` as the fourth argument when you want the server to refresh a persisted schema from the current runtime model. Existing properties keep their saved metadata, new model properties are added, and removed model properties are dropped from the persisted schema.
 
 ### Get schema list
 

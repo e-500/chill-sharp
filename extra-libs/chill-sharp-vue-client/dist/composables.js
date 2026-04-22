@@ -19,7 +19,7 @@
 import { onScopeDispose, ref, watch, watchEffect } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
-export function useSchema(chillType, chillViewCode = "default", cultureName) {
+export function useSchema(chillType, chillViewCode = "default", cultureName, update = false) {
     const client = useChillSharpClient();
     const data = ref(null);
     const error = ref(null);
@@ -28,7 +28,7 @@ export function useSchema(chillType, chillViewCode = "default", cultureName) {
         isLoading.value = true;
         error.value = null;
         try {
-            const response = await client.getSchema(readRef(chillType), readRef(chillViewCode), cultureName === undefined ? undefined : readRef(cultureName));
+            const response = await client.getSchema(readRef(chillType), readRef(chillViewCode), cultureName === undefined ? undefined : readRef(cultureName), readRef(update) ?? false);
             data.value = response;
             return response;
         }

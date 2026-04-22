@@ -16,7 +16,7 @@ export interface UseChillSubscriptionState {
     error: unknown;
     isSubscribed: boolean;
 }
-export declare function useSchema(chillType: string, chillViewCode?: string, cultureName?: string): UseChillAsyncState<ChillDtoSchema>;
+export declare function useSchema(chillType: string, chillViewCode?: string, cultureName?: string, update?: boolean): UseChillAsyncState<ChillDtoSchema>;
 export declare function useSchemaList(cultureName?: string): UseChillAsyncState<ChillDtoSchemaListItem[]>;
 export declare function useText(request: GetTextRequest): UseChillAsyncState<GetTextResponse>;
 export declare function useTexts(requests: GetTextRequest[]): UseChillAsyncState<Array<GetTextResponse | null>>;

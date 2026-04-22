@@ -259,6 +259,59 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public async Task Step007_GetSchemaUpdateRefreshesPersistedPropertiesFromRuntimeModel()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-update-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                new ChillSharp.Schema.ChillSchemaCache());
+
+            await schemaService.SetSchemaAsync(new ChillDtoSchema
+            {
+                ChillType = "Model.Post",
+                ChillViewCode = "default",
+                DisplayName = "Persisted post",
+                Properties =
+                [
+                    new ChillDtoPropertySchema
+                    {
+                        Name = nameof(Post.Title),
+                        DisplayName = "Custom title"
+                    },
+                    new ChillDtoPropertySchema
+                    {
+                        Name = "RemovedProperty",
+                        DisplayName = "Removed property"
+                    }
+                ]
+            });
+
+            var staleSchema = await schemaService.GetSchemaAsync("Model.Post", "default");
+            Assert.IsNotNull(staleSchema);
+            Assert.IsTrue(staleSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+            Assert.IsFalse(staleSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+
+            var refreshedSchema = await schemaService.GetSchemaAsync("Model.Post", "default", update: true);
+            Assert.IsNotNull(refreshedSchema);
+            Assert.IsTrue(refreshedSchema.Properties.Any(x => x.Name == nameof(Post.Blog)));
+            Assert.IsTrue(refreshedSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+            Assert.AreEqual("Custom title", refreshedSchema.Properties.Single(x => x.Name == nameof(Post.Title)).DisplayName);
+            Assert.IsFalse(refreshedSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+
+            var persistedSchema = await schemaService.GetSchemaAsync("Model.Post", "default");
+            Assert.IsNotNull(persistedSchema);
+            Assert.IsFalse(persistedSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+            Assert.IsTrue(persistedSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+        }
+
+        [TestMethod]
         public async Task Step008_SchemaManagementEndpointsRequireCanManageSchemaPermission()
         {
             var result = await ExecuteSchemaAccessFilterAsync(false);
@@ -961,8 +1014,8 @@ namespace ChillSharp.Tests
         {
             private readonly List<ChillDtoMenuItem> _menuItems = [];
 
-            public Task<IChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
-                => Task.FromResult<IChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
+            public Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default, bool update = false)
+                => Task.FromResult<ChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
 
             public Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default)
                 => Task.FromResult(schema);
@@ -1001,9 +1054,9 @@ namespace ChillSharp.Tests
                 return Task.CompletedTask;
             }
 
-            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken)
+            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken, bool update)
             {
-                throw new NotImplementedException();
+                return GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken, update);
             }
         }
         private sealed class StubDtoEngine : IChillDtoEngine

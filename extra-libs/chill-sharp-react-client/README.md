@@ -147,6 +147,14 @@ You can override the provider culture for one call:
 const englishSchema = useSchema("Model.Post", "default", "en-GB");
 ```
 
+Pass `update: true` as the fourth argument when you want the server to refresh a persisted schema from the current runtime model:
+
+```tsx
+const refreshedSchema = useSchema("Model.Post", "default", undefined, true);
+```
+
+Existing properties keep their saved metadata, new model properties are added, and removed model properties are dropped from the persisted schema.
+
 The schema and entity-option payloads re-exported by this package include `handleAttachments`. Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
 
 ### `useSchemaList()`
