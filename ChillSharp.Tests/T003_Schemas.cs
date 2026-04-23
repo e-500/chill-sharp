@@ -413,6 +413,26 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public void Step022_EntitySchemaExposesRelationMetadataForAnnotatedCollections()
+        {
+            var context = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB");
+
+            var schema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", context.GetChillTypePrefix(), context);
+
+            Assert.HasCount(1, schema.Relations);
+            Assert.AreEqual(nameof(Blog.Posts), schema.Properties.Single(x => x.Name == nameof(Blog.Posts)).DisplayName);
+
+            var relation = schema.Relations.Single();
+            Assert.AreEqual("Model.Post", relation.ChillType);
+            Assert.AreEqual("Query.PostQuery", relation.ChillQuery);
+            Assert.AreEqual("@{mock}", relation.FixedValues[nameof(Post.Blog)]);
+            Assert.AreEqual("@{mock}", relation.FixedQueryValues[nameof(Post.Blog)]);
+            Assert.AreEqual(Guid.Parse("9501DEFE-7504-45E4-884B-D2BAB3BE9701"), relation.RelationLabel.LabelGuid);
+            Assert.AreEqual("Blog posts", relation.RelationLabel.PrimaryDefaultText);
+            Assert.AreEqual("Post del blog", relation.RelationLabel.SecondaryDefaultText);
+        }
+
+        [TestMethod]
         public void Step021_ChillQueryFullTextSearchExposesDetailedSchemaHints()
         {
             var property = typeof(ChillQuery).GetProperty(nameof(ChillQuery.FullTextSearch));

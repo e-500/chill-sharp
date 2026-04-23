@@ -51,6 +51,8 @@ export type {
   ChillDtoPropertySchema,
   ChillDtoQuery,
   ChillDtoSchema,
+  ChillDtoSchemaRelation,
+  ChillDtoSchemaRelationLabel,
   ChillDtoSchemaListItem,
   ChillAttachmentUploadFile,
   ChillAttachmentUploadOptions,

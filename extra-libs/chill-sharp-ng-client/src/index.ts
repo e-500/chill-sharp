@@ -38,6 +38,8 @@ export type {
   ChillDtoPropertySchema,
   ChillDtoQuery,
   ChillDtoSchema,
+  ChillDtoSchemaRelation,
+  ChillDtoSchemaRelationLabel,
   ChillDtoSchemaListItem,
   ChillEntityChangeAction,
   ChillEntityChangeCallback,

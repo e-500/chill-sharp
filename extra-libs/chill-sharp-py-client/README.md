@@ -288,6 +288,7 @@ Use this pattern only for the operations that must share the same database trans
 ```python
 schema = client.get_schema("Model.Post", "default")
 handle_attachments = schema.get("HandleAttachments") or schema.get("handleAttachments")
+relations = schema.get("Relations") or schema.get("relations") or []
 
 # Override the constructor default for one call
 english_schema = client.get_schema("Model.Post", "default", culture_name="en-GB")
@@ -297,6 +298,8 @@ english_schema = client.get_schema("Model.Post", "default", culture_name="en-GB"
 # and properties no longer present on the model are removed.
 refreshed_schema = client.get_schema("Model.Post", "default", update=True)
 ```
+
+Entity schemas can also include `Relations` / `relations`, derived from annotated collection properties. Each item contains the child `ChillType`, the resolved `ChillQuery`, `FixedValues`, `FixedQueryValues`, and a `RelationLabel` object for UI wiring.
 
 ### Get schema list
 
@@ -346,7 +349,7 @@ options = client.set_entity_options({
 })
 ```
 
-The Python client uses plain dictionaries for schema payloads, so `HandleAttachments`, `EnableMCP`, and `MCPDescription` are available without any client-side model regeneration.
+The Python client uses plain dictionaries for schema payloads, so `HandleAttachments`, `EnableMCP`, `MCPDescription`, and relation metadata are available without any client-side model regeneration.
 
 ## I18n Operations
 

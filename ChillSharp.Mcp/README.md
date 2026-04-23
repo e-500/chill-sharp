@@ -73,7 +73,7 @@ Use this tool first to discover the available database structure entry points, t
 
 Returns the full schema for one MCP-enabled ChillSharp entity or query type.
 
-Use this tool to understand the structure of the database and the available query surface. Schemas contain descriptions of queries and entities, their own properties, reference types, and returned types. Query schemas also describe the related entity type returned by the query.
+Use this tool to understand the structure of the database and the available query surface. Schemas contain descriptions of queries and entities, their own properties, reference types, returned types, and for entity schemas relation metadata inferred from annotated collection properties. Query schemas also describe the related entity type returned by the query.
 
 Each property includes both:
 
@@ -81,6 +81,13 @@ Each property includes both:
 - `simplePropertyType`: an agent-friendly string such as `int`, `decimal`, `string`, `json`, `chill-entity`, or `chill-entity-collection`
 
 Agents should use `simplePropertyType` when constructing request payloads.
+
+Entity schemas can also expose `relations`, where each item contains:
+
+- `chillType` for the child or relation entity
+- `chillQuery` for the resolved child query type when available
+- `fixedValues` and `fixedQueryValues` with the `@{mock}` parent placeholder keyed by the child FK/reference property name
+- `relationLabel` with `labelGuid`, `primaryDefaultText`, and `secondaryDefaultText`
 
 ### `ChillSharp query`
 

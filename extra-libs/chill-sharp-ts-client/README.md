@@ -370,6 +370,7 @@ The notification callback receives arrays shaped like:
 ```ts
 const schema = await client.getSchema("Model.Post", "default");
 console.log(schema.handleAttachments);
+console.log(schema.relations);
 
 // Override the constructor default for one call
 const englishSchema = await client.getSchema("Model.Post", "default", "en-GB");
@@ -379,6 +380,13 @@ const englishSchema = await client.getSchema("Model.Post", "default", "en-GB");
 // and properties no longer present on the model are removed.
 const refreshedSchema = await client.getSchema("Model.Post", "default", undefined, true);
 ```
+
+Entity schemas now also expose `relations`, derived from annotated collection properties. Each relation entry includes:
+
+- `chillType` for the child or relation entity
+- `chillQuery` for the resolved query type when available
+- `fixedValues` and `fixedQueryValues` containing the `@{mock}` parent placeholder keyed by the child FK/reference property name
+- `relationLabel` with `labelGuid`, `primaryDefaultText`, and `secondaryDefaultText`
 
 ### Get schema list
 

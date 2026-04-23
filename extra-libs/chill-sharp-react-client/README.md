@@ -139,6 +139,7 @@ function PostCount() {
 ```tsx
 const { data, isLoading, error, reload } = useSchema("Model.Post", "default");
 const handleAttachments = data?.handleAttachments;
+const relations = data?.relations ?? [];
 ```
 
 You can override the provider culture for one call:
@@ -155,7 +156,7 @@ const refreshedSchema = useSchema("Model.Post", "default", undefined, true);
 
 Existing properties keep their saved metadata, new model properties are added, and removed model properties are dropped from the persisted schema.
 
-The schema and entity-option payloads re-exported by this package include `handleAttachments`. Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
+The schema and entity-option payloads re-exported by this package include `handleAttachments` and schema-level `relations`. Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
 
 ### `useSchemaList()`
 

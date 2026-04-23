@@ -49,6 +49,7 @@ This is the most important introspection tool. It includes:
 
 - schema metadata
 - query related type information
+- relation metadata inferred from collections annotated with `ChillRelationAttribute`
 - schema-level `MCPDescription`
 - all schema properties
 - property-level `MCPDescription` for each property
@@ -64,6 +65,16 @@ In practice, this is how an AI learns:
 - which value shape each request property requires
 
 Agents should not invent request objects. Use `get-schema` as the contract, copy exact property names from the schema, and send values that match each property's `simplePropertyType`.
+
+For entity schemas, `Relations` describes child relation collections that the UI can wire automatically at runtime. Each relation entry includes:
+
+- `ChillType`, the child or relation-entity type exposed by the collection
+- `ChillQuery`, the query type to use for filtered child lookup when one can be resolved
+- `FixedValues`, default values to inject when creating a child entity
+- `FixedQueryValues`, default query filters to apply when browsing existing related entities
+- `RelationLabel`, the label GUID and default texts derived from the collection's `ChillRelationAttribute`
+
+When a relation can be tied back to the current parent through an annotated child reference, ChillSharp emits the magic value `@{mock}` inside `FixedValues` and `FixedQueryValues`. UI clients replace that token with the current parent entity for the matching FK/reference property name.
 
 Common `simplePropertyType` values are:
 

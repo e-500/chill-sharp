@@ -14,4 +14,5 @@ public interface IChillDtoSchema
     IReadOnlyDictionary<string, string> Metadata { get; }
     string? QueryRelatedChillType { get; }
     IReadOnlyList<IChillDtoPropertySchema> Properties { get; }
+    IReadOnlyList<IChillDtoSchemaRelation> Relations { get; }
 }

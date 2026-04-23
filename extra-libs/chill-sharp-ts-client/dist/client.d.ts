@@ -45,6 +45,18 @@ export interface ChillDtoPropertySchema extends JsonObject {
     mcpDescription: string;
     metadata: Record<string, string>;
 }
+export interface ChillDtoSchemaRelationLabel extends JsonObject {
+    labelGuid: string | null;
+    primaryDefaultText: string;
+    secondaryDefaultText: string;
+}
+export interface ChillDtoSchemaRelation extends JsonObject {
+    chillType: string;
+    chillQuery: string;
+    fixedValues: Record<string, string>;
+    fixedQueryValues: Record<string, string>;
+    relationLabel: ChillDtoSchemaRelationLabel;
+}
 export interface ChillDtoSchema extends JsonObject {
     chillType: string;
     chillViewCode: string;
@@ -55,6 +67,7 @@ export interface ChillDtoSchema extends JsonObject {
     metadata: Record<string, string>;
     queryRelatedChillType: string | null;
     properties: ChillDtoPropertySchema[];
+    relations: ChillDtoSchemaRelation[];
 }
 export interface ChillDtoSchemaListItem extends JsonObject {
     name: string;

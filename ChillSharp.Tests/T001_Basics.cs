@@ -1265,7 +1265,7 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 10, 30, 15, DateTimeKind.Utc), target.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtOffset.Kind);
-                Assert.AreEqual(DateTimeOffset.Parse("2024-01-10T12:30:15.000+02:00", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), target.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), target.RecordedAtOffset);
                 Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
                 Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
 
@@ -1293,7 +1293,27 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtOffset.Kind);
-                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(1)), targetWithoutOffsets.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 11, 30, 15, TimeSpan.Zero), targetWithoutOffsets.RecordedAtOffset);
+
+                var targetWithDateTimeOffsetValue = new TemporalMappingEntity();
+                var sourceValuesWithDateTimeOffsetValue = new Dictionary<string, object?>
+                {
+                    ["RecordedAtOffset"] = new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2))
+                };
+
+                applyPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    targetWithDateTimeOffsetValue,
+                    "Tests.TemporalMappingEntity",
+                    sourceValuesWithDateTimeOffsetValue,
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    "TemporalMappingEntity",
+                    false,
+                    null
+                ]);
+
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), targetWithDateTimeOffsetValue.RecordedAtOffset);
             }
             finally
             {

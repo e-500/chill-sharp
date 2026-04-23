@@ -148,7 +148,7 @@ providers: [
 - auth helpers like `loginAuthAccount()` and `refreshAuthAccount()`
 - auth management helpers like `getAuthPermissions()`, `getAuthUserList()`, `setAuthUser()`, `getAuthRoleList()`, and `setAuthRole()`
 
-Schema and entity option payloads re-exported by this package include the `handleAttachments` flag exposed by the schema APIs.
+Schema and entity option payloads re-exported by this package include the `handleAttachments` flag and schema-level `relations` exposed by the schema APIs.
 Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
 
 The auth user payloads include:
@@ -259,6 +259,8 @@ readonly schema$ = this.chill.getSchema("Model.Post", "default");
 readonly englishSchema$ = this.chill.getSchema("Model.Post", "default", "en-GB");
 readonly refreshedSchema$ = this.chill.getSchema("Model.Post", "default", undefined, true);
 ```
+
+Entity schema payloads include a `relations` collection for annotated child collections, with `chillType`, `chillQuery`, `fixedValues`, `fixedQueryValues`, and `relationLabel`.
 
 Pass `update: true` as the fourth argument when you want the server to refresh a persisted schema from the current runtime model. Existing properties keep their saved metadata, new model properties are added, and removed model properties are dropped from the persisted schema.
 
