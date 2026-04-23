@@ -55,6 +55,7 @@ namespace ChillSharp.Schema.Contracts
         {
             var chillAttr = propInfo.GetCustomAttribute<ChillPropertyAttribute>();
             var propertyType = propInfo.PropertyType;
+            var hasExplicitPropertyType = chillAttr is { PropertyType: not ChillDtoPropertyType.Unknown };
             var schema = new ChillDtoPropertySchema
             {
                 Name = propInfo.Name,
@@ -65,7 +66,9 @@ namespace ChillSharp.Schema.Contracts
                     context,
                     cultureName),
                 MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
-                PropertyType = ChillDtoPropertyMapper.Map(propertyType),
+                PropertyType = hasExplicitPropertyType
+                    ? chillAttr!.PropertyType
+                    : ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
                 IsReadOnly = ResolveIsReadOnly(propInfo, chillAttr),
                 MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
@@ -85,7 +88,10 @@ namespace ChillSharp.Schema.Contracts
             };
 
             ApplyPrecisionFallbacks(propInfo, schema);
-            PromoteStringJsonProperties(schema);
+            if (!hasExplicitPropertyType)
+            {
+                PromoteStringJsonProperties(schema);
+            }
 
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";

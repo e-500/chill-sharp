@@ -19,6 +19,7 @@
 
 using System.Runtime.CompilerServices; // Provides CallerMemberName, used to capture the name of the calling member automatically
 using System.Globalization;
+using ChillSharp.Dto;
 
 namespace ChillSharp.Annotations
 {
@@ -289,6 +290,12 @@ namespace ChillSharp.Annotations
         /// Optional Chill query type used by clients to perform lookups for this reference property.
         /// </summary>
         public string? ReferenceChillTypeQuery { get; set; }
+
+        /// <summary>
+        /// Optional frontend-oriented field type override for schema generation.
+        /// Use <see cref="ChillDtoPropertyType.Unknown"/> to leave the CLR type mapping unchanged.
+        /// </summary>
+        public ChillDtoPropertyType PropertyType { get; set; } = ChillDtoPropertyType.Unknown;
 
         /// <summary>
         /// Explicit nullable flag used by schema generation when provided.

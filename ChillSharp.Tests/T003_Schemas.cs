@@ -375,7 +375,25 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step013_PropertySchemaInfersReferenceTypeForEnumerableAndArrayEntityCollections()
+        public void Step013_PropertySchemaUsesExplicitAttributePropertyType()
+        {
+            var textProperty = typeof(ExplicitPropertyTypeHolder).GetProperty(nameof(ExplicitPropertyTypeHolder.LongDescription));
+            var jsonProperty = typeof(ExplicitPropertyTypeHolder).GetProperty(nameof(ExplicitPropertyTypeHolder.JsonPayload));
+
+            Assert.IsNotNull(textProperty);
+            Assert.IsNotNull(jsonProperty);
+
+            var textSchema = ChillDtoPropertySchema.FromPropertyInfo(textProperty!, "ChillSharp.Tests");
+            var jsonSchema = ChillDtoPropertySchema.FromPropertyInfo(jsonProperty!, "ChillSharp.Tests");
+
+            Assert.AreEqual(ChillDtoPropertyType.Text, textSchema.PropertyType);
+            Assert.AreEqual("text", textSchema.SimplePropertyType);
+            Assert.AreEqual(ChillDtoPropertyType.Json, jsonSchema.PropertyType);
+            Assert.AreEqual("json", jsonSchema.SimplePropertyType);
+        }
+
+        [TestMethod]
+        public void Step014_PropertySchemaInfersReferenceTypeForEnumerableAndArrayEntityCollections()
         {
             var enumerableProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.EnumerableTargets));
             var arrayProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.ArrayTargets));
@@ -1084,6 +1102,15 @@ namespace ChillSharp.Tests
         {
             [ChillProperty(CustomFormat = "json")]
             public string Payload { get; set; } = "{}";
+        }
+
+        private sealed class ExplicitPropertyTypeHolder
+        {
+            [ChillProperty(PropertyType = ChillDtoPropertyType.Text)]
+            public string LongDescription { get; set; } = string.Empty;
+
+            [ChillProperty(PropertyType = ChillDtoPropertyType.Json)]
+            public string JsonPayload { get; set; } = "{}";
         }
 
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery
