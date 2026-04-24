@@ -374,6 +374,7 @@ public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverServi
                 ? persistedProperty
                 : runtimeProperty)
             .ToList();
+        persistedSchema.Relations = runtimeSchema.Relations.ToList();
 
         return persistedSchema;
     }

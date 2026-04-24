@@ -312,6 +312,60 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public async Task Step008_GetSchemaUpdateRefreshesPersistedRelationsFromRuntimeModel()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-relations-update-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                new ChillSharp.Schema.ChillSchemaCache());
+
+            await schemaService.SetSchemaAsync(new ChillDtoSchema
+            {
+                ChillType = "Model.Blog",
+                ChillViewCode = "default",
+                DisplayName = "Persisted blog",
+                Relations =
+                [
+                    new ChillDtoSchemaRelation
+                    {
+                        ChillType = "Model.LegacyPost",
+                        ChillQuery = "Query.LegacyPostQuery",
+                        RelationLabel = new ChillDtoSchemaRelationLabel
+                        {
+                            PrimaryDefaultText = "Legacy posts",
+                            SecondaryDefaultText = "Legacy posts"
+                        }
+                    }
+                ]
+            });
+
+            var staleSchema = await schemaService.GetSchemaAsync("Model.Blog", "default");
+            Assert.IsNotNull(staleSchema);
+            Assert.HasCount(1, staleSchema.Relations);
+            Assert.AreEqual("Model.LegacyPost", staleSchema.Relations.Single().ChillType);
+
+            var refreshedSchema = await schemaService.GetSchemaAsync("Model.Blog", "default", update: true);
+            Assert.IsNotNull(refreshedSchema);
+            Assert.HasCount(1, refreshedSchema.Relations);
+            Assert.AreEqual("Model.Post", refreshedSchema.Relations.Single().ChillType);
+            Assert.AreEqual("Query.PostQuery", refreshedSchema.Relations.Single().ChillQuery);
+            Assert.AreEqual("Blog posts", refreshedSchema.Relations.Single().RelationLabel.PrimaryDefaultText);
+
+            var persistedSchema = await schemaService.GetSchemaAsync("Model.Blog", "default");
+            Assert.IsNotNull(persistedSchema);
+            Assert.HasCount(1, persistedSchema.Relations);
+            Assert.AreEqual("Model.Post", persistedSchema.Relations.Single().ChillType);
+            Assert.AreEqual("Query.PostQuery", persistedSchema.Relations.Single().ChillQuery);
+        }
+
+        [TestMethod]
         public async Task Step008_SchemaManagementEndpointsRequireCanManageSchemaPermission()
         {
             var result = await ExecuteSchemaAccessFilterAsync(false);
