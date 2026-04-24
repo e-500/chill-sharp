@@ -1,0 +1,36 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-ui-build
+          path: dist/chill-sharp-ui-template
+
+      - name: Deploy placeholder
+        run: echo "Replace this step with the target hosting deployment command."

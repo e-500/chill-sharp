@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 48" role="img" aria-labelledby="title">
+  <title>Client Template Logo</title>
+  <rect width="160" height="48" rx="12" fill="#13424d"/>
+  <circle cx="28" cy="24" r="10" fill="#f5c46b"/>
+  <path d="M52 16h54c8 0 14 6 14 14s-6 14-14 14H52z" fill="#0f6d61"/>
+  <text x="60" y="30" font-family="Segoe UI, sans-serif" font-size="15" fill="#fffdf8">Client UI</text>
+</svg>

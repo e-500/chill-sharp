@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "dist",
+  "lib": {
+    "entryFile": "src/public-api.ts"
+  },
+  "assets": [
+    "src/styles/**/*"
+  ],
+  "allowedNonPeerDependencies": [
+    "chill-sharp-ng-client",
+    "chill-sharp-ts-client",
+    "monaco-editor",
+    "tslib"
+  ]
+}

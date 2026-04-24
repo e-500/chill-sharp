@@ -1,0 +1,90 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.crud-page {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  gap: 1.5rem;
+  padding: 1.5rem 0.5rem;
+  align-content: start;
+  align-items: start;
+  overflow-y: auto;
+}
+
+.panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.content {
+  display: grid;
+  gap: 1rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 0.5rem 0 0;
+}
+
+.pagination p {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pagination button {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--surface-0);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.notice {
+  margin-top: 0;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  max-width: 100%;
+  max-height: 5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.notice.error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 22%, transparent);
+  background: var(--danger-bg);
+}
+
+@media (max-width: 960px) {
+  .crud-page {
+    padding: 1rem 0.25rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .crud-page::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+}
