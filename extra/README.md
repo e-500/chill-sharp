@@ -1,6 +1,6 @@
 # Extra Packages
 
-This folder contains the reusable client packages and UI workspace that sit alongside the main .NET solution.
+This folder contains the reusable client packages and UI packages that sit alongside the main .NET solution.
 
 ## Contents
 
@@ -9,7 +9,9 @@ This folder contains the reusable client packages and UI workspace that sit alon
 - [`chill-sharp-react-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-react-client): React helpers built on `chill-sharp-ts-client`
 - [`chill-sharp-vue-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-vue-client): Vue helpers built on `chill-sharp-ts-client`
 - [`chill-sharp-py-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client): Python client for the generic ChillSharp HTTP API
-- [`ui`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui): Angular UI packages, including shared `ui-core` and the client template shell
+- [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
+- [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
+- [`chill-sharp-ui-architecture`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-architecture): UI architecture notes and compatibility publish wrapper
 
 ## Shared Folder Publishing
 
@@ -113,35 +115,35 @@ This package is not part of the npm shared-folder publish flow.
 
 More information: [`extra/chill-sharp-py-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client/README.md)
 
-### `ui`
+### UI Packages
 
-This workspace contains:
+The UI packages live beside the other extra libraries:
 
-- [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core): shared Angular UI package
-- [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-template): starter client shell
+- [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
+- [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
 
 To publish the latest required shared client packages and then publish `ui-core`:
 
 ```powershell
-cd extra/ui
+cd extra
 .\publish-to-shared-folder.ps1
 ```
 
 For local builds:
 
 ```bash
-cd extra/ui/chill-sharp-ui-core
+cd extra/chill-sharp-ui-core
 npm install
 npm run build
 ```
 
 ```bash
-cd extra/ui/chill-sharp-ui-template
+cd extra/chill-sharp-ui-template
 npm install
 npm run build
 ```
 
 More information:
 
-- [`extra/ui/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core/README.md)
-- [`extra/ui/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-template/README.md)
+- [`extra/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/README.md)
+- [`extra/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template/README.md)

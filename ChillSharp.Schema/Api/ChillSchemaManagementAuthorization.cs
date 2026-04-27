@@ -21,6 +21,7 @@ using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ChillSharp.Schema.Api;
 
@@ -29,15 +30,6 @@ namespace ChillSharp.Schema.Api;
 /// </summary>
 public sealed class ChillSchemaManagementAccessFilter : IAsyncActionFilter
 {
-    private readonly IChillAuthManagementAccessService _managementAccessService;
-    private readonly IChillAuthIdentityResolver _identityResolver;
-
-    public ChillSchemaManagementAccessFilter(IChillAuthManagementAccessService managementAccessService, IChillAuthIdentityResolver identityResolver)
-    {
-        _managementAccessService = managementAccessService;
-        _identityResolver = identityResolver;
-    }
-
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         if (context.HttpContext.User.Identity?.IsAuthenticated != true)
@@ -46,14 +38,23 @@ public sealed class ChillSchemaManagementAccessFilter : IAsyncActionFilter
             return;
         }
 
-        var externalId = _identityResolver.ResolveExternalId(context.HttpContext.User);
+        var managementAccessService = context.HttpContext.RequestServices.GetService<IChillAuthManagementAccessService>();
+        var identityResolver = context.HttpContext.RequestServices.GetService<IChillAuthIdentityResolver>();
+
+        if (managementAccessService == null || identityResolver == null)
+        {
+            await next();
+            return;
+        }
+
+        var externalId = identityResolver.ResolveExternalId(context.HttpContext.User);
         if (string.IsNullOrWhiteSpace(externalId))
         {
             context.Result = new ForbidResult();
             return;
         }
 
-        var isAllowed = await _managementAccessService.HasCapabilityAsync(
+        var isAllowed = await managementAccessService.HasCapabilityAsync(
             externalId,
             ChillAuthManagementCapability.Schema,
             context.HttpContext.RequestAborted);

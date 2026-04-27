@@ -32,7 +32,7 @@ namespace ChillSharp.Auth.Api.Controllers;
 public class AuthAccountController : ControllerBase
 {
     #region Fields
-    private readonly IChillAuthIdentityService _service;
+    private readonly IChillAuthIdentityService? _service;
     #endregion
 
     #region Construction
@@ -40,7 +40,7 @@ public class AuthAccountController : ControllerBase
     /// Initializes the controller with the Identity-backed auth-account service.
     /// </summary>
     /// <param name="service">The service handling register, login, refresh, and password flows.</param>
-    public AuthAccountController(IChillAuthIdentityService service)
+    public AuthAccountController(IChillAuthIdentityService? service = null)
     {
         _service = service;
     }
@@ -54,6 +54,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterAuthIdentityRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         try
         {
             return Ok(await _service.RegisterAsync(request, cancellationToken));
@@ -71,6 +76,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginAuthIdentityRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         try
         {
             return Ok(await _service.LoginAsync(request, cancellationToken));
@@ -88,6 +98,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshAuthTokenRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         try
         {
             return Ok(await _service.RefreshAsync(request, cancellationToken));
@@ -105,6 +120,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         await _service.LogoutAsync(User, cancellationToken);
         return NoContent();
     }
@@ -118,6 +138,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         try
         {
             return Ok(await _service.ChangePasswordAsync(User, request, cancellationToken));
@@ -139,6 +164,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("request-password-reset")]
     public async Task<IActionResult> RequestPasswordReset([FromBody] RequestPasswordResetRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         return Ok(await _service.RequestPasswordResetAsync(request, cancellationToken));
     }
 
@@ -149,6 +179,11 @@ public class AuthAccountController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
     {
+        if (_service == null)
+        {
+            return NotFound("Identity-backed auth endpoints are not enabled for this host.");
+        }
+
         try
         {
             return Ok(await _service.ResetPasswordAsync(request, cancellationToken));

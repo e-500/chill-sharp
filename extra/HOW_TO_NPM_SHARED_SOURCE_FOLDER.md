@@ -20,7 +20,7 @@ A shared folder is not an npm registry.
 That means this will not work:
 
 ```powershell
-npm install @chill-sharp/ui-core@1.0.111
+npm install @chill-sharp/ui-core@1.0.112
 ```
 
 unless the package is coming from a real registry.
@@ -65,7 +65,7 @@ Z:\shared-npm-packages
 
 ## 1. Build The Library
 
-Before the first local build on a machine, install the package dependencies from `extra\ui\chill-sharp-ui-core`:
+Before the first local build on a machine, install the package dependencies from `extra\chill-sharp-ui-core`:
 
 ```powershell
 npm install
@@ -74,7 +74,7 @@ npm install
 From:
 
 ```text
-extra\ui\chill-sharp-ui-core
+extra\chill-sharp-ui-core
 ```
 
 run:
@@ -86,23 +86,23 @@ npm run build
 This produces the compiled package output in:
 
 ```text
-extra\ui\chill-sharp-ui-core\dist
+extra\chill-sharp-ui-core\dist
 ```
 
-The helper script [`publish-to-shared-folder.ps1`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core/publish-to-shared-folder.ps1) will run `npm install` automatically if `ng-packagr` has not been installed yet.
+The helper script [`publish-to-shared-folder.ps1`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/publish-to-shared-folder.ps1) will run `npm install` automatically if `ng-packagr` has not been installed yet.
 
 ## 2. Bump The Version First
 
 Before creating a distributable package, update the version in:
 
-[`package.json`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core/package.json)
+[`package.json`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/package.json)
 
 Example:
 
 ```json
 {
   "name": "@chill-sharp/ui-core",
-  "version": "1.0.111"
+  "version": "1.0.112"
 }
 ```
 
@@ -115,7 +115,7 @@ After the build completes, create an npm package archive from the built `dist/` 
 From the `dist/` folder:
 
 ```powershell
-cd C:\source\personal\chill-sharp\chill-sharp\extra\ui\chill-sharp-ui-core
+cd C:\source\personal\chill-sharp\chill-sharp\extra\chill-sharp-ui-core
 cd dist
 npm pack
 ```
@@ -123,7 +123,7 @@ npm pack
 This creates a file similar to:
 
 ```text
-chill-sharp-ui-core-1.0.111.tgz
+chill-sharp-ui-core-1.0.112.tgz
 ```
 
 Important:
@@ -145,7 +145,7 @@ C:\source\shared-npm-packages
 After copying, you might have:
 
 ```text
-C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.111.tgz
+C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.112.tgz
 ```
 
 ## 5. Install The Package In A Client App
@@ -153,13 +153,13 @@ C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.111.tgz
 From a client application, install the package directly from the shared folder:
 
 ```powershell
-npm install C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.111.tgz
+npm install C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.112.tgz
 ```
 
 If the package is on a network share:
 
 ```powershell
-npm install \\my-server\shared-npm-packages\chill-sharp-ui-core-1.0.111.tgz
+npm install \\my-server\shared-npm-packages\chill-sharp-ui-core-1.0.112.tgz
 ```
 
 This works because npm understands package tarballs even when they come from a file path instead of a registry.
@@ -179,7 +179,7 @@ When `ui-core` changes:
 
 If you want one command for the whole workflow, use:
 
-[`publish-to-shared-folder.ps1`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core/publish-to-shared-folder.ps1)
+[`publish-to-shared-folder.ps1`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/publish-to-shared-folder.ps1)
 
 Default usage:
 
@@ -264,17 +264,17 @@ If you want a cleaner long-term multi-client workflow, use a private registry in
 ### In `ui-core`
 
 ```powershell
-cd C:\source\personal\chill-sharp\chill-sharp\extra\ui\chill-sharp-ui-core
+cd C:\source\personal\chill-sharp\chill-sharp\extra\chill-sharp-ui-core
 npm run build
 cd dist
 npm pack
-Copy-Item .\chill-sharp-ui-core-1.0.111.tgz C:\source\shared-npm-packages\
+Copy-Item .\chill-sharp-ui-core-1.0.112.tgz C:\source\shared-npm-packages\
 ```
 
 ### In a client app
 
 ```powershell
-npm install C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.111.tgz
+npm install C:\source\shared-npm-packages\chill-sharp-ui-core-1.0.112.tgz
 ```
 
 ## Summary

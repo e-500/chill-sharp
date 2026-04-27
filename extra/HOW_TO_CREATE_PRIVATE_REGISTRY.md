@@ -131,7 +131,7 @@ Use the username, password, and email you want for local publishing.
 From the `ui-core` library:
 
 ```powershell
-cd C:\source\personal\chill-sharp\chill-sharp\extra\ui\chill-sharp-ui-core
+cd C:\source\personal\chill-sharp\chill-sharp\extra\chill-sharp-ui-core
 npm run build
 cd dist
 npm publish --registry http://localhost:4873
@@ -148,7 +148,7 @@ Notes:
 In any client application:
 
 ```powershell
-npm install @chill-sharp/ui-core@1.0.111
+npm install @chill-sharp/ui-core@1.0.112
 ```
 
 Because of the scoped `.npmrc` setting, npm will resolve `@chill-sharp/*` from your private registry.
@@ -207,7 +207,7 @@ Check:
 
 You must publish a new version. Update the `version` field in:
 
-[`package.json`](/c:/source/personal/chill-sharp/chill-sharp/extra/ui/chill-sharp-ui-core/package.json)
+[`package.json`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/package.json)
 
 Then rebuild and publish again.
 

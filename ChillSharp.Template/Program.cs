@@ -1,4 +1,6 @@
 using ChillSharp.Api;
+using ChillSharp.Auth.Api;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Template;
@@ -14,11 +16,20 @@ public static class Program
         builder.Services.AddDbContext<ChillSharpTemplateContext>(options =>
             options.UseSqlite(connectionString));
 
-        builder.Services.AddChillApi<ChillSharpTemplateContext>(options =>
+        builder.Services.AddIdentityCore<IdentityUser>()
+            .AddEntityFrameworkStores<ChillSharpTemplateContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationScheme)
+            .AddChillAuthBearer();
+        builder.Services.AddAuthorization();
+
+        builder.Services.AddChillApi<ChillSharpTemplateContext, IdentityUser>(options =>
         {
-            options.EnableAuthApi = false;
-            options.EnableI18nApi = false;
-            options.EnableAttachmentApi = false;
+            options.EnableAuthApi = true;
+            options.EnableI18nApi = true;
+            options.EnableAttachmentApi = true;
             options.EnableSchemaApi = true;
             options.EnableMcpApi = true;
         });
@@ -40,7 +51,11 @@ public static class Program
             app.UseSwaggerUI();
         }
 
+        app.UseAuthentication();
+        app.UseAuthorization();
+
         app.MapChillApi();
+        app.MapGet("/api", () => "ChillSharp.Template is running. ChillSharp APIs are available under /api/chill.");
         app.MapGet("/", () => "ChillSharp.Template is running. Open /swagger in development.");
 
         app.Run();

@@ -16,7 +16,9 @@ This project keeps the backend intentionally small:
 dotnet run --project .\ChillSharp.Template\ChillSharp.Template.csproj
 ```
 
-Swagger is available in development at `/swagger`.
+The template listens on `http://localhost:6002` in development. The API status endpoint is available at `http://localhost:6002/api`, and the Chill API base URL is `http://localhost:6002/api/chill`.
+
+Swagger is available in development at `http://localhost:6002/swagger`.
 
 ## Default Chill types
 

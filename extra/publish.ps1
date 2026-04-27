@@ -10,7 +10,7 @@ $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repositoryRoot = Split-Path -Parent $scriptDirectory
 $defaultSharedFolder = 'C:\source\npm-shared'
 $defaultNugetSharedFolder = 'C:\source\nuget-shared'
-$uiTemplatePath = Join-Path $scriptDirectory 'ui\chill-sharp-ui-template'
+$uiTemplatePath = Join-Path $scriptDirectory 'chill-sharp-ui-template'
 $apiTemplatePath = Join-Path $repositoryRoot 'ChillSharp.Template'
 $script:NuGetSharedFolder = $defaultNugetSharedFolder
 
@@ -47,7 +47,7 @@ $script:Packages = @(
   [pscustomobject]@{
     Key = 'ui-core'
     Label = '@chill-sharp/ui-core'
-    PublishScript = Join-Path $scriptDirectory 'ui\chill-sharp-ui-core\publish-to-shared-folder.ps1'
+    PublishScript = Join-Path $scriptDirectory 'chill-sharp-ui-core\publish-to-shared-folder.ps1'
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
   }
@@ -390,24 +390,207 @@ function Copy-TemplateProject {
 
   Write-Host ''
   Write-Host "$TemplateLabel template copied to '$destinationPath'."
+
+  return $destinationPath
+}
+
+function Get-PackageByKey {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Key
+  )
+
+  $package = $script:Packages | Where-Object { $_.Key -eq $Key } | Select-Object -First 1
+  if ($null -eq $package) {
+    throw "Could not find package configuration for key '$Key'."
+  }
+
+  return $package
+}
+
+function Get-NormalizedNpmArchiveName {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PackageName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$PackageVersion
+  )
+
+  $normalizedPackageName = $PackageName -replace '^@', '' -replace '/', '-'
+  return "$normalizedPackageName-$PackageVersion.tgz"
+}
+
+function Get-FileDependencySpec {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  return ([System.Uri]::new($fullPath)).AbsoluteUri
+}
+
+function Get-ChillSharpPackageVersion {
+  $chillSharpProjectPath = Join-Path $repositoryRoot 'ChillSharp\ChillSharp.csproj'
+  if (-not (Test-Path -LiteralPath $chillSharpProjectPath)) {
+    throw "Could not find ChillSharp project at '$chillSharpProjectPath'."
+  }
+
+  [xml]$projectXml = Get-Content -LiteralPath $chillSharpProjectPath
+  $versionNode = $projectXml.Project.PropertyGroup.Version | Select-Object -First 1
+  $packageVersion = [string]$versionNode
+
+  if ([string]::IsNullOrWhiteSpace($packageVersion)) {
+    throw "Could not determine ChillSharp package version from '$chillSharpProjectPath'."
+  }
+
+  return $packageVersion
+}
+
+function Get-SharedArchiveDependencySpec {
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Package
+  )
+
+  if ($Package.Mode -ne 'shared-folder') {
+    throw "Package '$($Package.Label)' is configured for unsupported publish mode '$($Package.Mode)'."
+  }
+
+  $packageDirectory = Split-Path -Parent $Package.PublishScript
+  $packageJsonPath = Join-Path $packageDirectory 'package.json'
+  if (-not (Test-Path -LiteralPath $packageJsonPath)) {
+    throw "Could not find package.json for '$($Package.Label)' at '$packageJsonPath'."
+  }
+
+  $packageJson = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
+  $packageName = [string]$packageJson.name
+  $packageVersion = [string]$packageJson.version
+
+  if ([string]::IsNullOrWhiteSpace($packageName) -or [string]::IsNullOrWhiteSpace($packageVersion)) {
+    throw "Could not determine package metadata for '$($Package.Label)' from '$packageJsonPath'."
+  }
+
+  $archiveName = Get-NormalizedNpmArchiveName -PackageName $packageName -PackageVersion $packageVersion
+  $archivePath = Join-Path $Package.SharedFolder $archiveName
+  if (-not (Test-Path -LiteralPath $archivePath)) {
+    throw "Expected shared package archive '$archivePath' was not found for '$($Package.Label)'. Publish the package first."
+  }
+
+  return [pscustomobject]@{
+    PackageName = $packageName
+    DependencySpec = Get-FileDependencySpec -Path $archivePath
+    ArchivePath = $archivePath
+  }
+}
+
+function Set-UiTemplatePackageSource {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$DestinationPath
+  )
+
+  $requiredPackages = @(
+    (Get-PackageByKey -Key 'ui-core'),
+    (Get-PackageByKey -Key 'ng-client'),
+    (Get-PackageByKey -Key 'ts-client')
+  )
+
+  $nonSharedFolderPackage = $requiredPackages | Where-Object { $_.Mode -ne 'shared-folder' } | Select-Object -First 1
+  if ($null -ne $nonSharedFolderPackage) {
+    Write-Warning "UI template package source update is skipped because $($nonSharedFolderPackage.Label) publish mode is '$($nonSharedFolderPackage.Mode)'."
+    return
+  }
+
+  $templatePackageJsonPath = Join-Path $DestinationPath 'package.json'
+  if (-not (Test-Path -LiteralPath $templatePackageJsonPath)) {
+    throw "Could not find template package.json at '$templatePackageJsonPath'."
+  }
+
+  $templatePackageJson = Get-Content -LiteralPath $templatePackageJsonPath -Raw | ConvertFrom-Json
+  if ($null -eq $templatePackageJson.dependencies) {
+    throw "Template package.json at '$templatePackageJsonPath' does not define a dependencies object."
+  }
+
+  $configuredPackages = foreach ($package in $requiredPackages) {
+    $sharedArchive = Get-SharedArchiveDependencySpec -Package $package
+    $templatePackageJson.dependencies | Add-Member -NotePropertyName $sharedArchive.PackageName -NotePropertyValue $sharedArchive.DependencySpec -Force
+    $sharedArchive
+  }
+
+  $templatePackageJson | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $templatePackageJsonPath
+
+  foreach ($configuredPackage in $configuredPackages) {
+    Write-Host "Configured UI template to install $($configuredPackage.PackageName) from '$($configuredPackage.ArchivePath)'."
+  }
+}
+
+function Set-ApiTemplatePackageSource {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$DestinationPath
+  )
+
+  $templateProjectPath = Join-Path $DestinationPath 'ChillSharp.Template.csproj'
+  if (-not (Test-Path -LiteralPath $templateProjectPath)) {
+    throw "Could not find template project at '$templateProjectPath'."
+  }
+
+  $packageVersion = Get-ChillSharpPackageVersion
+  $projectContents = Get-Content -LiteralPath $templateProjectPath -Raw
+  $projectReferencePattern = '<ProjectReference Include="\.\.\\ChillSharp\.AspNetCore\\ChillSharp\.AspNetCore\.csproj"\s*/>'
+  $packageReferenceReplacement = "<PackageReference Include=`"ChillSharp`" Version=`"$packageVersion`" />"
+  $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
+    $projectContents,
+    $projectReferencePattern,
+    $packageReferenceReplacement)
+
+  if ($updatedProjectContents -eq $projectContents) {
+    throw "Could not replace the ChillSharp.AspNetCore project reference in '$templateProjectPath'."
+  }
+
+  Set-Content -LiteralPath $templateProjectPath -Value $updatedProjectContents
+
+  $nuGetConfigPath = Join-Path $DestinationPath 'NuGet.Config'
+  $nuGetSourcePath = [System.IO.Path]::GetFullPath($script:NuGetSharedFolder)
+  $escapedNuGetSourcePath = [System.Security.SecurityElement]::Escape($nuGetSourcePath)
+  $nuGetConfigContents = @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="local-chillsharp" value="$escapedNuGetSourcePath" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+"@
+
+  Set-Content -LiteralPath $nuGetConfigPath -Value $nuGetConfigContents
+
+  Write-Host "Configured API template to restore ChillSharp $packageVersion from '$nuGetSourcePath'."
 }
 
 function Create-UiFromTemplate {
   # Copy the UI template into a new destination folder without transient build artifacts.
-  Copy-TemplateProject `
+  $destinationPath = Copy-TemplateProject `
     -TemplatePath $uiTemplatePath `
     -DestinationPrompt 'Destination folder for the new UI project' `
     -TemplateLabel 'UI' `
     -ExcludedNames @('node_modules', 'dist', '.angular')
+
+  Set-UiTemplatePackageSource -DestinationPath $destinationPath
 }
 
 function Create-ApiFromTemplate {
   # Copy the API template into a new destination folder without transient build artifacts.
-  Copy-TemplateProject `
+  $destinationPath = Copy-TemplateProject `
     -TemplatePath $apiTemplatePath `
     -DestinationPrompt 'Destination folder for the new API project' `
     -TemplateLabel 'API' `
     -ExcludedNames @('bin', 'obj', '.vs')
+
+  Set-ApiTemplatePackageSource -DestinationPath $destinationPath
 }
 
 function Test-IsWithinRoot {
@@ -467,6 +650,11 @@ function Cleanup-Workspace {
   $repoTempFolder = Join-Path $repositoryRoot '.tmp-npm-shared'
   if (Test-Path -LiteralPath $repoTempFolder) {
     [void]$cleanupTargets.Add($repoTempFolder)
+  }
+
+  $buildLogsFolder = Join-Path $repositoryRoot 'build-logs'
+  if (Test-Path -LiteralPath $buildLogsFolder) {
+    [void]$cleanupTargets.Add($buildLogsFolder)
   }
 
   # Remove duplicate paths and collapse nested children when a parent folder is already scheduled for deletion.

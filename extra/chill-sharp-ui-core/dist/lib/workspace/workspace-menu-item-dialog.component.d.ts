@@ -1,0 +1,61 @@
+import { OnDestroy } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
+import type { JsonValue } from 'chill-sharp-ng-client';
+import { type ChillPropertySchema, type ChillSchema } from '../models/chill-schema.models';
+import type { ChillMenuItem } from '../models/chill-menu.models';
+import { ChillService } from '../services/chill.service';
+import { WorkspaceService } from '../services/workspace.service';
+import type { WorkspaceTaskComponent } from '../models/workspace-task.models';
+import { WorkspaceToolbarService } from '../services/workspace-toolbar.service';
+import * as i0 from "@angular/core";
+type MenuFormGroup = FormGroup<Record<string, FormControl<JsonValue>>>;
+interface MenuItemDialogResult {
+    value: ChillMenuItem;
+}
+export declare class WorkspaceMenuItemDialogComponent implements WorkspaceTaskComponent<MenuItemDialogResult>, OnDestroy {
+    readonly chill: ChillService;
+    readonly workspace: WorkspaceService;
+    readonly toolbar: WorkspaceToolbarService;
+    readonly item: import("@angular/core").InputSignal<ChillMenuItem | null>;
+    readonly parent: import("@angular/core").InputSignal<ChillMenuItem | null>;
+    readonly visible: import("@angular/core").InputSignal<boolean>;
+    readonly isValid: import("@angular/core").WritableSignal<boolean>;
+    readonly isGeneratingConfigurationExample: import("@angular/core").WritableSignal<boolean>;
+    readonly selectedComponentName: import("@angular/core").WritableSignal<string>;
+    readonly componentOptions: import("@angular/core").Signal<[string, string][]>;
+    readonly selectedTaskDefinition: import("@angular/core").Signal<import("@chill-sharp/ui-core").WorkspaceTaskDefinition | null>;
+    readonly selectedComponentConfigurationJsonExample: import("@angular/core").Signal<string>;
+    readonly properties: import("@angular/core").Signal<ChillPropertySchema[]>;
+    readonly schema: import("@angular/core").Signal<ChillSchema>;
+    readonly form: MenuFormGroup;
+    private readonly componentNameSubscription;
+    constructor();
+    ngOnDestroy(): void;
+    canDialogSubmit(): boolean;
+    dialogResult(): MenuItemDialogResult;
+    parentTitle(): string;
+    applyComponentConfigurationJsonExample(): Promise<void>;
+    private readString;
+    private readOptionalString;
+    private generateCrudComponentConfigurationJsonExample;
+    private buildCrudConfigurationFromSchema;
+    private buildCrudRelationConfiguration;
+    private composeCrudConfigurationSeed;
+    private createCrudConfigurationObject;
+    private createEmptyCrudConfiguration;
+    private createEmptyRelationLabel;
+    private parseConfigurationJson;
+    private readConfigurationString;
+    private readConfigurationBoolean;
+    private readConfigurationRecord;
+    private readRelationLabelValue;
+    private readAdditionalConfigurationEntries;
+    private readConfigurationValue;
+    private mapRelationLabel;
+    private normalizeJsonRecord;
+    private normalizeString;
+    static ɵfac: i0.ɵɵFactoryDeclaration<WorkspaceMenuItemDialogComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<WorkspaceMenuItemDialogComponent, "app-workspace-menu-item-dialog", never, { "item": { "alias": "item"; "required": false; "isSignal": true; }; "parent": { "alias": "parent"; "required": false; "isSignal": true; }; "visible": { "alias": "visible"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+}
+export {};
+//# sourceMappingURL=workspace-menu-item-dialog.component.d.ts.map

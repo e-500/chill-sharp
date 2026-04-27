@@ -35,19 +35,19 @@ namespace ChillSharp.Auth.Api.Controllers;
 [Route("api/chill-auth/oauth")]
 public sealed class AuthOAuthController : ControllerBase
 {
-    private readonly IChillAuthOAuthService _service;
+    private readonly IChillAuthOAuthService? _service;
     private readonly ChillAuthIdentityApiOptions _options;
 
-    public AuthOAuthController(IChillAuthOAuthService service, IOptions<ChillAuthIdentityApiOptions> options)
+    public AuthOAuthController(IChillAuthOAuthService? service = null, IOptions<ChillAuthIdentityApiOptions>? options = null)
     {
         _service = service;
-        _options = options.Value;
+        _options = options?.Value ?? new ChillAuthIdentityApiOptions();
     }
 
     [HttpGet("/.well-known/oauth-authorization-server")]
     public IActionResult AuthorizationServerMetadata()
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
@@ -71,7 +71,7 @@ public sealed class AuthOAuthController : ControllerBase
     [HttpGet("/.well-known/oauth-protected-resource")]
     public IActionResult ProtectedResourceMetadata()
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
@@ -88,7 +88,7 @@ public sealed class AuthOAuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] OAuthClientRegistrationRequest request, CancellationToken cancellationToken)
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
@@ -114,7 +114,7 @@ public sealed class AuthOAuthController : ControllerBase
         [FromQuery] string? state,
         CancellationToken cancellationToken)
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
@@ -141,7 +141,7 @@ public sealed class AuthOAuthController : ControllerBase
     [HttpPost("authorize")]
     public async Task<IActionResult> AuthorizePost(CancellationToken cancellationToken)
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
@@ -180,7 +180,7 @@ public sealed class AuthOAuthController : ControllerBase
     [HttpPost("token")]
     public async Task<IActionResult> Token(CancellationToken cancellationToken)
     {
-        if (!_options.EnableOAuthEndpoints)
+        if (_service == null || !_options.EnableOAuthEndpoints)
         {
             return NotFound();
         }
