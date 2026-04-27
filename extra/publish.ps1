@@ -448,6 +448,77 @@ function Get-ChillSharpPackageVersion {
   return $packageVersion
 }
 
+function Get-ChillSharpPackageOutputFolder {
+  $chillSharpProjectPath = Join-Path $repositoryRoot 'ChillSharp\ChillSharp.csproj'
+  if (-not (Test-Path -LiteralPath $chillSharpProjectPath)) {
+    throw "Could not find ChillSharp project at '$chillSharpProjectPath'."
+  }
+
+  [xml]$projectXml = Get-Content -LiteralPath $chillSharpProjectPath
+  $packageOutputPathNode = $projectXml.Project.PropertyGroup.PackageOutputPath | Select-Object -First 1
+  $packageOutputPath = [string]$packageOutputPathNode
+
+  if ([string]::IsNullOrWhiteSpace($packageOutputPath)) {
+    return $null
+  }
+
+  return [System.IO.Path]::GetFullPath($packageOutputPath)
+}
+
+function Get-ChillSharpPackageArchivePath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PackageVersion
+  )
+
+  $archiveName = "ChillSharp.$PackageVersion.nupkg"
+  $packageOutputFolder = Get-ChillSharpPackageOutputFolder
+  $candidatePaths = @(
+    (Join-Path $script:NuGetSharedFolder $archiveName),
+    $(if (-not [string]::IsNullOrWhiteSpace($packageOutputFolder)) { Join-Path $packageOutputFolder $archiveName }),
+    (Join-Path (Join-Path $apiTemplatePath 'nupkgs') $archiveName)
+  ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+  foreach ($candidatePath in $candidatePaths) {
+    if (Test-Path -LiteralPath $candidatePath) {
+      return [System.IO.Path]::GetFullPath($candidatePath)
+    }
+  }
+
+  throw "Could not find '$archiveName'. Checked '$($candidatePaths -join ''', ''')'. Pack or publish ChillSharp $PackageVersion first."
+}
+
+function Sync-ChillSharpPackageToLocalFolder {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$DestinationPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$PackageVersion
+  )
+
+  $packageFolderPath = Join-Path $DestinationPath 'nupkgs'
+  if (-not (Test-Path -LiteralPath $packageFolderPath)) {
+    New-Item -ItemType Directory -Path $packageFolderPath | Out-Null
+  }
+
+  $archiveName = "ChillSharp.$PackageVersion.nupkg"
+  $destinationArchivePath = Join-Path $packageFolderPath $archiveName
+  $sourceArchivePath = Get-ChillSharpPackageArchivePath -PackageVersion $PackageVersion
+
+  foreach ($existingPackage in Get-ChildItem -LiteralPath $packageFolderPath -Filter 'ChillSharp.*.nupkg' -File -ErrorAction SilentlyContinue) {
+    if (-not $existingPackage.FullName.Equals($destinationArchivePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+      Remove-Item -LiteralPath $existingPackage.FullName -Force
+    }
+  }
+
+  if (-not $sourceArchivePath.Equals($destinationArchivePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item -LiteralPath $sourceArchivePath -Destination $destinationArchivePath -Force
+  }
+
+  return $destinationArchivePath
+}
+
 function Get-SharedArchiveDependencySpec {
   param(
     [Parameter(Mandatory = $true)]
@@ -540,35 +611,45 @@ function Set-ApiTemplatePackageSource {
   $packageVersion = Get-ChillSharpPackageVersion
   $projectContents = Get-Content -LiteralPath $templateProjectPath -Raw
   $projectReferencePattern = '<ProjectReference Include="\.\.\\ChillSharp\.AspNetCore\\ChillSharp\.AspNetCore\.csproj"\s*/>'
+  $packageReferencePattern = '<PackageReference Include="ChillSharp" Version="[^"]+"\s*/>'
   $packageReferenceReplacement = "<PackageReference Include=`"ChillSharp`" Version=`"$packageVersion`" />"
-  $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
-    $projectContents,
-    $projectReferencePattern,
-    $packageReferenceReplacement)
+  $updatedProjectContents = $projectContents
+
+  if ([System.Text.RegularExpressions.Regex]::IsMatch($updatedProjectContents, $projectReferencePattern)) {
+    $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
+      $updatedProjectContents,
+      $projectReferencePattern,
+      $packageReferenceReplacement)
+  }
+  elseif ([System.Text.RegularExpressions.Regex]::IsMatch($updatedProjectContents, $packageReferencePattern)) {
+    $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
+      $updatedProjectContents,
+      $packageReferencePattern,
+      $packageReferenceReplacement)
+  }
 
   if ($updatedProjectContents -eq $projectContents) {
-    throw "Could not replace the ChillSharp.AspNetCore project reference in '$templateProjectPath'."
+    throw "Could not update the ChillSharp package reference in '$templateProjectPath'."
   }
 
   Set-Content -LiteralPath $templateProjectPath -Value $updatedProjectContents
 
   $nuGetConfigPath = Join-Path $DestinationPath 'NuGet.Config'
-  $nuGetSourcePath = [System.IO.Path]::GetFullPath($script:NuGetSharedFolder)
-  $escapedNuGetSourcePath = [System.Security.SecurityElement]::Escape($nuGetSourcePath)
   $nuGetConfigContents = @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
     <clear />
-    <add key="local-chillsharp" value="$escapedNuGetSourcePath" />
+    <add key="local-chillsharp" value=".\nupkgs" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>
 "@
 
   Set-Content -LiteralPath $nuGetConfigPath -Value $nuGetConfigContents
+  $localArchivePath = Sync-ChillSharpPackageToLocalFolder -DestinationPath $DestinationPath -PackageVersion $packageVersion
 
-  Write-Host "Configured API template to restore ChillSharp $packageVersion from '$nuGetSourcePath'."
+  Write-Host "Configured API template to restore ChillSharp $packageVersion from '$localArchivePath'."
 }
 
 function Create-UiFromTemplate {
@@ -584,6 +665,9 @@ function Create-UiFromTemplate {
 
 function Create-ApiFromTemplate {
   # Copy the API template into a new destination folder without transient build artifacts.
+  $packageVersion = Get-ChillSharpPackageVersion
+  [void](Sync-ChillSharpPackageToLocalFolder -DestinationPath $apiTemplatePath -PackageVersion $packageVersion)
+
   $destinationPath = Copy-TemplateProject `
     -TemplatePath $apiTemplatePath `
     -DestinationPrompt 'Destination folder for the new API project' `
