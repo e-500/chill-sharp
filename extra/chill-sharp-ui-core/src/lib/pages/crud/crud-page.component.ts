@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
-import type { ChillValidationError } from 'chill-sharp-ts-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
+import type { ChillValidationError } from '@chill-sharp/ts-client';
 import { firstValueFrom } from 'rxjs';
 import { ChillI18nLabelComponent } from '../../lib/chill-i18n-label.component';
 import { ChillFormComponent } from '../../lib/chill-form.component';

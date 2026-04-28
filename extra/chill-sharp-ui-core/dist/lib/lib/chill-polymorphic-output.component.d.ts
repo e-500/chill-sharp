@@ -1,5 +1,5 @@
 import { ElementRef, OnDestroy, OnInit } from '@angular/core';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import type { ChillEntity, ChillPropertySchema, ChillSchema } from '../models/chill-schema.models';
 import { ChillService } from '../services/chill.service';
 import * as i0 from "@angular/core";

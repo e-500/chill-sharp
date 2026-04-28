@@ -1,7 +1,7 @@
 import { OnDestroy } from '@angular/core';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { FormControl, FormGroup } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import { type ChillPropertySchema, type ChillPropertySelectOptionTuple, type ChillSchema } from '../models/chill-schema.models';
 import { ChillService } from '../services/chill.service';
 import { WorkspaceDialogService } from '../services/workspace-dialog.service';

@@ -18,28 +18,28 @@ $script:NuGetSharedFolder = $defaultNugetSharedFolder
 $script:Packages = @(
   [pscustomobject]@{
     Key = 'ts-client'
-    Label = 'chill-sharp-ts-client'
+    Label = '@chill-sharp/ts-client'
     PublishScript = Join-Path $scriptDirectory 'chill-sharp-ts-client\publish-to-shared-folder.ps1'
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
   }
   [pscustomobject]@{
     Key = 'ng-client'
-    Label = 'chill-sharp-ng-client'
+    Label = '@chill-sharp/ng-client'
     PublishScript = Join-Path $scriptDirectory 'chill-sharp-ng-client\publish-to-shared-folder.ps1'
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
   }
   [pscustomobject]@{
     Key = 'react-client'
-    Label = 'chill-sharp-react-client'
+    Label = '@chill-sharp/react-client'
     PublishScript = Join-Path $scriptDirectory 'chill-sharp-react-client\publish-to-shared-folder.ps1'
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
   }
   [pscustomobject]@{
     Key = 'vue-client'
-    Label = 'chill-sharp-vue-client'
+    Label = '@chill-sharp/vue-client'
     PublishScript = Join-Path $scriptDirectory 'chill-sharp-vue-client\publish-to-shared-folder.ps1'
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
@@ -431,6 +431,53 @@ function Get-FileDependencySpec {
   return ([System.Uri]::new($fullPath)).AbsoluteUri
 }
 
+function Get-RelativeFileDependencySpec {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$BasePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Path
+  )
+
+  $fullBasePath = [System.IO.Path]::GetFullPath($BasePath)
+  $fullPath = [System.IO.Path]::GetFullPath($Path)
+  $relativePath = [System.IO.Path]::GetRelativePath($fullBasePath, $fullPath).Replace('\', '/')
+
+  if (-not $relativePath.StartsWith('.')) {
+    $relativePath = "./$relativePath"
+  }
+
+  return "file:$relativePath"
+}
+
+function Get-PackageArchiveMetadata {
+  param(
+    [Parameter(Mandatory = $true)]
+    [pscustomobject]$Package
+  )
+
+  $packageDirectory = Split-Path -Parent $Package.PublishScript
+  $packageJsonPath = Join-Path $packageDirectory 'package.json'
+  if (-not (Test-Path -LiteralPath $packageJsonPath)) {
+    throw "Could not find package.json for '$($Package.Label)' at '$packageJsonPath'."
+  }
+
+  $packageJson = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
+  $packageName = [string]$packageJson.name
+  $packageVersion = [string]$packageJson.version
+
+  if ([string]::IsNullOrWhiteSpace($packageName) -or [string]::IsNullOrWhiteSpace($packageVersion)) {
+    throw "Could not determine package metadata for '$($Package.Label)' from '$packageJsonPath'."
+  }
+
+  return [pscustomobject]@{
+    PackageName = $packageName
+    PackageVersion = $packageVersion
+    ArchiveName = Get-NormalizedNpmArchiveName -PackageName $packageName -PackageVersion $packageVersion
+  }
+}
+
 function Get-ChillSharpPackageVersion {
   $chillSharpProjectPath = Join-Path $repositoryRoot 'ChillSharp\ChillSharp.csproj'
   if (-not (Test-Path -LiteralPath $chillSharpProjectPath)) {
@@ -529,28 +576,15 @@ function Get-SharedArchiveDependencySpec {
     throw "Package '$($Package.Label)' is configured for unsupported publish mode '$($Package.Mode)'."
   }
 
-  $packageDirectory = Split-Path -Parent $Package.PublishScript
-  $packageJsonPath = Join-Path $packageDirectory 'package.json'
-  if (-not (Test-Path -LiteralPath $packageJsonPath)) {
-    throw "Could not find package.json for '$($Package.Label)' at '$packageJsonPath'."
-  }
-
-  $packageJson = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
-  $packageName = [string]$packageJson.name
-  $packageVersion = [string]$packageJson.version
-
-  if ([string]::IsNullOrWhiteSpace($packageName) -or [string]::IsNullOrWhiteSpace($packageVersion)) {
-    throw "Could not determine package metadata for '$($Package.Label)' from '$packageJsonPath'."
-  }
-
-  $archiveName = Get-NormalizedNpmArchiveName -PackageName $packageName -PackageVersion $packageVersion
-  $archivePath = Join-Path $Package.SharedFolder $archiveName
+  $archiveMetadata = Get-PackageArchiveMetadata -Package $Package
+  $archivePath = Join-Path $Package.SharedFolder $archiveMetadata.ArchiveName
   if (-not (Test-Path -LiteralPath $archivePath)) {
     throw "Expected shared package archive '$archivePath' was not found for '$($Package.Label)'. Publish the package first."
   }
 
   return [pscustomobject]@{
-    PackageName = $packageName
+    PackageName = $archiveMetadata.PackageName
+    ArchiveName = $archiveMetadata.ArchiveName
     DependencySpec = Get-FileDependencySpec -Path $archivePath
     ArchivePath = $archivePath
   }
@@ -584,16 +618,45 @@ function Set-UiTemplatePackageSource {
     throw "Template package.json at '$templatePackageJsonPath' does not define a dependencies object."
   }
 
+  $embeddedPackagesPath = Join-Path $DestinationPath 'packages'
+  if (-not (Test-Path -LiteralPath $embeddedPackagesPath)) {
+    New-Item -ItemType Directory -Path $embeddedPackagesPath | Out-Null
+  }
+
   $configuredPackages = foreach ($package in $requiredPackages) {
-    $sharedArchive = Get-SharedArchiveDependencySpec -Package $package
-    $templatePackageJson.dependencies | Add-Member -NotePropertyName $sharedArchive.PackageName -NotePropertyValue $sharedArchive.DependencySpec -Force
-    $sharedArchive
+    $packageArchiveMetadata = Get-PackageArchiveMetadata -Package $package
+    $embeddedArchivePath = Join-Path $embeddedPackagesPath $packageArchiveMetadata.ArchiveName
+    $sourceArchivePath = $null
+
+    try {
+      $sharedArchive = Get-SharedArchiveDependencySpec -Package $package
+      Copy-Item -LiteralPath $sharedArchive.ArchivePath -Destination $embeddedArchivePath -Force
+      $sourceArchivePath = $sharedArchive.ArchivePath
+    }
+    catch {
+      if (-not (Test-Path -LiteralPath $embeddedArchivePath)) {
+        throw
+      }
+
+      $sourceArchivePath = $embeddedArchivePath
+    }
+
+    $templatePackageJson.dependencies | Add-Member `
+      -NotePropertyName $packageArchiveMetadata.PackageName `
+      -NotePropertyValue (Get-RelativeFileDependencySpec -BasePath $DestinationPath -Path $embeddedArchivePath) `
+      -Force
+
+    [pscustomobject]@{
+      PackageName = $packageArchiveMetadata.PackageName
+      SourceArchivePath = $sourceArchivePath
+      EmbeddedArchivePath = $embeddedArchivePath
+    }
   }
 
   $templatePackageJson | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $templatePackageJsonPath
 
   foreach ($configuredPackage in $configuredPackages) {
-    Write-Host "Configured UI template to install $($configuredPackage.PackageName) from '$($configuredPackage.ArchivePath)'."
+    Write-Host "Embedded $($configuredPackage.PackageName) into '$($configuredPackage.EmbeddedArchivePath)' from '$($configuredPackage.SourceArchivePath)'."
   }
 }
 
@@ -614,21 +677,24 @@ function Set-ApiTemplatePackageSource {
   $packageReferencePattern = '<PackageReference Include="ChillSharp" Version="[^"]+"\s*/>'
   $packageReferenceReplacement = "<PackageReference Include=`"ChillSharp`" Version=`"$packageVersion`" />"
   $updatedProjectContents = $projectContents
+  $matchedReference = $false
 
   if ([System.Text.RegularExpressions.Regex]::IsMatch($updatedProjectContents, $projectReferencePattern)) {
+    $matchedReference = $true
     $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
       $updatedProjectContents,
       $projectReferencePattern,
       $packageReferenceReplacement)
   }
   elseif ([System.Text.RegularExpressions.Regex]::IsMatch($updatedProjectContents, $packageReferencePattern)) {
+    $matchedReference = $true
     $updatedProjectContents = [System.Text.RegularExpressions.Regex]::Replace(
       $updatedProjectContents,
       $packageReferencePattern,
       $packageReferenceReplacement)
   }
 
-  if ($updatedProjectContents -eq $projectContents) {
+  if (-not $matchedReference) {
     throw "Could not update the ChillSharp package reference in '$templateProjectPath'."
   }
 

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import { inject } from "vue";
-import { ChillSharpClient } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
 export const chillSharpClientKey = Symbol("ChillSharpClient");
 export function createChillSharpClient(options) {
     if (options.client) {

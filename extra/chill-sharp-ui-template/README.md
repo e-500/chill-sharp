@@ -17,12 +17,21 @@ It does not copy the shared implementation from the standard UI. Shared behavior
 
 ## Install
 
-1. Configure access to the private npm registry that hosts `@chill-sharp/ui-core`
-2. Install dependencies
+If this project was created through [`extra/publish.ps1`](/c:/source/personal/chill-sharp/extra/publish.ps1), the required ChillSharp `.tgz` packages are copied into a local `packages/` folder so remote build servers can restore them without `C:\source\npm-shared`.
+
+Install dependencies with:
 
 ```bash
 npm install
 ```
+
+To copy the latest local ChillSharp `.tgz` archives from the shared npm folder into `packages/` and update `package.json`, run:
+
+```powershell
+.\upgrade.ps1
+```
+
+The script suggests `C:\source\npm-shared` first and asks you to confirm it or change the folder before continuing.
 
 ## Run locally
 
@@ -37,11 +46,12 @@ The template serves on `http://localhost:6202`.
 Upgrade the shared UI explicitly:
 
 ```bash
-npm install @chill-sharp/ui-core@1.0.113
+npm install @chill-sharp/ui-core@1.0.114
 ```
 
 ## Template structure
 
+- `packages`: embedded ChillSharp package archives copied into generated client repos
 - `src/app`: shell bootstrap and client-owned routes
 - `src/config`: client config contracts and defaults
 - `src/assets/branding`: client logos and brand assets

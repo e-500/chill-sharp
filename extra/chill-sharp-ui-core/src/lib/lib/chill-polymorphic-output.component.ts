@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, computed, inject, input, signal } from '@angular/core';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import type { ChillEntity, ChillPropertySchema, ChillSchema } from '../models/chill-schema.models';
 import { ChillService } from '../services/chill.service';
 

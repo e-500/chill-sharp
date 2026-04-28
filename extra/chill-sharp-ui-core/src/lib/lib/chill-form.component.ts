@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
-import type { ChillValidationError } from 'chill-sharp-ts-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
+import type { ChillValidationError } from '@chill-sharp/ts-client';
 import { Subscription, firstValueFrom } from 'rxjs';
 import type {
   ChillEntity,

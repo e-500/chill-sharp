@@ -1,4 +1,4 @@
-# How To Build `chill-sharp-ts-client`
+# How To Build `@chill-sharp/ts-client`
 
 From [`extra/chill-sharp-ts-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ts-client):
 

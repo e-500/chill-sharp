@@ -5,7 +5,7 @@ import * as i1$1 from '@angular/common';
 import { CommonModule, DOCUMENT, NgComponentOutlet } from '@angular/common';
 import * as i1 from '@angular/forms';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { ChillSharpNgClient, ChillSharpClientError, provideChillSharpClient, CHILL_SHARP_CLIENT } from 'chill-sharp-ng-client';
+import { ChillSharpNgClient, ChillSharpClientError, provideChillSharpClient, CHILL_SHARP_CLIENT } from '@chill-sharp/ng-client';
 import { from, switchMap, throwError, map, catchError, Observable, tap, firstValueFrom, Subscription, combineLatest } from 'rxjs';
 import * as i2 from '@angular/cdk/overlay';
 import { OverlayModule } from '@angular/cdk/overlay';

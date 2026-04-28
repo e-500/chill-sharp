@@ -1,7 +1,7 @@
 (function () {
   const DEBUG_CHILLSHARP_ENV = {
     uiUrl: 'http://localhost:6202',
-    apiUrl: 'http://localhost:6002/api'
+    apiUrl: 'https://localhost:6002/api'
   };
 
   function readEnvValue(value, fallback) {

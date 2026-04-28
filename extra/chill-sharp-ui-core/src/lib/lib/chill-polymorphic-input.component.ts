@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, input, output, signal } from '@angular/core';
 import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import { Subscription } from 'rxjs';
 import {
   CHILL_PROPERTY_TYPE,

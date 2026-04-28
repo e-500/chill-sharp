@@ -26,7 +26,7 @@ cd ..\
 .\publish-to-shared-folder.ps1
 ```
 
-That flow publishes the latest `chill-sharp-ts-client` and `chill-sharp-ng-client` archives first, then builds and packs `ui-core`.
+That flow publishes the latest `@chill-sharp/ts-client` and `@chill-sharp/ng-client` archives first, then builds and packs `ui-core`.
 
 If the required shared client archives already exist in `C:\source\npm-shared`, you can also publish `ui-core` directly from this folder:
 

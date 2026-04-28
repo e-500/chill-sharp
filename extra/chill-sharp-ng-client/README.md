@@ -1,8 +1,8 @@
-# chill-sharp-ng-client
+# @chill-sharp/ng-client
 
 Angular helpers for a generic ChillSharp service.
 
-This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
+This package wraps [`@chill-sharp/ts-client`](../chill-sharp-ts-client) and adds:
 
 - `provideChillSharpClient()` for Angular DI setup
 - `CHILL_SHARP_CLIENT` injection token for direct access to the raw client
@@ -23,13 +23,13 @@ This package expects:
 
 - Angular 17+
 - `rxjs`
-- `chill-sharp-ts-client`
+- `@chill-sharp/ts-client`
 - a runtime `fetch` implementation, which modern browsers and Node.js 18+ already provide
 
 ## Local Linking
 
 The package builds automatically on `npm install`, `npm pack`, and `npm link`.
-Link `chill-sharp-ts-client` first, then this package:
+Link `@chill-sharp/ts-client` first, then this package:
 
 ```bash
 cd extra/chill-sharp-ts-client
@@ -41,8 +41,8 @@ npm install
 npm link
 
 cd path/to/your-angular-app
-npm link chill-sharp-ts-client
-npm link chill-sharp-ng-client
+npm link @chill-sharp/ts-client
+npm link @chill-sharp/ng-client
 ```
 
 ## Quick Start
@@ -52,7 +52,7 @@ npm link chill-sharp-ng-client
 ```ts
 import { bootstrapApplication } from "@angular/platform-browser";
 import { AppComponent } from "./app/app.component";
-import { provideChillSharpClient } from "chill-sharp-ng-client";
+import { provideChillSharpClient } from "@chill-sharp/ng-client";
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -69,7 +69,7 @@ bootstrapApplication(AppComponent, {
 ```ts
 import { Component, inject } from "@angular/core";
 import { AsyncPipe, JsonPipe } from "@angular/common";
-import { ChillSharpNgClient } from "chill-sharp-ng-client";
+import { ChillSharpNgClient } from "@chill-sharp/ng-client";
 
 @Component({
   selector: "app-blog-schema",
@@ -104,7 +104,7 @@ providers: [
 ### Provide a prebuilt client
 
 ```ts
-import { ChillSharpClient, provideChillSharpClient } from "chill-sharp-ng-client";
+import { ChillSharpClient, provideChillSharpClient } from "@chill-sharp/ng-client";
 
 const client = new ChillSharpClient("http://localhost:5000/api/chill", {
   cultureName: "it-IT"
@@ -354,7 +354,7 @@ If you need the promise-based client directly, inject `CHILL_SHARP_CLIENT`.
 
 ```ts
 import { Component, Inject } from "@angular/core";
-import { CHILL_SHARP_CLIENT, ChillSharpClient } from "chill-sharp-ng-client";
+import { CHILL_SHARP_CLIENT, ChillSharpClient } from "@chill-sharp/ng-client";
 
 @Component({
   selector: "app-raw-client",
@@ -381,7 +381,7 @@ Transport errors originate as `ChillSharpClientError` inside the wrapped promise
 
 ```ts
 import { catchError, throwError } from "rxjs";
-import { ChillSharpClientError } from "chill-sharp-ng-client";
+import { ChillSharpClientError } from "@chill-sharp/ng-client";
 
 this.schema$ = this.chill.getSchema("Model.Post", "default").pipe(
   catchError((error: unknown) => {

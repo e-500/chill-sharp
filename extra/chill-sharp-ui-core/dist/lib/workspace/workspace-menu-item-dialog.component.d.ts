@@ -1,6 +1,6 @@
 import { OnDestroy } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import { type ChillPropertySchema, type ChillSchema } from '../models/chill-schema.models';
 import type { ChillMenuItem } from '../models/chill-menu.models';
 import { ChillService } from '../services/chill.service';

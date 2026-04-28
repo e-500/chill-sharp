@@ -279,7 +279,7 @@ The component requires several services and components:
 - `ChillPropertySchema`: Property definitions
 
 ### External Libraries
-- `chill-sharp-ng-client`: Chill API client
+- `@chill-sharp/ng-client`: Chill API client
 - Angular Forms modules for reactive forms
 
 ## Notes

@@ -1,4 +1,4 @@
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import type { ChillSchema, ChillSchemaRelation, ChillSchemaRelationLabel } from '../models/chill-schema.models';
 
 export function applySchemaRelationsToCrudConfiguration(

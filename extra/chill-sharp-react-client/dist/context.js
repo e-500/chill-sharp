@@ -18,7 +18,7 @@ import { jsx as _jsx } from "react/jsx-runtime";
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import { createContext, useContext, useRef } from "react";
-import { ChillSharpClient } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
 const ChillSharpContext = createContext(null);
 export function ChillSharpProvider(props) {
     const clientRef = useRef(props.client ?? null);

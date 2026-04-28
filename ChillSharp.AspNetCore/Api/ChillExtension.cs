@@ -240,10 +240,6 @@ namespace ChillSharp.Api
 
             var apiRootPath = BuildEndpointPath(apiUrlBasePath, string.Empty);
             endpoints.MapGet(apiRootPath, () => "ChillSharp is up and running!");
-            if (apiRootPath.Length > 1)
-            {
-                endpoints.MapGet($"{apiRootPath}/", () => "ChillSharp is up and running!");
-            }
 
             endpoints.MapGet(BuildEndpointPath(apiUrlBasePath, "test"), () => "ChillSharp is up and running!");
             endpoints.MapGet(BuildEndpointPath(apiUrlBasePath, "license"), () => body);

@@ -16,9 +16,19 @@ This project keeps the backend intentionally small:
 dotnet run --project .\ChillSharp.Template\ChillSharp.Template.csproj
 ```
 
-The template listens on `http://localhost:6002` in development. The API status endpoint is available at `http://localhost:6002/api`, and the Chill API base URL is `http://localhost:6002/api/chill`.
+The template listens on `https://localhost:6002` in development. The built-in ChillSharp status endpoint is available at `https://localhost:6002/api`, and the Chill API base URL is `https://localhost:6002/api/chill`.
 
-Swagger is available in development at `http://localhost:6002/swagger`.
+Swagger is available in development at `https://localhost:6002/swagger`.
+
+## Upgrade local ChillSharp package
+
+To copy the latest local `ChillSharp.<version>.nupkg` from the shared NuGet folder into `nupkgs/` and update the package reference, run:
+
+```powershell
+.\upgrade.ps1
+```
+
+The script suggests `C:\source\nuget-shared` first and asks you to confirm it or change the folder before continuing.
 
 ## Default Chill types
 

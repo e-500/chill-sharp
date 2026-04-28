@@ -1,5 +1,5 @@
 import { FormControl, FormGroup } from '@angular/forms';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import { type ChillSchema } from '../../models/chill-schema.models';
 import { ChillService } from '../../services/chill.service';
 import * as i0 from "@angular/core";

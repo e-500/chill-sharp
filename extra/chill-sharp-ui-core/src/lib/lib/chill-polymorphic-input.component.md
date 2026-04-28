@@ -175,7 +175,7 @@ externalErrors = { name: 'Name is required' };
 ## Dependencies
 
 - Angular Core (Reactive Forms, Common Module)
-- `chill-sharp-ng-client` for types and services
+- `@chill-sharp/ng-client` for types and services
 - `ChillService` for translations, queries, and error formatting
 - `WorkspaceDialogService` for lookup dialogs
 

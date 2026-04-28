@@ -8,8 +8,8 @@
     "src/styles/**/*"
   ],
   "allowedNonPeerDependencies": [
-    "chill-sharp-ng-client",
-    "chill-sharp-ts-client",
+    "@chill-sharp/ng-client",
+    "@chill-sharp/ts-client",
     "monaco-editor",
     "tslib"
   ]

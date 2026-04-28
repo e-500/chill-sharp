@@ -1,4 +1,4 @@
-# chill-sharp-ts-client
+# @chill-sharp/ts-client
 
 TypeScript client for a generic ChillSharp service.
 
@@ -42,13 +42,13 @@ npm install
 npm link
 
 cd path/to/your-app
-npm link chill-sharp-ts-client
+npm link @chill-sharp/ts-client
 ```
 
 ## Quick Start
 
 ```ts
-import { ChillSharpClient } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
 
 const client = new ChillSharpClient("http://localhost:5000/api/chill", {
   cultureName: "it-IT"
@@ -659,7 +659,7 @@ const role = await client.setAuthRole({
 All request failures raise `ChillSharpClientError`.
 
 ```ts
-import { ChillSharpClient, ChillSharpClientError } from "chill-sharp-ts-client";
+import { ChillSharpClient, ChillSharpClientError } from "@chill-sharp/ts-client";
 
 const client = new ChillSharpClient("http://localhost:5000/api/chill", {
   cultureName: "it-IT"

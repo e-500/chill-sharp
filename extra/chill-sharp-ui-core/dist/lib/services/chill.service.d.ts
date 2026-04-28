@@ -1,6 +1,6 @@
 import { AsyncValidatorFn, FormControl, FormGroup } from '@angular/forms';
-import { type ChillAttachmentUploadFile, type ChillAttachmentUploadOptions, type AuthUserDetailsResponse, type JsonObject, type JsonValue } from 'chill-sharp-ng-client';
-import type { ChillValidationError } from 'chill-sharp-ts-client';
+import { type ChillAttachmentUploadFile, type ChillAttachmentUploadOptions, type AuthUserDetailsResponse, type JsonObject, type JsonValue } from '@chill-sharp/ng-client';
+import type { ChillValidationError } from '@chill-sharp/ts-client';
 import { Observable } from 'rxjs';
 import type { AuthRoleAccessDetails, AuthUserAccessDetails, AuthPermissionRule, CreateAuthUserRequest, AuthRole, AuthSession, AuthTokenResponse, AuthUser, EditableAuthPermissionRule, CreateAuthPermissionRuleRequest, CreateAuthRoleRequest, LoginRequest, PasswordResetTokenResponse, RegisterRequest, RequestPasswordResetRequest, ResetPasswordRequest, ResetPasswordResponse, UpdateAuthRoleRequest, UpdateAuthUserRequest, UpdateUserProfileRequest } from '../models/chill-auth.models';
 import type { ChillEntityChangeNotification, ChillEntity, ChillEntityOptions, ChillPropertySchema, ChillQuery, ChillSchema, ChillSchemaListItem } from '../models/chill-schema.models';

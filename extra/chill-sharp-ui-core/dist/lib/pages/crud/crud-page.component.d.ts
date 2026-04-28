@@ -1,5 +1,5 @@
 import { OnInit } from '@angular/core';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import { type ChillTableCellEditCommitEvent, type ChillTableRowAction, type ChillTableSelectionColumn, type ChillTableSortChangeEvent, type ChillTableValidationFocus } from '../../lib/chill-table.component';
 import { type ChillEntity, type ChillFormSubmitEvent, type ChillQuery, type ChillSchema, type ChillSchemaListItem } from '../../models/chill-schema.models';
 import { ChillService } from '../../services/chill.service';

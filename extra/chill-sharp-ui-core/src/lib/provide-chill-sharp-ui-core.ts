@@ -1,5 +1,5 @@
 import { APP_INITIALIZER, Provider, inject } from '@angular/core';
-import { CHILL_SHARP_CLIENT, ChillSharpNgClient, provideChillSharpClient } from 'chill-sharp-ng-client';
+import { CHILL_SHARP_CLIENT, ChillSharpNgClient, provideChillSharpClient } from '@chill-sharp/ng-client';
 import { CHILL_BASE_URL, CHILL_CULTURE } from './chill.config';
 import { SESSION_STORAGE_KEY, USER_PREFERENCES_STORAGE_KEY } from './storage-keys';
 import { ChillService } from './services/chill.service';

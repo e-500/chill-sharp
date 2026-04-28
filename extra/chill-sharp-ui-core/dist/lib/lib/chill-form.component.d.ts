@@ -1,6 +1,6 @@
 import { ElementRef, OnDestroy } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import type { ChillEntity, ChillFormSubmitEvent, ChillPropertySchema, ChillQuery, ChillSchema } from '../models/chill-schema.models';
 import { WorkspaceLayoutService } from '../services/workspace-layout.service';
 import { WorkspaceDialogService } from '../services/workspace-dialog.service';

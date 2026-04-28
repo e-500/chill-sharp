@@ -1,8 +1,8 @@
-# chill-sharp-vue-client
+# @chill-sharp/vue-client
 
 Vue helpers for a generic ChillSharp service.
 
-This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
+This package wraps [`@chill-sharp/ts-client`](../chill-sharp-ts-client) and adds:
 
 - `createChillSharpPlugin()` for app-wide client injection
 - `useChillSharpClient()` to access the raw client
@@ -26,13 +26,13 @@ npm install
 This package expects:
 
 - `vue` 3
-- `chill-sharp-ts-client`
+- `@chill-sharp/ts-client`
 - a runtime `fetch` implementation, which modern browsers and Node.js 18+ already provide
 
 ## Local Linking
 
 The package builds automatically on `npm install`, `npm pack`, and `npm link`.
-Link `chill-sharp-ts-client` first, then this package:
+Link `@chill-sharp/ts-client` first, then this package:
 
 ```bash
 cd extra/chill-sharp-ts-client
@@ -44,15 +44,15 @@ npm install
 npm link
 
 cd path/to/your-vue-app
-npm link chill-sharp-ts-client
-npm link chill-sharp-vue-client
+npm link @chill-sharp/ts-client
+npm link @chill-sharp/vue-client
 ```
 
 ## Quick Start
 
 ```ts
 import { createApp, defineComponent } from "vue";
-import { createChillSharpPlugin, useSchema, useSchemaList, useText, useTexts } from "chill-sharp-vue-client";
+import { createChillSharpPlugin, useSchema, useSchemaList, useText, useTexts } from "@chill-sharp/vue-client";
 
 const BlogSchemaName = defineComponent({
   setup() {
@@ -93,7 +93,7 @@ app.use(createChillSharpPlugin({
 ### Plugin receives a prebuilt client
 
 ```ts
-import { ChillSharpClient, createChillSharpPlugin } from "chill-sharp-vue-client";
+import { ChillSharpClient, createChillSharpPlugin } from "@chill-sharp/vue-client";
 
 const client = new ChillSharpClient("http://localhost:5000/api/chill", {
   cultureName: "it-IT"
@@ -113,7 +113,7 @@ Use the raw client when you need the full API surface.
 
 ```ts
 import { defineComponent, onMounted, ref } from "vue";
-import { useChillSharpClient } from "chill-sharp-vue-client";
+import { useChillSharpClient } from "@chill-sharp/vue-client";
 
 export default defineComponent({
   setup() {
@@ -387,7 +387,7 @@ Because the Vue package reuses the TypeScript client, it inherits the same auth 
 - pass `username` and `password` when the client should log in and refresh automatically
 - pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()`, `setEntityOptions()`, `getMenu()`, `setMenu()`, and `deleteMenu()`
-- schema and entity option payloads re-exported by this package include the `handleAttachments` flag from `chill-sharp-ts-client`
+- schema and entity option payloads re-exported by this package include the `handleAttachments` flag from `@chill-sharp/ts-client`
 - query payloads re-exported by this package include `ordering`, and entity payloads include `position`
 
 Auth user list/detail payloads exposed through the raw client include:
@@ -403,7 +403,7 @@ The composables expose the last thrown error. The underlying client throws `Chil
 
 ```ts
 import { computed } from "vue";
-import { ChillSharpClientError, useSchema } from "chill-sharp-vue-client";
+import { ChillSharpClientError, useSchema } from "@chill-sharp/vue-client";
 
 const { error } = useSchema("Model.Post", "default");
 

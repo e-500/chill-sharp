@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, HostListener, OnDestroy, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormControl, FormGroup, FormsModule } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import { CHILL_PROPERTY_TYPE, CHILL_PROPERTY_TYPE_OPTIONS, canChangeChillPropertyType, chillSimplePropertyType, type ChillEntity, type ChillEntityChangeNotification, type ChillMetadataRecord, type ChillOrdering, type ChillPropertySchema, type ChillSchema } from '../models/chill-schema.models';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { ChillService } from '../services/chill.service';

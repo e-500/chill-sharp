@@ -118,7 +118,7 @@ schema: ChillSchema = {
 ## Dependencies
 
 - Angular Core (Common Module)
-- `chill-sharp-ng-client` for types
+- `@chill-sharp/ng-client` for types
 - `ChillService` for translations (e.g., "Yes"/"No")
 
 ## Notes

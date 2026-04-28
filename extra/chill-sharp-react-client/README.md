@@ -1,8 +1,8 @@
-# chill-sharp-react-client
+# @chill-sharp/react-client
 
 React helpers for a generic ChillSharp service.
 
-This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
+This package wraps [`@chill-sharp/ts-client`](../chill-sharp-ts-client) and adds:
 
 - a `ChillSharpProvider`
 - `useChillSharpClient()` to access the raw client
@@ -26,13 +26,13 @@ npm install
 This package expects:
 
 - `react` 18 or 19
-- `chill-sharp-ts-client`
+- `@chill-sharp/ts-client`
 - a runtime `fetch` implementation, which modern browsers and Node.js 18+ already provide
 
 ## Local Linking
 
 The package builds automatically on `npm install`, `npm pack`, and `npm link`.
-Link `chill-sharp-ts-client` first, then this package:
+Link `@chill-sharp/ts-client` first, then this package:
 
 ```bash
 cd extra/chill-sharp-ts-client
@@ -44,14 +44,14 @@ npm install
 npm link
 
 cd path/to/your-react-app
-npm link chill-sharp-ts-client
-npm link chill-sharp-react-client
+npm link @chill-sharp/ts-client
+npm link @chill-sharp/react-client
 ```
 
 ## Quick Start
 
 ```tsx
-import { ChillSharpProvider, useSchema, useSchemaList, useText, useTexts } from "chill-sharp-react-client";
+import { ChillSharpProvider, useSchema, useSchemaList, useText, useTexts } from "@chill-sharp/react-client";
 
 function BlogSchemaName() {
   const { data, isLoading, error } = useSchema("Model.Blog", "default");
@@ -93,7 +93,7 @@ export function App() {
 ### Provider receives a prebuilt client
 
 ```tsx
-import { ChillSharpClient } from "chill-sharp-react-client";
+import { ChillSharpClient } from "@chill-sharp/react-client";
 
 const client = new ChillSharpClient("http://localhost:5000/api/chill", {
   cultureName: "it-IT"
@@ -112,7 +112,7 @@ Use the raw client when you need the full API surface.
 
 ```tsx
 import { useEffect, useState } from "react";
-import { useChillSharpClient } from "chill-sharp-react-client";
+import { useChillSharpClient } from "@chill-sharp/react-client";
 
 function PostCount() {
   const client = useChillSharpClient();
@@ -381,7 +381,7 @@ Because the React package reuses the TypeScript client, it inherits the same aut
 - pass `username` and `password` when the client should log in and refresh automatically
 - pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()`, `setEntityOptions()`, `getMenu()`, `setMenu()`, and `deleteMenu()`
-- schema and entity option payloads re-exported by this package include the `handleAttachments` flag from `chill-sharp-ts-client`
+- schema and entity option payloads re-exported by this package include the `handleAttachments` flag from `@chill-sharp/ts-client`
 - query payloads re-exported by this package include `ordering`, and entity payloads include `position`
 
 Auth user list/detail payloads exposed through the raw client include:
@@ -396,7 +396,7 @@ Auth user list/detail payloads exposed through the raw client include:
 The hooks expose the last thrown error. The underlying client throws `ChillSharpClientError`.
 
 ```tsx
-import { ChillSharpClientError, useSchema } from "chill-sharp-react-client";
+import { ChillSharpClientError, useSchema } from "@chill-sharp/react-client";
 
 function SchemaStatus() {
   const { error } = useSchema("Model.Post", "default");

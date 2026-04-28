@@ -5,7 +5,7 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "chill-sharp-ts-client": ["../chill-sharp-ts-client/dist/index.d.ts"]
+      "@chill-sharp/ts-client": ["../chill-sharp-ts-client/dist/index.d.ts"]
     },
     "declaration": true,
     "outDir": "dist",

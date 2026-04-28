@@ -19,8 +19,8 @@
 
 import type { App, InjectionKey, Plugin } from "vue";
 import { inject } from "vue";
-import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillSharpClientOptions } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
+import type { ChillSharpClientOptions } from "@chill-sharp/ts-client";
 
 export interface ChillSharpVueOptions {
   baseUrl: string;

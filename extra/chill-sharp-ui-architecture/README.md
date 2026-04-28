@@ -13,4 +13,4 @@ To publish the shared UI package together with its required client dependencies:
 .\publish-to-shared-folder.ps1
 ```
 
-That script publishes the latest shared `chill-sharp-ts-client` and `chill-sharp-ng-client` archives first, then runs the `ui-core` publish flow.
+That script publishes the latest shared `@chill-sharp/ts-client` and `@chill-sharp/ng-client` archives first, then runs the `ui-core` publish flow.

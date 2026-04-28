@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import type { JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import { firstValueFrom } from 'rxjs';
 import { ChillService } from '../../services/chill.service';
 import { WorkspaceDialogService } from '../../services/workspace-dialog.service';

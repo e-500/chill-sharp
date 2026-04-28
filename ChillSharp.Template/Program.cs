@@ -13,6 +13,20 @@ public static class Program
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
             ?? ChillSharpTemplateContext.DefaultConnectionString;
 
+        // Add CORS
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("AllowSpecificOrigin", policy =>
+            {
+                policy.WithOrigins("http://localhost:4200",
+                    "https://localhost:4200",
+                    "http://localhost:6202",
+                    "https://localhost:6202")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
         builder.Services.AddDbContext<ChillSharpTemplateContext>(options =>
             options.UseSqlite(connectionString));
 
@@ -51,12 +65,14 @@ public static class Program
             app.UseSwaggerUI();
         }
 
+        // Enable CORS
+        app.UseCors("AllowSpecificOrigin");
+
         app.UseAuthentication();
         app.UseAuthorization();
 
         app.MapChillApi();
-        app.MapGet("/api", () => "ChillSharp.Template is running. ChillSharp APIs are available under /api/chill.");
-        app.MapGet("/", () => "ChillSharp.Template is running. Open /swagger in development.");
+        app.MapGet("/", () => "ChillSharp.Template is running. ChillSharp APIs are available under /api/chill. Open /swagger in development.");
 
         app.Run();
     }

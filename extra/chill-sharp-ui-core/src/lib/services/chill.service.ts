@@ -19,13 +19,13 @@ import {
   type ChillDtoEntityOptions,
   type SetAuthRoleRequest,
   type SetAuthUserRequest
-} from 'chill-sharp-ng-client';
+} from '@chill-sharp/ng-client';
 import type {
   ChillValidationError,
   LoginAuthIdentityRequest,
   RequestPasswordResetRequest as ChillSharpRequestPasswordResetRequest,
   ResetPasswordRequest as ChillSharpResetPasswordRequest
-} from 'chill-sharp-ts-client';
+} from '@chill-sharp/ts-client';
 import { Observable, catchError, firstValueFrom, from, map, switchMap, tap, throwError } from 'rxjs';
 import type {
   AuthRoleAccessDetails,

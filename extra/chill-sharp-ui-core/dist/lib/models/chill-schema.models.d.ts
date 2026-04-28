@@ -1,4 +1,4 @@
-import type { ChillDtoEntityOptions, JsonObject, JsonValue } from 'chill-sharp-ng-client';
+import type { ChillDtoEntityOptions, JsonObject, JsonValue } from '@chill-sharp/ng-client';
 export type ChillMetadataValue = JsonValue;
 export type ChillPropertySelectOptionTuple = [value: string, text: string];
 export type ChillMetadataRecord = Record<string, ChillMetadataValue>;

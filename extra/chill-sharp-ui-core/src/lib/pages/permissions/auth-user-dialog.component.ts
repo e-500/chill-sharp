@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
-import type { JsonValue } from 'chill-sharp-ng-client';
+import type { JsonValue } from '@chill-sharp/ng-client';
 import { firstValueFrom } from 'rxjs';
 import { getCultureNameOptions } from '../../lib/culture-name-options';
 import { getDateFormatOptions } from '../../lib/date-format-options';

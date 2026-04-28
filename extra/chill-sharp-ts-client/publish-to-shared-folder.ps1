@@ -14,5 +14,5 @@ $helperScriptPath = Join-Path (Split-Path -Parent $scriptDirectory) 'publish-npm
 # Delegate the actual install, build, and pack steps to the common helper.
 & $helperScriptPath -PackageDirectory $scriptDirectory -SharedFolder $SharedFolder
 if ($LASTEXITCODE -ne 0) {
-  throw 'Failed to publish chill-sharp-ts-client to the shared folder.'
+  throw 'Failed to publish @chill-sharp/ts-client to the shared folder.'
 }
