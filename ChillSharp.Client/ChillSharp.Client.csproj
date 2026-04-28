@@ -43,7 +43,7 @@
   </ItemGroup>
 
   <Target Name="BuildClientDependencyProjects">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
   </Target>
 
   <Target Name="IncludeClientDependencyOutputs" DependsOnTargets="BuildClientDependencyProjects">

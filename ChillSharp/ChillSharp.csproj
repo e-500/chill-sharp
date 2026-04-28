@@ -46,7 +46,7 @@
     </ItemGroup>
 
     <Target Name="BuildBuiltinModuleProjects">
-        <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Schema\ChillSharp.Schema.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Attachment\ChillSharp.Attachment.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+        <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Schema\ChillSharp.Schema.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Attachment\ChillSharp.Attachment.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
     </Target>
 
     <Target Name="IncludeBuiltinModuleOutputs" DependsOnTargets="BuildBuiltinModuleProjects">
