@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateMvcApplicationPartsAssemblyAttributes>false</GenerateMvcApplicationPartsAssemblyAttributes>
+    <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);$(MSBuildThisFileDirectory)nupkgs</RestoreAdditionalProjectSources>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,4 +24,5 @@
   </ItemGroup>
 
 </Project>
+
 
