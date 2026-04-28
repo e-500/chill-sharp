@@ -5,7 +5,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<OutputType>Library</OutputType>
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<Title>ChillSharp Client library</Title>
 		<Copyright>© 2025 Andrea Piovesan</Copyright>
 		<PackageIcon>logo.png</PackageIcon>
@@ -43,14 +43,14 @@
   </ItemGroup>
 
   <Target Name="BuildClientDependencyProjects">
-    <MSBuild Projects="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
   </Target>
 
   <Target Name="IncludeClientDependencyOutputs" DependsOnTargets="BuildClientDependencyProjects">
     <ItemGroup>
-      <BuildOutputInPackage Include="..\ChillSharp.Schema.Abstractions\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.Abstractions.dll" />
-      <BuildOutputInPackage Include="..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
-      <BuildOutputInPackage Include="..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
+      <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.Abstractions.dll" />
+      <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
+      <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
     </ItemGroup>
   </Target>
 
