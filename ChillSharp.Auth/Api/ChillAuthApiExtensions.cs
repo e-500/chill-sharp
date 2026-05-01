@@ -96,6 +96,7 @@ public static class ChillAuthApiExtensions
         services.AddChillAuthApi<TContext>();
         services.AddDataProtection();
         services.AddOptions<ChillAuthIdentityApiOptions>();
+        services.AddSingleton<IChillAuthAccessTokenValidationCache, ChillAuthAccessTokenValidationCache>();
         if (configureOptions != null)
         {
             services.Configure(configureOptions);

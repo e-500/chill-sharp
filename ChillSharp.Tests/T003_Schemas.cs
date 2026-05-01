@@ -26,6 +26,7 @@ using ChillSharp.Auth.Services;
 using ChillSharp.Schema.Api;
 using ChillSharp.Schema.Api.Controllers;
 using ChillSharp.Tests.EF.Model;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
@@ -35,6 +36,7 @@ using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.Reflection;
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Concurrent;
 using ChillSharp.Schema.Contracts;
 using ChillSharp.Schema;
 
@@ -150,6 +152,31 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(activated);
             Assert.IsInstanceOfType<IChillQuery<IChillEntity>>(activated);
             Assert.AreEqual(typeof(OpenGenericBlogQuery<ChillSharp.Tests.EF.Model.Blog>), activated.GetType());
+        }
+
+        [TestMethod]
+        public void Step006_ResolveTypeCachesResultsPerAssemblyAndLookupKey()
+        {
+            var resolverType = typeof(IChillContext).Assembly.GetType("ChillSharp.Dto.ChillTypeResolver");
+            Assert.IsNotNull(resolverType, "Unable to locate ChillTypeResolver");
+
+            var cacheField = resolverType.GetField("_resolvedTypeCache", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(cacheField, "Unable to locate ChillTypeResolver cache field");
+
+            var cache = cacheField.GetValue(null) as System.Collections.IDictionary;
+            Assert.IsNotNull(cache, "Unable to access ChillTypeResolver cache instance");
+            cache.Clear();
+
+            var method = resolverType.GetMethod("ResolveType", BindingFlags.Public | BindingFlags.Static);
+            Assert.IsNotNull(method, "Unable to locate ChillTypeResolver.ResolveType");
+
+            var first = method.Invoke(null, [typeof(Schemas).Assembly, "ChillSharp.Tests.Schemas+OpenGenericBlogQuery", "ChillSharp.Tests"]) as Type;
+            var second = method.Invoke(null, [typeof(Schemas).Assembly, "ChillSharp.Tests.Schemas+OpenGenericBlogQuery", "ChillSharp.Tests"]) as Type;
+
+            Assert.IsNotNull(first);
+            Assert.IsNotNull(second);
+            Assert.AreEqual(first, second);
+            Assert.AreEqual(1, cache.Count);
         }
 
         [TestMethod]
@@ -1049,11 +1076,14 @@ namespace ChillSharp.Tests
 
         private static async Task<IActionResult?> ExecuteSchemaAccessFilterAsync(bool allowSchemaManagement)
         {
-            var filter = new ChillSchemaManagementAccessFilter(
-                new StubManagementAccessService(allowSchemaManagement),
-                new StubIdentityResolver());
+            var services = new ServiceCollection()
+                .AddSingleton<IChillAuthManagementAccessService>(new StubManagementAccessService(allowSchemaManagement))
+                .AddSingleton<IChillAuthIdentityResolver, StubIdentityResolver>()
+                .BuildServiceProvider();
+            var filter = new ChillSchemaManagementAccessFilter();
             var httpContext = new DefaultHttpContext
             {
+                RequestServices = services,
                 User = new ClaimsPrincipal(new ClaimsIdentity(
                 [
                     new Claim(ClaimTypes.NameIdentifier, "schema-tester")

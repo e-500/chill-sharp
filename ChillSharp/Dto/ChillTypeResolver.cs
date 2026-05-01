@@ -18,12 +18,15 @@
  */
 
 using ChillSharp.EF;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace ChillSharp.Dto
 {
     public static class ChillTypeResolver
     {
+        private static readonly ConcurrentDictionary<ResolveTypeCacheKey, Type> _resolvedTypeCache = new();
+
         public static string NormalizeChillType(Type type, string shrinkTypePrefix)
         {
             var displayType = type.IsConstructedGenericType ? type.GetGenericTypeDefinition() : type;
@@ -39,6 +42,12 @@ namespace ChillSharp.Dto
         }
 
         public static Type ResolveType(Assembly assembly, string chillType, string chillTypePrefix)
+        {
+            var cacheKey = ResolveTypeCacheKey.Create(assembly, chillType, chillTypePrefix);
+            return _resolvedTypeCache.GetOrAdd(cacheKey, static key => ResolveTypeUncached(key.Assembly, key.ChillType, key.ChillTypePrefix));
+        }
+
+        private static Type ResolveTypeUncached(Assembly assembly, string chillType, string chillTypePrefix)
         {
             var normalizedInput = NormalizeLookupKey(chillType, chillTypePrefix);
             var matches = ChillAssemblyDiscovery.GetCandidateAssemblies(assembly)
@@ -154,6 +163,17 @@ namespace ChillSharp.Dto
             }
 
             return value;
+        }
+
+        private readonly record struct ResolveTypeCacheKey(Assembly Assembly, string ChillType, string ChillTypePrefix)
+        {
+            public static ResolveTypeCacheKey Create(Assembly assembly, string chillType, string chillTypePrefix)
+            {
+                return new ResolveTypeCacheKey(
+                    assembly,
+                    NormalizeLookupKey(chillType, chillTypePrefix),
+                    chillTypePrefix?.Trim() ?? string.Empty);
+            }
         }
     }
 }

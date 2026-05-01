@@ -19,6 +19,7 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Api.Controllers;
 using ChillSharp.Auth.Model;
 using ChillSharp.Auth.Services;
 using ChillSharp.Api;
@@ -27,6 +28,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
@@ -1028,6 +1030,236 @@ public sealed class AuthApi
         protectedResponse.EnsureSuccessStatusCode();
     }
 
+    [TestMethod]
+    public async Task Step015_EntityAclAuthorizationCachesUserAndPermissionLookups()
+    {
+        var fakeAuthService = new StubEntityAclAuthService
+        {
+            UserByExternalIdResult = new AuthUser
+            {
+                Guid = Guid.NewGuid(),
+                ExternalId = "acl-cache-user",
+                UserName = "acl.cache.user",
+                DisplayName = "ACL Cache User",
+                IsActive = true
+            },
+            EvaluateEntityPermissionResult = new PermissionEvaluationResult
+            {
+                IsAllowed = true
+            }
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IChillAuthService>(fakeAuthService);
+        services.AddChillAuthIdentityIntegration();
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var aclService = scope.ServiceProvider.GetRequiredService<IChillEntityAclService>();
+        var principal = CreatePrincipal("acl-cache-user");
+
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Query));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Query));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Comment", ChillEntityAclAction.Query));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Comment", ChillEntityAclAction.Query));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Update));
+
+        Assert.AreEqual(1, fakeAuthService.GetUserByExternalIdCalls);
+        Assert.AreEqual(3, fakeAuthService.EvaluateEntityPermissionCalls);
+    }
+
+    [TestMethod]
+    public async Task Step016_AuthManagementMutationsInvalidateEntityAclCache()
+    {
+        var fakeAuthService = new StubEntityAclAuthService
+        {
+            UserByExternalIdResult = new AuthUser
+            {
+                Guid = Guid.NewGuid(),
+                ExternalId = "acl-invalidation-user",
+                UserName = "acl.invalidation.user",
+                DisplayName = "ACL Invalidation User",
+                IsActive = true
+            },
+            EvaluateEntityPermissionResult = new PermissionEvaluationResult
+            {
+                IsAllowed = true
+            },
+            CreateRoleResult = new AuthRole
+            {
+                Guid = Guid.NewGuid(),
+                Name = "Editors",
+                Description = "Role used to invalidate the ACL cache",
+                IsActive = true
+            }
+        };
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IChillAuthService>(fakeAuthService);
+        services.AddChillAuthIdentityIntegration();
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        var aclService = scope.ServiceProvider.GetRequiredService<IChillEntityAclService>();
+        var cache = scope.ServiceProvider.GetRequiredService<IChillAuthEntityAclCache>();
+        var principal = CreatePrincipal("acl-invalidation-user");
+
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Query));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Query));
+        Assert.AreEqual(1, fakeAuthService.GetUserByExternalIdCalls);
+        Assert.AreEqual(1, fakeAuthService.EvaluateEntityPermissionCalls);
+
+        var controller = new AuthManagementController(
+            fakeAuthService,
+            new StubIdentityResolver(),
+            entityAclCache: cache);
+
+        var actionResult = await controller.CreateRole(new CreateAuthRoleRequest
+        {
+            Name = "Editors",
+            Description = "Invalidate ACL cache",
+            IsActive = true
+        }, CancellationToken.None);
+
+        Assert.IsInstanceOfType<CreatedAtActionResult>(actionResult);
+
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Query));
+        Assert.AreEqual(2, fakeAuthService.GetUserByExternalIdCalls);
+        Assert.AreEqual(2, fakeAuthService.EvaluateEntityPermissionCalls);
+    }
+
+    [TestMethod]
+    public async Task Step017_AccessTokenValidationUsesCachedSessionSnapshot()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-cache-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        var timeProvider = new MutableTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var cache = new ChillAuthAccessTokenValidationCache();
+        var authOptions = Options.Create(new ChillAuthIdentityApiOptions
+        {
+            AccessTokenLifetime = TimeSpan.FromMinutes(20),
+            RefreshTokenLifetime = TimeSpan.FromMinutes(30)
+        });
+
+        await using var issuingContext = new EF.DummyContext(dbOptions);
+        await issuingContext.Database.EnsureDeletedAsync();
+        await issuingContext.Database.EnsureCreatedAsync();
+
+        var tokenService = new ChillAuthTokenService(
+            issuingContext,
+            new EphemeralDataProtectionProvider(),
+            cache,
+            authOptions,
+            timeProvider);
+
+        var tokenResponse = await tokenService.IssueAsync("user-1", "token.user", CancellationToken.None);
+        var sessionGuid = await issuingContext.RefreshTokens.Select(x => x.Guid).SingleAsync();
+
+        await using (var deletionContext = new EF.DummyContext(dbOptions))
+        {
+            var persistedSession = await deletionContext.RefreshTokens.SingleAsync(x => x.Guid == sessionGuid);
+            deletionContext.RefreshTokens.Remove(persistedSession);
+            await deletionContext.SaveChangesAsync();
+        }
+
+        var principal = await tokenService.ValidateAccessTokenAsync(tokenResponse.AccessToken, CancellationToken.None);
+
+        Assert.IsNotNull(principal);
+        Assert.AreEqual("user-1", principal.FindFirstValue(ClaimTypes.NameIdentifier));
+        Assert.AreEqual("token.user", principal.FindFirstValue(ClaimTypes.Name));
+    }
+
+    [TestMethod]
+    public async Task Step018_AccessTokenValidationCacheIsInvalidatedOnRevoke()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-revoke-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        var timeProvider = new MutableTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
+        var cache = new ChillAuthAccessTokenValidationCache();
+        var authOptions = Options.Create(new ChillAuthIdentityApiOptions
+        {
+            AccessTokenLifetime = TimeSpan.FromMinutes(20),
+            RefreshTokenLifetime = TimeSpan.FromMinutes(30)
+        });
+
+        await using var context = new EF.DummyContext(dbOptions);
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+
+        var tokenService = new ChillAuthTokenService(
+            context,
+            new EphemeralDataProtectionProvider(),
+            cache,
+            authOptions,
+            timeProvider);
+
+        var tokenResponse = await tokenService.IssueAsync("user-2", "revoke.user", CancellationToken.None);
+        var sessionGuid = await context.RefreshTokens.Select(x => x.Guid).SingleAsync();
+
+        Assert.IsNotNull(await tokenService.ValidateAccessTokenAsync(tokenResponse.AccessToken, CancellationToken.None));
+
+        await tokenService.RevokeAsync(sessionGuid, CancellationToken.None);
+
+        var principal = await tokenService.ValidateAccessTokenAsync(tokenResponse.AccessToken, CancellationToken.None);
+        Assert.IsNull(principal);
+    }
+
+    [TestMethod]
+    public async Task Step019_AccessTokenValidationCacheRemovesExpiredSessions()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-expiry-{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+
+        var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        var issuedUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        var timeProvider = new MutableTimeProvider(issuedUtc);
+        var cache = new ChillAuthAccessTokenValidationCache();
+        var authOptions = Options.Create(new ChillAuthIdentityApiOptions
+        {
+            AccessTokenLifetime = TimeSpan.FromMinutes(20),
+            RefreshTokenLifetime = TimeSpan.FromMinutes(1)
+        });
+
+        await using var context = new EF.DummyContext(dbOptions);
+        await context.Database.EnsureDeletedAsync();
+        await context.Database.EnsureCreatedAsync();
+
+        var tokenService = new ChillAuthTokenService(
+            context,
+            new EphemeralDataProtectionProvider(),
+            cache,
+            authOptions,
+            timeProvider);
+
+        var tokenResponse = await tokenService.IssueAsync("user-3", "expired.user", CancellationToken.None);
+        var sessionGuid = await context.RefreshTokens.Select(x => x.Guid).SingleAsync();
+
+        Assert.IsTrue(cache.TryGet(sessionGuid, issuedUtc.UtcDateTime, out var snapshot));
+        Assert.IsNotNull(snapshot);
+
+        timeProvider.Advance(TimeSpan.FromMinutes(2));
+
+        var principal = await tokenService.ValidateAccessTokenAsync(tokenResponse.AccessToken, CancellationToken.None);
+
+        Assert.IsNull(principal);
+        Assert.IsFalse(cache.TryGet(sessionGuid, timeProvider.GetUtcNow().UtcDateTime, out _));
+    }
+
     private static ChillSharpClient CreateTestHeaderClient(string baseUrl, string externalId)
     {
         return new ChillSharpClient(baseUrl, () =>
@@ -1036,6 +1268,34 @@ public sealed class AuthApi
             client.DefaultRequestHeaders.Add("X-Test-User", externalId);
             return client;
         });
+    }
+
+    private static ClaimsPrincipal CreatePrincipal(string externalId)
+    {
+        return new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.NameIdentifier, externalId)
+        ], authenticationType: "Test"));
+    }
+
+    private sealed class MutableTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow;
+
+        public MutableTimeProvider(DateTimeOffset utcNow)
+        {
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
+
+        public void Advance(TimeSpan delta)
+        {
+            _utcNow = _utcNow.Add(delta);
+        }
     }
 
     private static class SecuredAuthApiHost
@@ -1310,5 +1570,69 @@ public sealed class AuthApi
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
+    }
+
+    private sealed class StubIdentityResolver : IChillAuthIdentityResolver
+    {
+        public string? ResolveExternalId(ClaimsPrincipal principal)
+        {
+            return principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
+    }
+
+    private sealed class StubEntityAclAuthService : IChillAuthService
+    {
+        public AuthUser? UserByExternalIdResult { get; set; }
+        public PermissionEvaluationResult EvaluateEntityPermissionResult { get; set; } = new() { IsAllowed = true };
+        public AuthRole CreateRoleResult { get; set; } = new() { Guid = Guid.NewGuid(), Name = "Role", IsActive = true };
+        public int GetUserByExternalIdCalls { get; private set; }
+        public int EvaluateEntityPermissionCalls { get; private set; }
+
+        public Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthUserListItemResponse>> GetUserListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthUserDetailsResponse?> GetManagedUserAsync(Guid userGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthUserDetailsResponse> SetUserAsync(SetAuthUserRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthRoleListItemResponse>> GetRoleListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthRoleDetailsResponse?> GetManagedRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthRoleDetailsResponse> SetRoleAsync(SetAuthRoleRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<string>> GetModuleListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<string>> GetPropertyListAsync(string chillType, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthUser?> GetUserAsync(Guid userGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<AuthUser?> GetUserByExternalIdAsync(string externalId, CancellationToken cancellationToken = default)
+        {
+            GetUserByExternalIdCalls++;
+            return Task.FromResult(UserByExternalIdResult);
+        }
+
+        public Task<AuthUser> CreateUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthUser?> UpdateUserAsync(Guid userGuid, UpdateAuthUserRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> DeleteUserAsync(Guid userGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthRole>> GetRolesAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthRole?> GetRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthRole> CreateRoleAsync(CreateAuthRoleRequest request, CancellationToken cancellationToken = default) => Task.FromResult(CreateRoleResult);
+        public Task<AuthRole?> UpdateRoleAsync(Guid roleGuid, UpdateAuthRoleRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> DeleteRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthRole>> GetUserRolesAsync(Guid userGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<AuthPermissionRule>> GetPermissionRulesAsync(Guid? userGuid = null, Guid? roleGuid = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthPermissionRule?> GetPermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthPermissionRule> CreatePermissionRuleAsync(CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<AuthPermissionRule?> UpdatePermissionRuleAsync(Guid ruleGuid, UpdateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<bool> DeletePermissionRuleAsync(Guid ruleGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default)
+        {
+            EvaluateEntityPermissionCalls++;
+            return Task.FromResult(EvaluateEntityPermissionResult);
+        }
+
+        public Task<PermissionEvaluationResult> EvaluatePropertyPermissionAsync(EvaluatePropertyPermissionRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<PropertyPermissionSetResult> EvaluatePropertySetPermissionAsync(EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public void InvalidateManagementAccess(string? externalId = null) { }
     }
 }

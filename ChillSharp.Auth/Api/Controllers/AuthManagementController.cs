@@ -32,6 +32,7 @@ public class AuthManagementController : ControllerBase
 {
     #region Fields
     private readonly IChillAuthService _service;
+    private readonly IChillAuthEntityAclCache? _entityAclCache;
     private readonly IChillAuthIdentityResolver _identityResolver;
     private readonly IChillAuthIdentityService? _identityService;
     #endregion
@@ -43,9 +44,11 @@ public class AuthManagementController : ControllerBase
     public AuthManagementController(
         IChillAuthService service,
         IChillAuthIdentityResolver identityResolver,
-        IChillAuthIdentityService? identityService = null)
+        IChillAuthIdentityService? identityService = null,
+        IChillAuthEntityAclCache? entityAclCache = null)
     {
         _service = service;
+        _entityAclCache = entityAclCache;
         _identityResolver = identityResolver;
         _identityService = identityService;
     }
@@ -177,6 +180,7 @@ public class AuthManagementController : ControllerBase
             }
 
             var user = await _service.CreateUserAsync(request, cancellationToken);
+            InvalidateEntityAclCache();
             return CreatedAtAction(nameof(GetUser), new { userGuid = user.Guid }, user);
         }
         catch (ArgumentException ex)
@@ -199,6 +203,10 @@ public class AuthManagementController : ControllerBase
         try
         {
             var user = await _service.UpdateUserAsync(userGuid, request, cancellationToken);
+            if (user != null)
+            {
+                InvalidateEntityAclCache();
+            }
             return user is null ? NotFound() : Ok(user);
         }
         catch (ArgumentException ex)
@@ -218,7 +226,13 @@ public class AuthManagementController : ControllerBase
     [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
     public async Task<IActionResult> DeleteUser(Guid userGuid, CancellationToken cancellationToken)
     {
-        return await _service.DeleteUserAsync(userGuid, cancellationToken) ? NoContent() : NotFound();
+        var deleted = await _service.DeleteUserAsync(userGuid, cancellationToken);
+        if (deleted)
+        {
+            InvalidateEntityAclCache();
+        }
+
+        return deleted ? NoContent() : NotFound();
     }
 
     /// <summary>
@@ -240,7 +254,13 @@ public class AuthManagementController : ControllerBase
     {
         try
         {
-            return await _service.AssignRoleAsync(userGuid, roleGuid, cancellationToken) ? NoContent() : NotFound();
+            var assigned = await _service.AssignRoleAsync(userGuid, roleGuid, cancellationToken);
+            if (assigned)
+            {
+                InvalidateEntityAclCache();
+            }
+
+            return assigned ? NoContent() : NotFound();
         }
         catch (InvalidOperationException ex)
         {
@@ -257,7 +277,13 @@ public class AuthManagementController : ControllerBase
     {
         try
         {
-            return await _service.RemoveRoleAsync(userGuid, roleGuid, cancellationToken) ? NoContent() : NotFound();
+            var removed = await _service.RemoveRoleAsync(userGuid, roleGuid, cancellationToken);
+            if (removed)
+            {
+                InvalidateEntityAclCache();
+            }
+
+            return removed ? NoContent() : NotFound();
         }
         catch (InvalidOperationException ex)
         {
@@ -298,6 +324,7 @@ public class AuthManagementController : ControllerBase
         try
         {
             var role = await _service.CreateRoleAsync(request, cancellationToken);
+            InvalidateEntityAclCache();
             return CreatedAtAction(nameof(GetRole), new { roleGuid = role.Guid }, role);
         }
         catch (ArgumentException ex)
@@ -316,6 +343,10 @@ public class AuthManagementController : ControllerBase
         try
         {
             var role = await _service.UpdateRoleAsync(roleGuid, request, cancellationToken);
+            if (role != null)
+            {
+                InvalidateEntityAclCache();
+            }
             return role is null ? NotFound() : Ok(role);
         }
         catch (ArgumentException ex)
@@ -331,7 +362,13 @@ public class AuthManagementController : ControllerBase
     [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
     public async Task<IActionResult> DeleteRole(Guid roleGuid, CancellationToken cancellationToken)
     {
-        return await _service.DeleteRoleAsync(roleGuid, cancellationToken) ? NoContent() : NotFound();
+        var deleted = await _service.DeleteRoleAsync(roleGuid, cancellationToken);
+        if (deleted)
+        {
+            InvalidateEntityAclCache();
+        }
+
+        return deleted ? NoContent() : NotFound();
     }
     #endregion
 
@@ -367,6 +404,7 @@ public class AuthManagementController : ControllerBase
         try
         {
             var rule = await _service.CreatePermissionRuleAsync(request, cancellationToken);
+            InvalidateEntityAclCache();
             return CreatedAtAction(nameof(GetRule), new { ruleGuid = rule.Guid }, rule);
         }
         catch (ArgumentException ex)
@@ -389,6 +427,10 @@ public class AuthManagementController : ControllerBase
         try
         {
             var rule = await _service.UpdatePermissionRuleAsync(ruleGuid, request, cancellationToken);
+            if (rule != null)
+            {
+                InvalidateEntityAclCache();
+            }
             return rule is null ? NotFound() : Ok(rule);
         }
         catch (ArgumentException ex)
@@ -410,7 +452,13 @@ public class AuthManagementController : ControllerBase
     {
         try
         {
-            return await _service.DeletePermissionRuleAsync(ruleGuid, cancellationToken) ? NoContent() : NotFound();
+            var deleted = await _service.DeletePermissionRuleAsync(ruleGuid, cancellationToken);
+            if (deleted)
+            {
+                InvalidateEntityAclCache();
+            }
+
+            return deleted ? NoContent() : NotFound();
         }
         catch (InvalidOperationException ex)
         {
@@ -418,4 +466,9 @@ public class AuthManagementController : ControllerBase
         }
     }
     #endregion
+
+    private void InvalidateEntityAclCache()
+    {
+        _entityAclCache?.InvalidateAll();
+    }
 }
