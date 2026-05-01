@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk">
 	
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <OutputType>Library</OutputType>
-        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <Title>ChillSharp</Title>
 	        <Copyright>© 2025 Andrea Piovesan</Copyright>
         <PackageIcon>logo.png</PackageIcon>
@@ -37,6 +37,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" PrivateAssets="all" />
 	    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
 	    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
@@ -45,18 +46,18 @@
     </ItemGroup>
 
     <Target Name="BuildBuiltinModuleProjects">
-        <MSBuild Projects="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;..\ChillSharp.Auth\ChillSharp.Auth.csproj;..\ChillSharp.I18n\ChillSharp.I18n.csproj;..\ChillSharp.Schema\ChillSharp.Schema.csproj;..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;..\ChillSharp.Attachment\ChillSharp.Attachment.csproj;..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
+        <MSBuild Projects="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Auth\ChillSharp.Auth.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.I18n\ChillSharp.I18n.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Schema\ChillSharp.Schema.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Mcp\ChillSharp.Mcp.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.Attachment\ChillSharp.Attachment.csproj;$(MSBuildProjectDirectory)\..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration);TargetFramework=$(TargetFramework);GeneratePackageOnBuild=false" />
     </Target>
 
     <Target Name="IncludeBuiltinModuleOutputs" DependsOnTargets="BuildBuiltinModuleProjects">
         <ItemGroup>
-            <BuildOutputInPackage Include="..\ChillSharp.Schema.Abstractions\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.Abstractions.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.Schema\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.Mcp\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Mcp.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.Attachment\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Attachment.dll" />
-            <BuildOutputInPackage Include="..\ChillSharp.AspNetCore\bin\$(Configuration)\$(TargetFramework)\ChillSharp.AspNetCore.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Schema.Abstractions\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.Abstractions.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Auth\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Auth.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.I18n\bin\$(Configuration)\$(TargetFramework)\ChillSharp.I18n.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Schema\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Schema.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Mcp\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Mcp.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Attachment\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Attachment.dll" />
+            <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.AspNetCore\bin\$(Configuration)\$(TargetFramework)\ChillSharp.AspNetCore.dll" />
         </ItemGroup>
     </Target>
 
