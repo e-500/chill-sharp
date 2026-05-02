@@ -17,15 +17,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Contracts;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections;
 using System.Globalization;
-using System.Reflection;
 using System.Text.Json;
 
 namespace ChillSharp.Dto
@@ -37,14 +34,6 @@ namespace ChillSharp.Dto
             PropertyNameCaseInsensitive = true
         };
 
-        private static readonly HashSet<string> ServerManagedEntityProperties = new(StringComparer.Ordinal)
-        {
-            nameof(IChillEntity.Checksum),
-            nameof(IChillEntity.LastUpdateUser),
-            nameof(IChillEntity.LastUpdate),
-            nameof(IChillEntity.LastUpdateUtcOffset)
-        };
-
         /// <summary>
         /// Builds a DTO-friendly property bag from the selected CLR properties, resolving entity navigations
         /// into <see cref="ChillDtoEntity"/> wrappers and converting scalar values using the Chill schema type.
@@ -53,7 +42,7 @@ namespace ChillSharp.Dto
             IChillContext context,
             object source,
             string chillType,
-            IEnumerable<PropertyInfo> properties,
+            IEnumerable<ChillDtoPropertyAccessor> properties,
             Func<string, List<ChillDtoProperty>>? resolveSubProperties = null,
             Action<string>? onInflate = null)
         {
@@ -66,19 +55,18 @@ namespace ChillSharp.Dto
                 property => property.Name,
                 property =>
                 {
-                    var attr = property.GetCustomAttribute<ChillPropertyAttribute>()!;
                     var propertyName = property.Name;
 
-                    if (attr.CallOnInflate)
+                    if (property.Attribute.CallOnInflate)
                     {
                         onInflate?.Invoke(propertyName);
                     }
 
-                    if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                    if (property.IsEntityReference)
                     {
                         if (!sourceIsMappedEntity || dbx.Entry(source).Reference(propertyName).Exist(true))
                         {
-                            var entity = (IChillEntity?)property.GetValue(source);
+                            var entity = (IChillEntity?)property.Getter(source);
                             if (entity == null)
                                 return null;
 
@@ -88,7 +76,7 @@ namespace ChillSharp.Dto
                         return null;
                     }
 
-                    if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
+                    if (property.IsEntityCollection)
                     {
                         // Check if property is mapped in EF model
                         var navigation = sourceEntityType?.FindNavigation(propertyName);
@@ -108,15 +96,15 @@ namespace ChillSharp.Dto
                             //}
                         }
 
-                        var collection = (IEnumerable<IChillEntity>?)property.GetValue(source);
+                        var collection = (IEnumerable<IChillEntity>?)property.Getter(source);
                         if (collection == null)
                             return null;
 
                         return collection.Select(item => new ChillDtoEntity(context, item, resolveSubProperties?.Invoke(propertyName) ?? []));
                     }
 
-                    var value = property.GetValue(source);
-                    var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
+                    var value = property.Getter(source);
+                    var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
                     return ConvertFromClrValue(value, property.PropertyType, propertyType);
                 });
         }
@@ -130,7 +118,7 @@ namespace ChillSharp.Dto
             object target,
             string chillType,
             IReadOnlyDictionary<string, object?> sourceValues,
-            IEnumerable<PropertyInfo> properties,
+            IEnumerable<ChillDtoPropertyAccessor> properties,
             string objectLabel,
             bool loadTrackedCollections,
             Action<string>? onInflate = null)
@@ -141,16 +129,15 @@ namespace ChillSharp.Dto
 
             foreach (var property in properties)
             {
-                var attr = property.GetCustomAttribute<ChillPropertyAttribute>()!;
                 var propertyName = property.Name;
 
                 if (!TryGetSourceValue(sourceValues, propertyName, out var value))
                     continue;
 
-                if (target is IChillEntity && ServerManagedEntityProperties.Contains(propertyName))
+                if (target is IChillEntity && property.IsServerManaged)
                     continue;
 
-                if (attr.CallOnInflate)
+                if (property.Attribute.CallOnInflate)
                 {
                     onInflate?.Invoke(propertyName);
                     continue;
@@ -159,7 +146,7 @@ namespace ChillSharp.Dto
                 // Can handle only implicit many-to-many relations, skip other type of collections.
                 // Them should be managed separately
                 if (targetIsMappedEntity &&
-                    typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType) &&
+                    property.IsEntityCollection &&
                     !dbx.Entry(target).Collection(propertyName).IsImplicitManyToMany())
                 {
                     continue;
@@ -168,7 +155,6 @@ namespace ChillSharp.Dto
                 try
                 {
                     var parsedValue = ConvertIncomingValue(
-                        context,
                         dbx,
                         target,
                         property,
@@ -177,12 +163,15 @@ namespace ChillSharp.Dto
                         defaultSchema,
                         loadTrackedCollections);
 
-                    property.SetValue(target, parsedValue);
+                    if (property.Setter == null)
+                        throw new ChillException($"Property {propertyName} on chillable {objectLabel} is not writable");
+
+                    property.Setter(target, parsedValue);
 
                     // Additional: To ensure to write null even if reference is not loaded
                     if (targetIsMappedEntity &&
                         value == null &&
-                        typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                        property.IsEntityReference)
                     {
                         dbx.Entry(target).Reference(propertyName).ClearForeignKey(); 
                     }
@@ -195,10 +184,9 @@ namespace ChillSharp.Dto
         }
 
         private static object? ConvertIncomingValue(
-            IChillContext context,
             DbContext dbx,
             object target,
-            PropertyInfo property,
+            ChillDtoPropertyAccessor property,
             string propertyName,
             object? value,
             IChillDtoSchema? defaultSchema,
@@ -207,49 +195,49 @@ namespace ChillSharp.Dto
             if (value == null)
                 return null;
 
-            var targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+            var targetType = property.EffectiveType;
 
             if (value is JsonElement jsonElement)
             {
                 if (jsonElement.ValueKind == JsonValueKind.Null)
                     return null;
 
-                if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                if (property.IsEntityReference)
                 {
                     var incomingEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return incomingEntity == null ? null : dbx.Find(targetType, incomingEntity.Guid);
                 }
 
-                if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
+                if (property.IsEntityCollection)
                 {
                     var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return ConvertEntityCollection(dbx, target, property, propertyName, incomingCollection, loadTrackedCollections);
                 }
 
-                var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
-                return ConvertToClrValue(jsonElement, targetType, propertyType, Nullable.GetUnderlyingType(property.PropertyType) != null);
+                var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
+                return ConvertToClrValue(jsonElement, targetType, propertyType, property.IsNullable);
             }
 
-            if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+            if (property.IsEntityReference)
             {
                 return value is ChillDtoEntity incomingEntity
                     ? dbx.Find(targetType, incomingEntity.Guid)
                     : value;
             }
 
-            if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
+            if (property.IsEntityCollection)
             {
                 return ConvertEntityCollection(dbx, target, property, propertyName, value as IEnumerable<ChillDtoEntity>, loadTrackedCollections);
             }
 
-            var resolvedPropertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
-            return ConvertToClrValue(value, targetType, resolvedPropertyType, Nullable.GetUnderlyingType(property.PropertyType) != null);
+            var resolvedPropertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
+            return ConvertToClrValue(value, targetType, resolvedPropertyType, property.IsNullable);
         }
 
         private static object? ConvertEntityCollection(
             DbContext dbx,
             object target,
-            PropertyInfo property,
+            ChillDtoPropertyAccessor property,
             string propertyName,
             IEnumerable<ChillDtoEntity>? incomingCollection,
             bool loadTrackedCollections)
@@ -260,32 +248,16 @@ namespace ChillSharp.Dto
             if (loadTrackedCollections)
                 dbx.Entry(target).Collection(propertyName).Load();
 
-            var collectionElementType = GetCollectionElementType(property.PropertyType);
-            var listType = typeof(List<>).MakeGenericType(collectionElementType);
-            var targetList = (IList?)Activator.CreateInstance(listType);
+            if (property.CollectionElementType == null || property.CollectionFactory == null)
+                throw new ChillException($"Unable to resolve collection element type for '{property.PropertyType.FullName ?? property.PropertyType.Name}'.");
+
+            var collectionElementType = property.CollectionElementType;
+            var targetList = property.CollectionFactory();
 
             foreach (var item in incomingCollection)
-                targetList!.Add(dbx.Find(collectionElementType, item.Guid));
+                targetList.Add(dbx.Find(collectionElementType, item.Guid));
 
             return targetList;
-        }
-
-        private static Type GetCollectionElementType(Type collectionType)
-        {
-            if (collectionType.IsArray)
-                return collectionType.GetElementType()!;
-
-            if (collectionType.IsGenericType && collectionType.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                return collectionType.GetGenericArguments()[0];
-
-            var enumerableType = collectionType
-                .GetInterfaces()
-                .FirstOrDefault(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-
-            if (enumerableType != null)
-                return enumerableType.GetGenericArguments()[0];
-
-            throw new ChillException($"Unable to resolve collection element type for '{collectionType.FullName ?? collectionType.Name}'.");
         }
 
         private static IChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
@@ -300,13 +272,13 @@ namespace ChillSharp.Dto
             }
         }
 
-        private static ChillDtoPropertyType ResolvePropertyType(IChillDtoSchema? schema, string propertyName, Type clrType)
+        private static ChillDtoPropertyType ResolvePropertyType(IChillDtoSchema? schema, string propertyName, ChillDtoPropertyType defaultPropertyType)
         {
             var schemaPropertyType = schema?.Properties
                 .FirstOrDefault(x => string.Equals(x.Name, propertyName, StringComparison.Ordinal))
                 ?.PropertyType;
 
-            return schemaPropertyType ?? ChillDtoPropertyMapper.Map(clrType);
+            return schemaPropertyType ?? defaultPropertyType;
         }
 
         private static object? ConvertFromClrValue(object? value, Type clrType, ChillDtoPropertyType propertyType)

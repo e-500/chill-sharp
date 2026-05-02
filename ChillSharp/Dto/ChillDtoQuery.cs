@@ -17,9 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Annotations;
 using ChillSharp.EF;
-using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Dto
 {
@@ -111,14 +109,11 @@ namespace ChillSharp.Dto
 			// Test and get main fields from chill entity
 			ChillType = _TestEntityAndGetChillType(Context, Query);
 
-			var ef_props = Query.GetType().GetProperties().Where(prop => 
-                prop.IsDefined(typeof(ChillPropertyAttribute), false));
-
             Properties = ChillDtoObjectMapper.BuildProperties(
                 Context,
                 Query,
                 ChillType,
-                ef_props);
+                ChillDtoTypeMetadataCache.Get(Query.GetType()).ChillProperties);
 
             if (Query.Pagination != null)
             {
@@ -161,9 +156,9 @@ namespace ChillSharp.Dto
             if (ChillType != QueryChillType)
                 throw new ChillException($"Entity ChillType ({QueryChillType}) differs from Dto ChillType ({ChillType})");
 
-            var ef_props = Query.GetType().GetProperties()
-                .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
-                .Where(x => Properties.Keys.Contains(x.Name));
+            var dtoPropertyNames = new HashSet<string>(Properties.Keys, StringComparer.Ordinal);
+            var ef_props = ChillDtoTypeMetadataCache.Get(Query.GetType()).ChillProperties
+                .Where(x => dtoPropertyNames.Contains(x.Name));
             ChillDtoObjectMapper.ApplyProperties(
                 Context,
                 Query,

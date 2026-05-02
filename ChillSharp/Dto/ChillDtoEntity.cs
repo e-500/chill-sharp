@@ -17,9 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Annotations;
 using ChillSharp.EF;
-using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Dto
 {
@@ -126,9 +124,14 @@ namespace ChillSharp.Dto
             // All chill properties matching the list
             // or all chill properties if list is null
             // No fields if list is empty.
-            var ef_props = Entity.GetType().GetProperties().Where(prop =>
-                prop.IsDefined(typeof(ChillPropertyAttribute), false) &&
-                (RequiredProperties == null || RequiredProperties.Any(x => x.PropertyName == prop.Name)));
+            var cachedProperties = ChillDtoTypeMetadataCache.Get(Entity.GetType()).ChillProperties;
+            var requiredPropertyNames = RequiredProperties == null
+                ? null
+                : new HashSet<string>(RequiredProperties.Select(x => x.PropertyName), StringComparer.Ordinal);
+
+            var ef_props = requiredPropertyNames == null
+                ? cachedProperties
+                : cachedProperties.Where(prop => requiredPropertyNames.Contains(prop.Name));
 
             Properties = ChillDtoObjectMapper.BuildProperties(
                 Context,
@@ -159,13 +162,10 @@ namespace ChillSharp.Dto
             Entity.Label = Label ?? "";
             Entity.ShortLabel = ShortLabel ?? "";
 
-            var dbx = (DbContext)Context;
-            if (dbx == null)
-                throw new ChillException("Can't cast to IChillContext to DbContext");
+            var cachedProperties = ChillDtoTypeMetadataCache.Get(Entity.GetType()).ChillProperties;
+            var dtoPropertyNames = new HashSet<string>(Properties.Keys, StringComparer.OrdinalIgnoreCase);
+            var ef_props = cachedProperties.Where(x => dtoPropertyNames.Contains(x.Name));
 
-            var ef_props = Entity.GetType().GetProperties()
-                .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
-                .Where(x => Properties.Keys.Any(key => string.Equals(key, x.Name, StringComparison.OrdinalIgnoreCase)));
             ChillDtoObjectMapper.ApplyProperties(
                 Context,
                 Entity,
