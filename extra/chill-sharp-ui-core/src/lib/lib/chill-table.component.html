@@ -79,9 +79,9 @@
       }
       <button type="button" class="layout-button" (click)="toggleEditLayoutMode()" [disabled]="isSavingLayout()">
         @if (isSavingLayout()) {
-          <app-chill-i18n-button-label [labelGuid]="'B46C82D8-443E-45DE-8D49-C270656B511E'" [primaryDefaultText]="'Saving layout...'" [secondaryDefaultText]="'Salvataggio layout...'" />
+          <app-chill-i18n-button-label [labelGuid]="'66BD242E-EEF2-4A10-92EB-E67EBC6F0989'" [primaryDefaultText]="'Saving layout...'" [secondaryDefaultText]="'Salvataggio layout...'" />
         } @else if (isEditLayoutMode()) {
-          <app-chill-i18n-button-label [labelGuid]="'7C681F13-4245-447F-B66A-D9A3A500D322'" [primaryDefaultText]="'Done'" [secondaryDefaultText]="'Fine'" />
+          <app-chill-i18n-button-label [labelGuid]="'6C77A5DF-DC99-4DE7-8DB2-05E9F8BB5841'" [primaryDefaultText]="'Save layout'" [secondaryDefaultText]="'Salva layout'" />
         } @else {
           <app-chill-i18n-button-label [labelGuid]="'9D0B43AC-47B4-4C63-98C7-DB0118C9C0CF'" [primaryDefaultText]="'Edit layout mode'" [secondaryDefaultText]="'Modalita modifica layout'" />
         }
@@ -89,9 +89,9 @@
       @if (isEditLayoutMode()) {
         <button type="button" class="layout-button" (click)="refreshSchemaFromModel()" [disabled]="isSavingLayout()">
           @if (isRefreshingSchema()) {
-            <app-chill-i18n-button-label [labelGuid]="'8628775B-B831-44F2-8A38-909F40E2F7B3'" [primaryDefaultText]="'Updating schema...'" [secondaryDefaultText]="'Aggiornamento schema...'" />
+            <app-chill-i18n-button-label [labelGuid]="'BFD8AA96-D870-423D-BB41-F7DAE0C3E38D'" [primaryDefaultText]="'Updating schema...'" [secondaryDefaultText]="'Aggiornamento schema...'" />
           } @else {
-            <app-chill-i18n-button-label [labelGuid]="'62953302-B951-4FD1-BD08-4B7649A91BAF'" [primaryDefaultText]="'Update'" [secondaryDefaultText]="'Aggiorna'" />
+            <app-chill-i18n-button-label [labelGuid]="'73617D0A-6D91-46DD-B833-76360AF33EEC'" [primaryDefaultText]="'Update schema'" [secondaryDefaultText]="'Aggiorna schema'" />
           }
         </button>
       }
