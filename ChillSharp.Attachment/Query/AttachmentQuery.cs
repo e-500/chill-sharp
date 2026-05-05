@@ -43,9 +43,9 @@ public sealed class AttachmentQuery : ChillQuery
         SecondaryLanguageLabel: "Guid collegato")]
     public Guid? AttachToGuid { get; set; }
 
-    public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+    public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
     {
-        var query = base.OnQuery(Context).OfType<Model.Attachment>();
+        var query = base.OnQuery(Context, LightweightRequired).OfType<Model.Attachment>();
 
         var normalizedChillType = AttachToChillType?.Trim();
         if (!string.IsNullOrWhiteSpace(normalizedChillType))

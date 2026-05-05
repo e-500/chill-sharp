@@ -1023,7 +1023,7 @@ namespace ChillSharp.Tests
                 return Query;
             }
 
-            public IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            public IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }
@@ -1038,7 +1038,7 @@ namespace ChillSharp.Tests
                 return Query;
             }
 
-            IQueryable<Blog> IChillQuery<Blog>.OnQuery(IChillContext Context)
+            IQueryable<Blog> IChillQuery<Blog>.OnQuery(IChillContext Context, bool LightweightRequired)
             {
                 return Array.Empty<Blog>().AsQueryable();
             }
@@ -1219,7 +1219,7 @@ namespace ChillSharp.Tests
 
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery
         {
-            public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }
@@ -1233,7 +1233,7 @@ namespace ChillSharp.Tests
 
         private sealed class FallbackLookupTargetQuery : ChillQuery
         {
-            public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }

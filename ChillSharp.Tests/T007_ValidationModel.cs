@@ -145,7 +145,7 @@ namespace ChillSharp.Tests
             [Required(AllowEmptyStrings = false, ErrorMessage = "This property must be ignored.")]
             public string InternalRequired { get; set; } = string.Empty;
 
-            public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }

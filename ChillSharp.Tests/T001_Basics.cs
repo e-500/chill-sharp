@@ -1703,9 +1703,9 @@ namespace ChillSharp.Tests
 
         private sealed class AutoPostQuery : ChillQuery, IChillQuery<Post>
         {
-            IQueryable<Post> IChillQuery<Post>.OnQuery(IChillContext Context)
+            IQueryable<Post> IChillQuery<Post>.OnQuery(IChillContext Context, bool LightweightRequired)
             {
-                return OnQuery(Context).Cast<Post>();
+                return OnQuery(Context, LightweightRequired).Cast<Post>();
             }
 
             IQueryable<Post> IChillQuery<Post>.OnOrderingBy(IChillContext Context, IQueryable<Post> Query)
