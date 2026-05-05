@@ -119,7 +119,7 @@ namespace ChillSharp
             var Entity = _Find(dbSet, Key);
             if (Entity == null)
                 return null;
-            Entity.OnSelect(_Context);
+            Entity.OnSelect(_Context, LightweightRequired: false);
             return Entity;
         }
 
@@ -223,7 +223,19 @@ namespace ChillSharp
         /// </summary>
         /// <param name="Query">The Chill query object defining filtering, sorting, and pagination.</param>
         /// <returns>A list of entities matching the query.</returns>
-        public List<IChillEntity> Query(IChillQuery<IChillEntity> Query)
+        public List<IChillEntity> Query(IChillQuery<IChillEntity> query)
+        {
+            return Query(query, static entity => entity);
+        }
+
+        /// <summary>
+        /// Executes a query and projects each result after <c>OnSelect</c> has been applied.
+        /// </summary>
+        /// <typeparam name="TResult">The projected result type.</typeparam>
+        /// <param name="Query">The Chill query object defining filtering, sorting, and pagination.</param>
+        /// <param name="selector">The projection applied to each selected entity.</param>
+        /// <returns>A projected list built from the matching entities.</returns>
+        public List<TResult> Query<TResult>(IChillQuery<IChillEntity> query, Func<IChillEntity, TResult> selector)
         {
             var db = (DbContext)_Context;
             bool opTrans = false;
@@ -234,12 +246,17 @@ namespace ChillSharp
             }
             try
             {
-                var q = Query.OnQuery(_Context);
-                q = Query.OnSearch(_Context, q);
-                q = Query.OnOrderingBy(_Context, q);
-                q = Query.OnPaginate(_Context, q);
-                var res = q.ToList();
-                res.ForEach(x => x.OnSelect(_Context));
+                var q = query.OnQuery(_Context, query.LightweightRequired);
+                q = query.OnSearch(_Context, q);
+                q = query.OnOrderingBy(_Context, q);
+                q = query.OnPaginate(_Context, q);
+                var entities = q.ToList();
+                var res = new List<TResult>(entities.Count);
+                foreach (var entity in entities)
+                {
+                    entity.OnSelect(_Context, query.LightweightRequired);
+                    res.Add(selector(entity));
+                }
                 if (opTrans)
                     db.Database.CommitTransaction();
                 return res;
@@ -259,9 +276,12 @@ namespace ChillSharp
         /// <param name="fullTextSearch">The generic full-text search string. Unquoted tokens use AND matching; quoted phrases are matched with word-boundary rules.</param>
         /// <param name="pagination">Optional pagination settings.</param>
         /// <returns>The matching entities.</returns>
-        public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null, ChillOrdering? ordering = null)
+        public List<IChillEntity> Lookup(string chillType, string? fullTextSearch = null, ChillPagination? pagination = null, ChillOrdering? ordering = null, bool lightweightRequired = true)
         {
             var query = GetQueryable(_Context, chillType);
+
+            if (lightweightRequired)
+                query = query.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(fullTextSearch))
             {
@@ -276,7 +296,7 @@ namespace ChillSharp
                 query = query.Skip((pagination.Page - 1) * pagination.PageResults).Take(pagination.PageResults);
 
             var res = query.ToList();
-            res.ForEach(x => x.OnSelect(_Context));
+            res.ForEach(x => x.OnSelect(_Context, lightweightRequired));
             return res;
         }
 

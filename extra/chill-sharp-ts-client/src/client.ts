@@ -155,6 +155,7 @@ export interface ChillDtoQuery extends JsonObject {
   resultProperties: ChillDtoProperty[] | null;
   pagination: ChillPagination | null;
   ordering: ChillOrdering | null;
+  lightweightRequired: boolean | null;
   results: ChillDtoEntity[];
 }
 

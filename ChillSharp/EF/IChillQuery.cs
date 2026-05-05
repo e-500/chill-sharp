@@ -67,6 +67,13 @@ namespace ChillSharp.EF
         ChillOrdering? Ordering { get; set; }
 
         /// <summary>
+        /// Indicates that the caller prefers a lightweight, speed-oriented execution path.
+        /// Query implementations can use this flag to enable optimizations such as
+        /// <c>AsNoTracking()</c> or reduced eager-loading when appropriate.
+        /// </summary>
+        bool LightweightRequired { get; set; }
+
+        /// <summary>
         /// Applies additional filtering logic to the query based on the current object's properties.
         /// <para>
         /// By default, implementations may filter by <see cref="Guid"/> if it is set.
@@ -76,7 +83,7 @@ namespace ChillSharp.EF
         /// <param name="context">The active Chill database context.</param>
         /// <param name="query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{T}"/>.</returns>
-        IQueryable<T> OnQuery(IChillContext Context);
+        IQueryable<T> OnQuery(IChillContext Context, bool LightweightRequired = false);
 
         /// <summary>
         /// Applies full-text or keyword search logic to the query results.

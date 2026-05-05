@@ -90,6 +90,12 @@ namespace ChillSharp.EF
         /// </summary>
         public ChillOrdering? Ordering { get; set; } = new();
 
+        /// <summary>
+        /// Indicates that the caller prefers a lightweight, speed-oriented execution path.
+        /// Override <see cref="OnQuery(IChillContext, bool)"/> to decide how to use this hint.
+        /// </summary>
+        public bool LightweightRequired { get; set; } = false;
+
         #region IChillQuery implementation
         /// <summary>
         /// Applies additional filtering to the query.
@@ -101,7 +107,7 @@ namespace ChillSharp.EF
         /// <param name="Context">The active Chill database context.</param>
         /// <param name="Query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
-        public virtual IQueryable<IChillEntity> OnQuery(IChillContext Context)
+        public virtual IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
         {
             var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(GetType());
             if (entityType == null)
