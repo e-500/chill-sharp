@@ -283,11 +283,7 @@ namespace ChillSharp
             if (lightweightRequired)
                 query = query.AsNoTracking();
 
-            if (!string.IsNullOrWhiteSpace(fullTextSearch))
-            {
-                foreach (var term in ChillFullTextSearchNormalizer.NormalizeSearchTerms(fullTextSearch))
-                    query = ChillFullTextSearchNormalizer.ApplySearchTerm(query, term);
-            }
+            query = ChillFullTextSearchNormalizer.ApplySearch(query, fullTextSearch);
 
             var entityType = ActivateDetachedChillEntity(chillType).GetType();
             query = ChillOrderingApplier.ApplyOrdering(query, ordering, entityType);

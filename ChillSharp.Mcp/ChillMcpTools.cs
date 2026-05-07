@@ -125,7 +125,9 @@ public sealed class ChillMcpTools
 
     private const string FullTextSearchGuidance =
         "FullTextSearch is generic full-text search against IChillEntity.FullTextContent. " +
-        "Unquoted text is normalized, split on whitespace, and AND-matched so every token must be present. " +
+        "Unquoted text without advanced selectors is normalized, split on whitespace, and AND-matched so every token must be present. " +
+        "When the search text contains brackets or standalone AND/OR operators outside quotes, ChillSharp evaluates it as a grouped boolean expression. " +
+        "Search the literal words 'and' or 'or' by wrapping them in matching quotes. " +
         "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
         "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
         "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. ";

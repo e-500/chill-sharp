@@ -207,11 +207,13 @@ var lookup = client.Lookup(new ChillDtoQuery
 });
 ```
 
-`FullTextSearch` searches against ChillSharp `FullTextContent`. Unquoted text is normalized, split on whitespace, and AND-matched, so every token must be present. Matching single or double quotes search one normalized phrase with word boundaries:
+`FullTextSearch` searches against ChillSharp `FullTextContent`. Unquoted text without advanced selectors is normalized, split on whitespace, and AND-matched, so every token must be present. Brackets plus standalone `and`/`or` operators outside quotes enable grouped boolean search. Search the literal words `and` or `or` by wrapping them in matching quotes. Matching single or double quotes search one normalized phrase with word boundaries:
 
 | Search text | Meaning |
 | --- | --- |
 | `release notes` | Match records containing both `release` and `notes`. |
+| `[release and notes] or memo` | Match records containing both `release` and `notes`, or records containing `memo`. |
+| `"and"` | Search the literal keyword `and` instead of the boolean operator. |
 | `"la nazione"` | Match the exact phrase as whole words, for example `bla bla la nazione bla bla`, but not `bla bla della nazione bla bla`. |
 | `"*la nazione"` or `"%la nazione"` | Relax the left boundary, so `della nazione` can match. |
 | `"la nazione*"` or `"la nazione%"` | Relax the right boundary, so a suffix can match. |

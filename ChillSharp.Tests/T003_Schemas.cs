@@ -532,10 +532,11 @@ namespace ChillSharp.Tests
             Assert.AreEqual("full-text-search", schema.CustomFormat);
             StringAssert.Contains(schema.MCPDescription, "broad keyword search");
             StringAssert.Contains(schema.MCPDescription, "AND matching");
+            StringAssert.Contains(schema.MCPDescription, "standalone AND/OR operators");
             StringAssert.Contains(schema.MCPDescription, "IChillEntity.FullTextContent");
             Assert.AreEqual("Properties.FullTextSearch", schema.Metadata["payloadPath"]);
             Assert.AreEqual("full-text-contains", schema.Metadata["matching"]);
-            Assert.AreEqual("AND", schema.Metadata["matchLogic"]);
+            Assert.AreEqual("AND_OR_GROUPED", schema.Metadata["matchLogic"]);
             Assert.AreEqual("ChillFullTextSearchNormalizer", schema.Metadata["normalizer"]);
             Assert.AreEqual("ignored", schema.Metadata["emptyBehavior"]);
         }

@@ -16,7 +16,7 @@
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
     <Description>ASP.NET Core integration entry point for ChillSharp and built-in modules.</Description>
-    <Version>1.0.120</Version>
+    <Version>1.0.121</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
 

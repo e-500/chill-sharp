@@ -788,6 +788,71 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public void Step009_QueryFullTextSearchSupportsGroupedAndOrStatements()
+        {
+            TestApiHost.EnsureStarted(6002);
+
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
+            var tokenA = $"GroupedAlpha-{Guid.NewGuid():N}";
+            var tokenB = $"GroupedBeta-{Guid.NewGuid():N}";
+            var tokenC = $"GroupedGamma-{Guid.NewGuid():N}";
+
+            client.SetEntityOptions(new ChillDtoEntityOptions
+            {
+                ChillType = "Model.Post",
+                FullTextContentFormatString = "{Title} {Author}"
+            });
+
+            var groupedMatch = client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = tokenB
+                }
+            });
+
+            var orMatch = client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenC,
+                    ["Author"] = "grouped-or-match"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = "missing-second-term"
+                }
+            });
+
+            var query = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            query.Properties["FullTextSearch"] = $"[{tokenA} and {tokenB}] or {tokenC}";
+
+            var result = client.Query(query);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.HasCount(2, result.Results);
+            Assert.IsTrue(result.Results.Any(x => x.Guid == groupedMatch.Guid));
+            Assert.IsTrue(result.Results.Any(x => x.Guid == orMatch.Guid));
+        }
+
+        [TestMethod]
         public void Step010_AutocompleteEntityReturnsUpdatedFields()
         {
             TestApiHost.EnsureStarted(6002);
@@ -1153,6 +1218,58 @@ namespace ChillSharp.Tests
             Assert.HasCount(1, result.Results);
             Assert.AreEqual($"{termA} {termB}", result.Results[0].Properties["Title"]?.ToString());
             Assert.AreEqual("quoted-lookup-match", result.Results[0].Properties["Author"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step019_LookupRequiresQuotesToSearchReservedAndKeyword()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-and-keyword-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var literalAndToken = "and";
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = literalAndToken,
+                Author = "quoted-and-match",
+                FullTextContent = ChillFullTextSearchNormalizer.Normalize($"{literalAndToken} quoted-and-match"),
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+
+            var unquotedLookup = new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Model.Post",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            unquotedLookup.Properties["FullTextSearch"] = literalAndToken;
+
+            var unquotedResult = dtoEngine.Lookup(unquotedLookup);
+
+            Assert.IsNotNull(unquotedResult);
+            Assert.IsNotNull(unquotedResult.Results);
+            Assert.HasCount(0, unquotedResult.Results);
+
+            var quotedLookup = new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Model.Post",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            quotedLookup.Properties["FullTextSearch"] = $"\"{literalAndToken}\"";
+
+            var quotedResult = dtoEngine.Lookup(quotedLookup);
+
+            Assert.IsNotNull(quotedResult);
+            Assert.IsNotNull(quotedResult.Results);
+            Assert.HasCount(1, quotedResult.Results);
+            Assert.AreEqual("quoted-and-match", quotedResult.Results[0].Properties["Author"]?.ToString());
         }
 
         [TestMethod]
