@@ -16,7 +16,7 @@
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
     <Description>Shared schema contracts and runtime abstractions for ChillSharp.</Description>
-    <Version>1.0.121</Version>
+    <Version>1.0.122</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
 

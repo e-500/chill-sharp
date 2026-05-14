@@ -1,6 +1,6 @@
 {
   "name": "@chill-sharp/ui-core",
-  "version": "1.0.121",
+  "version": "1.0.122",
   "description": "Shared Angular UI core for ChillSharp applications.",
   "keywords": [
     "angular",
@@ -26,8 +26,8 @@
     "zone.js": "~0.15.0"
   },
   "dependencies": {
-    "@chill-sharp/ng-client": "^1.0.121",
-    "@chill-sharp/ts-client": "^1.0.121",
+    "@chill-sharp/ng-client": "^1.0.122",
+    "@chill-sharp/ts-client": "^1.0.122",
     "monaco-editor": "^0.52.2",
     "tslib": "^2.3.0"
   },

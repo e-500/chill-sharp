@@ -52,6 +52,7 @@ export * from './lib/services/workspace-toolbar.service';
 export * from './lib/services/workspace.service';
 
 export * from './lib/tasks/crud-task/crud-task.component';
+export * from './lib/tasks/goto-url-task/goto-url-task.component';
 
 export * from './lib/workspace/confirm-message-dialog.component';
 export * from './lib/workspace/entity-options-dialog.component';
