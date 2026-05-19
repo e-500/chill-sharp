@@ -45,7 +45,7 @@ public sealed class AttachmentQuery : ChillQuery
 
     public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
     {
-        var query = base.OnQuery(Context, LightweightRequired).OfType<Model.Attachment>();
+        var query = base.OnQuery(Context, LightweightRequired).OfType<FileMetadata>();
 
         var normalizedChillType = AttachToChillType?.Trim();
         if (!string.IsNullOrWhiteSpace(normalizedChillType))
@@ -64,7 +64,7 @@ public sealed class AttachmentQuery : ChillQuery
     public override IQueryable<IChillEntity> OnOrderingBy(IChillContext Context, IQueryable<IChillEntity> Query)
     {
         return Query
-            .OfType<Model.Attachment>()
+            .OfType<FileMetadata>()
             .OrderByDescending(x => x.CreatedAtUtc)
             .ThenBy(x => x.Guid)
             .Cast<IChillEntity>();

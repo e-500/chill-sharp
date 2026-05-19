@@ -61,7 +61,7 @@ namespace ChillSharp.Dto
         /// </summary>
         public void Execute(IChillDtoEngine ChillEngine)
         {
-            IDtoChillable obj = null;
+            IDtoChillable? obj = null;
             if (Query != null)
                 obj = Query;
             else if (Entity != null)

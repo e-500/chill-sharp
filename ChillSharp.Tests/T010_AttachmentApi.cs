@@ -75,7 +75,7 @@ public sealed class AttachmentApi
 
         await using (var context = AttachmentApiHost.CreateDbContext())
         {
-            var publicAttachment = new ChillSharp.Attachment.Model.Attachment
+            var publicAttachment = new ChillSharp.Attachment.Model.FileMetadata
             {
                 Guid = publicGuid,
                 AttachToChillType = "Post",
@@ -89,7 +89,7 @@ public sealed class AttachmentApi
                 CreatedAtUtc = new DateTime(2026, 4, 15, 8, 0, 0, DateTimeKind.Utc)
             };
 
-            var privateAttachment = new ChillSharp.Attachment.Model.Attachment
+            var privateAttachment = new ChillSharp.Attachment.Model.FileMetadata
             {
                 Guid = privateGuid,
                 AttachToChillType = "Post",
@@ -180,7 +180,7 @@ public sealed class AttachmentApi
 
         await using (var context = AttachmentApiHost.CreateDbContext())
         {
-            var attachment = new ChillSharp.Attachment.Model.Attachment
+            var attachment = new ChillSharp.Attachment.Model.FileMetadata
             {
                 Guid = attachmentGuid,
                 AttachToChillType = "Model.Post",
@@ -315,7 +315,7 @@ public sealed class AttachmentApi
             return chillType?.Split('.').LastOrDefault() ?? string.Empty;
         }
 
-        public static string BuildArchivePath(ChillSharp.Attachment.Model.Attachment attachment)
+        public static string BuildArchivePath(ChillSharp.Attachment.Model.FileMetadata attachment)
         {
             var path = ChillSharp.Attachment.Services.ChillAttachmentArchive.BuildAttachmentPath(
                 ArchiveRoot,

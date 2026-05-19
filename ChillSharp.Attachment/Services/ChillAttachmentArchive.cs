@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Attachment.Model;
 using Microsoft.Extensions.Options;
 
 namespace ChillSharp.Attachment.Services;
@@ -33,7 +34,7 @@ public sealed class ChillAttachmentArchive : IChillAttachmentArchive
         _options = options.Value;
     }
 
-    public string BuildPath(Model.Attachment attachment)
+    public string BuildPath(FileMetadata attachment)
     {
         ArgumentNullException.ThrowIfNull(attachment);
         return BuildAttachmentPath(
@@ -44,7 +45,7 @@ public sealed class ChillAttachmentArchive : IChillAttachmentArchive
             attachment.CreatedAtUtc);
     }
 
-    public async Task SaveAsync(Model.Attachment attachment, Stream content, CancellationToken cancellationToken = default)
+    public async Task SaveAsync(FileMetadata attachment, Stream content, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attachment);
         ArgumentNullException.ThrowIfNull(content);
@@ -58,17 +59,17 @@ public sealed class ChillAttachmentArchive : IChillAttachmentArchive
         await content.CopyToAsync(targetStream, cancellationToken);
     }
 
-    public Stream OpenRead(Model.Attachment attachment)
+    public Stream OpenRead(FileMetadata attachment)
     {
         return new FileStream(BuildPath(attachment), FileMode.Open, FileAccess.Read, FileShare.Read);
     }
 
-    public bool Exists(Model.Attachment attachment)
+    public bool Exists(FileMetadata attachment)
     {
         return File.Exists(BuildPath(attachment));
     }
 
-    public void DeleteIfExists(Model.Attachment attachment)
+    public void DeleteIfExists(FileMetadata attachment)
     {
         var path = BuildPath(attachment);
         if (File.Exists(path))

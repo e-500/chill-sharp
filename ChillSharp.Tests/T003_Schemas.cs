@@ -1018,6 +1018,7 @@ namespace ChillSharp.Tests
             public ChillPagination? Pagination { get; set; }
 
             public ChillOrdering? Ordering { get; set; } = new();
+            public bool LightweightRequired { get; set; }
 
             public IQueryable<IChillEntity> OnPaginate(IChillContext Context, IQueryable<IChillEntity> Query)
             {
