@@ -8,8 +8,17 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$templateProjectPath = Join-Path $scriptDirectory 'ChillSharp.Template.csproj'
+$templateProjectPath = Join-Path $scriptDirectory 'Gdf.csproj'
 $localPackageFolder = Join-Path $scriptDirectory 'nupkgs'
+$restoreStateFolder = Join-Path $scriptDirectory 'obj'
+
+function Get-NuGetGlobalPackagesFolder {
+  if (-not [string]::IsNullOrWhiteSpace($env:NUGET_PACKAGES)) {
+    return [System.IO.Path]::GetFullPath($env:NUGET_PACKAGES)
+  }
+
+  return [System.IO.Path]::GetFullPath((Join-Path $HOME '.nuget\packages'))
+}
 
 function Resolve-ConfirmedFolderPath {
   param(
@@ -92,6 +101,45 @@ function Set-ChillSharpPackageReferenceVersion {
   Set-Content -LiteralPath $ProjectPath -Value $updatedContents
 }
 
+function Remove-ChillSharpGlobalPackageCache {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$PackageVersion
+  )
+
+  $globalPackagesFolder = Get-NuGetGlobalPackagesFolder
+  $cachedPackagePath = Join-Path (Join-Path $globalPackagesFolder 'chillsharp') $PackageVersion
+
+  if (-not (Test-Path -LiteralPath $cachedPackagePath)) {
+    return $null
+  }
+
+  Remove-Item -LiteralPath $cachedPackagePath -Recurse -Force
+  return $cachedPackagePath
+}
+
+function Remove-StaleRestoreState {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RestoreStateFolderPath
+  )
+
+  if (-not (Test-Path -LiteralPath $RestoreStateFolderPath)) {
+    return @()
+  }
+
+  $removedPaths = New-Object System.Collections.Generic.List[string]
+
+  foreach ($pattern in @('project.assets.json', 'project.nuget.cache', '*.nuget.g.props', '*.nuget.g.targets')) {
+    foreach ($item in Get-ChildItem -LiteralPath $RestoreStateFolderPath -Filter $pattern -File -ErrorAction SilentlyContinue) {
+      Remove-Item -LiteralPath $item.FullName -Force
+      $removedPaths.Add($item.FullName)
+    }
+  }
+
+  return $removedPaths
+}
+
 if (-not (Test-Path -LiteralPath $templateProjectPath)) {
   throw "Could not find template project at '$templateProjectPath'."
 }
@@ -112,6 +160,19 @@ foreach ($existingPackage in Get-ChildItem -LiteralPath $localPackageFolder -Fil
 
 Copy-Item -LiteralPath $latestPackage.File.FullName -Destination $destinationArchivePath -Force
 Set-ChillSharpPackageReferenceVersion -ProjectPath $templateProjectPath -PackageVersion $latestPackage.VersionText
+$removedGlobalCachePath = Remove-ChillSharpGlobalPackageCache -PackageVersion $latestPackage.VersionText
+$removedRestoreStatePaths = Remove-StaleRestoreState -RestoreStateFolderPath $restoreStateFolder
 
 Write-Host "Copied ChillSharp $($latestPackage.VersionText) from '$($latestPackage.File.FullName)' to '$destinationArchivePath'."
-Write-Host "Updated ChillSharp.Template.csproj to ChillSharp $($latestPackage.VersionText)."
+Write-Host "Updated Gdf.csproj to ChillSharp $($latestPackage.VersionText)."
+
+if ($null -ne $removedGlobalCachePath) {
+  Write-Host "Removed cached global package '$removedGlobalCachePath' so NuGet will re-extract ChillSharp $($latestPackage.VersionText)."
+}
+
+if ($removedRestoreStatePaths.Count -gt 0) {
+  Write-Host 'Removed stale restore state:'
+  foreach ($removedRestoreStatePath in $removedRestoreStatePaths) {
+    Write-Host " - $removedRestoreStatePath"
+  }
+}
