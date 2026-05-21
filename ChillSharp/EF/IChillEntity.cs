@@ -17,6 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Dto;
+
 namespace ChillSharp.EF
 {
     /// <summary>
@@ -48,6 +50,11 @@ namespace ChillSharp.EF
         string? LastUpdateUser { get; set; }
         DateTime? LastUpdate { get; set; }
         int LastUpdateUtcOffset { get; set; }
+
+        #if DEBUG
+        public virtual void OnDebugRequestDto(IChillContext Context, ChillDtoEntity Entity) { }
+        public virtual void OnDebugResponseDto(IChillContext Context, ChillDtoEntity Entity) { }
+        #endif
 
         #region CREATE
         /// <summary>

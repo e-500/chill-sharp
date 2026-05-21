@@ -121,11 +121,13 @@ namespace ChillSharp
 
             // Create the query object from Dto setting query params
             IChillQuery<IChillEntity> chillQuery = q as IChillQuery<IChillEntity>;
+            chillQuery.OnDebugRequestDto(_Context, DtoQuery);
             DtoQuery.ToQuery(_Context, chillQuery);
             chillQuery.LightweightRequired = DtoQuery.LightweightRequired ?? false;
 
             // Get and embed results
             DtoQuery.Results = _Engine.Query(chillQuery, x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties));
+            chillQuery.OnDebugResponseDto(_Context, DtoQuery);
 
             // Return executed query Dto
             return DtoQuery;
@@ -259,9 +261,11 @@ namespace ChillSharp
             e = ctx.Entry(e).Entity;
             ctx.Entry(e).State = EntityState.Added;
 
+            e.OnDebugRequestDto(_Context, DtoEntity);
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Create(e);
             DtoEntity.FromEntity(_Context, e);
+            e.OnDebugResponseDto(_Context, DtoEntity);
             QueueEntityChange(e, ChillEntityChangeNotification.CreatedAction);
             return DtoEntity;
         }
@@ -285,9 +289,11 @@ namespace ChillSharp
                     $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
                 );
 
+            e.OnDebugRequestDto(_Context, DtoEntity);
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Update(e);
             DtoEntity.FromEntity(_Context, e);
+            e.OnDebugResponseDto(_Context, DtoEntity);
             QueueEntityChange(e, ChillEntityChangeNotification.UpdatedAction);
             return DtoEntity;
         }
@@ -310,6 +316,7 @@ namespace ChillSharp
                     $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
                 );
 
+            e.OnDebugRequestDto(_Context, DtoEntity);
             DtoEntity.ToEntity(_Context, e);
             _Engine.Delete(e);
             QueueEntityChange(DtoEntity.ChillType, DtoEntity.Guid, ChillEntityChangeNotification.DeletedAction);

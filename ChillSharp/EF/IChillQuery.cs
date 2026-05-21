@@ -17,6 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Dto;
+
 namespace ChillSharp.EF
 {
     /// <summary>
@@ -72,6 +74,11 @@ namespace ChillSharp.EF
         /// <c>AsNoTracking()</c> or reduced eager-loading when appropriate.
         /// </summary>
         bool LightweightRequired { get; set; }
+
+#if DEBUG
+        public virtual void OnDebugRequestDto(IChillContext Context, ChillDtoQuery Query) { }
+        public virtual void OnDebugResponseDto(IChillContext Context, ChillDtoQuery Query) { }
+#endif
 
         /// <summary>
         /// Applies additional filtering logic to the query based on the current object's properties.
