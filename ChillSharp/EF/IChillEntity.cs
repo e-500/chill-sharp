@@ -51,10 +51,10 @@ namespace ChillSharp.EF
         DateTime? LastUpdate { get; set; }
         int LastUpdateUtcOffset { get; set; }
 
-        #if DEBUG
-        public virtual void OnDebugRequestDto(IChillContext Context, ChillDtoEntity Entity) { }
-        public virtual void OnDebugResponseDto(IChillContext Context, ChillDtoEntity Entity) { }
-        #endif
+        #region DTO 
+        void OnBeforeToEntity(IChillContext Context, ChillDtoEntity Entity);
+        void OnAfterFromEntity(IChillContext Context, ChillDtoEntity Entity);
+        #endregion
 
         #region CREATE
         /// <summary>

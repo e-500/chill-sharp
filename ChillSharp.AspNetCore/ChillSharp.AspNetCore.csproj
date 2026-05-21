@@ -16,7 +16,7 @@
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
     <Description>ASP.NET Core integration entry point for ChillSharp and built-in modules.</Description>
-    <Version>1.0.126</Version>
+    <Version>1.0.127</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
 
@@ -37,7 +37,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.27" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
   </ItemGroup>
 

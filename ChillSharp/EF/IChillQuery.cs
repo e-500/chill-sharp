@@ -75,10 +75,10 @@ namespace ChillSharp.EF
         /// </summary>
         bool LightweightRequired { get; set; }
 
-#if DEBUG
-        public virtual void OnDebugRequestDto(IChillContext Context, ChillDtoQuery Query) { }
-        public virtual void OnDebugResponseDto(IChillContext Context, ChillDtoQuery Query) { }
-#endif
+        #region DTO 
+        void OnBeforeToQuery(IChillContext Context, ChillDtoQuery Query);
+        void OnAfterFromQuery(IChillContext Context, ChillDtoQuery Query);
+        #endregion
 
         /// <summary>
         /// Applies additional filtering logic to the query based on the current object's properties.

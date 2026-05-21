@@ -86,10 +86,10 @@ namespace ChillSharp.EF
             SecondaryLanguageLabel: "Offset UTC ultimo aggiornamento")]
         public int LastUpdateUtcOffset { get; set; }
 
-#if DEBUG
-        public virtual void OnDebugRequestDto(IChillContext Context, ChillEntity Entity) { }
-        public virtual void OnDebugResponseDto(IChillContext Context, ChillEntity Entity) { }
-#endif
+        #region DTO 
+        public virtual void OnBeforeToEntity(IChillContext Context, ChillDtoEntity Entity) { }
+        public virtual void OnAfterFromEntity(IChillContext Context, ChillDtoEntity Entity) { }
+        #endregion
 
         #region IChillEntity implementation
         #region CREATE

@@ -1020,6 +1020,11 @@ namespace ChillSharp.Tests
             public ChillOrdering? Ordering { get; set; } = new();
             public bool LightweightRequired { get; set; }
 
+#if DEBUG
+            public void OnBeforeToQuery(IChillContext Context, ChillDtoQuery Query) { }
+            public void OnAfterFromQuery(IChillContext Context, ChillDtoQuery Query) { }
+#endif
+
             public IQueryable<IChillEntity> OnPaginate(IChillContext Context, IQueryable<IChillEntity> Query)
             {
                 return Query;

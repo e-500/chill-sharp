@@ -15,7 +15,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IsPackable>true</IsPackable>
         <Description>ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
-        <Version>1.0.126</Version>
+        <Version>1.0.127</Version>
         <Authors>Andrea Piovesan</Authors>
         <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBuiltinModuleOutputs</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
@@ -38,10 +38,10 @@
     <ItemGroup>
         <FrameworkReference Include="Microsoft.AspNetCore.App" />
         <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" PrivateAssets="all" />
-	    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.23" />
+	    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.27" />
 	    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-	    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.2" />
-	    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.3.0-preview.2" />
+	    <PackageReference Include="ModelContextProtocol" Version="1.3.0" />
+	    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
     </ItemGroup>
 
     <Target Name="BuildBuiltinModuleProjects">

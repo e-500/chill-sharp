@@ -148,7 +148,9 @@ namespace ChillSharp.Dto
             }
 
             LightweightRequired = Query.LightweightRequired;
-		}
+
+            Query.OnAfterFromQuery(Context, this);
+        }
 
         /// <summary>
         /// Applies values from this DTO query to a Chill query instance.
@@ -159,6 +161,8 @@ namespace ChillSharp.Dto
         /// <exception cref="ChillException">Thrown if type validation or property assignment fails.</exception>
         public void ToQuery(IChillContext Context, IChillQuery<IChillEntity> Query)
         {
+            Query.OnBeforeToQuery(Context, this);
+
             // Test only if Entity is a valid chill entity
             string QueryChillType = _TestEntityAndGetChillType(Context, Query);
             if (ChillType != QueryChillType)
