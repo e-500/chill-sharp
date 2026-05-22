@@ -148,7 +148,7 @@ Notes:
 In any client application:
 
 ```powershell
-npm install @chill-sharp/ui-core@1.0.127
+npm install @chill-sharp/ui-core@1.0.129
 ```
 
 Because of the scoped `.npmrc` setting, npm will resolve `@chill-sharp/*` from your private registry.

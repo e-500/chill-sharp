@@ -98,7 +98,14 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            return Ok(_ce.Query(DtoQuery));
+            try
+            {
+                return Ok(_ce.Query(DtoQuery));
+            }
+            catch (Exception ex)
+            {
+                throw new ChillException($"Error {ex.Message} propcessing query", ex);
+            }
         }
 
         /// <summary>
@@ -113,7 +120,14 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            return Ok(_ce.Lookup(DtoQuery));
+            try
+            {
+                return Ok(_ce.Lookup(DtoQuery));
+            }
+            catch (Exception ex)
+            {
+                throw new ChillException($"Error {ex.Message} propcessing lookup", ex);
+            }
         }
 
         /// <summary>
@@ -130,7 +144,17 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            return Ok(_ce.Find(DtoEntity));
+            try
+            {
+                return Ok(_ce.Find(DtoEntity));
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (DtoEntity != null)
+                    reference = $"{DtoEntity.ChillType}>{DtoEntity.Guid.ToString()} {DtoEntity.Label ?? DtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing find {reference}", ex);
+            }
         }
 
         /// <summary>
@@ -150,7 +174,17 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Create, isQueryType: false, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            return Ok(_ce.Create(DtoEntity));
+            try
+            {
+                return Ok(_ce.Create(DtoEntity));
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (DtoEntity != null)
+                    reference = $"{DtoEntity.ChillType}>{DtoEntity.Guid.ToString()} {DtoEntity.Label ?? DtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing create {reference}", ex);
+            }
         }
 
         /// <summary>
@@ -170,7 +204,17 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            return Ok(_ce.Update(DtoEntity));
+            try
+            {
+                return Ok(_ce.Update(DtoEntity));
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (DtoEntity != null)
+                    reference = $"{DtoEntity.ChillType}>{DtoEntity.Guid.ToString()} {DtoEntity.Label ?? DtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing update {reference}", ex);
+            }
         }
 
         /// <summary>
@@ -190,7 +234,17 @@ namespace ChillSharp.Api.Controllers
             var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Delete, isQueryType: false, cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
-            _ce.Delete(DtoEntity);
+            try
+            {
+                _ce.Delete(DtoEntity);
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (DtoEntity != null)
+                    reference = $"{DtoEntity.ChillType}>{DtoEntity.Guid.ToString()} {DtoEntity.Label ?? DtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing delete {reference}", ex);
+            }
             return Ok();
         }
 
@@ -231,8 +285,17 @@ namespace ChillSharp.Api.Controllers
             var dtoEntity = payload.Deserialize<ChillDtoEntity>(_jsonOptions);
             if (dtoEntity == null)
                 return BadRequest("Invalid autocomplete entity payload.");
-
-            return Ok(_ce.Autocomplete(dtoEntity));
+            try
+            {
+                return Ok(_ce.Autocomplete(dtoEntity));
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (dtoEntity != null)
+                    reference = $"{dtoEntity.ChillType}>{dtoEntity.Guid.ToString()} {dtoEntity.Label ?? dtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing autocomplete {reference}", ex);
+            }
         }
 
         /// <summary>
@@ -273,7 +336,17 @@ namespace ChillSharp.Api.Controllers
             if (dtoEntity == null)
                 return BadRequest("Invalid validate entity payload.");
 
-            return Ok(_ce.Validate(dtoEntity));
+            try
+            {
+                return Ok(_ce.Validate(dtoEntity));
+            }
+            catch (Exception ex)
+            {
+                string reference = "";
+                if (dtoEntity != null)
+                    reference = $"{dtoEntity.ChillType}>{dtoEntity.Guid.ToString()} {dtoEntity.Label ?? dtoEntity.ShortLabel ?? ""}";
+                throw new ChillException($"Error {ex.Message} propcessing validate {reference}", ex);
+            }
         }
 
         /// <summary>
@@ -297,7 +370,19 @@ namespace ChillSharp.Api.Controllers
                     return authorizationResult;
             }
 
-            Chunk.ForEach(operation => operation.Execute(_ce));
+            Chunk.ForEach(operation => {
+                try
+                {
+                    operation.Execute(_ce);
+                }
+                catch (Exception ex)
+                {
+                    string reference = "";
+                    if (operation.Entity != null)
+                        reference = $"{operation.Entity.ChillType}>{operation.Entity.Guid.ToString()} {operation.Entity.Label ?? operation.Entity.ShortLabel ?? ""}";
+                    throw new ChillException($"Error {ex.Message} propcessing chunk operation Index={operation.Index} {reference}", ex);
+                }
+            });
             return Ok(Chunk);
         }
 

@@ -99,7 +99,11 @@ namespace ChillSharp.EF
         /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
-        public virtual void OnCreate(IChillContext Context) { Guid = Guid.NewGuid(); }
+        public virtual void OnCreate(IChillContext Context) 
+        { 
+            if (Guid == Guid.Empty)
+                Guid = Guid.NewGuid(); 
+        }
         #endregion
 
         #region SELECT

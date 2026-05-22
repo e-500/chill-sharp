@@ -16,7 +16,7 @@
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
     <Description>Schema persistence components for ChillSharp.</Description>
-    <Version>1.0.127</Version>
+    <Version>1.0.129</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
 
