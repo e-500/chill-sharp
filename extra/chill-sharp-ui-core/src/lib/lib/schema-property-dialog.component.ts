@@ -26,6 +26,7 @@ type SchemaPropertyDraft = {
   customFormat: string;
   regexPattern: string;
   enumValues: string;
+  lookupQueryValues: string;
   metadataJson: string;
 };
 
@@ -79,6 +80,7 @@ export class SchemaPropertyDialogComponent {
       || propertyType === CHILL_PROPERTY_TYPE.Duration;
   });
   readonly showEnumValues = computed(() => this.selectedPropertyType() === CHILL_PROPERTY_TYPE.Select);
+  readonly showLookupQueryValues = computed(() => this.selectedPropertyType() === CHILL_PROPERTY_TYPE.ChillEntity || this.selectedPropertyType() === CHILL_PROPERTY_TYPE.ChillEntityCollection);
   readonly validationMessages = computed(() => this.validateDraft(this.draft()));
 
   readonly propertyTypeOptions = CHILL_PROPERTY_TYPE_OPTIONS;
@@ -143,6 +145,24 @@ export class SchemaPropertyDialogComponent {
     );
   }
 
+  lookupQueryValuesPlaceholder(): string {
+    return this.chill.T(
+      'f697f658-7e4e-46d6-b8ea-e71a7ee02415',
+      'Lookup query values, example { "OptionalSearchProperty": "@{OtherField}", "MandatorySearchProperty": "${AlternativeField}" }'+
+      '  true for boolean'+
+      '  1 for numbers'+
+      '  "hello" for strings'+
+      '  "@{FieldName}" optional value from other fields of the same entity'+
+      '  "${FieldName}" mandatory value from other fields of the same entity',
+      'Valori da utilizzare per la ricerca, esempio { "OptionalSearchProperty": "@{OtherField}", "MandatorySearchProperty": "${AlternativeField}" }'+
+      '  true per booleani'+
+      '  1 per numeri'+
+      '  "hello" per stringhe'+
+      '  "@{FieldName}" valore opzionale da altro campo della stessa entity'+
+      '  "${FieldName}" valore obbligatorio da altro campo della stessa entity'
+    );
+  }
+
   metadataPlaceholder(): string {
     return '{\n  \n}';
   }
@@ -167,6 +187,7 @@ export class SchemaPropertyDialogComponent {
       customFormat: property.customFormat ?? '',
       regexPattern: property.regexPattern ?? this.readMetadataString(property.metadata, 'pattern'),
       enumValues: this.serializeEnumValues(property),
+      lookupQueryValues: property.lookupQueryValues ?? '',
       metadataJson: this.stringifyMetadata(property.metadata)
     };
   }
@@ -191,6 +212,7 @@ export class SchemaPropertyDialogComponent {
       customFormat: '',
       regexPattern: '',
       enumValues: '',
+      lookupQueryValues: '',
       metadataJson: '{\n  \n}'
     };
   }

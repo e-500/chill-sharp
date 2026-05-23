@@ -373,6 +373,16 @@ namespace ChillSharp.Annotations
         public string[]? EnumValues { get; set; }
 
         /// <summary>
+        /// Lookup query values, example { "OptionalSearchProperty": "@{OtherField}", "MandatorySearchProperty": "${AlternativeField}" }
+        /// - true for boolean
+        /// - 1 for numbers
+        /// - "hello" for strings
+        /// - "@{FieldName}" optional value
+        /// - "${FieldName}" to get value from the same entity properrties
+        /// </summary>
+        public string? LookupQueryValues { get; set; }
+
+        /// <summary>
         /// Arbitrary metadata entries encoded as <c>key=value</c>.
         /// </summary>
         public string[]? MetadataEntries { get; set; }

@@ -47,6 +47,7 @@ export interface ChillPropertySchema {
   customFormat?: string;
   regexPattern?: string;
   enumValues?: string[] | null;
+  lookupQueryValues?: string | null;
   metadata?: ChillMetadataRecord;
 }
 
