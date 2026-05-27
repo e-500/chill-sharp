@@ -53,5 +53,6 @@ If the required shared client archives already exist in `C:\source\npm-shared`, 
 
 ## Related Docs
 
-- [`HOWTO_NPM_SHARED_SOURCE_FOLDER.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/HOWTO_NPM_SHARED_SOURCE_FOLDER.md)
-- [`HOWTO_CREATE_PRIVATE_REGISTRY.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/HOWTO_CREATE_PRIVATE_REGISTRY.md)
+- [`../HOW_TO_NPM_SHARED_SOURCE_FOLDER.md`](../HOW_TO_NPM_SHARED_SOURCE_FOLDER.md)
+- [`../HOW_TO_CREATE_PRIVATE_REGISTRY.md`](../HOW_TO_CREATE_PRIVATE_REGISTRY.md)
+- [`../HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](../HOW_TO_CREATE_UI_CORE_PLUGIN_README.md)

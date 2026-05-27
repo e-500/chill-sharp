@@ -16,6 +16,8 @@ This package contains:
 
 This package intentionally does not contain a client-specific shell application.
 
+Client shells and client-owned plugins should live outside this package.
+
 ## Install
 
 ```bash
@@ -25,6 +27,12 @@ npm install @chill-sharp/ui-core
 ## Build And Release
 
 See [`HOW_TO_BUILD.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/HOW_TO_BUILD.md) for the workflow to rebuild, version, and publish the library after a change.
+
+## Plugin Documentation
+
+`@chill-sharp/ui-core` currently supports client extension through template-owned routes, provider override placeholders, and runtime-loaded remote workspace tasks. It does not yet expose a single formal plugin registration API.
+
+See [`../HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](../HOW_TO_CREATE_UI_CORE_PLUGIN_README.md) before documenting a client plugin or remote workspace task package.
 
 ## Theme import
 
