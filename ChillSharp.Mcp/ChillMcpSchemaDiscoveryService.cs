@@ -19,6 +19,7 @@
 
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Mcp.Contracts;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Contracts;
 
@@ -38,7 +39,7 @@ public sealed class ChillMcpSchemaDiscoveryService
         _schemaService = schemaService;
     }
 
-    public async Task<IReadOnlyList<ChillDtoSchemaListItem>> GetSchemaListAsync(
+    public async Task<IReadOnlyList<ChillMcpSchemaListItem>> GetSchemaListAsync(
         string? cultureName = null,
         CancellationToken cancellationToken = default)
     {
@@ -62,19 +63,30 @@ public sealed class ChillMcpSchemaDiscoveryService
             .ThenBy(x => x.ChillType, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var results = new List<ChillDtoSchemaListItem>(candidates.Count);
+        var results = new List<ChillMcpSchemaListItem>(candidates.Count);
         foreach (var candidate in candidates)
         {
-            if (await IsMcpEnabledAsync(candidate.ChillType, "default", cultureName, cancellationToken))
+            var schema = await GetDtoSchemaAsync(candidate.ChillType, "default", cultureName, cancellationToken);
+            if (schema != null)
             {
-                results.Add(candidate);
+                results.Add(ChillMcpSchemaListItem.FromDto(candidate, schema.MCPDescription));
             }
         }
 
         return results;
     }
 
-    public async Task<ChillDtoSchema?> GetSchemaAsync(
+    public async Task<ChillMcpSchema?> GetSchemaAsync(
+        string chillType,
+        string chillViewCode = "default",
+        string? cultureName = null,
+        CancellationToken cancellationToken = default)
+    {
+        var schema = await GetDtoSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken);
+        return schema == null ? null : ChillMcpSchema.FromDto(schema);
+    }
+
+    private async Task<ChillDtoSchema?> GetDtoSchemaAsync(
         string chillType,
         string chillViewCode = "default",
         string? cultureName = null,
