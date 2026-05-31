@@ -46,7 +46,7 @@ The template serves on `http://localhost:6202`.
 Upgrade the shared UI explicitly:
 
 ```bash
-npm install @chill-sharp/ui-core@1.0.131
+npm install @chill-sharp/ui-core@1.0.132
 ```
 
 ## Template structure

@@ -65,9 +65,9 @@ Example:
 ## Compatibility
 
 - Angular: 19.2.x
-- @chill-sharp/ui-core: 1.0.131 or newer
-- @chill-sharp/ng-client: 1.0.131 or newer
-- @chill-sharp/ts-client: 1.0.131 or newer
+- @chill-sharp/ui-core: 1.0.132 or newer
+- @chill-sharp/ng-client: 1.0.132 or newer
+- @chill-sharp/ts-client: 1.0.132 or newer
 ```
 
 ### Installation
@@ -313,7 +313,7 @@ Use this as the starting point for a plugin README.
 ## Compatibility
 
 - Angular: 19.2.x
-- @chill-sharp/ui-core: 1.0.131 or newer
+- @chill-sharp/ui-core: 1.0.132 or newer
 
 ## Installation
 

@@ -17,8 +17,8 @@ const DEFAULT_VIEW_CODE = 'default';
 const DEFAULT_PAGE_SIZE = 20;
 const SERVER_PAGE_WINDOW_SIZE = 4;
 const ENTITY_NOTIFICATION_IGNORE_WINDOW_MS = 1000;
-const ATTACHMENT_ENTITY_CHILL_TYPE = 'ChillSharp.Attachment.Model.Attachment';
-const ATTACHMENT_QUERY_CHILL_TYPE = 'ChillSharp.Attachment.Model.AttachmentQuery';
+const FILE_METADATA_ENTITY_CHILL_TYPE = 'ChillSharp.Attachment.Model.FileMetadata';
+const FILE_METADATA_QUERY_CHILL_TYPE = 'ChillSharp.Attachment.Model.FileMetadataQuery';
 
 export interface I18nText {
   labelGuid: string;
@@ -346,7 +346,7 @@ export class CrudPageComponent implements OnInit {
   }
 
   isAttachmentCrud(): boolean {
-    return this.resultSchema()?.chillType?.trim() === ATTACHMENT_ENTITY_CHILL_TYPE;
+    return this.resultSchema()?.chillType?.trim() === FILE_METADATA_ENTITY_CHILL_TYPE;
   }
 
   canOpenAttachmentUploadDialog(): boolean {
@@ -1627,8 +1627,8 @@ export class CrudPageComponent implements OnInit {
     }
 
     const attachmentConfiguration: CrudPageComponentConfiguration = {
-      chillType: ATTACHMENT_ENTITY_CHILL_TYPE,
-      chillQuery: ATTACHMENT_QUERY_CHILL_TYPE,
+      chillType: FILE_METADATA_ENTITY_CHILL_TYPE,
+      chillQuery: FILE_METADATA_QUERY_CHILL_TYPE,
       disableAdd: false,
       disableCreate: true,
       disableEdit: false,
@@ -1649,8 +1649,8 @@ export class CrudPageComponent implements OnInit {
     };
 
     this.workspace.openCrudTask({
-      chillType: ATTACHMENT_ENTITY_CHILL_TYPE,
-      queryChillType: ATTACHMENT_QUERY_CHILL_TYPE,
+      chillType: FILE_METADATA_ENTITY_CHILL_TYPE,
+      queryChillType: FILE_METADATA_QUERY_CHILL_TYPE,
       displayName: this.chill.T('7A673274-5786-4E58-BA33-65D06BF6B9F3', 'Attachments', 'Allegati'),
       componentConfiguration: attachmentConfiguration
     });

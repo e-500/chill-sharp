@@ -515,7 +515,7 @@ So the architecture should be described as:
 The template and future client repositories depend on the core package through npm:
 
 ```bash
-npm install @chill-sharp/ui-core@1.0.131
+npm install @chill-sharp/ui-core@1.0.132
 ```
 
 This is the correct operational model:
