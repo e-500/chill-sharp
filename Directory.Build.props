@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Single release version for all ChillSharp .NET packages and assemblies. -->
+    <ChillSharpVersion>1.0.133</ChillSharpVersion>
+    <Version>$(ChillSharpVersion)</Version>
+    <PackageVersion>$(ChillSharpVersion)</PackageVersion>
+    <AssemblyVersion>$(ChillSharpVersion)</AssemblyVersion>
+    <FileVersion>$(ChillSharpVersion)</FileVersion>
+    <InformationalVersion>$(ChillSharpVersion)</InformationalVersion>
+  </PropertyGroup>
+</Project>
