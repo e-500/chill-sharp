@@ -45,7 +45,7 @@ namespace ChillSharp.Tests
             TestApiHost.EnsureStarted(6002);
 
             var connection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:6002/api/chill/notify")
+                .WithUrl("http://localhost:6002/api/notify")
                 .Build();
 
             var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
@@ -119,7 +119,7 @@ namespace ChillSharp.Tests
             TestApiHost.EnsureStarted(6002);
 
             var connection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:6002/api/chill/notify")
+                .WithUrl("http://localhost:6002/api/notify")
                 .Build();
 
             var receivedChanges = new ConcurrentQueue<ChillEntityChangeNotification[]>();
@@ -183,10 +183,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step003_ProtectedHubRequiresBearerAuthenticationAndAcceptsSignalRAccessToken()
         {
-            ProtectedSignalRAuthApiHost.EnsureHttpStarted(6002);
+            ProtectedSignalRAuthApiHost.EnsureHttpStarted(6014);
 
             var anonymousConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:6002/api/chill/notify")
+                .WithUrl("http://localhost:6014/api/notify")
                 .Build();
 
             try
@@ -202,7 +202,7 @@ namespace ChillSharp.Tests
                 await anonymousConnection.DisposeAsync();
             }
 
-            var client = new ChillSharpClient("http://localhost:6002/api/chill");
+            var client = new ChillSharpClient("http://localhost:6014/api/chill");
             var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityRequest
             {
                 UserName = $"signalr.user.{Guid.NewGuid():N}",
@@ -214,7 +214,7 @@ namespace ChillSharp.Tests
             });
 
             var authenticatedConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:6002/api/chill/notify", options =>
+                .WithUrl("http://localhost:6014/api/notify", options =>
                 {
                     options.AccessTokenProvider = () => Task.FromResult<string?>(registerResponse.AccessToken);
                 })
@@ -260,7 +260,7 @@ namespace ChillSharp.Tests
         private static class ProtectedSignalRAuthApiHost
         {
             private static readonly object SyncRoot = new();
-            private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "protected-signalr-auth-api-host.db");
+            private static readonly string DatabasePath = "protected-signalr-auth-api-host";
             private static bool _apiServiceUpAndRunning;
 
             public static void EnsureHttpStarted(int HttpPort = 5002)
@@ -279,7 +279,6 @@ namespace ChillSharp.Tests
 
                     var apiServer = Task.Run(() =>
                     {
-                        Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                         var ctx = CreateDbContext();
                         ctx.Database.EnsureDeleted();
                         ctx.Database.EnsureCreated();
@@ -288,7 +287,7 @@ namespace ChillSharp.Tests
                         builder.WebHost.UseUrls($"http://localhost:{HttpPort}");
                         builder.Logging.ClearProviders();
                         builder.Services.AddDbContext<EF.DummyContext>(options =>
-                            options.UseSqlite($"Data Source={DatabasePath}"));
+                            options.UseInMemoryDatabase(DatabasePath));
                         builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
                         builder.Services.AddIdentityCore<IdentityUser>()
                             .AddEntityFrameworkStores<EF.DummyContext>()
@@ -314,7 +313,7 @@ namespace ChillSharp.Tests
             public static EF.DummyContext CreateDbContext()
             {
                 var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                    .UseSqlite($"Data Source={DatabasePath}")
+                    .UseInMemoryDatabase(DatabasePath)
                     .Options;
                 return new EF.DummyContext(options);
             }

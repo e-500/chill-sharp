@@ -30,8 +30,8 @@ namespace ChillSharp.Tests;
 internal static class TestApiHost
 {
     private static readonly object SyncRoot = new();
-    private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "test-api-host.db");
-    private static readonly string HttpsDatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "test-api-host-https.db");
+    private static readonly string DatabasePath = "test-api-host";
+    private static readonly string HttpsDatabasePath = "test-api-host-https";
     private static readonly X509Certificate2 HttpsCertificate = CreateHttpsCertificate();
     private static bool _apiServiceUpAndRunning;
     private static bool _httpsApiServiceUpAndRunning;
@@ -42,7 +42,7 @@ internal static class TestApiHost
     public static EF.DummyContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={DatabasePath}")
+            .UseInMemoryDatabase(DatabasePath)
             .Options;
         return new EF.DummyContext(options);
     }
@@ -50,7 +50,7 @@ internal static class TestApiHost
     public static EF.DummyContext CreateHttpsDbContext()
     {
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={HttpsDatabasePath}")
+            .UseInMemoryDatabase(HttpsDatabasePath)
             .Options;
         return new EF.DummyContext(options);
     }
@@ -71,7 +71,6 @@ internal static class TestApiHost
 
             var apiServer = Task.Run(() =>
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                 var ctx = CreateDbContext();
                 ctx.Database.EnsureDeleted();
                 ctx.Database.EnsureCreated();
@@ -79,7 +78,7 @@ internal static class TestApiHost
                 var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                 builder.WebHost.UseUrls($"http://localhost:{HttpPort}");
                 builder.Services.AddDbContext<EF.DummyContext>(options =>
-                    options.UseSqlite($"Data Source={DatabasePath}"));
+                    options.UseInMemoryDatabase(DatabasePath));
                 builder.Services.AddChillApi<EF.DummyContext>();
 
                 var app = builder.Build();
@@ -108,7 +107,6 @@ internal static class TestApiHost
 
             var apiServer = Task.Run(() =>
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(HttpsDatabasePath)!);
                 var ctx = CreateHttpsDbContext();
                 ctx.Database.EnsureDeleted();
                 ctx.Database.EnsureCreated();
@@ -119,7 +117,7 @@ internal static class TestApiHost
                     options.ListenLocalhost(HttpsPort, listenOptions => listenOptions.UseHttps(HttpsCertificate));
                 });
                 builder.Services.AddDbContext<EF.DummyContext>(options =>
-                    options.UseSqlite($"Data Source={HttpsDatabasePath}"));
+                    options.UseInMemoryDatabase(HttpsDatabasePath));
                 builder.Services.AddChillApi<EF.DummyContext>();
 
                 var app = builder.Build();

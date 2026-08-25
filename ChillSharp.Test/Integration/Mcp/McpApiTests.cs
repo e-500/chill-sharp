@@ -81,7 +81,7 @@ public sealed class McpApi
     public void Step002_ToolsAdvertiseOutputSchemas()
     {
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite("Data Source=:memory:")
+            .UseInMemoryDatabase($"mcp-test-{Guid.NewGuid():N}")
             .Options;
 
         using var context = new EF.DummyContext(options);
@@ -113,7 +113,7 @@ public sealed class McpApi
     public void Step003_StaticDtoExamplesReturnSerializedPayloadStructures()
     {
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite("Data Source=:memory:")
+            .UseInMemoryDatabase($"mcp-test-{Guid.NewGuid():N}")
             .Options;
 
         using var context = new EF.DummyContext(options);
@@ -145,9 +145,9 @@ public sealed class McpApi
     [TestMethod]
     public async Task Step004_SchemaDiscoveryReturnsOnlyMcpEnabledSchemas()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-{Guid.NewGuid():N}.db");
+        var databasePath = $"chillsharp-mcp-{Guid.NewGuid():N}";
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);
@@ -180,9 +180,9 @@ public sealed class McpApi
     [TestMethod]
     public async Task Step005_RuntimeEntityOptionsCanEnableMcpSchemasAndQueryExecution()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-query-{Guid.NewGuid():N}.db");
+        var databasePath = $"chillsharp-mcp-query-{Guid.NewGuid():N}";
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);
@@ -267,9 +267,9 @@ public sealed class McpApi
     [TestMethod]
     public async Task Step006_McpCrudAndChunkOperateOnlyOnEnabledSchemas()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-crud-{Guid.NewGuid():N}.db");
+        var databasePath = $"chillsharp-mcp-crud-{Guid.NewGuid():N}";
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);

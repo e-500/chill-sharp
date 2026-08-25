@@ -20,6 +20,8 @@
 using ChillSharp.Annotations;
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
+using DtoObjectMapper = ChillSharp.Dto.ChillDtoObjectMapper;
+using DtoTypeMetadataCache = ChillSharp.Dto.ChillDtoTypeMetadataCache;
 using ChillSharp.EF;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
@@ -252,9 +254,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step005_DtoEntityIgnoresServerManagedAuditFields()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-audit-dto-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-audit-dto-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -934,16 +936,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step013_GetCollectionElementTypeSupportsDirectEnumerableTypes()
         {
-            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
-            Assert.IsNotNull(mapperType);
-
-            var method = mapperType
-                .GetMethod("GetCollectionElementType", BindingFlags.NonPublic | BindingFlags.Static);
-
-            Assert.IsNotNull(method);
-
-            var enumerableElementType = (Type?)method.Invoke(null, [typeof(IEnumerable<Post>)]);
-            var arrayElementType = (Type?)method.Invoke(null, [typeof(Post[])]);
+            var properties = DtoTypeMetadataCache.Get(typeof(CollectionElementTypeEntity)).ChillProperties;
+            var enumerableElementType = properties.Single(x => x.Name == nameof(CollectionElementTypeEntity.EnumerablePosts)).CollectionElementType;
+            var arrayElementType = properties.Single(x => x.Name == nameof(CollectionElementTypeEntity.ArrayPosts)).CollectionElementType;
 
             Assert.AreEqual(typeof(Post), enumerableElementType);
             Assert.AreEqual(typeof(Post), arrayElementType);
@@ -960,26 +955,9 @@ namespace ChillSharp.Tests
                 ["PublishedOn"] = string.Empty
             };
 
-            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
-            Assert.IsNotNull(mapperType);
-
-            var applyPropertiesMethod = mapperType.GetMethod(
-                "ApplyProperties",
-                BindingFlags.Public | BindingFlags.Static);
-
-            Assert.IsNotNull(applyPropertiesMethod);
-
-            applyPropertiesMethod.Invoke(null,
-            [
-                db,
-                target,
-                "Tests.NullableDateEntity",
-                sourceValues,
-                typeof(NullableDateEntity).GetProperties(),
-                "NullableDateEntity",
-                false,
-                null
-            ]);
+            DtoObjectMapper.ApplyProperties(db, target, "Tests.NullableDateEntity", sourceValues,
+                DtoTypeMetadataCache.Get(typeof(NullableDateEntity)).ChillProperties,
+                "NullableDateEntity", false);
 
             Assert.IsNull(target.PublishedOn);
         }
@@ -995,27 +973,9 @@ namespace ChillSharp.Tests
                 ["ComputedTitle"] = 123
             };
 
-            var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
-            Assert.IsNotNull(mapperType);
-
-            var applyPropertiesMethod = mapperType.GetMethod(
-                "ApplyProperties",
-                BindingFlags.Public | BindingFlags.Static);
-
-            Assert.IsNotNull(applyPropertiesMethod);
-
-            applyPropertiesMethod.Invoke(null,
-            [
-                db,
-                target,
-                "Tests.InflateOnlyEntity",
-                sourceValues,
-                typeof(InflateOnlyEntity).GetProperties()
-                    .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false)),
-                "InflateOnlyEntity",
-                false,
-                (Action<string>)target.OnInflateProperty
-            ]);
+            DtoObjectMapper.ApplyProperties(db, target, "Tests.InflateOnlyEntity", sourceValues,
+                DtoTypeMetadataCache.Get(typeof(InflateOnlyEntity)).ChillProperties,
+                "InflateOnlyEntity", false, target.OnInflateProperty);
 
             Assert.AreEqual(1, target.OnInflateCalls);
             Assert.AreEqual("ComputedTitle", target.ComputedTitle);
@@ -1125,9 +1085,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step019_LookupPerformsGenericFullTextSearchAgainstEntityType()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-lookup-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1174,9 +1134,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step019_LookupUsesQuotedPhrasesWithoutTokenSplit()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-phrase-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-lookup-phrase-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1223,9 +1183,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step019_LookupRequiresQuotesToSearchReservedAndKeyword()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-and-keyword-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-lookup-and-keyword-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1275,9 +1235,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step020_BaseChillQueryOnQueryResolvesDbSetFromEntityType()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-autoquery-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-autoquery-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1308,9 +1268,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step021_ToEntityAcceptsCamelCaseDtoPropertiesAndNestedEntities()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-camelcase-dto-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-camelcase-dto-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var db = new EF.DummyContext(options);
@@ -1376,26 +1336,9 @@ namespace ChillSharp.Tests
                     ["PublishedAt"] = "2024-01-10T23:59:58.321-05:00"
                 };
 
-                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
-                Assert.IsNotNull(mapperType);
-
-                var applyPropertiesMethod = mapperType.GetMethod(
-                    "ApplyProperties",
-                    BindingFlags.Public | BindingFlags.Static);
-
-                Assert.IsNotNull(applyPropertiesMethod);
-
-                applyPropertiesMethod.Invoke(null,
-                [
-                    db,
-                    target,
-                    "Tests.TemporalMappingEntity",
-                    sourceValues,
-                    typeof(TemporalMappingEntity).GetProperties(),
-                    "TemporalMappingEntity",
-                    false,
-                    null
-                ]);
+                var properties = DtoTypeMetadataCache.Get(typeof(TemporalMappingEntity)).ChillProperties;
+                DtoObjectMapper.ApplyProperties(db, target, "Tests.TemporalMappingEntity", sourceValues,
+                    properties, "TemporalMappingEntity", false);
 
                 Assert.AreEqual(new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Utc), target.OccurredAtUtc);
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtUtc.Kind);
@@ -1413,17 +1356,8 @@ namespace ChillSharp.Tests
                     ["RecordedAtOffset"] = "2024-01-10T12:30:15.000"
                 };
 
-                applyPropertiesMethod.Invoke(null,
-                [
-                    db,
-                    targetWithoutOffsets,
-                    "Tests.TemporalMappingEntity",
-                    sourceValuesWithoutOffsets,
-                    typeof(TemporalMappingEntity).GetProperties(),
-                    "TemporalMappingEntity",
-                    false,
-                    null
-                ]);
+                DtoObjectMapper.ApplyProperties(db, targetWithoutOffsets, "Tests.TemporalMappingEntity",
+                    sourceValuesWithoutOffsets, properties, "TemporalMappingEntity", false);
 
                 Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtUtc);
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtUtc.Kind);
@@ -1437,17 +1371,8 @@ namespace ChillSharp.Tests
                     ["RecordedAtOffset"] = new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2))
                 };
 
-                applyPropertiesMethod.Invoke(null,
-                [
-                    db,
-                    targetWithDateTimeOffsetValue,
-                    "Tests.TemporalMappingEntity",
-                    sourceValuesWithDateTimeOffsetValue,
-                    typeof(TemporalMappingEntity).GetProperties(),
-                    "TemporalMappingEntity",
-                    false,
-                    null
-                ]);
+                DtoObjectMapper.ApplyProperties(db, targetWithDateTimeOffsetValue, "Tests.TemporalMappingEntity",
+                    sourceValuesWithDateTimeOffsetValue, properties, "TemporalMappingEntity", false);
 
                 Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), targetWithDateTimeOffsetValue.RecordedAtOffset);
             }
@@ -1478,24 +1403,8 @@ namespace ChillSharp.Tests
                     PublishedAt = new TimeOnly(23, 59, 58, 321)
                 };
 
-                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
-                Assert.IsNotNull(mapperType);
-
-                var buildPropertiesMethod = mapperType.GetMethod(
-                    "BuildProperties",
-                    BindingFlags.Public | BindingFlags.Static);
-
-                Assert.IsNotNull(buildPropertiesMethod);
-
-                var properties = (Dictionary<string, object?>?)buildPropertiesMethod.Invoke(null,
-                [
-                    db,
-                    source,
-                    "Tests.TemporalMappingEntity",
-                    typeof(TemporalMappingEntity).GetProperties(),
-                    null,
-                    null
-                ]);
+                var properties = DtoObjectMapper.BuildProperties(db, source, "Tests.TemporalMappingEntity",
+                    DtoTypeMetadataCache.Get(typeof(TemporalMappingEntity)).ChillProperties);
 
                 Assert.IsNotNull(properties);
 
@@ -1527,9 +1436,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step024_DefaultQueryOrderingUsesPosition()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-ordering-position-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-ordering-position-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1570,9 +1479,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step025_QueryOrderingUsesReferenceLabelForEntityColumns()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-ordering-reference-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-ordering-reference-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1636,9 +1545,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step026_DtoQueryAcceptsEntityReferenceFilterOnUnmappedQueryObject()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-query-reference-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-query-reference-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1704,14 +1613,15 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step027_DtoEntityMapsPositionDuringCreateAndUpdate()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-dto-position-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-dto-position-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
             db.Database.EnsureCreated();
 
+            _ = new ChillSchemaService(db, new ChillContextSchemaRuntimeContext(db), new ChillSchemaCache());
             var dtoEngine = new ChillDtoEngine(db);
             var created = dtoEngine.Create(new ChillSharp.Dto.ChillDtoEntity
             {
@@ -1739,9 +1649,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step028_AutocompleteSerializesEntityReferenceOnUnmappedQueryObject()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-query-autocomplete-reference-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-query-autocomplete-reference-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             using var db = new EF.DummyContext(options);
@@ -1781,6 +1691,15 @@ namespace ChillSharp.Tests
         {
             [ChillProperty]
             public DateOnly? PublishedOn { get; set; }
+        }
+
+        private sealed class CollectionElementTypeEntity
+        {
+            [ChillProperty]
+            public IEnumerable<Post> EnumerablePosts { get; set; } = [];
+
+            [ChillProperty]
+            public Post[] ArrayPosts { get; set; } = [];
         }
 
         private sealed class TemporalMappingEntity

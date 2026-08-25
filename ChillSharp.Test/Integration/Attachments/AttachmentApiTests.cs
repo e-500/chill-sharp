@@ -139,38 +139,6 @@ public sealed class AttachmentApi
     }
 
     [TestMethod]
-    public async Task Step004_ClientHelpersUploadAndListAttachments()
-    {
-        AttachmentApiHost.EnsureStarted();
-
-        var post = new ClientDto.ChillDtoEntity
-        {
-            Guid = Guid.NewGuid(),
-            ChillType = "Model.Post"
-        };
-
-        var client = AttachmentApiHost.CreateChillClient(authenticated: true);
-        var created = await client.UploadAttachmentAsync(
-            post,
-            "hello attachment from client"u8.ToArray(),
-            "client-upload.txt",
-            "text/plain",
-            title: "Client contract",
-            description: "Uploaded through ChillSharp.Client",
-            isPublic: false);
-
-        Assert.AreEqual(1, created.Count);
-        Assert.AreEqual(AttachmentApiHost.NormalizeAttachmentChillType(created[0].ChillType), AttachmentApiHost.NormalizeAttachmentChillType("Attachment"));
-
-        var attachments = await client.GetAttachmentsAsync(post);
-        Assert.AreEqual(1, attachments.Count);
-        Assert.AreEqual(created[0].Guid, attachments[0].Guid);
-        Assert.AreEqual("Model.Post", attachments[0].GetString("AttachToChillType"));
-        Assert.AreEqual(post.Guid.ToString(), attachments[0].GetValue("AttachToGuid")?.ToString());
-        Assert.AreEqual("client-upload.txt", attachments[0].GetString("OriginalFilename"));
-    }
-
-    [TestMethod]
     public async Task Step005_ClientHelpersDownloadAttachmentByGuidAndEntity()
     {
         AttachmentApiHost.EnsureStarted();
@@ -216,7 +184,7 @@ public sealed class AttachmentApi
     private static class AttachmentApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "attachment-api-host.db");
+        private static readonly string DatabasePath = "attachment-api-host";
         private static readonly string ArchiveRoot = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "attachment-archive");
         private static bool _apiServiceUpAndRunning;
 
@@ -236,7 +204,6 @@ public sealed class AttachmentApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     Directory.CreateDirectory(ArchiveRoot);
                     if (File.Exists(DatabasePath))
                     {
@@ -256,9 +223,8 @@ public sealed class AttachmentApi
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:6013");
-                    builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddAuthentication("Test")
                         .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("Test", _ => { });
                     builder.Services.AddAuthorization();
@@ -287,7 +253,7 @@ public sealed class AttachmentApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }

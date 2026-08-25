@@ -609,11 +609,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step008_FullControlActsAsFallbackBehindExactActions()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"full-control-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"full-control-{Guid.NewGuid():N}";
 
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);
@@ -819,11 +818,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step011_SetUserRejectsInvalidCultureAndTimeZoneFormats()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"set-user-validation-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"set-user-validation-{Guid.NewGuid():N}";
 
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);
@@ -873,11 +871,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step012_SetUserAcceptsSpecificCultureAndIanaTimeZone()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"set-user-valid-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"set-user-valid-{Guid.NewGuid():N}";
 
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         await using var context = new EF.DummyContext(options);
@@ -1133,11 +1130,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step017_AccessTokenValidationUsesCachedSessionSnapshot()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-cache-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"token-validation-cache-{Guid.NewGuid():N}";
 
         var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         var timeProvider = new MutableTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
@@ -1179,11 +1175,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step018_AccessTokenValidationCacheIsInvalidatedOnRevoke()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-revoke-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"token-validation-revoke-{Guid.NewGuid():N}";
 
         var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         var timeProvider = new MutableTimeProvider(new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero));
@@ -1219,11 +1214,10 @@ public sealed class AuthApi
     [TestMethod]
     public async Task Step019_AccessTokenValidationCacheRemovesExpiredSessions()
     {
-        var databasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", $"token-validation-expiry-{Guid.NewGuid():N}.db");
-        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var databasePath = $"token-validation-expiry-{Guid.NewGuid():N}";
 
         var dbOptions = new DbContextOptionsBuilder<EF.DummyContext>()
-            .UseSqlite($"Data Source={databasePath}")
+            .UseInMemoryDatabase(databasePath)
             .Options;
 
         var issuedUtc = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.Zero);
@@ -1301,7 +1295,7 @@ public sealed class AuthApi
     private static class SecuredAuthApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "secured-auth-api-host.db");
+        private static readonly string DatabasePath = "secured-auth-api-host";
         private static bool _apiServiceUpAndRunning;
 
         public static void EnsureStarted()
@@ -1320,7 +1314,6 @@ public sealed class AuthApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
                     ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
@@ -1329,7 +1322,7 @@ public sealed class AuthApi
                     builder.WebHost.UseUrls("http://localhost:5001");
                     builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddAuthentication("Test")
                         .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("Test", _ => { });
                     builder.Services.AddAuthorization();
@@ -1350,7 +1343,7 @@ public sealed class AuthApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }
@@ -1359,7 +1352,7 @@ public sealed class AuthApi
     private static class MergedManagementApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "merged-management-auth-api-host.db");
+        private static readonly string DatabasePath = "merged-management-auth-api-host";
         private static bool _apiServiceUpAndRunning;
 
         public static void EnsureStarted()
@@ -1378,7 +1371,6 @@ public sealed class AuthApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
                     ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
@@ -1386,7 +1378,7 @@ public sealed class AuthApi
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:6012");
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddChillApi<EF.DummyContext>();
 
                     var app = builder.Build();
@@ -1402,7 +1394,7 @@ public sealed class AuthApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }
@@ -1411,7 +1403,7 @@ public sealed class AuthApi
     private static class IdentityAuthApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "identity-auth-api-host.db");
+        private static readonly string DatabasePath = "identity-auth-api-host";
         private static bool _apiServiceUpAndRunning;
 
         public static void EnsureStarted()
@@ -1430,7 +1422,6 @@ public sealed class AuthApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
                     ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
@@ -1439,7 +1430,7 @@ public sealed class AuthApi
                     builder.WebHost.UseUrls("http://localhost:5002");
                     builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
                     builder.Services.AddIdentityCore<IdentityUser>()
                         .AddEntityFrameworkStores<EF.DummyContext>()
@@ -1471,7 +1462,7 @@ public sealed class AuthApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }
@@ -1480,7 +1471,7 @@ public sealed class AuthApi
     private static class RootBootstrapAuthApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "root-bootstrap-auth-api-host.db");
+        private static readonly string DatabasePath = "root-bootstrap-auth-api-host";
         private static bool _apiServiceUpAndRunning;
 
         public static void EnsureStarted()
@@ -1499,7 +1490,6 @@ public sealed class AuthApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
                     ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
@@ -1508,7 +1498,7 @@ public sealed class AuthApi
                     builder.WebHost.UseUrls("http://localhost:5003");
                     builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
                     builder.Services.AddIdentityCore<IdentityUser>()
                         .AddEntityFrameworkStores<EF.DummyContext>()
@@ -1538,7 +1528,7 @@ public sealed class AuthApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }

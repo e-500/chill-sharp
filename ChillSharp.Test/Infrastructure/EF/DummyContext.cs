@@ -21,42 +21,39 @@ using ChillSharp.Tests.EF.Model;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace ChillSharp.Tests.EF
 {
     public partial class DummyContext : IdentityDbContext<IdentityUser>, IChillContext
     {
-        public string DbPath { get; }
+        private static int _databaseCounter;
+
+        public string DatabaseName { get; }
 
         public DbSet<Post> Post { get; set; }
         public DbSet<Blog> Blog { get; set; }
 
         public DummyContext()
         {
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
-            DbPath = Path.Join(path, "ChillSharpTestContext");
-            Directory.CreateDirectory(DbPath);
-            DbPath = Path.Join(path, "ChillSharpTestContext", "test.db");
+            DatabaseName = $"chillsharp-test-{Interlocked.Increment(ref _databaseCounter)}";
         }
 
         public DummyContext(DbContextOptions<DummyContext> options) : base(options)
         {
-            var folder = Environment.SpecialFolder.LocalApplicationData;
-            var path = Environment.GetFolderPath(folder);
-            DbPath = Path.Join(path, "ChillSharpTestContext");
-            Directory.CreateDirectory(DbPath);
-            DbPath = Path.Join(path, "ChillSharpTestContext", "test.db");
+            DatabaseName = $"chillsharp-test-{Interlocked.Increment(ref _databaseCounter)}";
         }
 
-        // The following configures EF to create a Sqlite database file in the
-        // special "local" folder for your platform.
-        // Set also culture name bindings
+        // Set also culture name bindings.
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
+            // ChillSharp exercises transaction boundaries. EF Core's in-memory provider
+            // implements those as no-ops, so silence its provider-specific warning.
+            options.ConfigureWarnings(warnings => warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning));
+
             if (!options.IsConfigured)
             {
-                options.UseSqlite($"Data Source={DbPath}");
+                options.UseInMemoryDatabase(DatabaseName);
             }
         }
 

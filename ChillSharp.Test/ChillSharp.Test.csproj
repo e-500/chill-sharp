@@ -5,39 +5,34 @@
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <ParallelizeTestCollections>false</ParallelizeTestCollections>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="T008_PerformanceApi.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="T001_Basics.cs.bck" />
+    <Compile Remove="Integration\Performance\PerformanceApiTests.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.27" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.27" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.27">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.27" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="MSTest" Version="4.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.27" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
-    <ProjectReference Include="..\ChillSharp.Attachment\ChillSharp.Attachment.csproj" />
+    <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
     <ProjectReference Include="..\ChillSharp.Client\ChillSharp.Client.csproj" />
     <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
+    <ProjectReference Include="..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
+    <ProjectReference Include="..\ChillSharp.Attachment\ChillSharp.Attachment.csproj" />
     <ProjectReference Include="..\ChillSharp.I18n\ChillSharp.I18n.csproj" />
-    <ProjectReference Include="..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" />
     <ProjectReference Include="..\ChillSharp.Schema\ChillSharp.Schema.csproj" />
-    <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
+    <ProjectReference Include="..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" />
+    <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

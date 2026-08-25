@@ -207,9 +207,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step007_EntityOptionsCanBeReadAndPersisted()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-options-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-options-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -288,9 +288,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step007_GetSchemaUpdateRefreshesPersistedPropertiesFromRuntimeModel()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-update-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-update-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -341,9 +341,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step008_GetSchemaUpdateRefreshesPersistedRelationsFromRuntimeModel()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-relations-update-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-relations-update-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -545,9 +545,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step014_MenuEndpointsFilterByUserAndRoleHierarchy()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -649,9 +649,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step015_DeleteMenuRemovesDescendants()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-delete-menu-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-delete-menu-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -708,9 +708,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step016_MenuPersistsAndOrdersByPositionNo()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-order-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-order-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -760,9 +760,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step017_SetMenuPreservesCurrentHierarchyWhenPayloadHierarchyIsBlank()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-preserve-hierarchy-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-preserve-hierarchy-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -799,9 +799,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step018_GetMenuMergesUserAndRoleHierarchies()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-empty-user-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-empty-user-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -874,9 +874,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step019_GetMenuReturnsNoItemsWhenMergedHierarchyIsEmpty()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-no-hierarchy-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-no-hierarchy-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -937,9 +937,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step020_GetMenuReturnsAllItemsWhenUserOrRoleHasWildcard()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-wildcard-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schema-menu-wildcard-{Guid.NewGuid():N}";
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             await using var context = new EF.DummyContext(options);
@@ -1058,10 +1058,10 @@ namespace ChillSharp.Tests
 
         private async static Task<ChillSchemaController> CreateSchemaController()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schemas-{Guid.NewGuid():N}.db");
+            var databasePath = $"chillsharp-schemas-{Guid.NewGuid():N}";
 
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
+                .UseInMemoryDatabase(databasePath)
                 .Options;
 
             var context = new EF.DummyContext(options);

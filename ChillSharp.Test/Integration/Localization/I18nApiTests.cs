@@ -120,7 +120,7 @@ public sealed class I18nApi
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var response = await SendPostAsJsonAsync(client, "api/chill-i18n/get-text", new GetTextRequest
@@ -177,7 +177,7 @@ public sealed class I18nApi
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var labelGuid = Guid.NewGuid();
@@ -392,7 +392,7 @@ public sealed class I18nApi
     private static class AnonymousFriendlyI18nApiHost
     {
         private static readonly object SyncRoot = new();
-        private static readonly string DatabasePath = Path.Combine(Path.GetTempPath(), "ChillSharpTestContext", "anonymous-friendly-i18n-api-host.db");
+        private static readonly string DatabasePath = "anonymous-friendly-i18n-api-host";
         private static bool _apiServiceUpAndRunning;
 
         public static void EnsureStarted()
@@ -411,7 +411,6 @@ public sealed class I18nApi
 
                 var apiServer = Task.Run(() =>
                 {
-                    Directory.CreateDirectory(Path.GetDirectoryName(DatabasePath)!);
                     var ctx = CreateDbContext();
                     ctx.Database.EnsureDeleted();
                     ctx.Database.EnsureCreated();
@@ -419,7 +418,7 @@ public sealed class I18nApi
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
                     builder.WebHost.UseUrls("http://localhost:5004");
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={DatabasePath}"));
+                        options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddAuthentication("Test")
                         .AddScheme<AuthenticationSchemeOptions, TestHeaderAuthenticationHandler>("Test", _ => { });
                     builder.Services.AddAuthorization();
@@ -440,7 +439,7 @@ public sealed class I18nApi
         public static EF.DummyContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={DatabasePath}")
+                .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
         }
