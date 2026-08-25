@@ -67,3 +67,7 @@ Two public runtime files are included:
 - `public/runtime-config.js`: workspace sources and client feature flags
 
 These are safe places for environment-specific deployment replacement.
+
+## Agent skill and client extension guidance
+
+The template includes `.agents/skills/chillsharp_ui_template/SKILL.md`, which is copied with the template into client repositories. Keep client-owned plugins in `src/app/core/plugins` and provider overrides in `src/app/core/overrides`; shared implementation remains in `@chill-sharp/ui-core`.

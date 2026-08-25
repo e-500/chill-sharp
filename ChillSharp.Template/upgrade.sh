@@ -2,7 +2,14 @@
 set -Eeuo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-template_project_path="$script_dir/ChillSharp.Template.csproj"
+csproj_files=("$script_dir"/*.csproj)
+if [ ${#csproj_files[@]} -eq 0 ] || [ ! -f "${csproj_files[0]}" ]; then
+  die "Could not find a .csproj file in '$script_dir'."
+elif [ ${#csproj_files[@]} -gt 1 ]; then
+  die "Found multiple .csproj files in '$script_dir': ${csproj_files[*]}."
+fi
+template_project_path="${csproj_files[0]}"
+template_project_name="$(basename -- "$template_project_path")"
 local_package_folder="$script_dir/nupkgs"
 restore_state_folder="$script_dir/obj"
 shared_folder="${CHILL_NUGET_SHARED_FOLDER:-$HOME/source/nuget-shared}"
@@ -157,6 +164,33 @@ remove_stale_restore_state() {
   fi
 }
 
+extract_chillsharp_skills() {
+  local nupkg_path="$1"
+  local target_folder="$2"
+
+  python3 -c '
+import zipfile, os, sys
+nupkg = sys.argv[1]
+target = sys.argv[2]
+agents_dir = os.path.join(target, ".agents")
+skills_dir = os.path.join(agents_dir, "skills")
+
+if os.path.exists(skills_dir):
+    import shutil
+    shutil.rmtree(skills_dir)
+os.makedirs(skills_dir, exist_ok=True)
+
+with zipfile.ZipFile(nupkg, "r") as z:
+    for name in z.namelist():
+        if name.startswith(".agents/skills/") and not name.endswith("/"):
+            rel_path = name[len(".agents/skills/"):]
+            dest = os.path.join(skills_dir, rel_path)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, "wb") as f_out:
+                f_out.write(z.read(name))
+' "$nupkg_path" "$target_folder"
+}
+
 if ! command -v python3 >/dev/null 2>&1; then
   die "Required command 'python3' was not found."
 fi
@@ -180,12 +214,14 @@ done < <(find "$local_package_folder" -maxdepth 1 -type f -name 'ChillSharp.*.nu
 
 cp -f -- "$source_archive_path" "$destination_archive_path"
 set_chillsharp_package_reference_version "$template_project_path" "$package_version"
+extract_chillsharp_skills "$destination_archive_path" "$script_dir"
 
 removed_global_cache_path="$(remove_chillsharp_global_package_cache "$package_version" || true)"
 mapfile -t removed_restore_state_paths < <(remove_stale_restore_state "$restore_state_folder")
 
 printf "Copied ChillSharp %s from '%s' to '%s'.\n" "$package_version" "$source_archive_path" "$destination_archive_path"
-printf "Updated ChillSharp.Template.csproj to ChillSharp %s.\n" "$package_version"
+printf "Updated %s to ChillSharp %s.\n" "$template_project_name" "$package_version"
+printf "Extracted and updated agent skills in '.agents/skills/'.\n"
 printf "Saved CHILL_NUGET_SHARED_FOLDER to '%s'.\n" "$env_file"
 
 if [[ -n "${removed_global_cache_path//[[:space:]]/}" ]]; then

@@ -8,7 +8,13 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
-$templateProjectPath = Join-Path $scriptDirectory 'Gdf.csproj'
+$csprojFiles = @(Get-ChildItem -LiteralPath $scriptDirectory -Filter '*.csproj' -File)
+if ($csprojFiles.Count -eq 0) {
+  throw "Could not find a .csproj file in '$scriptDirectory'."
+} elseif ($csprojFiles.Count -gt 1) {
+  throw "Found multiple .csproj files in '$scriptDirectory': $($csprojFiles.Name -join ', ')."
+}
+$templateProjectPath = $csprojFiles[0].FullName
 $localPackageFolder = Join-Path $scriptDirectory 'nupkgs'
 $restoreStateFolder = Join-Path $scriptDirectory 'obj'
 
@@ -140,6 +146,50 @@ function Remove-StaleRestoreState {
   return $removedPaths
 }
 
+function Extract-ChillSharpSkills {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$NupkgPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TargetFolder
+  )
+
+  $agentsDir = Join-Path $TargetFolder '.agents'
+  if (-not (Test-Path -LiteralPath $agentsDir)) {
+    New-Item -ItemType Directory -Path $agentsDir | Out-Null
+  }
+
+  $skillsTargetDir = Join-Path $agentsDir 'skills'
+  if (Test-Path -LiteralPath $skillsTargetDir) {
+    Remove-Item -LiteralPath $skillsTargetDir -Recurse -Force | Out-Null
+  }
+  New-Item -ItemType Directory -Path $skillsTargetDir | Out-Null
+
+  Add-Type -AssemblyName System.IO.Compression
+  $archive = [System.IO.Compression.ZipFile]::OpenRead($NupkgPath)
+  try {
+    foreach ($entry in $archive.Entries) {
+      if ($entry.FullName -match '^\.agents/skills/(?<RelativePath>.+)$') {
+        $relativePath = $Matches.RelativePath
+        $relativePath = $relativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar
+        $destPath = Join-Path $skillsTargetDir $relativePath
+        $destDir = Split-Path -Parent $destPath
+        if (-not (Test-Path -LiteralPath $destDir)) {
+          New-Item -ItemType Directory -Path $destDir | Out-Null
+        }
+        if (-not $destPath.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+          [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destPath, $true)
+        }
+      }
+    }
+  }
+  finally {
+    $archive.Dispose()
+  }
+}
+
+
 if (-not (Test-Path -LiteralPath $templateProjectPath)) {
   throw "Could not find template project at '$templateProjectPath'."
 }
@@ -160,11 +210,13 @@ foreach ($existingPackage in Get-ChildItem -LiteralPath $localPackageFolder -Fil
 
 Copy-Item -LiteralPath $latestPackage.File.FullName -Destination $destinationArchivePath -Force
 Set-ChillSharpPackageReferenceVersion -ProjectPath $templateProjectPath -PackageVersion $latestPackage.VersionText
+Extract-ChillSharpSkills -NupkgPath $destinationArchivePath -TargetFolder $scriptDirectory
 $removedGlobalCachePath = Remove-ChillSharpGlobalPackageCache -PackageVersion $latestPackage.VersionText
 $removedRestoreStatePaths = @(Remove-StaleRestoreState -RestoreStateFolderPath $restoreStateFolder)
 
 Write-Host "Copied ChillSharp $($latestPackage.VersionText) from '$($latestPackage.File.FullName)' to '$destinationArchivePath'."
-Write-Host "Updated ChillSharp.Template.csproj to ChillSharp $($latestPackage.VersionText)."
+Write-Host "Updated $($csprojFiles[0].Name) to ChillSharp $($latestPackage.VersionText)."
+Write-Host "Extracted and updated agent skills in '.agents/skills/'."
 
 if ($null -ne $removedGlobalCachePath) {
   Write-Host "Removed cached global package '$removedGlobalCachePath' so NuGet will re-extract ChillSharp $($latestPackage.VersionText)."
