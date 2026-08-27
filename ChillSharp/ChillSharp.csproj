@@ -63,4 +63,22 @@
         </ItemGroup>
     </Target>
 
+    <Target Name="IncludeTemplateCustomizationScripts" BeforeTargets="_GetPackageFiles">
+        <PropertyGroup>
+            <TemplateCustomizationScriptsPath>$(BaseIntermediateOutputPath)template-customization\</TemplateCustomizationScriptsPath>
+        </PropertyGroup>
+        <Copy SourceFiles="$(MSBuildProjectDirectory)\..\ChillSharp.Template\upgrade.ps1;$(MSBuildProjectDirectory)\..\ChillSharp.Template\upgrade.sh"
+              DestinationFiles="$(TemplateCustomizationScriptsPath)upgrade.ps1.template;$(TemplateCustomizationScriptsPath)upgrade.sh.template" />
+        <ItemGroup>
+            <None Include="$(TemplateCustomizationScriptsPath)upgrade.ps1.template">
+                <Pack>True</Pack>
+                <PackagePath>template-customization\</PackagePath>
+            </None>
+            <None Include="$(TemplateCustomizationScriptsPath)upgrade.sh.template">
+                <Pack>True</Pack>
+                <PackagePath>template-customization\</PackagePath>
+            </None>
+        </ItemGroup>
+    </Target>
+
 </Project>

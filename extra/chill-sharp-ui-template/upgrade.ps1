@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$UpgradeScriptVersion = 0
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $packageJsonPath = Join-Path $scriptDirectory 'package.json'
 $packagesFolder = Join-Path $scriptDirectory 'packages'
@@ -85,6 +86,120 @@ function Test-CommandAvailable {
   return $null -ne (Get-Command $CommandName -ErrorAction SilentlyContinue)
 }
 
+function Update-UpgradeScriptIfNewer {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ArchivePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptPath
+  )
+
+  $temporaryScriptPath = [System.IO.Path]::GetTempFileName()
+  Add-Type -AssemblyName System.Formats.Tar
+  $fileStream = [System.IO.File]::OpenRead($ArchivePath)
+  $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Decompress)
+  $tarReader = [System.Formats.Tar.TarReader]::new($gzipStream)
+  try {
+    $entry = $null
+    while ($null -ne ($entry = $tarReader.GetNextEntry($false))) {
+      if ($entry.Name -ne 'package/template-customization/upgrade.ps1.template') {
+        continue
+      }
+
+      $outputStream = [System.IO.File]::Open($temporaryScriptPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+      try {
+        $entry.DataStream.CopyTo($outputStream)
+      }
+      finally {
+        $outputStream.Dispose()
+      }
+      $packagedContents = Get-Content -LiteralPath $temporaryScriptPath -Raw
+      $versionMatch = [System.Text.RegularExpressions.Regex]::Match(
+        $packagedContents,
+        '(?m)^\s*\$UpgradeScriptVersion\s*=\s*(?<Version>\d+)\s*$')
+      if (-not $versionMatch.Success) {
+        throw "The packaged upgrade script does not define a valid `$UpgradeScriptVersion."
+      }
+
+      $packagedVersion = [int]$versionMatch.Groups['Version'].Value
+      if ($packagedVersion -le $UpgradeScriptVersion) {
+        return $false
+      }
+
+      Copy-Item -LiteralPath $temporaryScriptPath -Destination $ScriptPath -Force
+      Write-Host "Updated upgrade.ps1 from internal version $UpgradeScriptVersion to $packagedVersion. Rerun the script to continue the package upgrade."
+      return $true
+    }
+
+    return $false
+  }
+  finally {
+    $tarReader.Dispose()
+    $gzipStream.Dispose()
+    $fileStream.Dispose()
+    if (Test-Path -LiteralPath $temporaryScriptPath) {
+      Remove-Item -LiteralPath $temporaryScriptPath -Force
+    }
+  }
+}
+
+function Extract-ChillSharpUiTemplateSkills {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ArchivePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TargetFolder
+  )
+
+  $agentsDir = Join-Path $TargetFolder '.agents'
+  $skillsTargetDir = Join-Path $agentsDir 'skills'
+  if (Test-Path -LiteralPath $skillsTargetDir) {
+    Remove-Item -LiteralPath $skillsTargetDir -Recurse -Force | Out-Null
+  }
+  New-Item -ItemType Directory -Path $skillsTargetDir -Force | Out-Null
+  $skillsTargetRoot = [System.IO.Path]::GetFullPath($skillsTargetDir)
+
+  Add-Type -AssemblyName System.Formats.Tar
+  $fileStream = [System.IO.File]::OpenRead($ArchivePath)
+  $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Decompress)
+  $tarReader = [System.Formats.Tar.TarReader]::new($gzipStream)
+  try {
+    $entry = $null
+    $entryPrefix = 'package/.agents/skills/'
+    while ($null -ne ($entry = $tarReader.GetNextEntry($false))) {
+      if (-not $entry.Name.StartsWith($entryPrefix, [System.StringComparison]::Ordinal)) {
+        continue
+      }
+
+      $relativePath = $entry.Name.Substring($entryPrefix.Length)
+      if ([string]::IsNullOrWhiteSpace($relativePath) -or $entry.EntryType -eq [System.Formats.Tar.TarEntryType]::Directory) {
+        continue
+      }
+
+      $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $skillsTargetRoot ($relativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)))
+      if (-not $destinationPath.StartsWith($skillsTargetRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to extract skill outside '$skillsTargetRoot'."
+      }
+      $destinationDirectory = Split-Path -Parent $destinationPath
+      New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+      $outputStream = [System.IO.File]::Open($destinationPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+      try {
+        $entry.DataStream.CopyTo($outputStream)
+      }
+      finally {
+        $outputStream.Dispose()
+      }
+    }
+  }
+  finally {
+    $tarReader.Dispose()
+    $gzipStream.Dispose()
+    $fileStream.Dispose()
+  }
+}
+
 if (-not (Test-Path -LiteralPath $packageJsonPath)) {
   throw "Could not find package.json at '$packageJsonPath'."
 }
@@ -94,6 +209,12 @@ if (-not (Test-Path -LiteralPath $packagesFolder)) {
 }
 
 $resolvedSharedFolder = Resolve-ConfirmedFolderPath -InitialPath $SharedFolder -Label 'npm' -SkipPrompt:$SkipConfirmation
+
+$latestUiCoreArchive = Get-LatestArchive -FolderPath $resolvedSharedFolder -ArchivePrefix 'chill-sharp-ui-core'
+if (Update-UpgradeScriptIfNewer -ArchivePath $latestUiCoreArchive.File.FullName -ScriptPath $MyInvocation.MyCommand.Path) {
+  exit 0
+}
+Extract-ChillSharpUiTemplateSkills -ArchivePath $latestUiCoreArchive.File.FullName -TargetFolder $scriptDirectory
 
 $packageDefinitions = @(
   [pscustomobject]@{ PackageName = '@chill-sharp/ui-core'; ArchivePrefix = 'chill-sharp-ui-core' }

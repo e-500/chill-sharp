@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$UpgradeScriptVersion = 0
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $csprojFiles = @(Get-ChildItem -LiteralPath $scriptDirectory -Filter '*.csproj' -File)
 if ($csprojFiles.Count -eq 0) {
@@ -189,6 +190,51 @@ function Extract-ChillSharpSkills {
   }
 }
 
+function Update-UpgradeScriptIfNewer {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$NupkgPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptPath
+  )
+
+  $temporaryScriptPath = [System.IO.Path]::GetTempFileName()
+  Add-Type -AssemblyName System.IO.Compression
+  $archive = [System.IO.Compression.ZipFile]::OpenRead($NupkgPath)
+  try {
+    $entry = $archive.GetEntry('template-customization/upgrade.ps1.template')
+    if ($null -eq $entry) {
+      return $false
+    }
+
+    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $temporaryScriptPath, $true)
+    $packagedContents = Get-Content -LiteralPath $temporaryScriptPath -Raw
+    $versionMatch = [System.Text.RegularExpressions.Regex]::Match(
+      $packagedContents,
+      '(?m)^\s*\$UpgradeScriptVersion\s*=\s*(?<Version>\d+)\s*$')
+
+    if (-not $versionMatch.Success) {
+      throw "The packaged upgrade script does not define a valid `$UpgradeScriptVersion."
+    }
+
+    $packagedVersion = [int]$versionMatch.Groups['Version'].Value
+    if ($packagedVersion -le $UpgradeScriptVersion) {
+      return $false
+    }
+
+    Copy-Item -LiteralPath $temporaryScriptPath -Destination $ScriptPath -Force
+    Write-Host "Updated upgrade.ps1 from internal version $UpgradeScriptVersion to $packagedVersion. Rerun the script to continue the package upgrade."
+    return $true
+  }
+  finally {
+    $archive.Dispose()
+    if (Test-Path -LiteralPath $temporaryScriptPath) {
+      Remove-Item -LiteralPath $temporaryScriptPath -Force
+    }
+  }
+}
+
 
 if (-not (Test-Path -LiteralPath $templateProjectPath)) {
   throw "Could not find template project at '$templateProjectPath'."
@@ -209,6 +255,9 @@ foreach ($existingPackage in Get-ChildItem -LiteralPath $localPackageFolder -Fil
 }
 
 Copy-Item -LiteralPath $latestPackage.File.FullName -Destination $destinationArchivePath -Force
+if (Update-UpgradeScriptIfNewer -NupkgPath $destinationArchivePath -ScriptPath $MyInvocation.MyCommand.Path) {
+  exit 0
+}
 Set-ChillSharpPackageReferenceVersion -ProjectPath $templateProjectPath -PackageVersion $latestPackage.VersionText
 Extract-ChillSharpSkills -NupkgPath $destinationArchivePath -TargetFolder $scriptDirectory
 $removedGlobalCachePath = Remove-ChillSharpGlobalPackageCache -PackageVersion $latestPackage.VersionText

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+upgrade_script_version=0
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 package_json_path="$script_dir/package.json"
 packages_folder="$script_dir/packages"
@@ -143,6 +144,78 @@ copy_latest_package_archive() {
   printf "Copied %s %s to '%s'.\n" "$package_name" "$package_version" "$destination_archive_path"
 }
 
+update_upgrade_script_if_newer() {
+  local archive_path="$1"
+  local script_path="$2"
+
+  python3 -c '
+import os, re, stat, sys, tarfile, tempfile
+
+archive_path, script_path, current_version = sys.argv[1], sys.argv[2], int(sys.argv[3])
+entry_name = "package/template-customization/upgrade.sh.template"
+
+with tarfile.open(archive_path, "r:gz") as archive:
+    try:
+        entry = archive.getmember(entry_name)
+    except KeyError:
+        sys.exit(0)
+    contents = archive.extractfile(entry).read().decode("utf-8")
+
+match = re.search(r"(?m)^\\s*upgrade_script_version\\s*=\\s*(\\d+)\\s*$", contents)
+if match is None:
+    raise RuntimeError("The packaged upgrade script does not define a valid upgrade_script_version.")
+
+packaged_version = int(match.group(1))
+if packaged_version <= current_version:
+    sys.exit(0)
+
+script_dir = os.path.dirname(os.path.abspath(script_path))
+original_mode = stat.S_IMODE(os.stat(script_path).st_mode)
+fd, temporary_script_path = tempfile.mkstemp(prefix=".upgrade-", dir=script_dir)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8", newline="") as file:
+        file.write(contents)
+    os.chmod(temporary_script_path, original_mode)
+    os.replace(temporary_script_path, script_path)
+finally:
+    if os.path.exists(temporary_script_path):
+        os.unlink(temporary_script_path)
+
+print(f"Updated upgrade.sh from internal version {current_version} to {packaged_version}. Rerun the script to continue the package upgrade.")
+sys.exit(10)
+' "$archive_path" "$script_path" "$upgrade_script_version"
+}
+
+extract_chillsharp_ui_template_skills() {
+  local archive_path="$1"
+  local target_folder="$2"
+
+  python3 -c '
+import os, shutil, sys, tarfile
+
+archive_path, target_folder = sys.argv[1], sys.argv[2]
+skills_dir = os.path.join(target_folder, ".agents", "skills")
+skills_root = os.path.abspath(skills_dir)
+prefix = "package/.agents/skills/"
+
+if os.path.exists(skills_dir):
+    shutil.rmtree(skills_dir)
+os.makedirs(skills_dir, exist_ok=True)
+
+with tarfile.open(archive_path, "r:gz") as archive:
+    for entry in archive.getmembers():
+        if not entry.isfile() or not entry.name.startswith(prefix):
+            continue
+        relative_path = entry.name[len(prefix):]
+        destination = os.path.abspath(os.path.join(skills_root, relative_path))
+        if os.path.commonpath((skills_root, destination)) != skills_root:
+            raise RuntimeError(f"Refusing to extract outside the skills folder: {entry.name}")
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        with archive.extractfile(entry) as source, open(destination, "wb") as output:
+            shutil.copyfileobj(source, output)
+' "$archive_path" "$target_folder"
+}
+
 require_command python3
 require_command jq
 
@@ -150,6 +223,21 @@ require_command jq
 mkdir -p -- "$packages_folder"
 
 resolve_confirmed_shared_folder
+
+latest_ui_core_line="$(latest_archive_line "$resolved_shared_folder" 'chill-sharp-ui-core')"
+[[ -n "$latest_ui_core_line" ]] ||
+  die "Could not find a 'chill-sharp-ui-core-<version>.tgz' archive in '$resolved_shared_folder'."
+IFS=$'\t' read -r _latest_ui_core_version latest_ui_core_archive_path <<<"$latest_ui_core_line"
+if update_upgrade_script_if_newer "$latest_ui_core_archive_path" "${BASH_SOURCE[0]}"; then
+  :
+else
+  update_status=$?
+  if [[ "$update_status" -eq 10 ]]; then
+    exit 0
+  fi
+  die 'Could not update upgrade.sh from the UI core package.'
+fi
+extract_chillsharp_ui_template_skills "$latest_ui_core_archive_path" "$script_dir"
 
 copy_latest_package_archive '@chill-sharp/ui-core' 'chill-sharp-ui-core'
 copy_latest_package_archive '@chill-sharp/ng-client' 'chill-sharp-ng-client'
