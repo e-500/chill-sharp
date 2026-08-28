@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$UpgradeScriptVersion = 0
+$UpgradeScriptVersion = 2
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $packageJsonPath = Join-Path $scriptDirectory 'package.json'
 $packagesFolder = Join-Path $scriptDirectory 'packages'
@@ -246,12 +246,26 @@ foreach ($definition in $packageDefinitions) {
 $packageJson | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $packageJsonPath
 
 if (Test-CommandAvailable -CommandName 'npm') {
+  $packageLockPath = Join-Path $scriptDirectory 'package-lock.json'
+  $packageLockBackupPath = "$packageLockPath.chill-sharp-upgrade.bak"
+  $hadPackageLock = Test-Path -LiteralPath $packageLockPath
+  if ($hadPackageLock) {
+    Copy-Item -LiteralPath $packageLockPath -Destination $packageLockBackupPath -Force
+    Remove-Item -LiteralPath $packageLockPath -Force
+  }
+
   Write-Host 'Refreshing package-lock.json and local file dependencies with npm install --ignore-scripts...'
   Push-Location $scriptDirectory
   try {
     & npm install --ignore-scripts
     if ($LASTEXITCODE -ne 0) {
+      if ($hadPackageLock -and (Test-Path -LiteralPath $packageLockBackupPath)) {
+        Move-Item -LiteralPath $packageLockBackupPath -Destination $packageLockPath -Force
+      }
       Write-Warning 'npm install --ignore-scripts did not complete successfully. Local archives were copied, but package-lock.json and node_modules may still need a manual refresh.'
+    }
+    elseif (Test-Path -LiteralPath $packageLockBackupPath) {
+      Remove-Item -LiteralPath $packageLockBackupPath -Force
     }
   }
   finally {

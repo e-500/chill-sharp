@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { AsyncValidatorFn, FormControl, FormGroup } from '@angular/forms';
+import { Router } from '@angular/router';
 import {
   ChillSharpClientError,
   ChillSharpNgClient,
@@ -67,6 +68,7 @@ import { CHILL_BASE_URL, CHILL_CULTURE, CHILL_PRIMARY_TEXT_CULTURE, CHILL_SECOND
 import { SESSION_STORAGE_KEY, USER_PREFERENCES_STORAGE_KEY } from '../storage-keys';
 import { WorkspaceDialogService } from './workspace-dialog.service';
 const TEXT_QUEUE_DELAY_MS = 50;
+const MAX_TIMEOUT_MS = 2_147_483_647;
 const CHILL_PROPERTY_TYPE = {
   Unknown: 0,
   Guid: 1,
@@ -177,6 +179,7 @@ interface PrepareFormOptions<TSchema extends ChillSchema> {
 export class ChillService {
   private readonly chill = inject(ChillSharpNgClient);
   private readonly dialog = inject(WorkspaceDialogService);
+  private readonly router = inject(Router);
   private readonly sessionState = signal<AuthSession | null>(this.readStoredSession());
   private readonly currentUserGuidState = signal('');
   private readonly userPreferencesState = signal<StoredUserPreferences>(this.readStoredUserPreferences());
@@ -188,6 +191,7 @@ export class ChillService {
   private readonly permissionRuleOwners = new Map<string, PermissionRuleOwner>();
   private isTimeZoneAlignmentPromptOpen = false;
   private textQueueHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
+  private sessionExpiryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   readonly session = this.sessionState.asReadonly();
   readonly isAuthenticated = computed(() => this.sessionState() !== null);
@@ -199,6 +203,13 @@ export class ChillService {
 
   constructor() {
     this.syncClientSession(this.sessionState());
+    this.scheduleSessionExpiryCheck();
+    globalThis.addEventListener?.('focus', () => this.expireSessionIfNeeded());
+    globalThis.document?.addEventListener('visibilitychange', () => {
+      if (!globalThis.document.hidden) {
+        this.expireSessionIfNeeded();
+      }
+    });
     this.logStartupDiagnostics();
   }
 
@@ -1224,6 +1235,24 @@ export class ChillService {
     this.clearSession();
   }
 
+  /**
+   * Clears an expired local access token and returns the user to login.
+   * This is public so route guards and host applications can force the same
+   * check when navigation is attempted after a sleeping tab resumes.
+   */
+  expireSessionIfNeeded(): boolean {
+    const session = this.sessionState();
+    if (!session || !this.isSessionExpired(session)) {
+      return false;
+    }
+
+    this.clearSession();
+    if (!this.router.url.startsWith('/login')) {
+      void this.router.navigate(['/login'], { replaceUrl: true });
+    }
+    return true;
+  }
+
   formatError(error: unknown): string {
     if (typeof error === 'string' && error.trim()) {
       return error;
@@ -1254,9 +1283,14 @@ export class ChillService {
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     this.sessionState.set(session);
     this.syncClientSession(session);
+    this.scheduleSessionExpiryCheck();
   }
 
   private clearSession(): void {
+    if (this.sessionExpiryTimer) {
+      globalThis.clearTimeout(this.sessionExpiryTimer);
+      this.sessionExpiryTimer = null;
+    }
     localStorage.removeItem(SESSION_STORAGE_KEY);
     this.sessionState.set(null);
     this.currentUserGuidState.set('');
@@ -1351,6 +1385,61 @@ export class ChillService {
       };
     } catch {
       localStorage.removeItem(SESSION_STORAGE_KEY);
+      return null;
+    }
+  }
+
+  private scheduleSessionExpiryCheck(): void {
+    if (this.sessionExpiryTimer) {
+      globalThis.clearTimeout(this.sessionExpiryTimer);
+      this.sessionExpiryTimer = null;
+    }
+
+    const expiresAt = this.getSessionExpiry(this.sessionState());
+    if (expiresAt === null) {
+      return;
+    }
+
+    const delay = expiresAt - Date.now();
+    if (delay <= 0) {
+      this.expireSessionIfNeeded();
+      return;
+    }
+
+    this.sessionExpiryTimer = globalThis.setTimeout(
+      () => this.expireSessionIfNeeded(),
+      Math.min(delay, MAX_TIMEOUT_MS)
+    );
+  }
+
+  private isSessionExpired(session: AuthSession): boolean {
+    const expiresAt = this.getSessionExpiry(session);
+    return expiresAt !== null && expiresAt <= Date.now();
+  }
+
+  private getSessionExpiry(session: AuthSession | null): number | null {
+    if (!session) {
+      return null;
+    }
+
+    const parsedExpiry = Date.parse(session.accessTokenExpiresUtc);
+    if (Number.isFinite(parsedExpiry)) {
+      return parsedExpiry;
+    }
+
+    const [, payload] = session.accessToken.split('.');
+    if (!payload) {
+      return null;
+    }
+
+    try {
+      const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decodedPayload = globalThis.atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '='));
+      const expiresAtSeconds = JSON.parse(decodedPayload).exp;
+      return typeof expiresAtSeconds === 'number' && Number.isFinite(expiresAtSeconds)
+        ? expiresAtSeconds * 1_000
+        : null;
+    } catch {
       return null;
     }
   }

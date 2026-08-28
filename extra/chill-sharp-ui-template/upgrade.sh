@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-upgrade_script_version=0
+upgrade_script_version=2
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 package_json_path="$script_dir/package.json"
 packages_folder="$script_dir/packages"
@@ -246,9 +246,23 @@ copy_latest_package_archive '@chill-sharp/ts-client' 'chill-sharp-ts-client'
 printf "Saved CHILL_NPM_SHARED_FOLDER to '%s'.\n" "$env_file"
 
 if command -v npm >/dev/null 2>&1; then
+  package_lock_path="$script_dir/package-lock.json"
+  package_lock_backup_path="$package_lock_path.chill-sharp-upgrade.bak"
+  had_package_lock=false
+  if [[ -f "$package_lock_path" ]]; then
+    cp -f -- "$package_lock_path" "$package_lock_backup_path"
+    rm -f -- "$package_lock_path"
+    had_package_lock=true
+  fi
+
   printf 'Refreshing package-lock.json and local file dependencies with npm install --ignore-scripts...\n'
   if ! (cd "$script_dir" && npm install --ignore-scripts); then
+    if [[ "$had_package_lock" == true && -f "$package_lock_backup_path" ]]; then
+      mv -f -- "$package_lock_backup_path" "$package_lock_path"
+    fi
     warn 'npm install --ignore-scripts did not complete successfully. Local archives were copied, but package-lock.json and node_modules may still need a manual refresh.'
+  else
+    rm -f -- "$package_lock_backup_path"
   fi
 else
   warn 'npm was not found on PATH. Local archives were copied, but package-lock.json was not refreshed.'
