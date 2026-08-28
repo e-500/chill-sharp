@@ -16,4 +16,4 @@ Schema metadata is generated from annotated entities and queries and can be pers
 
 Expose only intentional MCP models with `EnableMCP = true`; describe entity, query, and property matching semantics with `MCPDescription`. MCP access remains subject to the protected API and default-deny permissions. Reason about ACLs in `Module -> Entity -> Property` order: entity `Query/Create/Update/Delete` is required before property `See/Modify` can refine access.
 
-The package packs `.agents/skills/**` from this template. `upgrade.ps1` and `upgrade.sh` extract that folder after updating the local NuGet package. Keep skill names stable and never add generated secrets.
+The package packs `.agents/skills/**` from this template plus the core menu-JSON skill. `upgrade.ps1` and `upgrade.sh` extract those packaged skills after updating the local NuGet package. Keep skill names stable and never add generated secrets.
