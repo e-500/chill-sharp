@@ -32,6 +32,10 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
+        <None Include="..\doc\**\*">
+            <Pack>True</Pack>
+            <PackagePath>doc\</PackagePath>
+        </None>
         <None Include="..\ChillSharp.Template\.agents\skills\**\*">
             <Pack>True</Pack>
             <PackagePath>.agents\skills\</PackagePath>

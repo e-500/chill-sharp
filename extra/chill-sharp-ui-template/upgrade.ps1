@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$UpgradeScriptVersion = 2
+$UpgradeScriptVersion = 3
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $packageJsonPath = Join-Path $scriptDirectory 'package.json'
 $packagesFolder = Join-Path $scriptDirectory 'packages'
@@ -200,6 +200,67 @@ function Extract-ChillSharpUiTemplateSkills {
   }
 }
 
+function Extract-ChillSharpUiTemplateDocumentation {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$ArchivePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TargetFolder
+  )
+
+  $documentationTargetDir = Join-Path $TargetFolder 'doc'
+  if (Test-Path -LiteralPath $documentationTargetDir) {
+    Remove-Item -LiteralPath $documentationTargetDir -Recurse -Force | Out-Null
+  }
+  New-Item -ItemType Directory -Path $documentationTargetDir | Out-Null
+  $documentationTargetRoot = [System.IO.Path]::GetFullPath($documentationTargetDir)
+
+  Add-Type -AssemblyName System.Formats.Tar
+  $fileStream = [System.IO.File]::OpenRead($ArchivePath)
+  $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Decompress)
+  $tarReader = [System.Formats.Tar.TarReader]::new($gzipStream)
+  try {
+    $entry = $null
+    $entryPrefix = 'package/doc/'
+    while ($null -ne ($entry = $tarReader.GetNextEntry($false))) {
+      if (-not $entry.Name.StartsWith($entryPrefix, [System.StringComparison]::Ordinal)) {
+        continue
+      }
+
+      $relativePath = $entry.Name.Substring($entryPrefix.Length)
+      if ([string]::IsNullOrWhiteSpace($relativePath)) {
+        continue
+      }
+
+      $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $documentationTargetRoot ($relativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar)))
+      if (-not $destinationPath.StartsWith($documentationTargetRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to extract documentation outside '$documentationTargetRoot'."
+      }
+
+      if ($entry.EntryType -eq [System.Formats.Tar.TarEntryType]::Directory) {
+        New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+        continue
+      }
+
+      $destinationDirectory = Split-Path -Parent $destinationPath
+      New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+      $outputStream = [System.IO.File]::Open($destinationPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+      try {
+        $entry.DataStream.CopyTo($outputStream)
+      }
+      finally {
+        $outputStream.Dispose()
+      }
+    }
+  }
+  finally {
+    $tarReader.Dispose()
+    $gzipStream.Dispose()
+    $fileStream.Dispose()
+  }
+}
+
 if (-not (Test-Path -LiteralPath $packageJsonPath)) {
   throw "Could not find package.json at '$packageJsonPath'."
 }
@@ -215,6 +276,7 @@ if (Update-UpgradeScriptIfNewer -ArchivePath $latestUiCoreArchive.File.FullName 
   exit 0
 }
 Extract-ChillSharpUiTemplateSkills -ArchivePath $latestUiCoreArchive.File.FullName -TargetFolder $scriptDirectory
+Extract-ChillSharpUiTemplateDocumentation -ArchivePath $latestUiCoreArchive.File.FullName -TargetFolder $scriptDirectory
 
 $packageDefinitions = @(
   [pscustomobject]@{ PackageName = '@chill-sharp/ui-core'; ArchivePrefix = 'chill-sharp-ui-core' }
@@ -277,3 +339,4 @@ else {
 }
 
 Write-Host 'UI template dependencies were upgraded from the shared npm folder.'
+Write-Host "Extracted and updated documentation in 'doc/'."

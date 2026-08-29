@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$UpgradeScriptVersion = 0
+$UpgradeScriptVersion = 1
 $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $csprojFiles = @(Get-ChildItem -LiteralPath $scriptDirectory -Filter '*.csproj' -File)
 if ($csprojFiles.Count -eq 0) {
@@ -190,6 +190,51 @@ function Extract-ChillSharpSkills {
   }
 }
 
+function Extract-ChillSharpDocumentation {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$NupkgPath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TargetFolder
+  )
+
+  $documentationTargetDir = Join-Path $TargetFolder 'doc'
+  if (Test-Path -LiteralPath $documentationTargetDir) {
+    Remove-Item -LiteralPath $documentationTargetDir -Recurse -Force | Out-Null
+  }
+  New-Item -ItemType Directory -Path $documentationTargetDir | Out-Null
+
+  Add-Type -AssemblyName System.IO.Compression
+  $archive = [System.IO.Compression.ZipFile]::OpenRead($NupkgPath)
+  try {
+    foreach ($entry in $archive.Entries) {
+      if ($entry.FullName -notmatch '^doc/(?<RelativePath>.+)$') {
+        continue
+      }
+
+      $relativePath = $Matches.RelativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar
+      $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $documentationTargetDir $relativePath))
+      $documentationTargetRoot = [System.IO.Path]::GetFullPath($documentationTargetDir)
+      if (-not $destinationPath.StartsWith($documentationTargetRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to extract documentation outside '$documentationTargetRoot'."
+      }
+
+      if ($entry.FullName.EndsWith('/')) {
+        New-Item -ItemType Directory -Path $destinationPath -Force | Out-Null
+        continue
+      }
+
+      $destinationDirectory = Split-Path -Parent $destinationPath
+      New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
+      [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $destinationPath, $true)
+    }
+  }
+  finally {
+    $archive.Dispose()
+  }
+}
+
 function Update-UpgradeScriptIfNewer {
   param(
     [Parameter(Mandatory = $true)]
@@ -260,12 +305,14 @@ if (Update-UpgradeScriptIfNewer -NupkgPath $destinationArchivePath -ScriptPath $
 }
 Set-ChillSharpPackageReferenceVersion -ProjectPath $templateProjectPath -PackageVersion $latestPackage.VersionText
 Extract-ChillSharpSkills -NupkgPath $destinationArchivePath -TargetFolder $scriptDirectory
+Extract-ChillSharpDocumentation -NupkgPath $destinationArchivePath -TargetFolder $scriptDirectory
 $removedGlobalCachePath = Remove-ChillSharpGlobalPackageCache -PackageVersion $latestPackage.VersionText
 $removedRestoreStatePaths = @(Remove-StaleRestoreState -RestoreStateFolderPath $restoreStateFolder)
 
 Write-Host "Copied ChillSharp $($latestPackage.VersionText) from '$($latestPackage.File.FullName)' to '$destinationArchivePath'."
 Write-Host "Updated $($csprojFiles[0].Name) to ChillSharp $($latestPackage.VersionText)."
 Write-Host "Extracted and updated agent skills in '.agents/skills/'."
+Write-Host "Extracted and updated documentation in 'doc/'."
 
 if ($null -ne $removedGlobalCachePath) {
   Write-Host "Removed cached global package '$removedGlobalCachePath' so NuGet will re-extract ChillSharp $($latestPackage.VersionText)."
