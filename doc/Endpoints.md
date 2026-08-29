@@ -1,5 +1,8 @@
 # ChillSharp Endpoints
 
+Versione italiana: [Italiano](it/Endpoints.md)
+
+
 This document lists the HTTP, SignalR, and MCP endpoints exposed by the built-in ChillSharp API modules.
 
 ## Base Path

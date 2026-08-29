@@ -455,7 +455,7 @@ users = client.get_auth_user_list()
 
 Auth user list/detail payloads include `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
 
-Auth user and role payloads also include `MenuHierarchy`, which is used by the schema menu model to filter visible menu nodes. See [../../doc/MenuModel.md](../../doc/MenuModel.md).
+Auth user and role payloads also include `MenuHierarchy`, which is used by the schema menu model to filter visible menu nodes. See [../../doc/MenuGuide/README.md](../../doc/MenuGuide/README.md).
 
 ### Get managed user
 

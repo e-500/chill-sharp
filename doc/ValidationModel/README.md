@@ -1,5 +1,8 @@
 # Validation Model
 
+Versione italiana: [Italiano](../it/ValidationModel/README.md)
+
+
 ChillSharp supports the standard ASP.NET Core / .NET validation attributes on entity and query properties, as long as those properties are also marked with `[ChillProperty]`.
 
 ## Standard validation on Chill properties

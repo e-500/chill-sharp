@@ -1,5 +1,8 @@
 # HOW-TO: Connect ChillSharp MCP to ChatGPT
 
+Versione italiana: [Italiano](../it/Mcp/ChatGPT.md)
+
+
 This guide shows how to expose a protected ChillSharp MCP server over HTTPS and connect it from ChatGPT using the built-in ChillSharp OAuth flow.
 
 ## Goal

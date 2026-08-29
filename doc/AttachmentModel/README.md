@@ -1,5 +1,8 @@
 # Attachment Module
 
+Versione italiana: [Italiano](../it/AttachmentModel/README.md)
+
+
 `ChillSharp.Attachment` adds a built-in attachment entity plus upload and download endpoints backed by a filesystem archive.
 
 ## What It Adds

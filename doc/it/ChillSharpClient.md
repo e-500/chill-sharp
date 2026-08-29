@@ -1,54 +1,54 @@
 # ChillSharp.Client
 
-Versione italiana: [Italiano](it/ChillSharpClient.md)
+Versione originale in inglese: [English](../ChillSharpClient.md)
 
 
-`ChillSharp.Client` is the .NET client library for calling a ChillSharp host from console apps, workers, tests, desktop apps, or other .NET services.
+`ChillSharp.Client` è la libreria client .NET per chiamare un host ChillSharp da app console, lavoratori, test, app desktop o altri servizi .NET.
 
-Use it when the consumer is .NET. For browser frameworks or Python automation, use the generic clients under `extra-libs/` or generate a host-specific client from OpenAPI.
+Usalo quando il consumer è .NET. Per i framework browser o l'automazione Python, utilizzare i client generici in `extra-libs/` o generare un client specifico dell'host da OpenAPI.
 
-## Install
+## Installa
 
-Reference the `ChillSharp.Client` project or package from the consuming .NET application.
+Fare riferimento al progetto o al pacchetto `ChillSharp.Client` dall'applicazione .NET che utilizza.
 
 ```xml
 <ProjectReference Include="..\ChillSharp.Client\ChillSharp.Client.csproj" />
 ```
 
-Then import the client namespaces:
+Quindi importa gli spazi dei nomi client:
 
 ```csharp
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
 ```
 
-Auth account methods use request and response contracts from `ChillSharp.Auth.Contracts`:
+I metodi dell'account di autenticazione utilizzano contratti di richiesta e risposta da `ChillSharp.Auth.Contracts`:
 
 ```csharp
 using ChillSharp.Auth.Contracts;
 ```
 
-I18n methods use contracts from `ChillSharp.I18n.Contracts`:
+I metodi I18n utilizzano contratti da `ChillSharp.I18n.Contracts`:
 
 ```csharp
 using ChillSharp.I18n.Contracts;
 ```
 
-## Create A Client
+## Crea un cliente
 
-The normal base URL is the core ChillSharp endpoint:
+L'URL di base normale è l'endpoint principale di ChillSharp:
 
 ```csharp
 var client = new ChillSharpClient("http://localhost:5000/api/chill");
 ```
 
-You can also pass the host root. The client appends the default `api/chill` path:
+Puoi anche passare la root dell'host. Il client aggiunge il percorso `api/chill` predefinito:
 
 ```csharp
 var client = new ChillSharpClient("http://localhost:5000");
 ```
 
-For a custom API base path:
+Per un percorso di base API personalizzato:
 
 ```csharp
 var client = new ChillSharpClient(
@@ -56,15 +56,15 @@ var client = new ChillSharpClient(
     new ChillSharpClientOptions { ApiBasePath = "backend" });
 ```
 
-This resolves the core API as:
+Questo risolve l'API principale come:
 
 ```text
 http://localhost:5000/backend/chill
 ```
 
-## Culture
+## Cultura
 
-Pass a default culture when reading schemas or i18n text:
+Passa una cultura predefinita durante la lettura di schemi o testo i18n:
 
 ```csharp
 var client = new ChillSharpClient(
@@ -74,17 +74,17 @@ var client = new ChillSharpClient(
 var schema = client.GetSchema("Model.Blog", "default");
 ```
 
-You can still override culture per schema call:
+Puoi comunque sovrascrivere la cultura per chiamata allo schema:
 
 ```csharp
 var englishSchema = client.GetSchema("Model.Blog", "default", "en-GB");
 ```
 
-## Authentication
+## Autenticazione
 
-If the API is protected, authenticate with one of these patterns.
+Se l'API è protetta, esegui l'autenticazione con uno di questi modelli.
 
-Use an existing bearer token:
+Utilizza un token al portatore esistente:
 
 ```csharp
 var client = new ChillSharpClient(
@@ -92,7 +92,7 @@ var client = new ChillSharpClient(
     AuthToken: accessToken);
 ```
 
-Use credentials and let the client log in on demand:
+Utilizza le credenziali e consenti al client di accedere su richiesta:
 
 ```csharp
 var client = new ChillSharpClient(
@@ -101,7 +101,7 @@ var client = new ChillSharpClient(
     Password: "Pass123$");
 ```
 
-Register or log in through the auth account endpoints:
+Registrati o accedi tramite gli endpoint dell'account di autenticazione:
 
 ```csharp
 var client = new ChillSharpClient("http://localhost:5000/api/chill");
@@ -113,25 +113,25 @@ var token = client.LoginAuthAccount(new LoginAuthIdentityRequest
 });
 ```
 
-The client stores the returned access token and refresh token. Later authenticated calls reuse the access token and refresh it automatically when possible.
+Il client archivia il token di accesso restituito e il token di aggiornamento. Le chiamate autenticate successivamente riutilizzano il token di accesso e lo aggiornano automaticamente quando possibile.
 
-To force refresh:
+Per forzare l'aggiornamento:
 
 ```csharp
 client.RefreshAuthAccount();
 ```
 
-To revoke the current session:
+Per revocare la sessione corrente:
 
 ```csharp
 client.LogoutAuthAccount();
 ```
 
-## Core Entity Operations
+## Operazioni dell'entità principale
 
-ChillSharp entity calls use `ChillDtoEntity`.
+Le chiamate alle entità ChillSharp utilizzano `ChillDtoEntity`.
 
-Create:
+Creare:
 
 ```csharp
 var blog = new ChillDtoEntity
@@ -144,7 +144,7 @@ blog.Properties["Description"] = "Created through ChillSharp.Client";
 var created = client.Create(blog);
 ```
 
-Find:
+Trovare:
 
 ```csharp
 var found = client.Find(new ChillDtoEntity
@@ -154,28 +154,28 @@ var found = client.Find(new ChillDtoEntity
 });
 ```
 
-Update:
+Aggiornamento:
 
 ```csharp
 created.Properties["Title"] = "Updated blog";
 var updated = client.Update(created);
 ```
 
-Delete:
+Eliminare:
 
 ```csharp
 client.Delete(updated);
 ```
 
-Validate without saving:
+Convalida senza salvare:
 
 ```csharp
 var errors = client.Validate(blog);
 ```
 
-## Query And Lookup
+## Interrogazione e ricerca
 
-Use `Query` when the host exposes an entity query type:
+Utilizza `Query` quando l'host espone un tipo di query di entità:
 
 ```csharp
 var query = new ChillDtoQuery
@@ -197,7 +197,7 @@ foreach (var item in result.Results)
 }
 ```
 
-Use `Lookup` for generic full-text entity lookup:
+Utilizza `Lookup` per la ricerca generica di entità di testo completo:
 
 ```csharp
 var lookup = client.Lookup(new ChillDtoQuery
@@ -210,21 +210,21 @@ var lookup = client.Lookup(new ChillDtoQuery
 });
 ```
 
-`FullTextSearch` searches against ChillSharp `FullTextContent`. Unquoted text without advanced selectors is normalized, split on whitespace, and AND-matched, so every token must be present. Brackets plus standalone `and`/`or` operators outside quotes enable grouped boolean search. Search the literal words `and` or `or` by wrapping them in matching quotes. Matching single or double quotes search one normalized phrase with word boundaries:
+`FullTextSearch` effettua ricerche contro ChillSharp `FullTextContent`. Il testo senza virgolette senza selettori avanzati è normalizzato, suddiviso in spazi bianchi e abbinato a AND, quindi ogni token deve essere presente. Le parentesi più gli operatori `and`/`or` autonomi al di fuori delle virgolette consentono la ricerca booleana raggruppata. Cerca le parole letterali `and` o `or` racchiudendole tra virgolette corrispondenti. Le virgolette singole o doppie corrispondenti cercano una frase normalizzata con i limiti delle parole:
 
-| Search text | Meaning |
+| Cerca testo | Significato |
 | --- | --- |
-| `release notes` | Match records containing both `release` and `notes`. |
-| `[release and notes] or memo` | Match records containing both `release` and `notes`, or records containing `memo`. |
-| `"and"` | Search the literal keyword `and` instead of the boolean operator. |
-| `"la nazione"` | Match the exact phrase as whole words, for example `bla bla la nazione bla bla`, but not `bla bla della nazione bla bla`. |
-| `"*la nazione"` or `"%la nazione"` | Relax the left boundary, so `della nazione` can match. |
-| `"la nazione*"` or `"la nazione%"` | Relax the right boundary, so a suffix can match. |
-| `"la*nazione"` or `"la%nazione"` | Treat the middle wildcard as a token separator and apply normal AND token matching. |
+|  | Record di corrispondenza contenenti sia `release` che `notes`. |
+|  | Abbina record contenenti sia `release` che `notes` oppure record contenenti `memo`. |
+|  | Cerca la parola chiave letterale `and` anziché l'operatore booleano. |
+|  | Abbina la frase esatta come parole intere, ad esempio `bla bla la nazione bla bla`, ma non `bla bla della nazione bla bla`. |
+| `"*la nazione"` o `"%la nazione"` | Rilassa il confine sinistro, in modo che `della nazione` possa corrispondere. |
+| `"la nazione*"` o `"la nazione%"` | Rilassa il confine destro, in modo che un suffisso possa corrispondere. |
+| `"la*nazione"` o `"la%nazione"` | Tratta il carattere jolly centrale come un separatore di token e applica la normale corrispondenza dei token AND. |
 
-## Batch Operations
+## Operazioni batch
 
-Use `Chunk` to send several operations in one HTTP call.
+Utilizzare `Chunk` per inviare diverse operazioni in una chiamata HTTP.
 
 ```csharp
 var operations = new List<ChillOperation>
@@ -249,18 +249,18 @@ var operations = new List<ChillOperation>
 var processed = client.Chunk(operations);
 ```
 
-Use a transaction/commit wrapper when the write operations must be committed together.
+Utilizzare un wrapper di transazione/commit quando è necessario eseguire il commit delle operazioni di scrittura insieme.
 
-## Schema And Menu
+## Schema e menù
 
-Read schema metadata:
+Leggi i metadati dello schema:
 
 ```csharp
 var schema = client.GetSchema("Model.Blog", "default");
 var schemaList = client.GetSchemaList();
 ```
 
-Manage entity options:
+Gestisci le opzioni dell'entità:
 
 ```csharp
 var options = client.GetEntityOptions("Model.Blog");
@@ -268,14 +268,14 @@ options.HandleAttachments = true;
 client.SetEntityOptions(options);
 ```
 
-Read menu nodes:
+Leggi i nodi del menu:
 
 ```csharp
 var rootItems = client.GetMenu();
 var children = client.GetMenu(rootItems[0].Guid);
 ```
 
-Create or update a menu item:
+Crea o aggiorna una voce di menu:
 
 ```csharp
 var item = client.SetMenu(new ChillDtoMenuItem
@@ -287,17 +287,17 @@ var item = client.SetMenu(new ChillDtoMenuItem
 });
 ```
 
-Delete a menu item and its descendants:
+Elimina una voce di menu e i suoi discendenti:
 
 ```csharp
 client.DeleteMenu(item.Guid);
 ```
 
-Schema write operations require schema-management access on protected hosts.
+Le operazioni di scrittura dello schema richiedono l'accesso alla gestione dello schema sugli host protetti.
 
-## Auth Management
+## Gestione autenticazione
 
-Auth-management helpers are available when the host registers `ChillSharp.Auth`.
+Gli assistenti per la gestione dell'autenticazione sono disponibili quando l'host registra `ChillSharp.Auth`.
 
 ```csharp
 var users = client.GetAuthUsers();
@@ -305,7 +305,7 @@ var roles = client.GetAuthRoles();
 var permissions = client.GetAuthPermissions();
 ```
 
-Create a managed auth user:
+Crea un utente di autenticazione gestita:
 
 ```csharp
 var user = client.CreateAuthUser(new CreateAuthUserRequest
@@ -318,7 +318,7 @@ var user = client.CreateAuthUser(new CreateAuthUserRequest
 });
 ```
 
-Create a role and assign it:
+Crea un ruolo e assegnalo:
 
 ```csharp
 var role = client.CreateAuthRole(new CreateAuthRoleRequest
@@ -331,7 +331,7 @@ var role = client.CreateAuthRole(new CreateAuthRoleRequest
 client.AssignAuthRole(user.Guid, role.Guid);
 ```
 
-For richer administration screens, use the aggregate helpers:
+Per schermate di amministrazione più ricche, utilizza gli helper aggregati:
 
 ```csharp
 var managedUser = client.GetAuthManagedUser(user.Guid);
@@ -339,9 +339,9 @@ var roleList = client.GetAuthRoleList();
 var moduleList = client.GetAuthModuleList();
 ```
 
-## I18n
+##I18n
 
-Read a localized text:
+Leggere un testo localizzato:
 
 ```csharp
 var text = client.GetText(new GetTextRequest
@@ -352,13 +352,13 @@ var text = client.GetText(new GetTextRequest
 });
 ```
 
-Read several texts:
+Leggi diversi testi:
 
 ```csharp
 var texts = client.GetTexts(requests);
 ```
 
-Create or update a text:
+Crea o aggiorna un testo:
 
 ```csharp
 client.SetText(new SetTextRequest
@@ -369,9 +369,9 @@ client.SetText(new SetTextRequest
 });
 ```
 
-## Attachments
+## Allegati
 
-Upload a file and attach it to an entity:
+Carica un file e allegalo a un'entità:
 
 ```csharp
 var files = client.UploadAttachment(
@@ -380,19 +380,19 @@ var files = client.UploadAttachment(
     title: "Contract");
 ```
 
-List attachments for an entity:
+Elenca gli allegati per un'entità:
 
 ```csharp
 var attachments = client.GetAttachments(created);
 ```
 
-Download an attachment:
+Scarica un allegato:
 
 ```csharp
 var bytes = client.DownloadAttachment(attachments[0].Guid);
 ```
 
-Download directly to a file:
+Scarica direttamente in un file:
 
 ```csharp
 client.DownloadAttachmentToFile(
@@ -400,11 +400,11 @@ client.DownloadAttachmentToFile(
     @"C:\temp\downloaded-contract.pdf");
 ```
 
-Attachment upload and private download require the attachment module and appropriate auth configuration.
+Il caricamento degli allegati e il download privato richiedono il modulo degli allegati e la configurazione di autenticazione appropriata.
 
-## Custom HttpClient
+## HttpClient personalizzato
 
-Use a custom factory when tests or host integration need special headers, handlers, or certificates:
+Utilizza una factory personalizzata quando i test o l'integrazione dell'host richiedono intestazioni, gestori o certificati speciali:
 
 ```csharp
 var client = new ChillSharpClient(
@@ -417,11 +417,11 @@ var client = new ChillSharpClient(
     });
 ```
 
-The factory is invoked for each request. Dispose any external resources according to your application’s `HttpClient` strategy.
+La factory viene richiamata per ogni richiesta. Elimina eventuali risorse esterne in base alla strategia `HttpClient` della tua applicazione.
 
-## Errors
+## Errori
 
-Server errors and transport failures are wrapped in `ChillClientException`.
+Gli errori del server e gli errori di trasporto sono racchiusi in `ChillClientException`.
 
 ```csharp
 try
@@ -434,21 +434,21 @@ catch (ChillClientException ex)
 }
 ```
 
-For HTTP errors, the exception message includes the status code and response body when available.
+Per gli errori HTTP, il messaggio di eccezione include il codice di stato e il corpo della risposta, se disponibile.
 
-## Endpoint Resolution
+## Risoluzione dell'endpoint
 
-From a core URL ending in `/chill`, the client resolves module endpoints automatically:
+Da un URL principale che termina con `/chill`, il client risolve automaticamente gli endpoint del modulo:
 
-| Module | Resolved endpoint |
+| Modulo | Endpoint risolto |
 | --- | --- |
-| Core | `/api/chill` |
-| Auth | `/api/chill-auth` |
-| Schema | `/api/chill-schema` |
-| I18n | `/api/chill-i18n` |
-| Attachment | `/api/chill-attachment` |
+| Nucleo |  |
+| Aut. |  |
+| Schema |  |
+| I18n |  |
+| Allegato |  |
 
-For example:
+Per esempio:
 
 ```csharp
 var client = new ChillSharpClient("http://localhost:5000/api/chill");
@@ -456,9 +456,9 @@ client.GetMenu();          // calls /api/chill-schema/get-menu
 client.LoginAuthAccount(...); // calls /api/chill-auth/login
 ```
 
-## Related Documentation
+## Documentazione correlata
 
-- [AuthenticationModel/README.md](./AuthenticationModel/README.md)
-- [MenuGuide/README.md](./MenuGuide/README.md)
-- [AttachmentModel/README.md](./AttachmentModel/README.md)
+- [Modello di autenticazione/README.md](./AuthenticationModel/README.md)
+- [MenuGuide/README.md](../MenuGuide/README.md)
+- [Modelloallegato/README.md](./AttachmentModel/README.md)
 - [ClientGeneration/README.md](./ClientGeneration/README.md)

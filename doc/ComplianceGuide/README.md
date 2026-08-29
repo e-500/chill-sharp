@@ -1,5 +1,8 @@
 # Security And Compliance Guide
 
+Versione italiana: [Italiano](../it/ComplianceGuide/README.md)
+
+
 This document explains how ChillSharp can support security and compliance programs such as NIS2, ISO 27001, SOC 2, or internal secure-development policies.
 
 It is intentionally generic: compliance frameworks differ by jurisdiction and sector, but many of the underlying engineering controls are the same.

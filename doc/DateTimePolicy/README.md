@@ -1,5 +1,8 @@
 # ChillSharp DateTime Policy
 
+Versione italiana: [Italiano](../it/DateTimePolicy/README.md)
+
+
 This document defines the ChillSharp DTO policy for `DateTime` and `DateTimeOffset` values.
 
 The policy applies when ChillSharp reads or writes values through DTO property bags, such as `ChillDtoEntity.Properties` and `ChillDtoQuery.Properties`.
