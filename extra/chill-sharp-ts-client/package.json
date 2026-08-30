@@ -1,6 +1,6 @@
 {
   "name": "@chill-sharp/ts-client",
-  "version": "1.0.141",
+  "version": "1.0.142",
   "description": "TypeScript client for generic ChillSharp services",
   "license": "AGPL-3.0-or-later",
   "type": "module",
