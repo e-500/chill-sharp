@@ -204,7 +204,7 @@ public sealed class I18nApi
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5004/")
+            BaseAddress = new Uri($"{AnonymousFriendlyI18nApiHost.BaseAddress}/")
         };
 
         var labelGuid = Guid.NewGuid();
@@ -393,7 +393,10 @@ public sealed class I18nApi
     {
         private static readonly object SyncRoot = new();
         private static readonly string DatabasePath = "anonymous-friendly-i18n-api-host";
+        private static readonly int Port = GetAvailableLoopbackPort();
         private static bool _apiServiceUpAndRunning;
+
+        public static string BaseAddress => $"http://127.0.0.1:{Port}";
 
         public static void EnsureStarted()
         {
@@ -416,7 +419,7 @@ public sealed class I18nApi
                     ctx.Database.EnsureCreated();
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
-                    builder.WebHost.UseUrls("http://localhost:5004");
+                    builder.WebHost.UseUrls(BaseAddress);
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
                         options.UseInMemoryDatabase(DatabasePath));
                     builder.Services.AddAuthentication("Test")
@@ -442,6 +445,13 @@ public sealed class I18nApi
                 .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
+        }
+
+        private static int GetAvailableLoopbackPort()
+        {
+            using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
         }
     }
 

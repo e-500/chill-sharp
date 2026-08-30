@@ -13,6 +13,7 @@ describe('PermissionsPageComponent', () => {
           provide: ChillService,
           useValue: {
             T: (_labelGuid: string, primaryDefaultText: string, secondaryDefaultText: string) => secondaryDefaultText || primaryDefaultText,
+            isAuthenticated: () => false,
             formatError: (error: unknown) => `${error ?? ''}`,
             session: () => ({
               userId: 'user-1',

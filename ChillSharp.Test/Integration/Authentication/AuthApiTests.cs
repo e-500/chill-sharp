@@ -335,8 +335,8 @@ public sealed class AuthApi
         {
             RootBootstrapAuthApiHost.EnsureStarted();
 
-            var anonymousClient = new ChillSharpClient("http://localhost:5003/api/chill");
-            var rootClient = new ChillSharpClient("http://localhost:5003/api/chill");
+            var anonymousClient = new ChillSharpClient($"{RootBootstrapAuthApiHost.BaseAddress}/api/chill");
+            var rootClient = new ChillSharpClient($"{RootBootstrapAuthApiHost.BaseAddress}/api/chill");
             var loginResponse = rootClient.LoginAuthAccount(new LoginAuthIdentityRequest
             {
                 UserNameOrEmail = rootUserName,
@@ -1472,7 +1472,10 @@ public sealed class AuthApi
     {
         private static readonly object SyncRoot = new();
         private static readonly string DatabasePath = "root-bootstrap-auth-api-host";
+        private static readonly int Port = GetAvailableLoopbackPort();
         private static bool _apiServiceUpAndRunning;
+
+        public static string BaseAddress => $"http://127.0.0.1:{Port}";
 
         public static void EnsureStarted()
         {
@@ -1495,7 +1498,7 @@ public sealed class AuthApi
                     ctx.Database.EnsureCreated();
 
                     var builder = WebApplication.CreateBuilder(Array.Empty<string>());
-                    builder.WebHost.UseUrls("http://localhost:5003");
+                    builder.WebHost.UseUrls(BaseAddress);
                     builder.Logging.ClearProviders();
                     builder.Services.AddDbContext<EF.DummyContext>(options =>
                         options.UseInMemoryDatabase(DatabasePath));
@@ -1531,6 +1534,13 @@ public sealed class AuthApi
                 .UseInMemoryDatabase(DatabasePath)
                 .Options;
             return new EF.DummyContext(options);
+        }
+
+        private static int GetAvailableLoopbackPort()
+        {
+            using var listener = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
         }
     }
 
