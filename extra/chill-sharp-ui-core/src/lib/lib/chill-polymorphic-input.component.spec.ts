@@ -64,4 +64,16 @@ describe('ChillPolymorphicInputComponent', () => {
     expect(blurValues.length).toBe(1);
     expect(String(blurValues[0]?.['name'] ?? '')).toBe('Ada');
   });
+
+  it('renders a static suffix without including it in the scalar value', () => {
+    const schema: ChillSchema = {
+      properties: [{ name: 'amount', propertyType: CHILL_PROPERTY_TYPE.Decimal, isNullable: false, metadata: { staticSuffix: '€' } }]
+    };
+    const form = new FormGroup<Record<string, FormControl<JsonValue>>>({ amount: new FormControl<JsonValue>(12.5) });
+    fixture.componentRef.setInput('schema', schema);
+    fixture.componentRef.setInput('form', form);
+    fixture.detectChanges();
+    expect(String(form.controls['amount'].value)).toBe('12.5');
+    expect(fixture.nativeElement.querySelector('.scalar-input__suffix')?.textContent).toContain('€');
+  });
 });

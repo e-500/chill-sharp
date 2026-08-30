@@ -184,30 +184,47 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
     }
 
     const propertyType = property?.propertyType ?? CHILL_PROPERTY_TYPE.Unknown;
+    let formattedValue: string;
     switch (propertyType) {
       case CHILL_PROPERTY_TYPE.Integer:
       case CHILL_PROPERTY_TYPE.Decimal:
-        return this.formatNumber(value);
+        formattedValue = this.formatNumber(value);
+        break;
       case CHILL_PROPERTY_TYPE.Boolean:
-        return value === true
+        formattedValue = value === true
           ? this.chill.T('1A29951D-C442-4187-B0AA-F80454DEB09D', 'Yes', 'Si')
           : this.chill.T('8A65EBA6-81BD-4733-87D5-4CFE3F5C2D3F', 'No', 'No');
+        break;
       case CHILL_PROPERTY_TYPE.Date:
-        return this.formatDate(value);
+        formattedValue = this.formatDate(value);
+        break;
       case CHILL_PROPERTY_TYPE.Time:
-        return this.formatTime(value);
+        formattedValue = this.formatTime(value);
+        break;
       case CHILL_PROPERTY_TYPE.DateTime:
-        return this.formatDateTime(value);
+        formattedValue = this.formatDateTime(value);
+        break;
       case CHILL_PROPERTY_TYPE.ChillEntity:
       case CHILL_PROPERTY_TYPE.ChillQuery:
-        return this.formatObjectValue(value, preferFullLabel);
+        formattedValue = this.formatObjectValue(value, preferFullLabel);
+        break;
       default:
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-          return String(value);
-        }
-
-        return this.formatObjectValue(value, preferFullLabel);
+        formattedValue = typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+          ? String(value)
+          : this.formatObjectValue(value, preferFullLabel);
+        break;
     }
+
+    return formattedValue
+      ? `${formattedValue}${this.staticSuffix(property)}`
+      : '';
+  }
+
+  private staticSuffix(property: ChillPropertySchema | null): string {
+    const value = property?.metadata?.['staticSuffix'];
+    return typeof value === 'string' || typeof value === 'number'
+      ? String(value).trim()
+      : '';
   }
 
   /**

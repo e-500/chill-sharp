@@ -337,6 +337,13 @@ export class ChillPolymorphicInputComponent implements OnDestroy {
   }
 
   /**
+   * Resolves optional static text rendered after a scalar value without changing its stored value.
+   */
+  staticSuffix(property: ChillPropertySchema): string {
+    return this.metadataString(property, 'staticSuffix');
+  }
+
+  /**
    * Uses metadata placeholder first, otherwise mirrors the field label when labels are visually hidden.
    */
   placeholder(property: ChillPropertySchema): string {

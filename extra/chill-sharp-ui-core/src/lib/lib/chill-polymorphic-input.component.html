@@ -75,6 +75,7 @@
             [value]="textValue(property.name)"
             [type]="inputType(property)"
             [step]="inputStep(property)"
+            [staticSuffix]="staticSuffix(property)"
             (valueChange)="updateTextInput(property.name, $event)"
             (blur)="normalizeTextOnBlur(property)" />
         }
