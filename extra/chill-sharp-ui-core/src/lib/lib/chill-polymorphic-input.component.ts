@@ -1,7 +1,6 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, input, output, signal } from '@angular/core';
-import { ConnectedPosition, OverlayModule } from '@angular/cdk/overlay';
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { ConnectedPosition } from '@angular/cdk/overlay';
+import { FormControl, FormGroup } from '@angular/forms';
 import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import { Subscription } from 'rxjs';
 import {
@@ -12,8 +11,13 @@ import {
   type ChillSchema
 } from '../models/chill-schema.models';
 import { ChillService } from '../services/chill.service';
-import { ChillJsonInputComponent } from './chill-json-input.component';
 import { WorkspaceDialogService } from '../services/workspace-dialog.service';
+import { ChillPolymorphicBooleanControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-boolean-control.component';
+import { ChillPolymorphicLookupControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-lookup-control.component';
+import { ChillPolymorphicTextareaControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-textarea-control.component';
+import { ChillPolymorphicEditorControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-editor-control.component';
+import { ChillPolymorphicSelectControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-select-control.component';
+import { ChillPolymorphicScalarControlComponent } from './chill-polymorphic-input-controls/chill-polymorphic-scalar-control.component';
 
 type FieldValueMap = Record<string, JsonValue>;
 type ErrorMap = Record<string, string>;
@@ -32,7 +36,14 @@ interface LookupState {
 @Component({
   selector: 'app-chill-polymorphic-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, OverlayModule, ChillJsonInputComponent],
+  imports: [
+    ChillPolymorphicBooleanControlComponent,
+    ChillPolymorphicLookupControlComponent,
+    ChillPolymorphicTextareaControlComponent,
+    ChillPolymorphicEditorControlComponent,
+    ChillPolymorphicSelectControlComponent,
+    ChillPolymorphicScalarControlComponent
+  ],
   templateUrl: './chill-polymorphic-input.component.html',
   styleUrl: './chill-polymorphic-input.component.scss'
 })

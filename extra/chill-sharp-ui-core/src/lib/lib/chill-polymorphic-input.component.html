@@ -7,235 +7,76 @@
 
       @if (isCheckbox(property)) {
         @if (control(property.name); as fieldControl) {
-          <input
-            type="checkbox"
-            [formControl]="fieldControl"
-            [disabled]="isPropertyReadOnly(property.name)"
-            (blur)="emitFieldBlur(property.name)"
-            [name]="property.name" />
+          <app-chill-polymorphic-boolean-control
+            [control]="fieldControl"
+            [name]="property.name"
+            [readOnly]="isPropertyReadOnly(property.name)"
+            (blur)="emitFieldBlur(property.name)" />
         }
-      } @else if (isLookupCollection(property)) {
-        <div class="lookup">
-          @for (entity of selectedLookupCollectionEntities(property.name); track lookupGuid(entity) || $index) {
-            <div class="lookup-selected" [title]="lookupLabel(entity)">
-              <span class="lookup-selected__label lookup-selected__label--full">
-                {{ lookupLabel(entity) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-              </span>
-              <span class="lookup-selected__label lookup-selected__label--short">
-                {{ lookupShortLabel(entity) || lookupLabel(entity) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-              </span>
-              <button
-                type="button"
-                class="lookup-selected__clear"
-                (click)="removeLookupCollectionEntity(property, entity)"
-                [disabled]="isPropertyReadOnly(property.name)"
-                [attr.aria-label]="chill.T('34015BA4-E0CA-460E-B82B-A4E2D4D8A184', 'Clear', 'Pulisci')">
-                X
-              </button>
-            </div>
-          }
-
-          <div class="lookup-bar">
-            <div class="lookup-input-slot" cdkOverlayOrigin #lookupOrigin="cdkOverlayOrigin" #lookupOriginElement>
-              <input
-                type="text"
-                [ngModel]="lookupTerm(property.name)"
-                (ngModelChange)="updateLookupTerm(property, $event)"
-                (focus)="handleLookupFocus(property)"
-                (blur)="handleLookupBlur(property.name)"
-                [disabled]="isPropertyReadOnly(property.name)"
-                [name]="property.name"
-                [placeholder]="placeholder(property) || chill.T('FA7B8E01-658C-4D63-B53F-D476CD697892', 'Search entity', 'Cerca entita')" />
-            </div>
-            <button
-              type="button"
-              class="lookup-dialog"
-              (mousedown)="beginLookupDialogSelection(property.name)"
-              (click)="openLookupDialog(property)"
-              [disabled]="isPropertyReadOnly(property.name) || !canOpenLookupDialog(property)"
-              [attr.aria-label]="chill.T('B6D48459-73D4-4234-977E-8D79E510A20D', 'Open entity picker', 'Apri selettore entita')">
-              ...
-            </button>
-            <button type="button" class="lookup-clear" (click)="clearLookup(property)" [disabled]="isPropertyReadOnly(property.name)">
-              {{ chill.T('34015BA4-E0CA-460E-B82B-A4E2D4D8A184', 'Clear', 'Pulisci') }}
-            </button>
-          </div>
-
-          <ng-template
-            cdkConnectedOverlay
-            [cdkConnectedOverlayOrigin]="lookupOrigin"
-            [cdkConnectedOverlayOpen]="lookupResults(property.name).length > 0"
-            [cdkConnectedOverlayPositions]="lookupOverlayPositions"
-            [cdkConnectedOverlayPush]="true"
-            [cdkConnectedOverlayFlexibleDimensions]="true"
-            [cdkConnectedOverlayViewportMargin]="8"
-            [cdkConnectedOverlayOffsetY]="6">
-            <div
-              class="lookup-results"
-              role="listbox"
-              [style.--lookup-overlay-width.px]="lookupOverlayWidth(lookupOriginElement)">
-              @for (result of lookupResults(property.name); track $index) {
-                <button
-                  type="button"
-                  class="lookup-result"
-                  [class.is-selected]="isLookupResultSelected(property.name, result)"
-                  (mousedown)="$event.preventDefault()"
-                  (click)="selectLookupResult(property, result)">
-                  {{ lookupLabel(result) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-                </button>
-              }
-            </div>
-          </ng-template>
-
-          @if (lookupError(property.name)) {
-            <small class="field-error">{{ lookupError(property.name) }}</small>
-          }
-
-          @if (lookupIsSearching(property.name)) {
-            <small class="lookup-status">
-              {{ chill.T('ABAF5996-C2BB-4F85-BE0F-CC75883A648B', 'Searching...', 'Ricerca in corso...') }}
-            </small>
-          }
-        </div>
-      } @else if (isLookup(property)) {
-        <div class="lookup">
-          @if (property.propertyType === 1000 && hasSelectedLookupEntity(property.name)) {
-            <div class="lookup-selected" [title]="selectedLookupLabel(property.name)">
-              <span class="lookup-selected__label lookup-selected__label--full">
-                {{ selectedLookupLabel(property.name) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-              </span>
-              <span class="lookup-selected__label lookup-selected__label--short">
-                {{ selectedLookupShortLabel(property.name) || selectedLookupLabel(property.name) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-              </span>
-              <button
-                type="button"
-                class="lookup-selected__clear"
-                (click)="clearLookup(property)"
-                [disabled]="isPropertyReadOnly(property.name)"
-                [attr.aria-label]="chill.T('34015BA4-E0CA-460E-B82B-A4E2D4D8A184', 'Clear', 'Pulisci')">
-                X
-              </button>
-            </div>
-          } @else {
-            <div class="lookup-bar">
-              <div class="lookup-input-slot" cdkOverlayOrigin #lookupOrigin="cdkOverlayOrigin" #lookupOriginElement>
-                <input
-                  type="text"
-                  [ngModel]="lookupTerm(property.name)"
-                  (ngModelChange)="updateLookupTerm(property, $event)"
-                  (focus)="handleLookupFocus(property)"
-                  (blur)="handleLookupBlur(property.name)"
-                  [disabled]="isPropertyReadOnly(property.name)"
-                  [name]="property.name"
-                  [placeholder]="placeholder(property) || chill.T('FA7B8E01-658C-4D63-B53F-D476CD697892', 'Search entity', 'Cerca entita')" />
-              </div>
-              <button
-                  type="button"
-                  class="lookup-dialog"
-                  (mousedown)="beginLookupDialogSelection(property.name)"
-                  (click)="openLookupDialog(property)"
-                  [disabled]="isPropertyReadOnly(property.name) || !canOpenLookupDialog(property)"
-                  [attr.aria-label]="chill.T('B6D48459-73D4-4234-977E-8D79E510A20D', 'Open entity picker', 'Apri selettore entita')">
-                  ...
-              </button>
-            </div>
-
-            <ng-template
-              cdkConnectedOverlay
-              [cdkConnectedOverlayOrigin]="lookupOrigin"
-              [cdkConnectedOverlayOpen]="lookupResults(property.name).length > 0"
-              [cdkConnectedOverlayPositions]="lookupOverlayPositions"
-              [cdkConnectedOverlayPush]="true"
-              [cdkConnectedOverlayFlexibleDimensions]="true"
-              [cdkConnectedOverlayViewportMargin]="8"
-              [cdkConnectedOverlayOffsetY]="6">
-              <div
-                class="lookup-results"
-                role="listbox"
-                [style.--lookup-overlay-width.px]="lookupOverlayWidth(lookupOriginElement)">
-                @for (result of lookupResults(property.name); track $index) {
-                  <button
-                    type="button"
-                    class="lookup-result"
-                    [class.is-selected]="isLookupResultSelected(property.name, result)"
-                    (mousedown)="$event.preventDefault()"
-                    (click)="selectLookupResult(property, result)">
-                    {{ lookupLabel(result) || chill.T('B93CA88B-01FE-44B6-9C2F-C9878A7B324B', 'Select value', 'Seleziona valore') }}
-                  </button>
-                }
-              </div>
-            </ng-template>
-          }
-
-          @if (lookupIsSearching(property.name)) {
-            <small class="lookup-status">
-              {{ chill.T('ABAF5996-C2BB-4F85-BE0F-CC75883A648B', 'Searching...', 'Ricerca in corso...') }}
-            </small>
-          }
-
-          @if (lookupError(property.name)) {
-            <small class="field-error">{{ lookupError(property.name) }}</small>
-          }
-        </div>
+      } @else if (isLookupCollection(property) || isLookup(property)) {
+        <app-chill-polymorphic-lookup-control
+          [property]="property"
+          [readOnly]="isPropertyReadOnly(property.name)"
+          [placeholder]="placeholder(property)"
+          [term]="lookupTerm(property.name)"
+          [results]="lookupResults(property.name)"
+          [error]="lookupError(property.name)"
+          [searching]="lookupIsSearching(property.name)"
+          [selectedEntities]="selectedLookupCollectionEntities(property.name)"
+          [selectedLabel]="selectedLookupLabel(property.name)"
+          [selectedShortLabel]="selectedLookupShortLabel(property.name)"
+          [selectedGuid]="selectedLookupEntity(property.name) ? lookupGuid(selectedLookupEntity(property.name)!) : ''"
+          [hasSelectedEntity]="hasSelectedLookupEntity(property.name)"
+          [canOpenDialog]="canOpenLookupDialog(property)"
+          [positions]="lookupOverlayPositions"
+          (termChange)="updateLookupTerm(property, $event)"
+          (focus)="handleLookupFocus(property)"
+          (blur)="handleLookupBlur(property.name)"
+          (beginDialog)="beginLookupDialogSelection(property.name)"
+          (openDialog)="openLookupDialog(property)"
+          (clear)="clearLookup(property)"
+          (select)="selectLookupResult(property, $event)"
+          (remove)="removeLookupCollectionEntity(property, $event)" />
       } @else if (isTextarea(property)) {
         @if (control(property.name); as fieldControl) {
-          <textarea
-            rows="4"
-            [formControl]="fieldControl"
-            [disabled]="isPropertyReadOnly(property.name)"
-            (blur)="emitFieldBlur(property.name)"
+          <app-chill-polymorphic-textarea-control
+            [control]="fieldControl"
             [name]="property.name"
-            [placeholder]="placeholder(property)"></textarea>
+            [placeholder]="placeholder(property)"
+            [readOnly]="isPropertyReadOnly(property.name)"
+            (blur)="emitFieldBlur(property.name)" />
         }
       } @else if (isJsonEditor(property)) {
-        <div class="editor-field">
-          <app-chill-json-input
-            [value]="textValue(property.name)"
-            [language]="editorLanguage(property)"
-            [placeholder]="placeholder(property)"
-            [invalid]="!!validationMessage(property.name)"
-            [disabled]="isPropertyReadOnly(property.name) || (control(property.name)?.disabled ?? false)"
-            (valueChange)="updateJsonInput(property.name, $event)"
-            (blur)="emitFieldBlur(property.name)"></app-chill-json-input>
-          <button
-            type="button"
-            class="editor-dialog-button"
-            (mousedown)="beginEditorDialogSelection(property.name)"
-            (click)="openEditorDialog(property)"
-            [attr.aria-label]="chill.T('EC935816-DCBC-4AE7-BA13-36D66A7D7EBD', 'Open editor dialog', 'Apri editor in dialog')">
-            <span class="material-symbol-icon" aria-hidden="true">open_in_full</span>
-          </button>
-        </div>
+        <app-chill-polymorphic-editor-control
+          [value]="textValue(property.name)"
+          [language]="editorLanguage(property)"
+          [placeholder]="placeholder(property)"
+          [invalid]="!!validationMessage(property.name)"
+          [disabled]="isPropertyReadOnly(property.name) || (control(property.name)?.disabled ?? false)"
+          (valueChange)="updateJsonInput(property.name, $event)"
+          (blur)="emitFieldBlur(property.name)"
+          (beginDialog)="beginEditorDialogSelection(property.name)"
+          (openDialog)="openEditorDialog(property)" />
       } @else if (isSelect(property)) {
-        <select
-          [ngModel]="selectValue(property.name)"
-          (ngModelChange)="updateSelectValue(property, $event)"
-          [disabled]="isPropertyReadOnly(property.name)"
-          [name]="property.name">
-          @for (option of selectOptions(property); track option[0] + ':' + option[1]) {
-            <option [value]="option[0]">{{ option[1] }}</option>
-          }
-        </select>
+        <app-chill-polymorphic-select-control
+          [name]="property.name"
+          [value]="selectValue(property.name)"
+          [options]="selectOptions(property)"
+          [readOnly]="isPropertyReadOnly(property.name)"
+          (valueChange)="updateSelectValue(property, $event)" />
       } @else {
         @if (control(property.name); as fieldControl) {
-          @if (isFormattedTextInput(property)) {
-            <input
-              type="text"
-              [ngModel]="textValue(property.name)"
-              (ngModelChange)="updateTextInput(property.name, $event)"
-              (blur)="normalizeTextOnBlur(property)"
-              [disabled]="isPropertyReadOnly(property.name)"
-              [name]="property.name"
-              [placeholder]="placeholder(property)" />
-          } @else {
-            <input
-              [type]="inputType(property)"
-              [step]="inputStep(property)"
-              [formControl]="fieldControl"
-              (blur)="normalizeTextOnBlur(property)"
-              [name]="property.name"
-              [placeholder]="placeholder(property)" />
-          }
+          <app-chill-polymorphic-scalar-control
+            [control]="fieldControl"
+            [name]="property.name"
+            [placeholder]="placeholder(property)"
+            [readOnly]="isPropertyReadOnly(property.name)"
+            [formatted]="isFormattedTextInput(property)"
+            [value]="textValue(property.name)"
+            [type]="inputType(property)"
+            [step]="inputStep(property)"
+            (valueChange)="updateTextInput(property.name, $event)"
+            (blur)="normalizeTextOnBlur(property)" />
         }
       }
 
