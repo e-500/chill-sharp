@@ -1082,9 +1082,7 @@ a {
 
 .taskbar {
   min-width: 0;
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  display: block;
   overflow-x: auto;
   padding-bottom: 0.2rem;
 }
@@ -1102,12 +1100,38 @@ a {
   padding: 0.25rem;
   border-radius: 999px;
   border: 1px solid var(--border-color);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
   white-space: nowrap;
 }
 
 .taskbar__item.active {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 50%, var(--surface-2));
+}
+
+.taskbar__desktop,
+.taskbar__children {
+  display: flex;
+  align-items: center;
+}
+
+.taskbar__desktop {
+  gap: 0.5rem;
+}
+
+.taskbar__task-group {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.taskbar__children {
+  gap: 0.35rem;
+  margin-left: -0.65rem;
+  padding-left: 0.5rem;
+}
+
+.taskbar__children .taskbar__item {
+  background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
 }
 
 .taskbar__link,

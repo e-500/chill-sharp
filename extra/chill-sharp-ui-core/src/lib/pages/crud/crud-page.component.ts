@@ -1611,7 +1611,8 @@ export class CrudPageComponent implements OnInit {
       queryChillType: resolvedRelation.chillQuery,
       viewCode: resolvedRelation.viewCode,
       displayName: this.resolveRelationLabel(resolvedRelation) || undefined,
-      componentConfiguration: resolvedRelation
+      componentConfiguration: resolvedRelation,
+      parentTaskId: this.workspace.activeTask()?.id
     });
   }
 
@@ -1652,7 +1653,8 @@ export class CrudPageComponent implements OnInit {
       chillType: FILE_METADATA_ENTITY_CHILL_TYPE,
       queryChillType: FILE_METADATA_QUERY_CHILL_TYPE,
       displayName: this.chill.T('7A673274-5786-4E58-BA33-65D06BF6B9F3', 'Attachments', 'Allegati'),
-      componentConfiguration: attachmentConfiguration
+      componentConfiguration: attachmentConfiguration,
+      parentTaskId: this.workspace.activeTask()?.id
     });
   }
 

@@ -69,3 +69,48 @@ body::before {
   background: var(--surface-2);
   border: 1px solid var(--border-color);
 }
+
+// Keep the application menu dense and list-like instead of presenting every
+// entry as a separate card. These selectors intentionally override the
+// public UI-core menu classes from the client template.
+.workspace-menu__tree {
+  gap: 0.15rem;
+}
+
+.workspace-menu__tree-node,
+.workspace-menu__tree-children {
+  gap: 0.1rem;
+}
+
+.workspace-menu__tree-row {
+  gap: 0.25rem;
+}
+
+.workspace-menu__tree-main {
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  box-shadow: none;
+}
+
+.workspace-menu__tree-main.is-active {
+  border: 0;
+  background: var(--accent-soft);
+}
+
+.workspace-menu__tree-main.is-pending-expand {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.workspace-menu__tree-trigger {
+  padding: 0.5rem 0.7rem;
+}
+
+.workspace-menu__tree-expander {
+  width: 2.25rem;
+  padding: 0.45rem;
+}
+
+.workspace-menu__tree-meta {
+  padding: 0 0.7rem 0.5rem;
+}
