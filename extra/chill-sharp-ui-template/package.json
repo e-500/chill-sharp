@@ -1,6 +1,6 @@
 {
   "name": "chill-sharp-ui-template",
-  "version": "1.0.146",
+  "version": "1.0.147",
   "private": true,
   "description": "Template Angular shell for ChillSharp UI client applications.",
   "scripts": {
@@ -23,9 +23,9 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0",
-    "@chill-sharp/ui-core": "file:./packages/chill-sharp-ui-core-1.0.146.tgz",
-    "@chill-sharp/ng-client": "file:./packages/chill-sharp-ng-client-1.0.146.tgz",
-    "@chill-sharp/ts-client": "file:./packages/chill-sharp-ts-client-1.0.146.tgz"
+    "@chill-sharp/ui-core": "file:./packages/chill-sharp-ui-core-1.0.147.tgz",
+    "@chill-sharp/ng-client": "file:./packages/chill-sharp-ng-client-1.0.147.tgz",
+    "@chill-sharp/ts-client": "file:./packages/chill-sharp-ts-client-1.0.147.tgz"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.2.20",
