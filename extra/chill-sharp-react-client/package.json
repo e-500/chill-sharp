@@ -1,6 +1,6 @@
 {
   "name": "@chill-sharp/react-client",
-  "version": "1.0.145",
+  "version": "1.0.146",
   "description": "React client helpers for generic ChillSharp services",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -33,7 +33,7 @@
   "author": "Andrea Piovesan",
   "peerDependencies": {
     "react": "^18.2.0 || ^19.0.0",
-    "@chill-sharp/ts-client": "^1.0.145"
+    "@chill-sharp/ts-client": "^1.0.146"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",

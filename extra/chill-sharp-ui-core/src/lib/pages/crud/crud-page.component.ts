@@ -1824,10 +1824,12 @@ export class CrudPageComponent implements OnInit {
     const clonedEntity = this.cloneEntity(entity);
     const guid = this.readEntityKey(clonedEntity);
     const chillType = this.readStringValue(clonedEntity['chillType']);
-    const label = this.readStringValue(clonedEntity['label']);
+    const shortLabel = this.readStringValue(this.readEntityPropertyValue(clonedEntity, 'shortLabel'));
+    const label = this.readStringValue(this.readEntityPropertyValue(clonedEntity, 'label'));
     return {
       ...(guid ? { guid } : {}),
       ...(chillType ? { chillType } : {}),
+      ...(shortLabel ? { shortLabel } : {}),
       ...(label ? { label } : {}),
       properties: {
         ...(clonedEntity.properties ?? {})
