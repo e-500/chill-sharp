@@ -17,6 +17,9 @@ Questa cartella contiene la documentazione di riferimento di ChillSharp.
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Flussi account basati su Identity, endpoint di gestione auth, strategie di bootstrap e configurazione di API protette.
 
+- [CurrentUserPreferences.md](./CurrentUserPreferences.md)
+  Preferenze in cache di cultura, fuso orario e formati dell'utente autenticato per `IChillContext` e gli hook del ciclo di vita delle entita.
+
 - [PermissionModel/README.md](./PermissionModel/README.md)
   Il modello di permessi usato da `ChillSharp.Auth`, incluse precedenza, scope e modalita di risoluzione dell'accesso a entita e proprieta.
 

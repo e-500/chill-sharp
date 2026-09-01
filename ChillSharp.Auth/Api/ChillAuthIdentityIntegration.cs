@@ -23,6 +23,7 @@ using ChillSharp.Auth.Model;
 using ChillSharp.Auth.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 
 namespace ChillSharp.Auth.Api;
@@ -76,6 +77,40 @@ internal sealed class ChillAuthClaimsIdentityResolver : IChillAuthIdentityResolv
         }
 
         return null;
+    }
+}
+
+internal sealed class ChillAuthUserPreferencesAccessor : IChillAuthUserPreferencesAccessor
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IChillAuthIdentityResolver _identityResolver;
+    private readonly IChillAuthUserPreferencesCache _cache;
+
+    public ChillAuthUserPreferencesAccessor(
+        IHttpContextAccessor httpContextAccessor,
+        IChillAuthIdentityResolver identityResolver,
+        IChillAuthUserPreferencesCache cache)
+    {
+        _httpContextAccessor = httpContextAccessor;
+        _identityResolver = identityResolver;
+        _cache = cache;
+    }
+
+    public ChillUserPreferences Current
+    {
+        get
+        {
+            var principal = _httpContextAccessor.HttpContext?.User;
+            if (principal?.Identity?.IsAuthenticated != true)
+            {
+                return ChillUserPreferences.Empty;
+            }
+
+            var externalId = _identityResolver.ResolveExternalId(principal);
+            return !string.IsNullOrWhiteSpace(externalId) && _cache.TryGet(externalId, out var preferences)
+                ? preferences!
+                : ChillUserPreferences.Empty;
+        }
     }
 }
 
@@ -159,6 +194,7 @@ public static class ChillAuthIdentityIntegrationExtensions
         }
 
         services.AddScoped<IChillAuthIdentityResolver, ChillAuthClaimsIdentityResolver>();
+        services.AddScoped<IChillAuthUserPreferencesAccessor, ChillAuthUserPreferencesAccessor>();
         services.AddSingleton<IChillAuthEntityAclCache, ChillAuthEntityAclCache>();
         services.AddScoped<IChillEntityAclService, ChillAuthEntityAclService>();
         return services;

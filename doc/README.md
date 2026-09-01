@@ -29,6 +29,9 @@ This folder contains the reference documentation for ChillSharp.
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 
+- [CurrentUserPreferences.md](./CurrentUserPreferences.md)
+  Cached authenticated-user culture, time-zone, date-format, and number-format preferences for `IChillContext` and entity lifecycle hooks.
+
 - [MenuGuide/README.md](./MenuGuide/README.md)
   Backend-managed menu tree, menu endpoints, and `MenuHierarchy` filtering rules.
 

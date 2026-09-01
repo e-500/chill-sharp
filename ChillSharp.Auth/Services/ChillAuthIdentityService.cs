@@ -327,6 +327,9 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
 
         var userId = await _userManager.GetUserIdAsync(user) ?? throw new InvalidOperationException("The authenticated Identity user did not expose a user id.");
         var userName = await _userManager.GetUserNameAsync(user) ?? request.UserNameOrEmail.Trim();
+        // Warm the immutable preference snapshot once at login. Entity lifecycle hooks can then
+        // consume it through IChillContext without querying the auth-user table.
+        await _authService.GetUserByExternalIdAsync(userId, cancellationToken);
         return await _tokenService.IssueAsync(userId, userName, cancellationToken);
     }
 
