@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Any
+from typing import Any, TypedDict
 from urllib.parse import quote
 
 import requests
@@ -35,6 +35,15 @@ API_BASE_PATH = "api/"
 JsonDict = dict[str, Any]
 ATTACHMENT_ENTITY_CHILL_TYPE = "ChillSharp.Attachment.Model.Attachment"
 ATTACHMENT_QUERY_CHILL_TYPE = "ChillSharp.Attachment.Query.AttachmentQuery"
+
+
+class ChillUserPreferences(TypedDict):
+    """Display preferences resolved for the current authenticated user."""
+
+    displayCultureName: str
+    displayTimeZone: str
+    displayDateFormat: str
+    displayNumberFormat: str
 
 
 class PermissionEffect(IntEnum):
@@ -330,6 +339,13 @@ class ChillSharpClient:
     def get_auth_permissions(self) -> JsonDict:
         """Return the current user permissions together with role permissions."""
         return self._send_auth_json("GET", "get-permissions")
+
+    def get_current_user_preferences(self) -> ChillUserPreferences:
+        """Return the culture, time-zone, date-format, and number-format of the authenticated user."""
+        response = self._send_auth_json("GET", "current-user-preferences")
+        if not isinstance(response, dict):
+            raise ChillSharpClientError("Unexpected current user preferences response.")
+        return response  # type: ignore[return-value]
 
     def get_auth_user_list(self) -> list[JsonDict]:
         """Return the full auth user list."""

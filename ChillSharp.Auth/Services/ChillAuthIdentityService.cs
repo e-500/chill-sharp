@@ -369,9 +369,13 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
             ?? throw new InvalidOperationException("The created Identity user did not expose a user id.");
     }
 
-    public Task<AuthTokenResponse> RefreshAsync(RefreshAuthTokenRequest request, CancellationToken cancellationToken = default)
+    public async Task<AuthTokenResponse> RefreshAsync(RefreshAuthTokenRequest request, CancellationToken cancellationToken = default)
     {
-        return _tokenService.RefreshAsync(request.RefreshToken, cancellationToken);
+        var response = await _tokenService.RefreshAsync(request.RefreshToken, cancellationToken);
+        // A refreshed persisted session can outlive the in-memory preference cache after a
+        // process restart, so warm the same snapshot used by the preferences endpoint.
+        await _authService.GetUserByExternalIdAsync(response.UserId, cancellationToken);
+        return response;
     }
 
     public async Task LogoutAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)

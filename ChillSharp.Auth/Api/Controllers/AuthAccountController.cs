@@ -33,6 +33,7 @@ public class AuthAccountController : ControllerBase
 {
     #region Fields
     private readonly IChillAuthIdentityService? _service;
+    private readonly IChillAuthUserPreferencesAccessor _userPreferencesAccessor;
     #endregion
 
     #region Construction
@@ -40,9 +41,28 @@ public class AuthAccountController : ControllerBase
     /// Initializes the controller with the Identity-backed auth-account service.
     /// </summary>
     /// <param name="service">The service handling register, login, refresh, and password flows.</param>
-    public AuthAccountController(IChillAuthIdentityService? service = null)
+    public AuthAccountController(
+        IChillAuthIdentityService? service = null,
+        IChillAuthUserPreferencesAccessor? userPreferencesAccessor = null)
     {
         _service = service;
+        _userPreferencesAccessor = userPreferencesAccessor ?? new EmptyUserPreferencesAccessor();
+    }
+    #endregion
+
+    #region Current User
+    /// <summary>
+    /// Returns the display preferences of the currently authenticated user.
+    /// </summary>
+    /// <remarks>
+    /// The result is the same immutable snapshot used by server-side entity lifecycle hooks.
+    /// Its values can be empty when no preference snapshot is available for the authenticated identity.
+    /// </remarks>
+    [Authorize]
+    [HttpGet("current-user-preferences")]
+    public ActionResult<ChillUserPreferences> GetCurrentUserPreferences()
+    {
+        return Ok(_userPreferencesAccessor.Current);
     }
     #endregion
 
@@ -194,4 +214,9 @@ public class AuthAccountController : ControllerBase
         }
     }
     #endregion
+
+    private sealed class EmptyUserPreferencesAccessor : IChillAuthUserPreferencesAccessor
+    {
+        public ChillUserPreferences Current => ChillUserPreferences.Empty;
+    }
 }

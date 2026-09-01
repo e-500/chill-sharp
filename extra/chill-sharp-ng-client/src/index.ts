@@ -32,6 +32,7 @@ export type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntity,
+  ChillUserPreferences,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,
   ChillDtoProperty,

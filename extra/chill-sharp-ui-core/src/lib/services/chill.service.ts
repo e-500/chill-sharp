@@ -14,6 +14,7 @@ import {
   type ChillDtoSchemaRelation,
   type RegisterAuthIdentityRequest,
   type AuthUserDetailsResponse,
+  type ChillUserPreferences,
   type GetTextRequest,
   type JsonObject,
   type JsonValue,
@@ -98,7 +99,7 @@ interface PermissionRuleOwner {
   guid: string;
 }
 
-interface StoredUserPreferences {
+export interface StoredUserPreferences {
   displayCultureName: string;
   displayTimeZone: string;
   displayDateFormat: string;
@@ -106,7 +107,6 @@ interface StoredUserPreferences {
 }
 
 interface LoadCurrentUserPreferencesOptions {
-  promptForTimeZoneMismatch: boolean;
   clearSessionOnNotFound: boolean;
 }
 
@@ -194,6 +194,7 @@ export class ChillService {
   private sessionExpiryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   readonly session = this.sessionState.asReadonly();
+  readonly userPreferences = this.userPreferencesState.asReadonly();
   readonly isAuthenticated = computed(() => this.sessionState() !== null);
   readonly userName = computed(() => this.sessionState()?.userName ?? '');
   readonly displayCultureName = computed(() => this.userPreferencesState().displayCultureName);
@@ -214,22 +215,14 @@ export class ChillService {
   }
 
   async initialize(): Promise<void> {
-    const userGuid = await this.resolveCurrentUserGuid();
-    if (!userGuid) {
+    if (!this.isAuthenticated()) {
       return;
     }
 
-    const user = await this.loadCurrentUserPreferences(userGuid, {
-      promptForTimeZoneMismatch: false,
+    const preferences = await this.loadCurrentUserPreferences({
       clearSessionOnNotFound: true
     });
-    if (!user) {
-      return;
-    }
-
-    globalThis.setTimeout(() => {
-      void this.promptForTimeZoneAlignment(userGuid, user);
-    }, 0);
+    if (!preferences) return;
   }
 
   version(): string {
@@ -1302,34 +1295,33 @@ export class ChillService {
     promptForTimeZoneMismatch: boolean
   ): Promise<void> {
     this.persistSession(response);
-    const userGuid = await this.resolveCurrentUserGuid();
-    if (!userGuid) {
-      return;
-    }
-
-    await this.loadCurrentUserPreferences(userGuid, {
-      promptForTimeZoneMismatch,
+    await this.loadCurrentUserPreferences({
       clearSessionOnNotFound: false
     });
+
+    if (promptForTimeZoneMismatch) {
+      const userGuid = await this.resolveCurrentUserGuid();
+      if (userGuid) {
+        try {
+          const user = await firstValueFrom(this.getAuthUserDetails(userGuid));
+          await this.promptForTimeZoneAlignment(userGuid, user);
+        } catch (error) {
+          console.warn('[ChillService] Unable to load the user profile for the time-zone alignment prompt', error);
+        }
+      }
+    }
   }
 
   private async loadCurrentUserPreferences(
-    userGuid: string,
     options: LoadCurrentUserPreferencesOptions
-  ): Promise<AuthUserDetailsResponse | null> {
+  ): Promise<ChillUserPreferences | null> {
     try {
-      const user = await firstValueFrom(this.getAuthUserDetails(userGuid));
-      this.currentUserGuidState.set(user.guid?.trim() ?? userGuid.trim());
-      this.persistUserPreferences(this.toStoredUserPreferences(user));
-      if (options.promptForTimeZoneMismatch) {
-        await this.promptForTimeZoneAlignment(userGuid, user);
-      }
-      return user;
+      const preferences = await firstValueFrom(this.chill.getCurrentUserPreferences());
+      this.persistUserPreferences(this.toStoredUserPreferences(preferences));
+      return preferences;
     } catch (error) {
       if (options.clearSessionOnNotFound && this.isNotFoundError(error)) {
-        console.info('[ChillService] Current user was not found while loading preferences. Clearing stale session.', {
-          userGuid
-        });
+        console.info('[ChillService] Current user preferences were not found. Clearing stale session.');
         this.clearSession();
         return null;
       }
@@ -2080,7 +2072,7 @@ export class ChillService {
     }
   }
 
-  private toStoredUserPreferences(user: AuthUserDetailsResponse): StoredUserPreferences {
+  private toStoredUserPreferences(user: ChillUserPreferences | AuthUserDetailsResponse): StoredUserPreferences {
     return {
       displayCultureName: this.readJsonString(user, 'DisplayCultureName') ?? user.displayCultureName ?? '',
       displayTimeZone: this.readJsonString(user, 'DisplayTimeZone') ?? user.displayTimeZone ?? '',

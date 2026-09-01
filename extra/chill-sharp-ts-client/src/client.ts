@@ -224,6 +224,14 @@ export interface AuthTokenResponse extends JsonObject {
   userName: string;
 }
 
+/** Display preferences resolved for the current authenticated user. */
+export interface ChillUserPreferences extends JsonObject {
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
+}
+
 export interface RegisterAuthIdentityRequest extends JsonObject {
   userName: string;
   email: string | null;
@@ -797,6 +805,10 @@ export class ChillSharpClient {
 
   getAuthPermissions(): Promise<GetAuthPermissionsResponse> {
     return this.sendAuthJson<GetAuthPermissionsResponse>("GET", "get-permissions");
+  }
+
+  getCurrentUserPreferences(): Promise<ChillUserPreferences> {
+    return this.sendAuthJson<ChillUserPreferences>("GET", "current-user-preferences");
   }
 
   getAuthUserList(): Promise<AuthUserListItem[]> {

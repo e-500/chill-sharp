@@ -22,6 +22,7 @@ import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 import type {
   ChillDtoSchemaListItem,
+  ChillUserPreferences,
   ChillEntityChangeCallback,
   ChillEntityChangeSubscription,
   ChillValidationError,
@@ -233,6 +234,31 @@ export function useTest(): UseChillAsyncState<string> {
     isLoading,
     reload: load
   };
+}
+
+export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPreferences> {
+  const client = useChillSharpClient();
+  const data = ref<ChillUserPreferences | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(true);
+
+  const load = async () => {
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const response = await client.getCurrentUserPreferences();
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  watchEffect(() => { void load(); });
+  return { data, error, isLoading, reload: load };
 }
 
 export function useQueryMutation(): UseChillMutationState<JsonObject> {

@@ -20,6 +20,7 @@
 export { ChillSharpProvider, useChillSharpClient } from "./context.js";
 export {
   useAutocompleteMutation,
+  useCurrentUserPreferences,
   useEntityChanges,
   useEntityMutation,
   useQueryMutation,
@@ -52,6 +53,7 @@ export type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntity,
+  ChillUserPreferences,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,
   ChillDtoProperty,
