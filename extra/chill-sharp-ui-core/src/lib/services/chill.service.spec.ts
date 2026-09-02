@@ -24,7 +24,8 @@ describe('ChillService user-preference formatting', () => {
         displayCultureName: 'en-GB',
         displayTimeZone: 'Europe/Rome',
         displayDateFormat: 'DD/MM/YYYY',
-        displayNumberFormat: '1.000,00'
+        displayNumberFormat: '1.000,00',
+        preferredTheme: 'cini'
       }
     }));
 

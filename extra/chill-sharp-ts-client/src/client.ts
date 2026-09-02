@@ -200,6 +200,7 @@ export interface AuthUserListItem extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -230,6 +231,7 @@ export interface ChillUserPreferences extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
 }
 
 export interface RegisterAuthIdentityRequest extends JsonObject {
@@ -362,6 +364,7 @@ export interface SetAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -379,6 +382,7 @@ export interface CreateAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -393,6 +397,7 @@ export interface UpdateAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;

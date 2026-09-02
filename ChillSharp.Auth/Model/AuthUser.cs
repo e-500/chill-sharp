@@ -116,6 +116,16 @@ public class AuthUser : ChillEntity
     public string DisplayNumberFormat { get; set; } = string.Empty;
 
     /// <summary>
+    /// Preferred client theme identifier. The server stores this value without interpreting it.
+    /// </summary>
+    [Column("preferred-theme")]
+    [ChillProperty(
+        "4567A6B3-CCB9-4F0A-BF8A-860C4A392724",
+        "Preferred theme",
+        "Tema preferito")]
+    public string PreferredTheme { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indicates whether the user is active.
     /// </summary>
     [Column("is-active")]

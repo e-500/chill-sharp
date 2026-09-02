@@ -202,6 +202,7 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
+        user.PreferredTheme = request.PreferredTheme.Trim();
         if (!isSelfTarget)
         {
             user.IsActive = request.IsActive;
@@ -395,6 +396,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = request.DisplayTimeZone.Trim(),
             DisplayDateFormat = request.DisplayDateFormat.Trim(),
             DisplayNumberFormat = request.DisplayNumberFormat.Trim(),
+            PreferredTheme = request.PreferredTheme.Trim(),
             IsActive = request.IsActive,
             MenuHierarchy = request.MenuHierarchy.Trim(),
             CanManagePermissions = request.CanManagePermissions,
@@ -429,6 +431,7 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
+        user.PreferredTheme = request.PreferredTheme.Trim();
         // Only if the updating user (JWT authenticated user) if different from update request user,
         // allow updating IsActive, CanManagePermissions and CanManageSchema
         // to prevent users from locking themselves out or losing permissions by mistake
@@ -817,7 +820,8 @@ public class ChillAuthService : IChillAuthService
             user.DisplayCultureName,
             user.DisplayTimeZone,
             user.DisplayDateFormat,
-            user.DisplayNumberFormat));
+            user.DisplayNumberFormat,
+            user.PreferredTheme));
     }
     #endregion
 
@@ -1346,6 +1350,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = user.DisplayTimeZone,
             DisplayDateFormat = user.DisplayDateFormat,
             DisplayNumberFormat = user.DisplayNumberFormat,
+            PreferredTheme = user.PreferredTheme,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,
@@ -1394,6 +1399,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = user.DisplayTimeZone,
             DisplayDateFormat = user.DisplayDateFormat,
             DisplayNumberFormat = user.DisplayNumberFormat,
+            PreferredTheme = user.PreferredTheme,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,

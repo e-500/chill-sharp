@@ -1,6 +1,6 @@
 ---
 name: chillsharp-current-user-preferences
-description: Configure, expose, and consume ChillSharp.Auth's cached current-user culture, time zone, date-format, and number-format preferences in server logic and UI clients.
+description: Configure, expose, and consume ChillSharp.Auth's cached current-user culture, time zone, date-format, number-format, and theme preferences in server logic and UI clients.
 ---
 
 # ChillSharp Current User Preferences
@@ -9,7 +9,7 @@ Use this skill when a ChillSharp feature needs the authenticated user's display 
 
 ## Model
 
-`ChillUserPreferences` is an immutable snapshot with `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`. Entity hooks read it synchronously through:
+`ChillUserPreferences` is an immutable snapshot with `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, `DisplayNumberFormat`, and `PreferredTheme`. The backend stores `PreferredTheme` as an opaque string. In UI Core, unauthenticated users follow browser `prefers-color-scheme`; clients register extra themes with `provideChillSharpUiCore({ additionalThemes: ['theme-name'] })`. Entity hooks read the snapshot synchronously through:
 
 ```csharp
 var preferences = context.GetCurrentUserPreferences();

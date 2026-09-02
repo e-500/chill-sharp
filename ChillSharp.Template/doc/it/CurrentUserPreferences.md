@@ -10,6 +10,7 @@ Lo snapshot immutabile `ChillUserPreferences` contiene:
 - `DisplayTimeZone`
 - `DisplayDateFormat`
 - `DisplayNumberFormat`
+- `PreferredTheme`
 
 ## Registrazione E Ciclo Di Vita Della Cache
 
@@ -37,7 +38,8 @@ La risposta e un oggetto JSON `ChillUserPreferences`:
   "displayCultureName": "it-IT",
   "displayTimeZone": "Europe/Rome",
   "displayDateFormat": "dd/MM/yyyy",
-  "displayNumberFormat": "N2"
+  "displayNumberFormat": "N2",
+  "preferredTheme": "cini"
 }
 ```
 
@@ -45,7 +47,7 @@ Usa questo endpoint dopo il login e durante il ripristino di una sessione UI aut
 
 Il client C# espone `GetCurrentUserPreferences()`. Il client Python espone `get_current_user_preferences()`, mentre il client TypeScript e il wrapper Angular espongono `getCurrentUserPreferences()`. I pacchetti Vue e React forniscono inoltre `useCurrentUserPreferences()`.
 
-Nel pacchetto Angular UI Core, inietta `ChillService` e usa il signal `userPreferences` oppure le singole proiezioni `displayCultureName`, `displayTimeZone`, `displayDateFormat` e `displayNumberFormat`. Usali per la cultura dei testi UI, le operazioni di formato/analisi di date e numeri e la conversione degli orari UTC in locali. I valori possono essere vuoti per un'operazione non autenticata o quando non esiste uno snapshot delle preferenze `AuthUser`; definisci quindi un fallback nel punto di utilizzo.
+Nel pacchetto Angular UI Core, inietta `ChillService` e usa il signal `userPreferences` oppure le singole proiezioni `displayCultureName`, `displayTimeZone`, `displayDateFormat`, `displayNumberFormat` e `preferredTheme`. `PreferredTheme` e una stringa opaca salvata dal server. UI Core usa `prefers-color-scheme` del browser prima del login; le app client aggiungono temi selezionabili con `provideChillSharpUiCore({ additionalThemes: ['cini'] })`.
 
 ## DbContext Host
 

@@ -103,6 +103,7 @@ export interface StoredUserPreferences {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
 }
 
 interface LoadCurrentUserPreferencesOptions {
@@ -202,6 +203,7 @@ export class ChillService {
   readonly displayTimeZone = computed(() => this.userPreferencesState().displayTimeZone);
   readonly displayDateFormat = computed(() => this.userPreferencesState().displayDateFormat);
   readonly displayNumberFormat = computed(() => this.userPreferencesState().displayNumberFormat);
+  readonly preferredTheme = computed(() => this.userPreferencesState().preferredTheme);
 
   constructor() {
     this.syncClientSession(this.sessionState());
@@ -527,6 +529,7 @@ export class ChillService {
       displayTimeZone: request.displayTimeZone,
       displayDateFormat: request.displayDateFormat,
       displayNumberFormat: request.displayNumberFormat,
+      preferredTheme: request.preferredTheme ?? '',
       isActive: request.isActive,
       canManagePermissions: request.canManagePermissions,
       canManageSchema: request.canManageSchema,
@@ -558,6 +561,7 @@ export class ChillService {
         displayTimeZone: request.displayTimeZone,
         displayDateFormat: request.displayDateFormat,
         displayNumberFormat: request.displayNumberFormat,
+        preferredTheme: request.preferredTheme,
         isActive: response.isActive,
         canManagePermissions: response.canManagePermissions,
         canManageSchema: response.canManageSchema,
@@ -1388,6 +1392,18 @@ export class ChillService {
     );
   }
 
+  updatePreferredTheme(userGuid: string, preferredTheme: string) {
+    return this.chill.getAuthUser(userGuid).pipe(
+      map((response) => this.buildSetAuthUserRequest(response, { preferredTheme })),
+      switchMap((payload) => this.chill.setAuthUser(payload)),
+      map((response) => response as AuthUserDetailsResponse),
+      switchMap((response) => from(this.loadCurrentUserPreferences({ clearSessionOnNotFound: false })).pipe(
+        map(() => response)
+      )),
+      catchError((error) => this.rethrowFriendlyError(error))
+    );
+  }
+
   private isSessionExpired(session: AuthSession): boolean {
     const expiresAt = this.getSessionExpiry(session);
     return expiresAt !== null && expiresAt <= Date.now();
@@ -2010,7 +2026,7 @@ export class ChillService {
 
   private buildSetAuthUserRequest(
     response: AuthUserDetailsResponse,
-    overrides?: UpdateAuthUserRequest,
+    overrides?: Partial<UpdateAuthUserRequest>,
     mutateRoleGuids?: (roleGuids: string[]) => string[],
     mutatePermissions?: (permissions: ChillSharpAuthPermissionRuleItem[]) => ChillSharpAuthPermissionRuleItem[]
   ): SetAuthUserRequest {
@@ -2028,6 +2044,10 @@ export class ChillService {
       displayTimeZone: overrides?.displayTimeZone ?? response.displayTimeZone,
       displayDateFormat: overrides?.displayDateFormat ?? response.displayDateFormat,
       displayNumberFormat: overrides?.displayNumberFormat ?? response.displayNumberFormat,
+      preferredTheme: overrides?.preferredTheme
+        ?? this.readJsonString(response, 'PreferredTheme')
+        ?? this.readJsonString(response, 'preferredTheme')
+        ?? '',
       isActive: overrides?.isActive ?? response.isActive,
       canManagePermissions: overrides?.canManagePermissions ?? response.canManagePermissions,
       canManageSchema: overrides?.canManageSchema ?? response.canManageSchema,
@@ -2056,7 +2076,8 @@ export class ChillService {
         displayCultureName: preferences.displayCultureName?.trim() ?? '',
         displayTimeZone: preferences.displayTimeZone?.trim() ?? '',
         displayDateFormat: preferences.displayDateFormat?.trim() ?? '',
-        displayNumberFormat: preferences.displayNumberFormat?.trim() ?? ''
+        displayNumberFormat: preferences.displayNumberFormat?.trim() ?? '',
+        preferredTheme: preferences.preferredTheme?.trim() ?? ''
       };
     } catch {
       globalThis.localStorage?.removeItem(USER_PREFERENCES_STORAGE_KEY);
@@ -2069,7 +2090,8 @@ export class ChillService {
       displayCultureName: '',
       displayTimeZone: '',
       displayDateFormat: '',
-      displayNumberFormat: ''
+      displayNumberFormat: '',
+      preferredTheme: ''
     };
   }
 
@@ -2100,7 +2122,10 @@ export class ChillService {
       displayCultureName: this.readJsonString(user, 'DisplayCultureName') ?? user.displayCultureName ?? '',
       displayTimeZone: this.readJsonString(user, 'DisplayTimeZone') ?? user.displayTimeZone ?? '',
       displayDateFormat: this.readJsonString(user, 'DisplayDateFormat') ?? user.displayDateFormat ?? '',
-      displayNumberFormat: this.readJsonString(user, 'DisplayNumberFormat') ?? user.displayNumberFormat ?? ''
+      displayNumberFormat: this.readJsonString(user, 'DisplayNumberFormat') ?? user.displayNumberFormat ?? '',
+      preferredTheme: this.readJsonString(user, 'PreferredTheme')
+        ?? this.readJsonString(user, 'preferredTheme')
+        ?? ''
     };
   }
 

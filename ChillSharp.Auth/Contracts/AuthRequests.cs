@@ -78,6 +78,9 @@ public class CreateAuthUserRequest
     [MaxLength(64)]
     public string DisplayNumberFormat { get; set; } = string.Empty;
 
+    [MaxLength(128)]
+    public string PreferredTheme { get; set; } = string.Empty;
+
     /// <summary>
     /// Gets or sets whether the auth user is active.
     /// </summary>
@@ -127,6 +130,9 @@ public class UpdateAuthUserRequest
 
     [MaxLength(64)]
     public string DisplayNumberFormat { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    public string PreferredTheme { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
 
@@ -316,6 +322,9 @@ public class SetAuthUserRequest
 
     [MaxLength(64)]
     public string DisplayNumberFormat { get; set; } = string.Empty;
+
+    [MaxLength(128)]
+    public string PreferredTheme { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
 

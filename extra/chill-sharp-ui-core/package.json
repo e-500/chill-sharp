@@ -1,6 +1,6 @@
 {
   "name": "@chill-sharp/ui-core",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Shared Angular UI core for ChillSharp applications.",
   "keywords": [
     "angular",
@@ -12,6 +12,11 @@
   "sideEffects": false,
   "publishConfig": {
     "access": "restricted"
+  },
+  "exports": {
+    "./styles/core-theme.scss": {
+      "default": "./styles/core-theme.scss"
+    }
   },
   "scripts": {
     "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",

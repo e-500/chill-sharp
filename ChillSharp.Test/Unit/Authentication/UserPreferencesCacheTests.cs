@@ -10,8 +10,8 @@ public class ChillAuthUserPreferencesCacheTests
     public void SetThenInvalidate_RemovesOnlyTheTargetUsersSnapshot()
     {
         var cache = new ChillAuthUserPreferencesCache();
-        var first = new ChillUserPreferences("it-IT", "Europe/Rome", "dd/MM/yyyy", "N2");
-        var second = new ChillUserPreferences("en-GB", "Europe/London", "dd/MM/yyyy", "N2");
+        var first = new ChillUserPreferences("it-IT", "Europe/Rome", "dd/MM/yyyy", "N2", "cini");
+        var second = new ChillUserPreferences("en-GB", "Europe/London", "dd/MM/yyyy", "N2", "soft");
 
         cache.Set(" user-1 ", first);
         cache.Set("user-2", second);

@@ -44,6 +44,7 @@ class ChillUserPreferences(TypedDict):
     displayTimeZone: str
     displayDateFormat: str
     displayNumberFormat: str
+    preferredTheme: str
 
 
 class PermissionEffect(IntEnum):
@@ -375,6 +376,7 @@ class ChillSharpClient:
             "displayTimeZone": self._coerce_string(self._get_payload_value(payload, "displayTimeZone")),
             "displayDateFormat": self._coerce_string(self._get_payload_value(payload, "displayDateFormat")),
             "displayNumberFormat": self._coerce_string(self._get_payload_value(payload, "displayNumberFormat")),
+            "preferredTheme": self._coerce_string(self._get_payload_value(payload, "preferredTheme")),
             "isActive": bool(self._get_payload_value(payload, "isActive")),
             "canManagePermissions": bool(self._get_payload_value(payload, "canManagePermissions")),
             "canManageSchema": bool(self._get_payload_value(payload, "canManageSchema")),

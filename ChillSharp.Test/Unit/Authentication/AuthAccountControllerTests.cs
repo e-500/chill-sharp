@@ -11,7 +11,7 @@ public class AuthAccountControllerTests
     [TestMethod]
     public void GetCurrentUserPreferences_ReturnsTheAuthenticatedSnapshot()
     {
-        var expected = new ChillUserPreferences("it-IT", "Europe/Rome", "dd/MM/yyyy", "N2");
+        var expected = new ChillUserPreferences("it-IT", "Europe/Rome", "dd/MM/yyyy", "N2", "cini");
         var controller = new AuthAccountController(userPreferencesAccessor: new TestUserPreferencesAccessor(expected));
 
         var result = controller.GetCurrentUserPreferences();

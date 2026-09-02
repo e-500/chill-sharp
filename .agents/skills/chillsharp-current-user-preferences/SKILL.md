@@ -1,15 +1,15 @@
 ---
 name: chillsharp-current-user-preferences
-description: Configure, expose, and consume ChillSharp.Auth's cached current-user culture, time zone, date-format, and number-format preferences in server logic and UI clients.
+description: Configure, expose, and consume ChillSharp.Auth's cached current-user culture, time zone, date-format, number-format, and theme preferences in server logic and UI clients.
 ---
 
 # ChillSharp Current User Preferences
 
-Use this skill when a ChillSharp feature needs the authenticated user's display culture, time zone, date format, or number format. It covers server-side lifecycle hooks and UI/client consumption of the authoritative `AuthUser` preferences. Do not use it for browser-only preferences unrelated to `AuthUser`.
+Use this skill when a ChillSharp feature needs the authenticated user's display culture, time zone, date format, number format, or preferred theme. It covers server-side lifecycle hooks and UI/client consumption of the authoritative `AuthUser` preferences. Do not use it for browser-only preferences unrelated to `AuthUser`.
 
 ## Model
 
-`ChillUserPreferences` is an immutable snapshot with `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`. Entity hooks read it synchronously through:
+`ChillUserPreferences` is an immutable snapshot with `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, `DisplayNumberFormat`, and `PreferredTheme`. Entity hooks read it synchronously through:
 
 ```csharp
 var preferences = context.GetCurrentUserPreferences();
@@ -47,13 +47,14 @@ The authenticated endpoint `GET /api/chill-auth/current-user-preferences` return
   "displayCultureName": "it-IT",
   "displayTimeZone": "Europe/Rome",
   "displayDateFormat": "dd/MM/yyyy",
-  "displayNumberFormat": "N2"
+  "displayNumberFormat": "N2",
+  "preferredTheme": "cini"
 }
 ```
 
 Use this endpoint after authentication and when restoring a session; do not infer the active display culture or time zone from the browser, operating system, token claims, or auth-management user endpoints. The C#, Python, TypeScript, Angular, Vue, and React clients expose it as `GetCurrentUserPreferences`, `get_current_user_preferences`, or `getCurrentUserPreferences`; the Vue and React packages also provide `useCurrentUserPreferences`.
 
-In Angular UI Core, inject `ChillService` and read its `userPreferences` signal (or its `displayCultureName`, `displayTimeZone`, `displayDateFormat`, and `displayNumberFormat` projections). Use these values to select UI language, format and parse dates and numbers, and convert UTC timestamps. Treat all fields as optional and choose an explicit fallback only when needed.
+In Angular UI Core, inject `ChillService` and read its `userPreferences` signal (or its `displayCultureName`, `displayTimeZone`, `displayDateFormat`, `displayNumberFormat`, and `preferredTheme` projections). Use these values to select UI language, format and parse dates and numbers, convert UTC timestamps, and select the client theme. The backend treats `PreferredTheme` as an opaque string. UI Core defaults unauthenticated users to browser `prefers-color-scheme` light/dark and clients register extra selectable themes with `provideChillSharpUiCore({ additionalThemes: ['theme-name'] })`.
 
 ## Entity use
 

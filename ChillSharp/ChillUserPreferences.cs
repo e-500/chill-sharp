@@ -11,10 +11,11 @@ public sealed record ChillUserPreferences(
     string DisplayCultureName,
     string DisplayTimeZone,
     string DisplayDateFormat,
-    string DisplayNumberFormat)
+    string DisplayNumberFormat,
+    string PreferredTheme)
 {
     /// <summary>
     /// The preference set used when no authenticated user preference set is available.
     /// </summary>
-    public static readonly ChillUserPreferences Empty = new(string.Empty, string.Empty, string.Empty, string.Empty);
+    public static readonly ChillUserPreferences Empty = new(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
 }
