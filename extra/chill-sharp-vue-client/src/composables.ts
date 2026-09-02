@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { onScopeDispose, ref, watch, watchEffect, type Ref } from "vue";
+import { onScopeDispose, ref, shallowRef, watch, watchEffect, type Ref } from "vue";
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 import type {
@@ -238,7 +238,9 @@ export function useTest(): UseChillAsyncState<string> {
 
 export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPreferences> {
   const client = useChillSharpClient();
-  const data = ref<ChillUserPreferences | null>(null);
+  // ChillUserPreferences extends the recursive JsonObject type. Keep it shallow so Vue
+  // does not recursively unwrap that type while inferring the composable return value.
+  const data = shallowRef<ChillUserPreferences | null>(null);
   const error = ref<unknown>(null);
   const isLoading = ref<boolean>(true);
 
