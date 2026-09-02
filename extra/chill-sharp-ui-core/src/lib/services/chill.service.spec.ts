@@ -8,6 +8,7 @@ import { ChillService } from './chill.service';
 describe('ChillService user-preference formatting', () => {
   let service: ChillService;
   let originalFetch: typeof fetch;
+  let appliedCultureName: string | null | undefined;
 
   beforeEach(() => {
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
@@ -38,8 +39,18 @@ describe('ChillService user-preference formatting', () => {
         {
           provide: ChillSharpNgClient,
           useValue: {
-            getRawClient: () => ({ applyAuthToken: () => undefined }),
-            getTexts: () => of([])
+            getRawClient: () => ({
+              applyAuthToken: () => undefined,
+              setCultureName: (cultureName: string | null | undefined) => { appliedCultureName = cultureName; }
+            }),
+            getTexts: () => of([]),
+            getCurrentUserPreferences: () => of({
+              displayCultureName: 'it-IT',
+              displayTimeZone: 'Europe/Rome',
+              displayDateFormat: 'DD/MM/YYYY',
+              displayNumberFormat: '1.000,00',
+              preferredTheme: 'cini'
+            })
           }
         },
         { provide: Router, useValue: { navigate: () => Promise.resolve(true) } }
@@ -77,6 +88,19 @@ describe('ChillService user-preference formatting', () => {
   it('serializes entered local date-times using the configured IANA time zone', () => {
     expect(service.parseDisplayDateTime('15/01/2026 11:30')).toBe('2026-01-15T11:30:00+01:00');
     expect(service.parseDisplayDateTime('30/08/2026 12:00')).toBe('2026-08-30T12:00:00+02:00');
+  });
+
+  it('propagates every authenticated preference from the endpoint to UI Core and the raw client', async () => {
+    await service.initialize();
+
+    expect(service.currentCultureName()).toBe('it-IT');
+    expect(appliedCultureName).toBe('it-IT');
+    expect(service.currentTimeZone()).toBe('Europe/Rome');
+    expect(service.currentDateFormat()).toBe('DD/MM/YYYY');
+    expect(service.currentNumberFormat()).toBe('1.000,00');
+    expect(service.preferredTheme()).toBe('cini');
+    expect(service.formatDisplayDateTime('2026-01-15T10:30:00Z')).toBe('15/01/2026 11:30');
+    expect(service.formatApiNumber('1234.5')).toBe('1.234,50');
   });
 });
 

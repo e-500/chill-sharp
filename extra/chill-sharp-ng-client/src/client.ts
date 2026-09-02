@@ -131,6 +131,10 @@ export class ChillSharpNgClient {
     return CHILL_SHARP_NG_CLIENT_VERSION;
   }
 
+  setCultureName(cultureName?: string | null): void {
+    this.client.setCultureName(cultureName);
+  }
+
   test(): Observable<string> {
     return from(this.client.test());
   }

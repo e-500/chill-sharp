@@ -117,6 +117,7 @@ interface StoredUserPreferencesEnvelope {
 
 interface ChillSharpClientSessionSync {
   applyAuthToken?: (payload: JsonObject, forgetPassword: boolean) => void;
+  setCultureName?: (cultureName?: string | null) => void;
 }
 
 interface ChillSharpNgClientSchemaListSupport {
@@ -1466,6 +1467,11 @@ export class ChillService {
     );
   }
 
+  private syncClientCulture(cultureName: string): void {
+    const client = this.chill.getRawClient() as unknown as ChillSharpClientSessionSync;
+    client.setCultureName?.(cultureName.trim() || null);
+  }
+
   private readJsonString(payload: JsonObject, key: string): string | undefined {
     const directValue = payload[key];
     if (typeof directValue === 'string' && directValue.trim()) {
@@ -2107,6 +2113,7 @@ export class ChillService {
       globalThis.localStorage?.removeItem(USER_PREFERENCES_STORAGE_KEY);
     }
     this.userPreferencesState.set(preferences);
+    this.syncClientCulture(preferences.displayCultureName || this.readBrowserCultureName());
     this.logUserPreferencesUpdate(previousPreferences, preferences);
     if (previousCultureName !== nextCultureName) {
       this.textCache.clear();

@@ -499,7 +499,7 @@ export class ChillSharpClient {
   private static readonly attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
-  private readonly cultureName: string | null;
+  private cultureName: string | null;
   private readonly signalRWithCredentials: boolean;
 
   private username: string | null;
@@ -645,6 +645,11 @@ export class ChillSharpClient {
 
   version(): string {
     return CHILL_SHARP_TS_CLIENT_VERSION;
+  }
+
+  /** Updates the default culture used by calls that do not provide one explicitly. */
+  setCultureName(cultureName?: string | null): void {
+    this.cultureName = this.normalizeOptionalValue(cultureName);
   }
 
   test(): Promise<string> {
@@ -845,6 +850,7 @@ export class ChillSharpClient {
       displayTimeZone: payload.displayTimeZone,
       displayDateFormat: payload.displayDateFormat,
       displayNumberFormat: payload.displayNumberFormat,
+      preferredTheme: payload.preferredTheme,
       isActive: payload.isActive,
       canManagePermissions: payload.canManagePermissions,
       canManageSchema: payload.canManageSchema,
