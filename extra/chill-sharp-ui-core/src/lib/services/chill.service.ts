@@ -28,7 +28,7 @@ import type {
   RequestPasswordResetRequest as ChillSharpRequestPasswordResetRequest,
   ResetPasswordRequest as ChillSharpResetPasswordRequest
 } from '@chill-sharp/ts-client';
-import { Observable, catchError, firstValueFrom, from, map, switchMap, tap, throwError } from 'rxjs';
+import { Observable, catchError, firstValueFrom, from, map, switchMap, throwError } from 'rxjs';
 import type {
   AuthRoleAccessDetails,
   AuthUserAccessDetails,
@@ -67,7 +67,6 @@ import type {
 import type { ChillMenuItem as AppChillMenuItem } from '../models/chill-menu.models';
 import { CHILL_BASE_URL, CHILL_CULTURE, CHILL_PRIMARY_TEXT_CULTURE, CHILL_SECONDARY_TEXT_CULTURE } from '../chill.config';
 import { SESSION_STORAGE_KEY, USER_PREFERENCES_STORAGE_KEY } from '../storage-keys';
-import { WorkspaceDialogService } from './workspace-dialog.service';
 const TEXT_QUEUE_DELAY_MS = 50;
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const CHILL_PROPERTY_TYPE = {
@@ -108,6 +107,11 @@ export interface StoredUserPreferences {
 
 interface LoadCurrentUserPreferencesOptions {
   clearSessionOnNotFound: boolean;
+}
+
+interface StoredUserPreferencesEnvelope {
+  userId: string;
+  preferences: StoredUserPreferences;
 }
 
 interface ChillSharpClientSessionSync {
@@ -178,10 +182,8 @@ interface PrepareFormOptions<TSchema extends ChillSchema> {
 })
 export class ChillService {
   private readonly chill = inject(ChillSharpNgClient);
-  private readonly dialog = inject(WorkspaceDialogService);
   private readonly router = inject(Router);
   private readonly sessionState = signal<AuthSession | null>(this.readStoredSession());
-  private readonly currentUserGuidState = signal('');
   private readonly userPreferencesState = signal<StoredUserPreferences>(this.readStoredUserPreferences());
   private readonly textVersion = signal(0);
   private readonly textCache = new Map<string, string>();
@@ -189,7 +191,6 @@ export class ChillService {
   private readonly inFlightTextRequests = new Set<string>();
   private readonly pendingTextResolvers = new Map<string, Array<(value: string) => void>>();
   private readonly permissionRuleOwners = new Map<string, PermissionRuleOwner>();
-  private isTimeZoneAlignmentPromptOpen = false;
   private textQueueHandle: ReturnType<typeof globalThis.setTimeout> | null = null;
   private sessionExpiryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
@@ -235,16 +236,26 @@ export class ChillService {
   }
 
   currentCultureName(): string {
-    return this.displayCultureName().trim() || CHILL_CULTURE;
+    return this.displayCultureName().trim() || this.readBrowserCultureName();
   }
 
   currentTimeZone(): string {
-    return this.displayTimeZone().trim() || this.readBrowserTimeZone();
+    const configuredTimeZone = this.displayTimeZone().trim();
+    return this.isSupportedTimeZone(configuredTimeZone)
+      ? configuredTimeZone
+      : this.readBrowserTimeZone();
   }
 
   currentDateFormat(): string {
     const configuredFormat = this.displayDateFormat().trim();
-    return configuredFormat || this.defaultDateFormatForCulture(this.currentCultureName());
+    if (configuredFormat) {
+      return configuredFormat;
+    }
+
+    const configuredCultureName = this.displayCultureName().trim();
+    return configuredCultureName
+      ? this.defaultDateFormatForCulture(configuredCultureName)
+      : this.readBrowserDateFormat();
   }
 
   currentNumberFormat(): string {
@@ -554,11 +565,9 @@ export class ChillService {
       })),
       switchMap((payload) => this.chill.setAuthUser(payload)),
       map((response) => response as AuthUserDetailsResponse),
-      tap((response) => {
-        if (this.isCurrentUser(userGuid)) {
-          this.persistUserPreferences(this.toStoredUserPreferences(response));
-        }
-      }),
+      switchMap((response) => from(this.loadCurrentUserPreferences({ clearSessionOnNotFound: false })).pipe(
+        map(() => response)
+      )),
       catchError((error) => this.rethrowFriendlyError(error))
     );
   }
@@ -972,6 +981,19 @@ export class ChillService {
     return this.formatNumberWithPattern(value, numberFormat);
   }
 
+  /**
+   * Formats a numeric API value using the current user's decimal and grouping preferences.
+   * String values are parsed as invariant JSON numbers before falling back to localized input.
+   */
+  formatApiNumber(value: number | string): string {
+    const parsedValue = typeof value === 'number'
+      ? value
+      : this.parseInvariantNumber(value) ?? this.parseDisplayDecimal(value);
+    return parsedValue === null || !Number.isFinite(parsedValue)
+      ? typeof value === 'string' ? value : ''
+      : this.formatDisplayNumber(parsedValue);
+  }
+
   parseDisplayInteger(value: string): number | null {
     const parsedValue = this.parseLocalizedNumber(value);
     return parsedValue !== null && Number.isInteger(parsedValue)
@@ -1082,8 +1104,8 @@ export class ChillService {
       return '';
     }
 
-    const parsed = new Date(normalizedValue);
-    if (Number.isNaN(parsed.getTime())) {
+    const parsed = this.parseStoredDateTime(value);
+    if (!parsed) {
       return normalizedValue;
     }
 
@@ -1189,7 +1211,7 @@ export class ChillService {
   register(request: RegisterRequest) {
     return this.chill.registerAuthAccount(this.toRegisterAuthIdentityRequest(request)).pipe(
       map((response) => this.toTokenResponse(response as JsonObject)),
-      switchMap((response) => from(this.handleAuthenticatedResponse(response, false)).pipe(map(() => response))),
+      switchMap((response) => from(this.handleAuthenticatedResponse(response)).pipe(map(() => response))),
       catchError((error) => this.rethrowFriendlyError(error))
     );
   }
@@ -1197,7 +1219,7 @@ export class ChillService {
   login(request: LoginRequest) {
     return this.chill.loginAuthAccount(this.toLoginAuthIdentityRequest(request)).pipe(
       map((response) => this.toTokenResponse(response as JsonObject)),
-      switchMap((response) => from(this.handleAuthenticatedResponse(response, true)).pipe(map(() => response))),
+      switchMap((response) => from(this.handleAuthenticatedResponse(response)).pipe(map(() => response))),
       catchError((error) => this.rethrowFriendlyError(error))
     );
   }
@@ -1205,7 +1227,7 @@ export class ChillService {
   refreshSession() {
     return this.chill.refreshAuthAccount().pipe(
       map((response) => this.toTokenResponse(response as JsonObject)),
-      switchMap((response) => from(this.handleAuthenticatedResponse(response, false)).pipe(map(() => response))),
+      switchMap((response) => from(this.handleAuthenticatedResponse(response)).pipe(map(() => response))),
       catchError((error) => this.rethrowFriendlyError(error))
     );
   }
@@ -1285,31 +1307,17 @@ export class ChillService {
       this.sessionExpiryTimer = null;
     }
     localStorage.removeItem(SESSION_STORAGE_KEY);
+    localStorage.removeItem(USER_PREFERENCES_STORAGE_KEY);
     this.sessionState.set(null);
-    this.currentUserGuidState.set('');
+    this.persistUserPreferences(this.createEmptyUserPreferences());
     this.syncClientSession(null);
   }
 
-  private async handleAuthenticatedResponse(
-    response: AuthTokenResponse,
-    promptForTimeZoneMismatch: boolean
-  ): Promise<void> {
+  private async handleAuthenticatedResponse(response: AuthTokenResponse): Promise<void> {
     this.persistSession(response);
     await this.loadCurrentUserPreferences({
       clearSessionOnNotFound: false
     });
-
-    if (promptForTimeZoneMismatch) {
-      const userGuid = await this.resolveCurrentUserGuid();
-      if (userGuid) {
-        try {
-          const user = await firstValueFrom(this.getAuthUserDetails(userGuid));
-          await this.promptForTimeZoneAlignment(userGuid, user);
-        } catch (error) {
-          console.warn('[ChillService] Unable to load the user profile for the time-zone alignment prompt', error);
-        }
-      }
-    }
   }
 
   private async loadCurrentUserPreferences(
@@ -1320,8 +1328,8 @@ export class ChillService {
       this.persistUserPreferences(this.toStoredUserPreferences(preferences));
       return preferences;
     } catch (error) {
-      if (options.clearSessionOnNotFound && this.isNotFoundError(error)) {
-        console.info('[ChillService] Current user preferences were not found. Clearing stale session.');
+      if (options.clearSessionOnNotFound && (this.isNotFoundError(error) || this.isUnauthorizedError(error))) {
+        console.info('[ChillService] Current user preferences are unavailable. Clearing stale session.');
         this.clearSession();
         return null;
       }
@@ -1329,30 +1337,6 @@ export class ChillService {
       console.warn('[ChillService] Unable to load current user preferences', error);
       return null;
     }
-  }
-
-  private async resolveCurrentUserGuid(): Promise<string> {
-    const session = this.sessionState();
-    const normalizedUserId = session?.userId?.trim() ?? '';
-    const normalizedUserName = session?.userName?.trim().toLowerCase() ?? '';
-    if (!normalizedUserId && !normalizedUserName) {
-      return '';
-    }
-
-    try {
-      const users = await firstValueFrom(this.getAuthUsers());
-      const matchedUser = users.find((user) =>
-        user.guid.trim() === normalizedUserId
-        || user.userName.trim().toLowerCase() === normalizedUserName
-      );
-      if (matchedUser?.guid.trim()) {
-        return matchedUser.guid.trim();
-      }
-    } catch (error) {
-      console.warn('[ChillService] Unable to resolve current user guid from auth user list', error);
-    }
-
-    return normalizedUserId;
   }
 
   private readStoredSession(): AuthSession | null {
@@ -1961,6 +1945,32 @@ export class ChillService {
     };
   }
 
+  private parseInvariantNumber(value: string): number | null {
+    const normalizedValue = value.trim();
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(normalizedValue)) {
+      return null;
+    }
+
+    const parsedValue = Number(normalizedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  /**
+   * Parses API date-time values as instants. .NET values without an explicit offset are
+   * treated as UTC so their display does not depend on the browser or operating-system zone.
+   */
+  private parseStoredDateTime(value: string): Date | null {
+    const normalizedValue = value.trim();
+    const localDateTimeMatch = normalizedValue.match(
+      /^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2}(?:\.\d{1,7})?)?)$/
+    );
+    const instantValue = localDateTimeMatch
+      ? `${localDateTimeMatch[1]}T${localDateTimeMatch[2]}Z`
+      : normalizedValue;
+    const parsed = new Date(instantValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
   private readTimeZoneOffsetMinutes(date: Date, timeZone: string): number {
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone,
@@ -2034,12 +2044,19 @@ export class ChillService {
     }
 
     try {
-      const parsed = JSON.parse(rawPreferences) as Partial<StoredUserPreferences>;
+      const parsed = JSON.parse(rawPreferences) as Partial<StoredUserPreferencesEnvelope>;
+      const userId = this.sessionState()?.userId.trim() ?? '';
+      if (!userId || parsed.userId?.trim() !== userId || !parsed.preferences) {
+        globalThis.localStorage?.removeItem(USER_PREFERENCES_STORAGE_KEY);
+        return this.createEmptyUserPreferences();
+      }
+
+      const preferences = parsed.preferences;
       return {
-        displayCultureName: parsed.displayCultureName?.trim() ?? '',
-        displayTimeZone: parsed.displayTimeZone?.trim() ?? '',
-        displayDateFormat: parsed.displayDateFormat?.trim() ?? '',
-        displayNumberFormat: parsed.displayNumberFormat?.trim() ?? ''
+        displayCultureName: preferences.displayCultureName?.trim() ?? '',
+        displayTimeZone: preferences.displayTimeZone?.trim() ?? '',
+        displayDateFormat: preferences.displayDateFormat?.trim() ?? '',
+        displayNumberFormat: preferences.displayNumberFormat?.trim() ?? ''
       };
     } catch {
       globalThis.localStorage?.removeItem(USER_PREFERENCES_STORAGE_KEY);
@@ -2060,7 +2077,13 @@ export class ChillService {
     const previousPreferences = this.userPreferencesState();
     const previousCultureName = this.userPreferencesState().displayCultureName.trim().toLowerCase();
     const nextCultureName = preferences.displayCultureName.trim().toLowerCase();
-    globalThis.localStorage?.setItem(USER_PREFERENCES_STORAGE_KEY, JSON.stringify(preferences));
+    const userId = this.sessionState()?.userId.trim() ?? '';
+    if (userId) {
+      const stored: StoredUserPreferencesEnvelope = { userId, preferences };
+      globalThis.localStorage?.setItem(USER_PREFERENCES_STORAGE_KEY, JSON.stringify(stored));
+    } else {
+      globalThis.localStorage?.removeItem(USER_PREFERENCES_STORAGE_KEY);
+    }
     this.userPreferencesState.set(preferences);
     this.logUserPreferencesUpdate(previousPreferences, preferences);
     if (previousCultureName !== nextCultureName) {
@@ -2081,56 +2104,55 @@ export class ChillService {
     };
   }
 
-  private async promptForTimeZoneAlignment(userGuid: string, user: AuthUserDetailsResponse): Promise<void> {
-    const browserTimeZone = this.readBrowserTimeZone();
-    const userTimeZone = (this.readJsonString(user, 'DisplayTimeZone') ?? user.displayTimeZone ?? '').trim();
-    if (!browserTimeZone || !userTimeZone || browserTimeZone === userTimeZone || this.isTimeZoneAlignmentPromptOpen) {
-      return;
-    }
-
-    this.isTimeZoneAlignmentPromptOpen = true;
-    try {
-      const shouldAlign = await this.dialog.confirmYesNo(
-        this.T('3A9D83B1-B1D0-48A1-B917-340496692645', 'Align time zone', 'Allinea fuso orario'),
-        this.T(
-          'B8D2AC57-314D-4B0B-B6C6-ED4D6422163F',
-          `Your browser uses ${browserTimeZone}, but your profile is set to ${userTimeZone}. Do you want to align your profile time zone?`,
-          `Il browser usa ${browserTimeZone}, ma il profilo e impostato su ${userTimeZone}. Vuoi allineare il fuso orario del profilo?`
-        )
-      );
-      if (!shouldAlign) {
-        return;
-      }
-
-      const updatedUser = await firstValueFrom(this.updateUserProfile(userGuid, {
-        displayName: user.displayName ?? '',
-        displayCultureName: user.displayCultureName ?? '',
-        displayTimeZone: browserTimeZone,
-        displayDateFormat: user.displayDateFormat ?? '',
-        displayNumberFormat: user.displayNumberFormat ?? ''
-      }));
-      this.persistUserPreferences(this.toStoredUserPreferences(updatedUser));
-    } finally {
-      this.isTimeZoneAlignmentPromptOpen = false;
-    }
-  }
-
   private readBrowserTimeZone(): string {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   }
 
-  private isCurrentUser(userGuid: string): boolean {
-    const normalizedUserGuid = userGuid.trim();
-    if (!normalizedUserGuid) {
+  private readBrowserCultureName(): string {
+    const languages = globalThis.navigator?.languages;
+    const browserCultureName = languages?.find((language) => typeof language === 'string' && language.trim())
+      ?? globalThis.navigator?.language
+      ?? '';
+    return browserCultureName.trim() || CHILL_CULTURE;
+  }
+
+  private readBrowserDateFormat(): string {
+    try {
+      const parts = new Intl.DateTimeFormat(this.readBrowserCultureName(), {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        numberingSystem: 'latn'
+      }).formatToParts(new Date(Date.UTC(2006, 4, 4)));
+      const format = parts.map((part) => {
+        switch (part.type) {
+          case 'year':
+            return 'YYYY';
+          case 'month':
+            return 'MM';
+          case 'day':
+            return 'DD';
+          default:
+            return part.value;
+        }
+      }).join('').trim();
+      return format || this.defaultDateFormatForCulture(this.readBrowserCultureName());
+    } catch {
+      return this.defaultDateFormatForCulture(this.readBrowserCultureName());
+    }
+  }
+
+  private isSupportedTimeZone(value: string): boolean {
+    if (!value) {
       return false;
     }
 
-    const resolvedCurrentUserGuid = this.currentUserGuidState().trim();
-    if (resolvedCurrentUserGuid) {
-      return normalizedUserGuid === resolvedCurrentUserGuid;
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: value });
+      return true;
+    } catch {
+      return false;
     }
-
-    return normalizedUserGuid === (this.sessionState()?.userId?.trim() ?? '');
   }
 
   private toRegisterAuthIdentityRequest(request: RegisterRequest): RegisterAuthIdentityRequest {
@@ -2741,6 +2763,10 @@ export class ChillService {
     }
 
     return false;
+  }
+
+  private isUnauthorizedError(error: unknown): boolean {
+    return error instanceof ChillSharpClientError && error.statusCode === 401;
   }
 
   private readChillErrorMessage(error: ChillSharpClientError): string {

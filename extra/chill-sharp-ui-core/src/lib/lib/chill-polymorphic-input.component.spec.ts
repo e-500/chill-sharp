@@ -15,7 +15,15 @@ describe('ChillPolymorphicInputComponent', () => {
       providers: [
         { provide: ChillService, useValue: {
           T: (_id: string, english: string) => english,
-          formatDisplayNumber: (value: number) => String(value),
+          formatDisplayNumber: (value: number) => value === 1234.56 ? '1.234,56' : value === 1234 ? '1.234' : String(value),
+          formatDisplayDate: (value: string) => value === '2026-01-05' ? '05/01/2026' : value,
+          formatDisplayTime: (value: string) => value,
+          formatDisplayDateTime: (value: string) => value === '2026-08-30T10:00:00Z' ? '30/08/2026 12:00' : value,
+          parseDisplayInteger: (value: string) => value === '1.234' ? 1234 : null,
+          parseDisplayDecimal: (value: string) => value === '1.234,56' ? 1234.56 : null,
+          parseDisplayDate: (value: string) => value === '05/01/2026' ? '2026-01-05' : null,
+          parseDisplayTime: (value: string) => value,
+          parseDisplayDateTime: (value: string) => value === '30/08/2026 12:00' ? '2026-08-30T12:00:00+02:00' : null,
           readDisplayNumber: (value: string | number) => Number(value)
         } },
         { provide: WorkspaceDialogService, useValue: { openDialog: jasmine.createSpy('openDialog') } }
@@ -75,5 +83,44 @@ describe('ChillPolymorphicInputComponent', () => {
     fixture.detectChanges();
     expect(String(form.controls['amount'].value)).toBe('12.5');
     expect(fixture.nativeElement.querySelector('.scalar-input__suffix')?.textContent).toContain('€');
+  });
+
+  it('renders and normalizes scalar and date-time values through the user-preference formatter', () => {
+    const schema: ChillSchema = {
+      properties: [
+        { name: 'quantity', propertyType: CHILL_PROPERTY_TYPE.Integer, isNullable: false },
+        { name: 'amount', propertyType: CHILL_PROPERTY_TYPE.Decimal, isNullable: false },
+        { name: 'date', propertyType: CHILL_PROPERTY_TYPE.Date, isNullable: false },
+        { name: 'created', propertyType: CHILL_PROPERTY_TYPE.DateTime, isNullable: false }
+      ]
+    };
+    const form = new FormGroup<Record<string, FormControl<JsonValue>>>({
+      quantity: new FormControl<JsonValue>(1234),
+      amount: new FormControl<JsonValue>(1234.56),
+      date: new FormControl<JsonValue>('2026-01-05'),
+      created: new FormControl<JsonValue>('2026-08-30T10:00:00Z')
+    });
+    fixture.componentRef.setInput('schema', schema);
+    fixture.componentRef.setInput('form', form);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.textValue('quantity')).toBe('1.234');
+    expect(fixture.componentInstance.textValue('amount')).toBe('1.234,56');
+    expect(fixture.componentInstance.textValue('date')).toBe('05/01/2026');
+    expect(fixture.componentInstance.textValue('created')).toBe('30/08/2026 12:00');
+
+    fixture.componentInstance.updateTextInput('quantity', '1.234');
+    fixture.componentInstance.normalizeTextOnBlur(schema.properties[0]);
+    fixture.componentInstance.updateTextInput('amount', '1.234,56');
+    fixture.componentInstance.normalizeTextOnBlur(schema.properties[1]);
+    fixture.componentInstance.updateTextInput('date', '05/01/2026');
+    fixture.componentInstance.normalizeTextOnBlur(schema.properties[2]);
+    fixture.componentInstance.updateTextInput('created', '30/08/2026 12:00');
+    fixture.componentInstance.normalizeTextOnBlur(schema.properties[3]);
+
+    expect(Number(form.controls['quantity'].value)).toBe(1234);
+    expect(Number(form.controls['amount'].value)).toBe(1234.56);
+    expect(String(form.controls['date'].value)).toBe('2026-01-05');
+    expect(String(form.controls['created'].value)).toBe('2026-08-30T12:00:00+02:00');
   });
 });

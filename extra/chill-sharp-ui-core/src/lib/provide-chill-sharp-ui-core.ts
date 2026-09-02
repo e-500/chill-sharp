@@ -94,15 +94,30 @@ function isAccessTokenExpired(accessTokenExpiresUtc: string | undefined, accessT
 }
 
 function readStoredCultureName(): string {
+  const rawSession = globalThis.localStorage?.getItem(SESSION_STORAGE_KEY);
   const rawPreferences = globalThis.localStorage?.getItem(USER_PREFERENCES_STORAGE_KEY);
-  if (!rawPreferences) {
-    return CHILL_CULTURE;
+  if (!rawSession || !rawPreferences) {
+    return readBrowserCultureName();
   }
 
   try {
-    const parsed = JSON.parse(rawPreferences) as { displayCultureName?: string };
-    return parsed.displayCultureName?.trim() || CHILL_CULTURE;
+    const session = JSON.parse(rawSession) as { userId?: string };
+    const preferences = JSON.parse(rawPreferences) as {
+      userId?: string;
+      preferences?: { displayCultureName?: string };
+    };
+    return session.userId?.trim() && session.userId.trim() === preferences.userId?.trim()
+      ? preferences.preferences?.displayCultureName?.trim() || readBrowserCultureName()
+      : readBrowserCultureName();
   } catch {
-    return CHILL_CULTURE;
+    return readBrowserCultureName();
   }
+}
+
+function readBrowserCultureName(): string {
+  const languages = globalThis.navigator?.languages;
+  const browserCultureName = languages?.find((language) => typeof language === 'string' && language.trim())
+    ?? globalThis.navigator?.language
+    ?? '';
+  return browserCultureName.trim() || CHILL_CULTURE;
 }
