@@ -4,6 +4,16 @@ Versione italiana: [Italiano](../it/UiCore/CRUD.md)
 
 Create a menu item with `ComponentName` set to `CRUD`. Its `ComponentConfigurationJson` must be a JSON object; keys are case-insensitive. `chillType` is required. Normally it is the entity Chill type and `chillQuery` is the query Chill type that returns that entity.
 
+When `chillQuery` is omitted or `null`, the CRUD uses automatic-query mode. The Search dialog is generated from all fields in the entity schema, every field is optional, and each populated field is sent as an `Equal` filter. Empty fields are not sent. Entity-reference selections are reduced to their GUID for equality comparison. A configured `chillQuery` continues to use its dedicated query schema and payload.
+
+The smallest automatic-query configuration is:
+
+```json
+{
+  "chillType": "Model.Post"
+}
+```
+
 ```json
 {
   "chillType": "Model.Post",
@@ -27,7 +37,7 @@ Create a menu item with `ComponentName` set to `CRUD`. Its `ComponentConfigurati
 | Key | Type | Default | Effect |
 | --- | --- | --- | --- |
 | `chillType` | string | required | Entity Chill type displayed and edited by the task. |
-| `chillQuery` | string or `null` | `null` | Query Chill type. Configure it when the entity needs a dedicated query. |
+| `chillQuery` | string or `null` | `null` | Query Chill type. When omitted, the UI generates an automatic equality-filter form from the entity schema. |
 | `viewCode` | string | `default` | Schema view code used for the task. |
 | `disableAdd` | boolean | `false` | Hides the Add command. |
 | `disableCreate` | boolean | `false` | Prevents creating new records. |
@@ -56,7 +66,7 @@ There are two independent flows:
 | Search/query | `defaultQueryValues` | `fixedQueryValues` |
 | Create entity | `defaultValues` | `fixedValues` |
 
-UI Core merges each flow in that order. Therefore, when the same property occurs in both bags, the value in the `fixed...` bag wins. Use only the fixed bag when a value must never be changed; use only the default bag when it is merely a useful starting value.
+UI Core merges each flow in that order. Therefore, when the same property occurs in both bags, the value in the `fixed...` bag wins. Use only the fixed bag when a value must never be changed; use only the default bag when it is merely a useful starting value. In automatic-query mode, populated query values are converted to `Equal` filters just like values entered in the generated form.
 
 `fixedQueryValues` constrains the records returned by the child CRUD. `fixedValues` constrains the entity sent by the create flow and marks those entity properties read-only in the form and inline editor. The fixed bags are configuration, not a replacement for server-side authorization or validation: the API must still enforce tenant, ownership, and authorization rules.
 

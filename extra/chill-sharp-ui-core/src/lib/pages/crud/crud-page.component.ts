@@ -12,6 +12,7 @@ import { CHILL_PROPERTY_TYPE, ChillEntityStatus, ChillState, type ChillEntity, t
 import { ChillService } from '../../services/chill.service';
 import { WorkspaceDialogService } from '../../services/workspace-dialog.service';
 import { WorkspaceService } from '../../services/workspace.service';
+import { createAutomaticQueryRequest, createAutomaticQuerySchema, shouldUseAutomaticQuery } from './automatic-query.utils';
 
 const DEFAULT_VIEW_CODE = 'default';
 const DEFAULT_PAGE_SIZE = 20;
@@ -168,7 +169,11 @@ export class CrudPageComponent implements OnInit {
   ngOnInit(): void {
     this.selectedViewCode.set(this.normalizeViewCode(this.normalizedConfiguration().viewCode));
     this.selectedEntityKeys.set(this.readInitialSelectedEntityKeys());
-    this.loadQuerySchemas();
+    if (this.usesAutomaticQuery()) {
+      this.loadAutomaticQuerySchema();
+    } else {
+      this.loadQuerySchemas();
+    }
   }
 
   /**
@@ -599,6 +604,49 @@ export class CrudPageComponent implements OnInit {
     });
   }
 
+  private loadAutomaticQuerySchema(): void {
+    const entityChillType = this.configuredResultChillType();
+    if (!entityChillType) {
+      this.querySchemas.set([]);
+      this.isLoadingSchemaList.set(false);
+      this.errorMessage.set(this.chill.T('A6A6949E-F0D4-42F5-A8AE-E15B1B174084', 'The result schema is unavailable.', 'Lo schema dei risultati non è disponibile.'));
+      return;
+    }
+
+    this.isLoadingSchemaList.set(false);
+    this.isLoadingSchema.set(true);
+    this.errorMessage.set('');
+    this.chill.getSchema(entityChillType, this.selectedViewCode()).subscribe({
+      next: (entitySchema) => {
+        if (!entitySchema) {
+          this.querySchema.set(null);
+          this.resultSchema.set(null);
+          this.queryModel.set(null);
+          this.clearResultWindow();
+          this.errorMessage.set(this.chill.T('A6A6949E-F0D4-42F5-A8AE-E15B1B174084', 'The result schema is unavailable.', 'Lo schema dei risultati non è disponibile.'));
+          this.isLoadingSchema.set(false);
+          return;
+        }
+
+        const automaticQuerySchema = createAutomaticQuerySchema(entitySchema);
+        this.selectedQueryType.set(entityChillType);
+        this.querySchema.set(automaticQuerySchema);
+        this.resultSchema.set(entitySchema);
+        this.queryModel.set(this.createQueryModel(automaticQuerySchema));
+        this.isLoadingSchema.set(false);
+        this.refreshResults();
+      },
+      error: (error: unknown) => {
+        this.querySchema.set(null);
+        this.resultSchema.set(null);
+        this.queryModel.set(null);
+        this.clearResultWindow();
+        this.errorMessage.set(this.chill.formatError(error));
+        this.isLoadingSchema.set(false);
+      }
+    });
+  }
+
   private loadSelectedSchema(chillType: string): void {
     this.isLoadingSchema.set(true);
 
@@ -742,7 +790,12 @@ export class CrudPageComponent implements OnInit {
 
   private createQueryModel(schema: ChillSchema): ChillQuery {
     return this.normalizeQuery({
-      chillType: this.configuredQueryChillType() || schema.chillType?.trim() || this.selectedQueryType(),
+      chillType: this.usesAutomaticQuery()
+        ? this.configuredResultChillType()
+        : this.configuredQueryChillType() || schema.chillType?.trim() || this.selectedQueryType(),
+      ...(this.usesAutomaticQuery()
+        ? { automaticQuery: { filter: { logicalOperator: 'And' as const, filters: [], groups: [] } } }
+        : {}),
       properties: {
         ...this.defaultQueryValues(),
         ...this.fixedQueryValues()
@@ -896,10 +949,14 @@ export class CrudPageComponent implements OnInit {
       ...query,
       pagination: this.buildPaginationForPage(normalizedTargetPage)
     };
+    const querySchema = this.querySchema();
+    const request = this.usesAutomaticQuery() && querySchema
+      ? createAutomaticQueryRequest(pagedQuery, querySchema)
+      : pagedQuery;
 
     this.isSearching.set(true);
     this.errorMessage.set('');
-    this.chill.query(pagedQuery).subscribe({
+    this.chill.query(request).subscribe({
       next: (response) => {
         const serverEntities = this.extractEntities(response);
         if (serverEntities.length === 0 && normalizedTargetPage > 1) {
@@ -1434,6 +1491,10 @@ export class CrudPageComponent implements OnInit {
 
   private configuredQueryChillType(): string {
     return this.normalizedConfiguration().chillQuery?.trim() || '';
+  }
+
+  private usesAutomaticQuery(): boolean {
+    return shouldUseAutomaticQuery(this.normalizedConfiguration().chillQuery);
   }
 
   private defaultEntityValues(): Record<string, JsonValue> {
