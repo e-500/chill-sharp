@@ -11,6 +11,9 @@ Questa cartella contiene la documentazione di riferimento di ChillSharp.
 - [ModelPreparation.md](./ModelPreparation.md)
   Prepara un modello EF Core in modo che ChillSharp possa attivare le entita, eseguire gli hook del ciclo di vita, generare metadati di schema e salvare i campi di audit.
 
+- [ReferenceExistence.md](./ReferenceExistence.md)
+  Verifica se un riferimento EF Core ha valori di chiave esterna senza caricare l'entita correlata, anche con database senza vincoli FK applicati.
+
 - [RegisterContext.md](./RegisterContext.md)
   Registra i moduli ChillSharp su un `DbContext` host e mappa la superficie API.
 
