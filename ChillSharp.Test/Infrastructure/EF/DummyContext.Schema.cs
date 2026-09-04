@@ -21,6 +21,7 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Attachment;
 using ChillSharp.I18n;
+using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Tests.EF
@@ -35,6 +36,10 @@ namespace ChillSharp.Tests.EF
 
         partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<MapperCoverageEntity>()
+                .HasMany(x => x.MappedCollection)
+                .WithMany();
+
             modelBuilder.AddChillSchemaModel();
             modelBuilder.AddChillAttachmentModel();
             modelBuilder.AddChillI18nModel();

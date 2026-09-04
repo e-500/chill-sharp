@@ -963,6 +963,218 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public void Step014a_ApplyPropertiesAssignsUnmappedEntityCollectionsWithoutEfLoading()
+        {
+            using var db = TestApiHost.CreateDbContext();
+            var post = new Post
+            {
+                Guid = Guid.NewGuid(),
+                Position = 0,
+                Title = "Unmapped collection post",
+                Author = "Test author",
+                FullTextContent = "Unmapped collection post",
+                LastUpdateUser = string.Empty
+            };
+            db.Post.Add(post);
+            db.SaveChanges();
+
+            var target = new CollectionElementTypeEntity();
+            var sourceValues = new Dictionary<string, object?>
+            {
+                [nameof(CollectionElementTypeEntity.EnumerablePosts)] =
+                new[] { new ChillSharp.Dto.ChillDtoEntity { Guid = post.Guid } }
+            };
+
+            DtoObjectMapper.ApplyProperties(db, target, "Tests.CollectionElementTypeEntity", sourceValues,
+                DtoTypeMetadataCache.Get(typeof(CollectionElementTypeEntity)).ChillProperties,
+                "CollectionElementTypeEntity", true);
+
+            Assert.HasCount(1, target.EnumerablePosts);
+            Assert.AreEqual(post.Guid, target.EnumerablePosts.Single().Guid);
+        }
+
+        [TestMethod]
+        public void Step014b_ObjectMapperHandlesMappedAndUnmappedClrPropertiesWithInMemory()
+        {
+            var databaseName = $"chillsharp-object-mapper-{Guid.NewGuid():N}";
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseInMemoryDatabase(databaseName)
+                .Options;
+
+            var firstRelatedId = Guid.NewGuid();
+            var secondRelatedId = Guid.NewGuid();
+            var entityId = Guid.NewGuid();
+
+            using (var db = new EF.DummyContext(options))
+            {
+                db.Database.EnsureCreated();
+                var firstRelated = new MapperCoverageRelated { Guid = firstRelatedId, Name = "First" };
+                var secondRelated = new MapperCoverageRelated { Guid = secondRelatedId, Name = "Second" };
+                db.MapperCoverageRelated.AddRange(firstRelated, secondRelated);
+                db.MapperCoverage.Add(new MapperCoverageEntity
+                {
+                    Guid = entityId,
+                    MappedString = "created",
+                    MappedGuid = Guid.NewGuid(),
+                    MappedInteger = 1,
+                    MappedDecimal = 1.5m,
+                    MappedDate = new DateOnly(2024, 1, 2),
+                    MappedTime = new TimeOnly(3, 4, 5),
+                    MappedDateTime = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc),
+                    MappedDateTimeOffset = new DateTimeOffset(2024, 1, 2, 3, 4, 5, TimeSpan.Zero),
+                    MappedDuration = TimeSpan.FromMinutes(1),
+                    MappedBoolean = true,
+                    MappedEntity = firstRelated,
+                    MappedCollection = [firstRelated]
+                });
+                db.SaveChanges();
+            }
+
+            using (var db = new EF.DummyContext(options))
+            {
+                // Querying real relational data exercises the mapped EF navigations.
+                var entity = db.MapperCoverage
+                    .Include(x => x.MappedEntity)
+                    .Include(x => x.MappedCollection)
+                    .Single(x => x.Guid == entityId);
+
+                SetUnmappedMapperCoverageValues(entity, db.MapperCoverageRelated.Single(x => x.Guid == firstRelatedId));
+
+                var properties = DtoTypeMetadataCache.Get(typeof(MapperCoverageEntity)).ChillProperties;
+                var createdValues = DtoObjectMapper.BuildProperties(db, entity,
+                    "Model.MapperCoverageEntity", properties);
+
+                Assert.AreEqual("created", createdValues[nameof(MapperCoverageEntity.MappedString)]);
+                Assert.AreEqual(firstRelatedId.ToString("D"), createdValues[nameof(MapperCoverageEntity.MappedEntity)] is ChillSharp.Dto.ChillDtoEntity createdReference
+                    ? createdReference.Guid.ToString("D")
+                    : null);
+                Assert.HasCount(1, (IEnumerable<ChillSharp.Dto.ChillDtoEntity>)createdValues[nameof(MapperCoverageEntity.MappedCollection)]!);
+
+                var updatedGuid = Guid.NewGuid();
+                var sourceValues = new Dictionary<string, object?>
+                {
+                    [nameof(MapperCoverageEntity.MappedString)] = "updated",
+                    [nameof(MapperCoverageEntity.MappedGuid)] = updatedGuid.ToString("D"),
+                    [nameof(MapperCoverageEntity.MappedInteger)] = "42",
+                    [nameof(MapperCoverageEntity.MappedDecimal)] = "12.5",
+                    [nameof(MapperCoverageEntity.MappedDate)] = "2030-02-03",
+                    [nameof(MapperCoverageEntity.MappedTime)] = "04:05:06",
+                    [nameof(MapperCoverageEntity.MappedDateTime)] = "2030-02-03T04:05:06.000Z",
+                    [nameof(MapperCoverageEntity.MappedDateTimeOffset)] = "2030-02-03T04:05:06.000Z",
+                    [nameof(MapperCoverageEntity.MappedDuration)] = "01:02:03",
+                    [nameof(MapperCoverageEntity.MappedBoolean)] = false,
+                    [nameof(MapperCoverageEntity.MappedEntity)] = new ChillSharp.Dto.ChillDtoEntity { Guid = secondRelatedId },
+                    [nameof(MapperCoverageEntity.MappedCollection)] = new[] { new ChillSharp.Dto.ChillDtoEntity { Guid = secondRelatedId } },
+                    [nameof(MapperCoverageEntity.UnmappedString)] = "unmapped",
+                    [nameof(MapperCoverageEntity.UnmappedGuid)] = updatedGuid.ToString("D"),
+                    [nameof(MapperCoverageEntity.UnmappedInteger)] = "42",
+                    [nameof(MapperCoverageEntity.UnmappedDecimal)] = "12.5",
+                    [nameof(MapperCoverageEntity.UnmappedDate)] = "2030-02-03",
+                    [nameof(MapperCoverageEntity.UnmappedTime)] = "04:05:06",
+                    [nameof(MapperCoverageEntity.UnmappedDateTime)] = "2030-02-03T04:05:06.000Z",
+                    [nameof(MapperCoverageEntity.UnmappedDateTimeOffset)] = "2030-02-03T04:05:06.000Z",
+                    [nameof(MapperCoverageEntity.UnmappedDuration)] = "01:02:03",
+                    [nameof(MapperCoverageEntity.UnmappedBoolean)] = false,
+                    [nameof(MapperCoverageEntity.UnmappedEntity)] = new ChillSharp.Dto.ChillDtoEntity { Guid = secondRelatedId },
+                    [nameof(MapperCoverageEntity.UnmappedCollection)] = new[] { new ChillSharp.Dto.ChillDtoEntity { Guid = secondRelatedId } }
+                };
+
+                DtoObjectMapper.ApplyProperties(db, entity, "Model.MapperCoverageEntity", sourceValues,
+                    properties, "MapperCoverageEntity", loadTrackedCollections: true);
+                AssertMapperCoverageClrValues(entity, updatedGuid, secondRelatedId);
+                db.SaveChanges();
+
+                var updatedValues = DtoObjectMapper.BuildProperties(db, entity,
+                    "Model.MapperCoverageEntity", properties);
+                AssertMapperCoverageValues(updatedValues, secondRelatedId, "updated");
+                Assert.AreEqual("unmapped", updatedValues[nameof(MapperCoverageEntity.UnmappedString)]);
+                Assert.IsInstanceOfType(updatedValues[nameof(MapperCoverageEntity.UnmappedEntity)], typeof(ChillSharp.Dto.ChillDtoEntity));
+                Assert.HasCount(1, (IEnumerable<ChillSharp.Dto.ChillDtoEntity>)updatedValues[nameof(MapperCoverageEntity.UnmappedCollection)]!);
+            }
+
+            using (var db = new EF.DummyContext(options))
+            {
+                // A new context proves the mapped update was committed to the database.
+                var updated = db.MapperCoverage
+                    .Include(x => x.MappedEntity)
+                    .Include(x => x.MappedCollection)
+                    .Single(x => x.Guid == entityId);
+
+                Assert.AreEqual("updated", updated.MappedString);
+                Assert.AreEqual(42, updated.MappedInteger);
+                Assert.AreEqual(secondRelatedId, updated.MappedEntity?.Guid);
+                Assert.HasCount(1, updated.MappedCollection);
+                Assert.AreEqual(secondRelatedId, updated.MappedCollection.Single().Guid);
+            }
+        }
+
+        private static void AssertMapperCoverageValues(
+            IReadOnlyDictionary<string, object?> values,
+            Guid relatedId,
+            string expectedString)
+        {
+            Assert.AreEqual(expectedString, values[nameof(MapperCoverageEntity.MappedString)]);
+            Assert.AreEqual(42, values[nameof(MapperCoverageEntity.MappedInteger)]);
+            Assert.AreEqual(12.5m, values[nameof(MapperCoverageEntity.MappedDecimal)]);
+            Assert.AreEqual(new DateOnly(2030, 2, 3), values[nameof(MapperCoverageEntity.MappedDate)]);
+            Assert.AreEqual(new TimeOnly(4, 5, 6), values[nameof(MapperCoverageEntity.MappedTime)]);
+            Assert.AreEqual("01:02:03", values[nameof(MapperCoverageEntity.MappedDuration)]);
+            Assert.AreEqual(false, values[nameof(MapperCoverageEntity.MappedBoolean)]);
+            Assert.AreEqual(relatedId, ((ChillSharp.Dto.ChillDtoEntity)values[nameof(MapperCoverageEntity.MappedEntity)]!).Guid);
+            Assert.HasCount(1, (IEnumerable<ChillSharp.Dto.ChillDtoEntity>)values[nameof(MapperCoverageEntity.MappedCollection)]!);
+            Assert.AreEqual(relatedId, ((IEnumerable<ChillSharp.Dto.ChillDtoEntity>)values[nameof(MapperCoverageEntity.MappedCollection)]!).Single().Guid);
+            Assert.AreEqual(relatedId, ((ChillSharp.Dto.ChillDtoEntity)values[nameof(MapperCoverageEntity.UnmappedEntity)]!).Guid);
+            Assert.AreEqual(relatedId, ((IEnumerable<ChillSharp.Dto.ChillDtoEntity>)values[nameof(MapperCoverageEntity.UnmappedCollection)]!).Single().Guid);
+        }
+
+        private static void SetUnmappedMapperCoverageValues(MapperCoverageEntity entity, MapperCoverageRelated related)
+        {
+            entity.UnmappedString = "created-unmapped";
+            entity.UnmappedGuid = Guid.NewGuid();
+            entity.UnmappedInteger = 1;
+            entity.UnmappedDecimal = 1.5m;
+            entity.UnmappedDate = new DateOnly(2024, 1, 2);
+            entity.UnmappedTime = new TimeOnly(3, 4, 5);
+            entity.UnmappedDateTime = new DateTime(2024, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            entity.UnmappedDateTimeOffset = new DateTimeOffset(2024, 1, 2, 3, 4, 5, TimeSpan.Zero);
+            entity.UnmappedDuration = TimeSpan.FromMinutes(1);
+            entity.UnmappedBoolean = true;
+            entity.UnmappedEntity = related;
+            entity.UnmappedCollection = [related];
+        }
+
+        private static void AssertMapperCoverageClrValues(MapperCoverageEntity entity, Guid expectedGuid, Guid relatedId)
+        {
+            Assert.AreEqual("updated", entity.MappedString);
+            Assert.AreEqual(expectedGuid, entity.MappedGuid);
+            Assert.AreEqual(42, entity.MappedInteger);
+            Assert.AreEqual(12.5m, entity.MappedDecimal);
+            Assert.AreEqual(new DateOnly(2030, 2, 3), entity.MappedDate);
+            Assert.AreEqual(new TimeOnly(4, 5, 6), entity.MappedTime);
+            Assert.AreEqual(new DateTime(2030, 2, 3, 4, 5, 6, DateTimeKind.Utc), entity.MappedDateTime);
+            Assert.AreEqual(new DateTimeOffset(2030, 2, 3, 4, 5, 6, TimeSpan.Zero), entity.MappedDateTimeOffset);
+            Assert.AreEqual(new TimeSpan(1, 2, 3), entity.MappedDuration);
+            Assert.IsFalse(entity.MappedBoolean);
+            Assert.AreEqual(relatedId, entity.MappedEntity?.Guid);
+            Assert.HasCount(1, entity.MappedCollection);
+            Assert.AreEqual(relatedId, entity.MappedCollection.Single().Guid);
+
+            Assert.AreEqual("unmapped", entity.UnmappedString);
+            Assert.AreEqual(expectedGuid, entity.UnmappedGuid);
+            Assert.AreEqual(42, entity.UnmappedInteger);
+            Assert.AreEqual(12.5m, entity.UnmappedDecimal);
+            Assert.AreEqual(new DateOnly(2030, 2, 3), entity.UnmappedDate);
+            Assert.AreEqual(new TimeOnly(4, 5, 6), entity.UnmappedTime);
+            Assert.AreEqual(new DateTime(2030, 2, 3, 4, 5, 6, DateTimeKind.Utc), entity.UnmappedDateTime);
+            Assert.AreEqual(new DateTimeOffset(2030, 2, 3, 4, 5, 6, TimeSpan.Zero), entity.UnmappedDateTimeOffset);
+            Assert.AreEqual(new TimeSpan(1, 2, 3), entity.UnmappedDuration);
+            Assert.IsFalse(entity.UnmappedBoolean);
+            Assert.AreEqual(relatedId, entity.UnmappedEntity?.Guid);
+            Assert.HasCount(1, entity.UnmappedCollection);
+            Assert.AreEqual(relatedId, entity.UnmappedCollection.Single().Guid);
+        }
+
+        [TestMethod]
         public void Step015_ApplyPropertiesUsesOnInflateForInflatedPropertiesInsteadOfDtoValues()
         {
             using var db = TestApiHost.CreateDbContext();
