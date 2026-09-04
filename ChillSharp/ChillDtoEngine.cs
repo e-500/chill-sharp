@@ -112,6 +112,9 @@ namespace ChillSharp
         /// <exception cref="ChillException">Thrown if the query cannot be activated or executed.</exception>
         public ChillDtoQuery Query(ChillDtoQuery DtoQuery)
         {
+            if (DtoQuery.AutomaticQuery != null)
+                return ExecuteAutomaticQuery(DtoQuery);
+
             // Activate ChillQuery object from ChillType
             var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
 
@@ -129,6 +132,30 @@ namespace ChillSharp
 
             // Return executed query Dto
             return DtoQuery;
+        }
+
+        private ChillDtoQuery ExecuteAutomaticQuery(ChillDtoQuery dtoQuery)
+        {
+            var entityType = ChillTypeResolver.ResolveType(
+                _Context.GetType().Assembly,
+                dtoQuery.ChillType,
+                _Context.GetChillTypePrefix());
+            if (!entityType.IsClass || entityType.IsAbstract || !typeof(IChillEntity).IsAssignableFrom(entityType))
+                throw new ChillException($"{dtoQuery.ChillType} is not a concrete IChillEntity type.");
+
+            var runtimeQueryType = typeof(AutomaticQuery<>).MakeGenericType(entityType);
+            if (Activator.CreateInstance(runtimeQueryType) is not IChillQuery<IChillEntity> chillQuery
+                || chillQuery is not IAutomaticChillQuery automaticQuery)
+            {
+                throw new ChillException($"Unable to create an automatic query for {dtoQuery.ChillType}.");
+            }
+
+            automaticQuery.Definition = dtoQuery.AutomaticQuery!;
+            dtoQuery.ToAutomaticQuery(_Context, chillQuery);
+            dtoQuery.Results = _Engine.Query(
+                chillQuery,
+                entity => new ChillDtoEntity(_Context, entity, dtoQuery.ResultProperties));
+            return dtoQuery;
         }
 
         /// <summary>

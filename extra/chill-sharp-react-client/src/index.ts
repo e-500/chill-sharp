@@ -44,6 +44,11 @@ export {
   PermissionScope
 } from "@chill-sharp/ts-client";
 export type {
+  AutomaticQuery,
+  AutomaticQueryFilter,
+  AutomaticQueryGroup,
+  AutomaticQueryLogicalOperator,
+  AutomaticQueryOperator,
   AuthPermissionRule,
   AuthPermissionRuleItem,
   AuthRoleDetailsResponse,

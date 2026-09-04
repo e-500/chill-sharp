@@ -68,6 +68,8 @@ Base route:
 
 When entity ACL services are registered and the caller is authenticated, these endpoints can also enforce entity-level permissions.
 
+`POST /api/chill/query` accepts both registered query types and automatic entity queries. For the automatic form, set `ChillType` to the entity type and include the optional `AutomaticQuery` definition. See [Automatic Query System](./AutomaticQuery/README.md) for the payload format and operator reference.
+
 ## SignalR Notifications
 
 The notification hub is registered by `MapChillApi()`.

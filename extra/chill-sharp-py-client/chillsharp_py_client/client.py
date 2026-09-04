@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import IntEnum
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 from urllib.parse import quote
 
 import requests
@@ -45,6 +45,66 @@ class ChillUserPreferences(TypedDict):
     displayDateFormat: str
     displayNumberFormat: str
     preferredTheme: str
+
+
+AutomaticQueryLogicalOperator = Literal["And", "Or"]
+AutomaticQueryOperator = Literal[
+    "Equal",
+    "NotEqual",
+    "GreaterThan",
+    "GreaterThanOrEqual",
+    "LessThan",
+    "LessThanOrEqual",
+    "Between",
+    "Contains",
+    "StartsWith",
+    "EndsWith",
+    "In",
+    "IsNull",
+    "IsNotNull",
+    "IsEmpty",
+    "IsNotEmpty",
+    "Any",
+    "All",
+]
+
+
+class AutomaticQueryFilter(TypedDict, total=False):
+    """One property comparison in an automatic query definition."""
+
+    propertyName: str
+    operator: AutomaticQueryOperator
+    value: Any
+    secondValue: Any
+    itemFilter: AutomaticQueryGroup | None
+    ignoreCase: bool
+
+
+class AutomaticQueryGroup(TypedDict, total=False):
+    """Filters and nested groups combined with one logical operator."""
+
+    logicalOperator: AutomaticQueryLogicalOperator
+    filters: list[AutomaticQueryFilter]
+    groups: list[AutomaticQueryGroup]
+
+
+class AutomaticQuery(TypedDict):
+    """Automatic query definition accepted by the shared query endpoint."""
+
+    filter: AutomaticQueryGroup
+
+
+class ChillDtoQuery(TypedDict, total=False):
+    """Query endpoint payload for a registered or automatic query."""
+
+    chillType: str
+    automaticQuery: AutomaticQuery | None
+    properties: JsonDict
+    resultProperties: list[JsonDict] | None
+    pagination: JsonDict | None
+    ordering: JsonDict | None
+    lightweightRequired: bool | None
+    results: list[JsonDict]
 
 
 class PermissionEffect(IntEnum):
@@ -106,7 +166,7 @@ class ChillSharpClient:
         self.session = session or requests.Session()
         self._token_state = _TokenState(access_token=access_token.strip() if access_token else None)
 
-    def query(self, dto_query: JsonDict) -> JsonDict:
+    def query(self, dto_query: ChillDtoQuery) -> ChillDtoQuery:
         """Send a query request to the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("query"), dto_query)
 

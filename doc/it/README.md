@@ -14,6 +14,9 @@ Questa cartella contiene la documentazione di riferimento di ChillSharp.
 - [ReferenceExistence.md](./ReferenceExistence.md)
   Verifica se un riferimento EF Core ha valori di chiave esterna senza caricare l'entita correlata, anche con database senza vincoli FK applicati.
 
+- [AutomaticQuery/README.md](./AutomaticQuery/README.md)
+  Costruisce filtri compatibili con il provider per valori CLR, riferimenti a entità Chill, percorsi annidati e collezioni, mantenendo la pipeline di query standard.
+
 - [RegisterContext.md](./RegisterContext.md)
   Registra i moduli ChillSharp su un `DbContext` host e mappa la superficie API.
 

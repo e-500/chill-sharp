@@ -56,6 +56,12 @@ namespace ChillSharp.Dto
         /// </summary>
         public string ChillType { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Optional structured automatic filter definition. When present, <see cref="ChillType"/>
+        /// identifies the target entity type instead of a concrete Chill query type.
+        /// </summary>
+        public AutomaticQuery? AutomaticQuery { get; set; }
+
 		/// <summary>
 		/// A dictionary mapping field names (property keys) to their corresponding values.
 		/// Each value is wrapped in a ChillFieldValue, which includes metadata about the field type.
@@ -168,6 +174,21 @@ namespace ChillSharp.Dto
             if (ChillType != QueryChillType)
                 throw new ChillException($"Entity ChillType ({QueryChillType}) differs from Dto ChillType ({ChillType})");
 
+            ApplyPropertiesAndOptions(Context, Query);
+        }
+
+        /// <summary>
+        /// Applies common query properties and execution options to a runtime-generated automatic query.
+        /// The DTO Chill type is validated as an entity type by <see cref="ChillDtoEngine"/>.
+        /// </summary>
+        internal void ToAutomaticQuery(IChillContext Context, IChillQuery<IChillEntity> Query)
+        {
+            Query.OnBeforeToQuery(Context, this);
+            ApplyPropertiesAndOptions(Context, Query);
+        }
+
+        private void ApplyPropertiesAndOptions(IChillContext Context, IChillQuery<IChillEntity> Query)
+        {
             var dtoPropertyNames = new HashSet<string>(Properties.Keys, StringComparer.Ordinal);
             var ef_props = ChillDtoTypeMetadataCache.Get(Query.GetType()).ChillProperties
                 .Where(x => dtoPropertyNames.Contains(x.Name));

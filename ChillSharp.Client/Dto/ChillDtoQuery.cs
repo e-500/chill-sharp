@@ -56,6 +56,12 @@ namespace ChillSharp.Client.Dto
         /// </summary>
         public string ChillType { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Optional automatic filter definition. When present, <see cref="ChillType"/>
+        /// identifies the target entity type.
+        /// </summary>
+        public AutomaticQuery? AutomaticQuery { get; set; }
+
 		/// <summary>
 		/// A dictionary mapping field names (property keys) to their corresponding values.
 		/// Each value is wrapped in a ChillFieldValue, which includes metadata about the field type.
