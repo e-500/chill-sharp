@@ -14,6 +14,9 @@ This folder contains the reference documentation for ChillSharp.
 - [ReferenceExistence.md](./ReferenceExistence.md)
   Check whether an EF Core reference has foreign-key values without loading its related entity, including databases without enforced FK constraints.
 
+- [AutomaticQuery/README.md](./AutomaticQuery/README.md)
+  Build provider-friendly filters for CLR values, Chill entity references, nested paths, and collections while preserving the standard query pipeline.
+
 - [RegisterContext.md](./RegisterContext.md)
   Register ChillSharp modules against a host `DbContext` and map the API surface.
 

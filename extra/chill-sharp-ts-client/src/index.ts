@@ -27,6 +27,11 @@ export {
 } from "./client.js";
 export { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
 export type {
+  AutomaticQuery,
+  AutomaticQueryFilter,
+  AutomaticQueryGroup,
+  AutomaticQueryLogicalOperator,
+  AutomaticQueryOperator,
   AuthPermissionRule,
   AuthPermissionRuleItem,
   AuthRoleDetailsResponse,

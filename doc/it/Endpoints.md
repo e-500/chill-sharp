@@ -68,6 +68,8 @@ Itinerario base:
 
 Quando i servizi ACL dell'entità vengono registrati e il chiamante viene autenticato, questi endpoint possono anche applicare autorizzazioni a livello di entità.
 
+`POST /api/chill/query` accetta sia tipi di query registrati sia query automatiche sulle entità. Per la forma automatica, imposta `ChillType` sul tipo di entità e includi la definizione opzionale `AutomaticQuery`. Consulta [Sistema Di Query Automatiche](./AutomaticQuery/README.md) per il formato del payload e il riferimento degli operatori.
+
 ## Notifiche SignalR
 
 L'hub di notifica è registrato da `MapChillApi()`.

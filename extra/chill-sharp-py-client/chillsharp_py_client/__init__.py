@@ -17,8 +17,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from .client import API_BASE_PATH, CHILL_SHARP_PY_CLIENT_VERSION, ChillSharpClient, ChillUserPreferences, PermissionAction, PermissionEffect, PermissionScope
+from .client import API_BASE_PATH, CHILL_SHARP_PY_CLIENT_VERSION, AutomaticQuery, AutomaticQueryFilter, AutomaticQueryGroup, AutomaticQueryLogicalOperator, AutomaticQueryOperator, ChillDtoQuery, ChillSharpClient, ChillUserPreferences, PermissionAction, PermissionEffect, PermissionScope
 from .exceptions import ChillSharpClientError
 
-__all__ = ["API_BASE_PATH", "CHILL_SHARP_PY_CLIENT_VERSION", "ChillSharpClient", "ChillSharpClientError", "ChillUserPreferences", "PermissionAction", "PermissionEffect", "PermissionScope"]
+__all__ = ["API_BASE_PATH", "CHILL_SHARP_PY_CLIENT_VERSION", "AutomaticQuery", "AutomaticQueryFilter", "AutomaticQueryGroup", "AutomaticQueryLogicalOperator", "AutomaticQueryOperator", "ChillDtoQuery", "ChillSharpClient", "ChillSharpClientError", "ChillUserPreferences", "PermissionAction", "PermissionEffect", "PermissionScope"]
 __version__ = CHILL_SHARP_PY_CLIENT_VERSION

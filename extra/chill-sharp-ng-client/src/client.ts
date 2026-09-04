@@ -35,6 +35,7 @@ import type {
   AuthUserListItem,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,
+  ChillDtoQuery,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillAttachmentUploadFile,
@@ -67,6 +68,8 @@ import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 export class ChillSharpNgClient {
   constructor(@Inject(CHILL_SHARP_CLIENT) private readonly client: ChillSharpClient) {}
 
+  query(dtoQuery: ChillDtoQuery): Observable<ChillDtoQuery>;
+  query(dtoQuery: JsonObject): Observable<JsonObject>;
   query(dtoQuery: JsonObject): Observable<JsonObject> {
     return from(this.client.query(dtoQuery));
   }

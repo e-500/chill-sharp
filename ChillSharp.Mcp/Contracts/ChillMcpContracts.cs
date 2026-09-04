@@ -247,6 +247,7 @@ public sealed class ChillMcpEntity
 public sealed class ChillMcpQuery
 {
     public string ChillType { get; set; } = string.Empty;
+    public AutomaticQuery? AutomaticQuery { get; set; }
     public Dictionary<string, object?> Properties { get; set; } = [];
     public List<ChillMcpProperty>? ResultProperties { get; set; }
     public ChillMcpPagination? Pagination { get; set; }
@@ -259,6 +260,7 @@ public sealed class ChillMcpQuery
         return new ChillDtoQuery
         {
             ChillType = ChillType,
+            AutomaticQuery = AutomaticQuery,
             Properties = Properties.ToDictionary(
                 item => item.Key,
                 item => ChillMcpEntity.ToDtoValue(item.Value),
@@ -276,6 +278,7 @@ public sealed class ChillMcpQuery
         return new ChillMcpQuery
         {
             ChillType = dto.ChillType,
+            AutomaticQuery = dto.AutomaticQuery,
             Properties = dto.Properties.ToDictionary(
                 item => item.Key,
                 item => ChillMcpEntity.FromDtoValue(item.Value),

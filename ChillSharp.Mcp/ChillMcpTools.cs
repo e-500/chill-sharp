@@ -183,12 +183,12 @@ public sealed class ChillMcpTools
     }
 
     [McpServerTool(Name = "ChillSharp.query", UseStructuredContent = true), Description(
-        "Executes a ChillSharp query for an MCP-enabled query schema and returns the MCP query payload populated with results. " +
-        "Before calling this tool, inspect the target query schema with 'ChillSharp get-schema' to understand accepted input properties, available result properties, and the returned entity type. " +
+        "Executes either a registered ChillSharp query or an automatic entity query for an MCP-enabled resource and returns the MCP query payload populated with results. " +
+        "For a registered query, inspect its query schema. For AutomaticQuery, inspect the target entity schema and use its ChillType. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<ChillMcpQuery> Query(
-        [Description("The query payload. ChillType should usually be a query type such as 'Query.PostQuery'.")]
+        [Description("The query payload. Use a query ChillType such as 'Query.PostQuery' normally, or an entity ChillType such as 'Model.Post' when AutomaticQuery is present.")]
         ChillMcpQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -197,10 +197,10 @@ public sealed class ChillMcpTools
         //LogMcpQueryPayload(logId, "request", query);
 
         var dto = query.ToDto();
-        if (!await _schemaDiscoveryService.IsMcpEnabledAsync(dto.ChillType, "default", cancellationToken: cancellationToken))
-        {
-            throw new InvalidOperationException($"ChillSharp query '{dto.ChillType}' is not MCP-enabled.");
-        }
+        await EnsureMcpEnabledAsync(
+            dto.ChillType,
+            isQueryType: dto.AutomaticQuery == null,
+            cancellationToken);
 
         return ChillMcpQuery.FromDto(_dtoEngine.Query(dto));
 
@@ -371,7 +371,10 @@ public sealed class ChillMcpTools
         switch (operation.Verb?.ToLowerInvariant())
         {
             case ChillOperationVerb.QUERY when operation.Query != null:
-                await EnsureMcpEnabledAsync(operation.Query.ChillType, isQueryType: true, cancellationToken);
+                await EnsureMcpEnabledAsync(
+                    operation.Query.ChillType,
+                    isQueryType: operation.Query.AutomaticQuery == null,
+                    cancellationToken);
                 break;
             case ChillOperationVerb.FIND when operation.Entity != null:
             case ChillOperationVerb.CREATE when operation.Entity != null:

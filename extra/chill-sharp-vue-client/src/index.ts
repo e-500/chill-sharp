@@ -37,6 +37,11 @@ export type { UseChillAsyncState, UseChillMutationState, UseChillSubscriptionSta
 export { API_BASE_PATH, ChillSharpClient, ChillSharpClientError, PermissionAction, PermissionEffect, PermissionScope } from "@chill-sharp/ts-client";
 export { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 export type {
+  AutomaticQuery,
+  AutomaticQueryFilter,
+  AutomaticQueryGroup,
+  AutomaticQueryLogicalOperator,
+  AutomaticQueryOperator,
   AuthPermissionRule,
   AuthPermissionRuleItem,
   AuthRoleDetailsResponse,
