@@ -525,26 +525,34 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         var regionCode = TryGetRegionCode(culture);
         var preferredId = regionCode switch
         {
-            "IT" or "FR" or "DE" or "ES" or "NL" or "BE" or "AT" => "W. Europe Standard Time",
-            "GB" or "IE" => "GMT Standard Time",
-            "US" => "Eastern Standard Time",
-            "CA" => "Eastern Standard Time",
-            "AU" => "AUS Eastern Standard Time",
-            "NZ" => "New Zealand Standard Time",
-            "JP" => "Tokyo Standard Time",
-            "CN" => "China Standard Time",
-            "IN" => "India Standard Time",
-            "BR" => "E. South America Standard Time",
+            "IT" => "Europe/Rome",
+            "FR" => "Europe/Paris",
+            "DE" => "Europe/Berlin",
+            "ES" => "Europe/Madrid",
+            "NL" => "Europe/Amsterdam",
+            "BE" => "Europe/Brussels",
+            "AT" => "Europe/Vienna",
+            "GB" or "IE" => "Europe/London",
+            "US" => "America/New_York",
+            "CA" => "America/Toronto",
+            "AU" => "Australia/Sydney",
+            "NZ" => "Pacific/Auckland",
+            "JP" => "Asia/Tokyo",
+            "CN" => "Asia/Shanghai",
+            "IN" => "Asia/Kolkata",
+            "BR" => "America/Sao_Paulo",
             _ => null
         };
 
         if (!string.IsNullOrWhiteSpace(preferredId))
         {
-            var match = TimeZoneInfo.GetSystemTimeZones()
-                .FirstOrDefault(x => string.Equals(x.Id, preferredId, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
+            try
             {
-                return match.Id;
+                _ = TimeZoneInfo.FindSystemTimeZoneById(preferredId);
+                return preferredId;
+            }
+            catch (TimeZoneNotFoundException)
+            {
             }
         }
 

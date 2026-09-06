@@ -312,7 +312,7 @@ public sealed class AuthApi
         Assert.IsNotNull(revokedRefreshToken);
         Assert.IsTrue(revokedRefreshToken.RevokedUtc.HasValue);
         Assert.AreEqual("it-IT", persistedAuthUser.DisplayCultureName);
-        Assert.AreEqual("W. Europe Standard Time", persistedAuthUser.DisplayTimeZone);
+        Assert.AreEqual("Europe/Rome", persistedAuthUser.DisplayTimeZone);
         Assert.AreEqual("DD/MM/YYYY", persistedAuthUser.DisplayDateFormat);
         Assert.AreEqual("1.000,00", persistedAuthUser.DisplayNumberFormat);
     }
