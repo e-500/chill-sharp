@@ -1,0 +1,52 @@
+name: Publish NuGet packages
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-pack-publish:
+    name: Build, test, pack, and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore ChillSharp.sln
+
+      - name: Test
+        run: dotnet test ChillSharp.sln --configuration Release --no-restore
+
+      - name: Pack ChillSharp
+        run: dotnet pack ChillSharp/ChillSharp.csproj --configuration Release --no-restore --output artifacts
+
+      - name: Pack ChillSharp.Client
+        run: dotnet pack ChillSharp.Client/ChillSharp.Client.csproj --configuration Release --no-restore --output artifacts
+
+      - name: Log in to NuGet.org with OIDC
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: e-500
+
+      - name: Publish packages to NuGet.org
+        run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
