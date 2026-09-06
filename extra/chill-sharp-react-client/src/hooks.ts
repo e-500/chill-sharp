@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
 import type {
+  ChillDtoQuery,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillUserPreferences,
@@ -39,11 +40,11 @@ export interface UseChillAsyncState<TData> {
   reload: () => Promise<TData | null>;
 }
 
-export interface UseChillMutationState<TData> {
+export interface UseChillMutationState<TData, TArguments extends unknown[] = unknown[]> {
   data: TData | null;
   error: unknown;
   isLoading: boolean;
-  execute: (...args: unknown[]) => Promise<TData>;
+  execute: (...args: TArguments) => Promise<TData>;
   reset: () => void;
 }
 
@@ -256,14 +257,13 @@ export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPrefere
   return { data, error, isLoading, reload: load };
 }
 
-export function useQueryMutation(): UseChillMutationState<JsonObject> {
+export function useQueryMutation(): UseChillMutationState<ChillDtoQuery, [ChillDtoQuery]> {
   const client = useChillSharpClient();
-  const [data, setData] = useState<JsonObject | null>(null);
+  const [data, setData] = useState<ChillDtoQuery | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const execute = async (...args: unknown[]) => {
-    const payload = args[0] as JsonObject;
+  const execute = async (payload: ChillDtoQuery) => {
     setIsLoading(true);
     setError(null);
 

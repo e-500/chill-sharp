@@ -163,17 +163,58 @@ export interface ChillDtoEntity extends JsonObject {
   label: string | null;
   shortLabel: string | null;
   properties: Record<string, JsonValue>;
-}
+};
 
-export interface ChillDtoQuery extends JsonObject {
+export type AutomaticQueryLogicalOperator = 'And' | 'Or';
+
+export type AutomaticQueryOperator =
+  | 'Equal'
+  | 'NotEqual'
+  | 'GreaterThan'
+  | 'GreaterThanOrEqual'
+  | 'LessThan'
+  | 'LessThanOrEqual'
+  | 'Between'
+  | 'Contains'
+  | 'StartsWith'
+  | 'EndsWith'
+  | 'In'
+  | 'IsNull'
+  | 'IsNotNull'
+  | 'IsEmpty'
+  | 'IsNotEmpty'
+  | 'Any'
+  | 'All';
+
+export type AutomaticQueryFilter = JsonObject & {
+  propertyName: string;
+  operator: AutomaticQueryOperator;
+  value?: JsonValue;
+  secondValue?: JsonValue;
+  itemFilter?: AutomaticQueryGroup | null;
+  ignoreCase?: boolean;
+};
+
+export type AutomaticQueryGroup = JsonObject & {
+  logicalOperator?: AutomaticQueryLogicalOperator;
+  filters: AutomaticQueryFilter[];
+  groups?: AutomaticQueryGroup[];
+};
+
+export type AutomaticQuery = JsonObject & {
+  filter: AutomaticQueryGroup;
+};
+
+export type ChillDtoQuery = JsonObject & {
   chillType: string;
+  automaticQuery?: AutomaticQuery | null;
   properties: Record<string, JsonValue>;
   resultProperties: ChillDtoProperty[] | null;
   pagination: ChillPagination | null;
   ordering: ChillOrdering | null;
   lightweightRequired: boolean | null;
   results: ChillDtoEntity[];
-}
+};
 
 export interface ChillDtoMenuItem extends JsonObject {
   guid: string;
@@ -527,6 +568,8 @@ export class ChillSharpClient {
     };
   }
 
+  query(dtoQuery: ChillDtoQuery): Promise<ChillDtoQuery>;
+  query(dtoQuery: JsonObject): Promise<JsonObject>;
   query(dtoQuery: JsonObject): Promise<JsonObject> {
     return this.sendJson<JsonObject>("POST", this.buildChillUrl("query"), dtoQuery);
   }
