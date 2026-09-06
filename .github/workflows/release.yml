@@ -26,11 +26,13 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
-        run: dotnet restore ChillSharp.sln
+      # The solution also contains ChillSharp.Template, which deliberately consumes
+      # ChillSharp from NuGet.org. It cannot be restored before this release exists.
+      - name: Restore release projects
+        run: dotnet restore ChillSharp.Test/ChillSharp.Test.csproj
 
       - name: Test
-        run: dotnet test ChillSharp.sln --configuration Release --no-restore
+        run: dotnet test ChillSharp.Test/ChillSharp.Test.csproj --configuration Release --no-restore
 
       - name: Pack ChillSharp
         run: dotnet pack ChillSharp/ChillSharp.csproj --configuration Release --no-restore --output artifacts
