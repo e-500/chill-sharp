@@ -981,6 +981,10 @@ export class ChillFormComponent implements OnDestroy {
           delete (targetSchema as unknown as Record<string, unknown>)['Metadata'];
         }
         this.layoutState.set(this.readLayoutState(effectiveSchema));
+        this.schemaRefreshTick.update((current) => current + 1);
+        if (targetSchema) {
+          this.schemaUpdated.emit(targetSchema);
+        }
         this.isSavingLayout.set(false);
         this.isEditMode.set(false);
       },

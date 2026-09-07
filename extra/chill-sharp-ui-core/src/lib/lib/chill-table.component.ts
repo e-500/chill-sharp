@@ -1322,13 +1322,8 @@ export class ChillTableComponent {
         const effectiveSchema = savedSchema ?? updatedSchema;
         const targetSchema = this.schema();
         if (targetSchema) {
-          targetSchema.metadata = this.readSchemaMetadata(effectiveSchema);
-          targetSchema.properties = [...(effectiveSchema.properties ?? [])];
-          delete (targetSchema as unknown as Record<string, unknown>)['Metadata'];
-          delete (targetSchema as unknown as Record<string, unknown>)['Properties'];
+          this.applyUpdatedSchema(targetSchema, effectiveSchema);
         }
-        this.layoutState.set(normalizedLayoutState);
-        this.layoutState.set(this.readLayoutState(effectiveSchema));
         this.isSavingLayout.set(false);
         this.isEditLayoutMode.set(false);
       },
@@ -1648,14 +1643,8 @@ export class ChillTableComponent {
         const effectiveSchema = savedSchema ?? updatedSchema;
         const targetSchema = this.schema();
         if (targetSchema) {
-          targetSchema.metadata = this.readSchemaMetadata(effectiveSchema);
-          targetSchema.properties = [...(effectiveSchema.properties ?? [])];
-          delete (targetSchema as unknown as Record<string, unknown>)['Metadata'];
-          delete (targetSchema as unknown as Record<string, unknown>)['Properties'];
+          this.applyUpdatedSchema(targetSchema, effectiveSchema);
         }
-        this.activeCellEdit.set(null);
-        this.layoutState.set(this.readLayoutState(effectiveSchema));
-        this.schemaRefreshTick.update((current) => current + 1);
         this.isSavingLayout.set(false);
       },
       error: (error: unknown) => {
