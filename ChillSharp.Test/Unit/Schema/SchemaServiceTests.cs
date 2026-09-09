@@ -116,6 +116,36 @@ public class ChillSchemaServiceTests
     }
 
     [TestMethod]
+    public async Task SetSchemaAsync_PersistsLayoutAfterAddingAPropertyThroughSchemaRefresh()
+    {
+        await using var fixture = SchemaFixture.Create();
+        const string layoutKey = "chill-table-component";
+        var oldSchema = await fixture.Service.GetSchemaAsync(ChillType, ViewCode, "en-US");
+        Assert.IsNotNull(oldSchema);
+        oldSchema.Properties.RemoveAll(property => property.Name == "Price");
+        oldSchema.Metadata[layoutKey] = """{"columns":[{"name":"Name","hidden":false}]}""";
+        await fixture.Service.SetSchemaAsync(oldSchema);
+
+        var refreshedSchema = await fixture.Service.GetSchemaAsync(ChillType, ViewCode, "en-US", update: true);
+        Assert.IsNotNull(refreshedSchema);
+        Assert.IsTrue(refreshedSchema.Properties.Any(property => property.Name == "Price"));
+        var configuredSchema = Clone(refreshedSchema);
+        const string layout = """{"columns":[{"name":"Price","displayName":"Retail price","hidden":false},{"name":"Name","hidden":true}]}""";
+        configuredSchema.Metadata[layoutKey] = layout;
+        Property(configuredSchema, "Price").Metadata["widthProportion"] = "3";
+        await fixture.Service.SetSchemaAsync(configuredSchema);
+
+        // Bypass both the schema cache and EF's tracked rows, as on a fresh request.
+        fixture.Context.ChangeTracker.Clear();
+        var freshService = new ChillSchemaService(fixture.Context, new SchemaTestRuntimeContext(fixture.Context), new ChillSchemaCache());
+        var reloadedSchema = await freshService.GetSchemaAsync(ChillType, ViewCode, "en-US");
+        Assert.IsNotNull(reloadedSchema);
+        Assert.AreEqual(layout, reloadedSchema.Metadata[layoutKey]);
+        Assert.AreEqual("3", Property(reloadedSchema, "Price").Metadata["widthProportion"]);
+        Assert.AreEqual(1, await fixture.Context.SchemaEntries.CountAsync());
+    }
+
+    [TestMethod]
     public async Task SetEntityOptionsAsync_InvalidatesSchemaAndEntityOptionCaches()
     {
         await using var fixture = SchemaFixture.Create();

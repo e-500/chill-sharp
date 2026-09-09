@@ -160,10 +160,19 @@ export class ChillTableComponent {
    * Wires reactive state for layout persistence, live entity updates, validation-driven focus, and inline edit completion.
    */
   constructor() {
+    let previousSchema: ChillSchema | null = null;
     effect(() => {
-      this.layoutState.set(this.readLayoutState(this.schema()));
+      const schema = this.schema();
+      this.layoutState.set(this.readLayoutState(schema));
       this.layoutError.set('');
-      this.isEditLayoutMode.set(false);
+      // The CRUD page passes refreshed schema metadata back as a new input object.
+      // Keep editing that layout until it is saved or a different schema is selected.
+      if (!schema
+        || schema.chillType !== previousSchema?.chillType
+        || schema.chillViewCode !== previousSchema?.chillViewCode) {
+        this.isEditLayoutMode.set(false);
+      }
+      previousSchema = schema;
     });
 
     effect(() => {
