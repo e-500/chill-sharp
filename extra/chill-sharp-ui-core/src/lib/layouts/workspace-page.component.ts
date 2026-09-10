@@ -228,13 +228,15 @@ import type { WorkspaceTaskInstance } from '../services/workspace.service';
               <button type="button" (click)="openPermissionsTask()">
                 <app-chill-i18n-button-label [labelGuid]="'830A6D96-0332-4B08-8EC7-B850702B4337'" [primaryDefaultText]="'Permissions'" [secondaryDefaultText]="'Permessi'" />
               </button>
-              <button type="button" (click)="workspace.toggleLayoutEditingEnabled()">
-                @if (workspace.isLayoutEditingEnabled()) {
-                  <app-chill-i18n-button-label [labelGuid]="'84A896C2-2A1F-4DCE-8B33-A0F586F1DBE8'" [primaryDefaultText]="'Disable layout editing'" [secondaryDefaultText]="'Disabilita modifica layout'" />
-                } @else {
-                  <app-chill-i18n-button-label [labelGuid]="'A94DDDE0-3CDB-495A-84D7-8226AB21D6C7'" [primaryDefaultText]="'Enable layout editing'" [secondaryDefaultText]="'Abilita modifica layout'" />
-                }
-              </button>
+              @if (workspace.canEditLayout()) {
+                <button type="button" (click)="workspace.toggleLayoutEditingEnabled()">
+                  @if (workspace.isLayoutEditingEnabled()) {
+                    <app-chill-i18n-button-label [labelGuid]="'84A896C2-2A1F-4DCE-8B33-A0F586F1DBE8'" [primaryDefaultText]="'Disable layout editing'" [secondaryDefaultText]="'Disabilita modifica layout'" />
+                  } @else {
+                    <app-chill-i18n-button-label [labelGuid]="'A94DDDE0-3CDB-495A-84D7-8226AB21D6C7'" [primaryDefaultText]="'Enable layout editing'" [secondaryDefaultText]="'Abilita modifica layout'" />
+                  }
+                </button>
+              }
               <button type="button" (click)="goToChangePassword()">
                 <app-chill-i18n-button-label [labelGuid]="'56083997-E7B4-4AE0-B7C6-DB2B82186232'" [primaryDefaultText]="'Change password'" [secondaryDefaultText]="'Cambia password'" />
               </button>
@@ -336,7 +338,12 @@ export class WorkspacePageComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleWindowKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'F2' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
+    if (event.key !== 'F2'
+      || event.altKey
+      || event.ctrlKey
+      || event.metaKey
+      || event.shiftKey
+      || !this.workspace.canEditLayout()) {
       return;
     }
 
