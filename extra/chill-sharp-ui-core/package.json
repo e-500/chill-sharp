@@ -14,11 +14,15 @@
     "access": "restricted"
   },
   "exports": {
+    "./service-worker/chill-sharp-service-worker.js": {
+      "default": "./service-worker/chill-sharp-service-worker.js"
+    },
     "./styles/core-theme.scss": {
       "default": "./styles/core-theme.scss"
     }
   },
   "scripts": {
+    "test:service-worker": "node --test tests/service-worker.test.cjs",
     "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
     "test": "ng test --watch=false --browsers=ChromeHeadless"
   },
