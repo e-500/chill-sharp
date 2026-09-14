@@ -87,7 +87,37 @@ foreach ($relativePath in $packageLockPaths) {
         $lockFile = Get-Content -LiteralPath $path -Raw
         $lockVersionMatch = [regex]::Match($lockFile, '(?s)^\s*\{.*?"version"\s*:\s*"(?<version>\d+\.\d+\.\d+)"')
         if ($lockVersionMatch.Success) {
-            $lockFile = $lockFile.Replace($lockVersionMatch.Groups['version'].Value, $newVersion)
+            $lockVersion = $lockVersionMatch.Groups['version'].Value
+            $escapedLockVersion = [regex]::Escape($lockVersion)
+
+            # Only update the package itself and ChillSharp package references.
+            # A global version replacement corrupts unrelated dependencies that happen
+            # to use the same version number (for example picocolors 1.1.6).
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '(?s)^(\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")' + $escapedLockVersion + '("\s*,?)',
+                "`${1}$newVersion`${2}")
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '(?s)(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")' + $escapedLockVersion + '("\s*,?)',
+                "`${1}$newVersion`${2}")
+
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '("name"\s*:\s*"@chill-sharp/[^"]+"\s*,\s*"version"\s*:\s*")' + $escapedLockVersion + '("\s*,?)',
+                "`${1}$newVersion`${2}")
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '("node_modules/@chill-sharp/[^"]+"\s*:\s*\{\s*"version"\s*:\s*")' + $escapedLockVersion + '("\s*,?)',
+                "`${1}$newVersion`${2}")
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '("@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)' + $escapedLockVersion + '("\s*,?)',
+                "`${1}$newVersion`${2}")
+            $lockFile = [regex]::Replace(
+                $lockFile,
+                '(file:\./packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)' + $escapedLockVersion + '(\.tgz)',
+                "`${1}$newVersion`${2}")
         }
         [System.IO.File]::WriteAllText($path, $lockFile, [System.Text.UTF8Encoding]::new($false))
     }

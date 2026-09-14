@@ -59,9 +59,18 @@ for lock_path in "${package_lock_paths[@]}"; do
   [[ -f "$lock_path" ]] || continue
   lock_version="$(perl -0777 -ne 'print $1 if /^\s*\{.*?"version"\s*:\s*"(\d+\.\d+\.\d+)"/s' "$lock_path")"
   [[ -n "$lock_version" ]] || continue
-  CHILLSHARP_OLD_VERSION="$lock_version" CHILLSHARP_VERSION="$new_version" perl -0pi -e \
-    's/\Q$ENV{CHILLSHARP_OLD_VERSION}\E/$ENV{CHILLSHARP_VERSION}/g' \
-    "$lock_path"
+  CHILLSHARP_OLD_VERSION="$lock_version" CHILLSHARP_VERSION="$new_version" perl -0pi -e '
+    my $old = $ENV{CHILLSHARP_OLD_VERSION};
+    my $new = $ENV{CHILLSHARP_VERSION};
+    # Limit version changes to this package and ChillSharp dependencies. A global
+    # replacement also modifies unrelated dependencies with the same version.
+    s{^(\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\Q$old\E("\s*,?)}{$1$new$2}sx;
+    s{(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\Q$old\E("\s*,?)}{$1$new$2}sx;
+    s{("name"\s*:\s*"\@chill-sharp/[^"]+"\s*,\s*"version"\s*:\s*")\Q$old\E("\s*,?)}{$1$new$2}g;
+    s{("node_modules/\@chill-sharp/[^"]+"\s*:\s*\{\s*"version"\s*:\s*")\Q$old\E("\s*,?)}{$1$new$2}g;
+    s{("\@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)\Q$old\E("\s*,?)}{$1$new$2}g;
+    s{(file:\./packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\Q$old\E(\.tgz)}{$1$new$2}g;
+  ' "$lock_path"
 done
 
 python_project_path="$script_dir/extra/chill-sharp-py-client/pyproject.toml"
