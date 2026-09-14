@@ -186,6 +186,7 @@ export class ChillService {
   private readonly chill = inject(ChillSharpNgClient);
   private readonly router = inject(Router);
   private readonly sessionState = signal<AuthSession | null>(this.readStoredSession());
+  private readonly canManageSchemaState = signal(false);
   private readonly userPreferencesState = signal<StoredUserPreferences>(this.readStoredUserPreferences());
   private readonly textVersion = signal(0);
   private readonly textCache = new Map<string, string>();
@@ -197,6 +198,7 @@ export class ChillService {
   private sessionExpiryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   readonly session = this.sessionState.asReadonly();
+  readonly canManageSchema = this.canManageSchemaState.asReadonly();
   readonly userPreferences = this.userPreferencesState.asReadonly();
   readonly isAuthenticated = computed(() => this.sessionState() !== null);
   readonly userName = computed(() => this.sessionState()?.userName ?? '');
@@ -220,13 +222,19 @@ export class ChillService {
 
   async initialize(): Promise<void> {
     if (!this.isAuthenticated()) {
+      this.canManageSchemaState.set(false);
       return;
     }
 
     const preferences = await this.loadCurrentUserPreferences({
       clearSessionOnNotFound: true
     });
-    if (!preferences) return;
+    if (!preferences || !this.isAuthenticated()) {
+      this.canManageSchemaState.set(false);
+      return;
+    }
+
+    await this.loadCurrentUserSchemaAccess();
   }
 
   version(): string {
@@ -1314,15 +1322,29 @@ export class ChillService {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(USER_PREFERENCES_STORAGE_KEY);
     this.sessionState.set(null);
+    this.canManageSchemaState.set(false);
     this.persistUserPreferences(this.createEmptyUserPreferences());
     this.syncClientSession(null);
   }
 
   private async handleAuthenticatedResponse(response: AuthTokenResponse): Promise<void> {
     this.persistSession(response);
-    await this.loadCurrentUserPreferences({
-      clearSessionOnNotFound: false
-    });
+    await Promise.all([
+      this.loadCurrentUserPreferences({
+        clearSessionOnNotFound: false
+      }),
+      this.loadCurrentUserSchemaAccess()
+    ]);
+  }
+
+  private async loadCurrentUserSchemaAccess(): Promise<void> {
+    try {
+      const response = await firstValueFrom(this.chill.getAuthPermissions());
+      this.canManageSchemaState.set(this.isAuthenticated() && response.user?.canManageSchema === true);
+    } catch (error) {
+      this.canManageSchemaState.set(false);
+      console.warn('[ChillService] Unable to load current user schema access', error);
+    }
   }
 
   private async loadCurrentUserPreferences(

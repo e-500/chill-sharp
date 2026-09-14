@@ -6,6 +6,11 @@
   },
   "assets": [
     {
+      "glob": "*.js",
+      "input": "service-worker",
+      "output": "service-worker"
+    },
+    {
       "glob": "**/*",
       "input": "src/styles",
       "output": "styles"

@@ -44,6 +44,7 @@ describe('ChillService user-preference formatting', () => {
               setCultureName: (cultureName: string | null | undefined) => { appliedCultureName = cultureName; }
             }),
             getTexts: () => of([]),
+            getAuthPermissions: () => of({ user: { canManageSchema: true } }),
             getCurrentUserPreferences: () => of({
               displayCultureName: 'it-IT',
               displayTimeZone: 'Europe/Rome',
@@ -99,6 +100,7 @@ describe('ChillService user-preference formatting', () => {
     expect(service.currentDateFormat()).toBe('DD/MM/YYYY');
     expect(service.currentNumberFormat()).toBe('1.000,00');
     expect(service.preferredTheme()).toBe('cini');
+    expect(service.canManageSchema()).toBeTrue();
     expect(service.formatDisplayDateTime('2026-01-15T10:30:00Z')).toBe('15/01/2026 11:30');
     expect(service.formatApiNumber('1234.5')).toBe('1.234,50');
   });

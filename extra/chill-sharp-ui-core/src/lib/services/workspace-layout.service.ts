@@ -1,13 +1,16 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { WORKSPACE_LAYOUT_EDITING_STORAGE_KEY } from '../storage-keys';
+import { ChillService } from './chill.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class WorkspaceLayoutService {
+  private readonly chill = inject(ChillService);
   private readonly layoutEditingEnabledState = signal(this.readStoredLayoutEditingState());
 
-  readonly isLayoutEditingEnabled = this.layoutEditingEnabledState.asReadonly();
+  readonly canEditLayout = this.chill.canManageSchema;
+  readonly isLayoutEditingEnabled = computed(() => this.canEditLayout() && this.layoutEditingEnabledState());
 
   constructor() {
     effect(() => {
@@ -19,6 +22,10 @@ export class WorkspaceLayoutService {
   }
 
   toggleLayoutEditingEnabled(): void {
+    if (!this.canEditLayout()) {
+      return;
+    }
+
     this.layoutEditingEnabledState.update((enabled) => !enabled);
   }
 

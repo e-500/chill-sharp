@@ -71,3 +71,14 @@ These are safe places for environment-specific deployment replacement.
 ## Agent skill and client extension guidance
 
 The template includes `.agents/skills/chillsharp_ui_template/SKILL.md`, which is copied with the template into client repositories. Keep client-owned plugins in `src/app/core/plugins` and provider overrides in `src/app/core/overrides`; shared implementation remains in `@chill-sharp/ui-core`.
+
+## Service worker
+
+`public/sw.js` configures the shared worker shipped by `@chill-sharp/ui-core`.
+The Angular build copies it to `/chill-sharp-service-worker.js`.
+Schemas, schema lists, entity options and runtime assets have a 10-minute cache
+lifetime. Update schema and schema/options saves invalidate metadata before and
+after the write, so the first refresh receives fresh data. Updates to the shared
+package carry worker fixes forward; client cache names and app-shell assets stay
+in `public/sw.js`. Serve both worker scripts with revalidation, not immutable
+caching. Old `giro-fontane-shell-v1` caches are removed automatically in GDF.

@@ -75,6 +75,7 @@ export class WorkspaceService {
   readonly isDrawerOpen = this.drawerOpenState.asReadonly();
   readonly theme = this.themeState.asReadonly();
   readonly themes = this.resolveThemes();
+  readonly canEditLayout = this.layout.canEditLayout;
   readonly isLayoutEditingEnabled = this.layout.isLayoutEditingEnabled;
   readonly openTasks = this.openTaskInstancesState.asReadonly();
   readonly activeTask = computed(() => this.openTaskInstancesState()
