@@ -51,6 +51,13 @@ $script:Packages = @(
     Mode = 'shared-folder'
     SharedFolder = $defaultSharedFolder
   }
+  [pscustomobject]@{
+    Key = 'create-app'
+    Label = '@chill-sharp/create-app'
+    PublishScript = Join-Path $scriptDirectory 'chill-sharp-create-app\publish-to-shared-folder.ps1'
+    Mode = 'shared-folder'
+    SharedFolder = $defaultSharedFolder
+  }
 )
 
 # Track the packable ChillSharp NuGet packages exposed by this repository.

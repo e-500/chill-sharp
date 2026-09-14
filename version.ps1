@@ -47,6 +47,7 @@ $packageJsonPaths = @(
     'extra/chill-sharp-react-client/package.json',
     'extra/chill-sharp-vue-client/package.json',
     'extra/chill-sharp-ui-core/package.json',
+    'extra/chill-sharp-create-app/package.json',
     'extra/chill-sharp-ui-template/package.json'
 )
 

@@ -34,6 +34,7 @@ package_json_paths=(
   "$script_dir/extra/chill-sharp-react-client/package.json"
   "$script_dir/extra/chill-sharp-vue-client/package.json"
   "$script_dir/extra/chill-sharp-ui-core/package.json"
+  "$script_dir/extra/chill-sharp-create-app/package.json"
   "$script_dir/extra/chill-sharp-ui-template/package.json"
 )
 
@@ -89,6 +90,7 @@ case "${create_commit,,}" in
       'extra/chill-sharp-react-client/package.json'
       'extra/chill-sharp-vue-client/package.json'
       'extra/chill-sharp-ui-core/package.json'
+      'extra/chill-sharp-create-app/package.json'
       'extra/chill-sharp-ui-template/package.json'
       'extra/chill-sharp-ts-client/package-lock.json'
       'extra/chill-sharp-ng-client/package-lock.json'

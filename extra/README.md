@@ -11,6 +11,7 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`chill-sharp-py-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client): Python client for the generic ChillSharp HTTP API
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
+- [`@chill-sharp/create-app`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app): npm generator for a starter Angular client app
 - [`chill-sharp-ui-architecture`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-architecture): UI architecture notes and compatibility publish wrapper
 
 ## How-To Guides
@@ -127,6 +128,7 @@ The UI packages live beside the other extra libraries:
 
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
+- [`@chill-sharp/create-app`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app): generator that creates an npm-backed Angular starter app
 
 To publish the latest required shared client packages and then publish `ui-core`:
 
@@ -149,8 +151,15 @@ npm install
 npm run build
 ```
 
+Create an app from the public npm packages:
+
+```bash
+npm create @chill-sharp/app my-app
+```
+
 More information:
 
 - [`extra/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/README.md)
 - [`extra/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template/README.md)
+- [`extra/chill-sharp-create-app/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app/README.md)
 - [`extra/HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](HOW_TO_CREATE_UI_CORE_PLUGIN_README.md)
