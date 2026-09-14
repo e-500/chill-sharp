@@ -11,7 +11,7 @@
   "license": "AGPL-3.0-or-later",
   "sideEffects": false,
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "exports": {
     "./service-worker/chill-sharp-service-worker.js": {
