@@ -139,7 +139,9 @@ jobs:
 
           (
             cd extra/chill-sharp-ui-core
-            npm install --no-save ../../npm-dist/chill-sharp-ts-client-*.tgz ../../npm-dist/chill-sharp-ng-client-*.tgz
+            npm install --no-save \
+              "file://$(realpath ../../npm-dist/chill-sharp-ts-client-*.tgz)" \
+              "file://$(realpath ../../npm-dist/chill-sharp-ng-client-*.tgz)"
             npm run build
             npm pack dist --pack-destination ../../npm-dist
           )
