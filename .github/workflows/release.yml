@@ -190,5 +190,5 @@ jobs:
             npm-dist/chill-sharp-react-client-*.tgz \
             npm-dist/chill-sharp-vue-client-*.tgz \
             npm-dist/chill-sharp-create-app-*.tgz; do
-            npm publish "$package_archive" --access public
+            npm publish "./$package_archive" --access public
           done
