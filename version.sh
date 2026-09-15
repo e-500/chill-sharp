@@ -34,6 +34,7 @@ package_json_paths=(
   "$script_dir/extra/chill-sharp-react-client/package.json"
   "$script_dir/extra/chill-sharp-vue-client/package.json"
   "$script_dir/extra/chill-sharp-ui-core/package.json"
+  "$script_dir/extra/chill-sharp-create-app/package.json"
   "$script_dir/extra/chill-sharp-ui-template/package.json"
 )
 
@@ -41,8 +42,8 @@ for manifest_path in "${package_json_paths[@]}"; do
   [[ -f "$manifest_path" ]] || continue
   CHILLSHARP_VERSION="$new_version" perl -0pi -e '
     s/("version"\s*:\s*")\d+\.\d+\.\d+("\s*,?)/$1$ENV{CHILLSHARP_VERSION}$2/;
-    s/("\@chill-sharp\/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
-    s#(file:\./packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
+    s/("\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
+    s#(file:\./packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
   ' "$manifest_path"
 done
 
@@ -60,10 +61,11 @@ for lock_path in "${package_lock_paths[@]}"; do
   # to use the same version number as ChillSharp.
   CHILLSHARP_VERSION="$new_version" perl -0pi -e '
     s/("version"\s*:\s*")\d+\.\d+\.\d+("\s*,?)/$1$ENV{CHILLSHARP_VERSION}$2/;
-    s/("\@chill-sharp\/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^?)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
-    s#(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
-    s/("(?:\.\.\/)?chill-sharp-(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
-    s/("node_modules\/\@chill-sharp\/(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+    s/(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/s;
+    s/("\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
+    s#(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
+    s/("(?:\.\.\/)?chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+    s/("node_modules\/\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
   ' "$lock_path"
 done
 
@@ -93,6 +95,7 @@ case "${create_commit,,}" in
       'extra/chill-sharp-react-client/package.json'
       'extra/chill-sharp-vue-client/package.json'
       'extra/chill-sharp-ui-core/package.json'
+      'extra/chill-sharp-create-app/package.json'
       'extra/chill-sharp-ui-template/package.json'
       'extra/chill-sharp-ts-client/package-lock.json'
       'extra/chill-sharp-ng-client/package-lock.json'

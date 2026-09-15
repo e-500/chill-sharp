@@ -225,9 +225,11 @@ import type { WorkspaceTaskInstance } from '../services/workspace.service';
                   {{ chill.T('B9C91C98-E52E-49DA-A3BC-6593F38BB93D', 'Renew token', 'Rinnova token') }}
                 }
               </button>
-              <button type="button" (click)="openPermissionsTask()">
-                <app-chill-i18n-button-label [labelGuid]="'830A6D96-0332-4B08-8EC7-B850702B4337'" [primaryDefaultText]="'Permissions'" [secondaryDefaultText]="'Permessi'" />
-              </button>
+              @if (chill.canManagePermissions()) {
+                <button type="button" (click)="openPermissionsTask()">
+                  <app-chill-i18n-button-label [labelGuid]="'830A6D96-0332-4B08-8EC7-B850702B4337'" [primaryDefaultText]="'Permissions'" [secondaryDefaultText]="'Permessi'" />
+                </button>
+              }
               @if (workspace.canEditLayout()) {
                 <button type="button" (click)="workspace.toggleLayoutEditingEnabled()">
                   @if (workspace.isLayoutEditingEnabled()) {

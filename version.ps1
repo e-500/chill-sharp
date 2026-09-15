@@ -47,6 +47,7 @@ $packageJsonPaths = @(
     'extra/chill-sharp-react-client/package.json',
     'extra/chill-sharp-vue-client/package.json',
     'extra/chill-sharp-ui-core/package.json',
+    'extra/chill-sharp-create-app/package.json',
     'extra/chill-sharp-ui-template/package.json'
 )
 
@@ -61,11 +62,11 @@ foreach ($relativePath in $packageJsonPaths) {
         param($match)
         "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
     }, 1)
-    $manifest = [regex]::Replace($manifest, '("@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^)\d+\.\d+\.\d+', {
+    $manifest = [regex]::Replace($manifest, '("@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^)\d+\.\d+\.\d+', {
         param($match)
         "$($match.Groups[1].Value)$newVersion"
     })
-    $manifest = [regex]::Replace($manifest, '(file:\./packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)', {
+    $manifest = [regex]::Replace($manifest, '(file:\./packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)', {
         param($match)
         "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
     })
@@ -93,19 +94,23 @@ foreach ($relativePath in $packageLockPaths) {
         }
         $versionGroup = $lockVersionMatch.Groups['version']
         $lockFile = $lockFile.Substring(0, $versionGroup.Index) + $newVersion + $lockFile.Substring($versionGroup.Index + $versionGroup.Length)
-        $lockFile = [regex]::Replace($lockFile, '("@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^?)\d+\.\d+\.\d+', {
+        $lockFile = [regex]::Replace($lockFile, '(?s)(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\d+\.\d+\.\d+', {
             param($match)
             "$($match.Groups[1].Value)$newVersion"
         })
-        $lockFile = [regex]::Replace($lockFile, '(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)', {
+        $lockFile = [regex]::Replace($lockFile, '("@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)', {
             param($match)
             "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
         })
-        $lockFile = [regex]::Replace($lockFile, '(?s)("(?:\.\./)?chill-sharp-(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+        $lockFile = [regex]::Replace($lockFile, '(?s)("(?:\.\./)?chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
             param($match)
             "$($match.Groups[1].Value)$newVersion"
         })
-        $lockFile = [regex]::Replace($lockFile, '(?s)("node_modules/@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+        $lockFile = [regex]::Replace($lockFile, '(?s)("node_modules/@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
             param($match)
             "$($match.Groups[1].Value)$newVersion"
         })

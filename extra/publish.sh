@@ -13,13 +13,14 @@ api_template_path="$repository_root/ChillSharp.Template"
 nuget_shared_folder="$default_nuget_shared_folder"
 env_file="${CHILL_ENV_FILE:-$HOME/.profile}"
 
-package_keys=(ts-client ng-client react-client vue-client ui-core)
+package_keys=(ts-client ng-client react-client vue-client ui-core create-app)
 package_labels=(
   "@chill-sharp/ts-client"
   "@chill-sharp/ng-client"
   "@chill-sharp/react-client"
   "@chill-sharp/vue-client"
   "@chill-sharp/ui-core"
+  "@chill-sharp/create-app"
 )
 package_dirs=(
   "$extra_dir/chill-sharp-ts-client"
@@ -27,9 +28,11 @@ package_dirs=(
   "$extra_dir/chill-sharp-react-client"
   "$extra_dir/chill-sharp-vue-client"
   "$extra_dir/chill-sharp-ui-core"
+  "$extra_dir/chill-sharp-create-app"
 )
-package_modes=(shared-folder shared-folder shared-folder shared-folder shared-folder)
+package_modes=(shared-folder shared-folder shared-folder shared-folder shared-folder shared-folder)
 package_shared_folders=(
+  "$default_shared_folder"
   "$default_shared_folder"
   "$default_shared_folder"
   "$default_shared_folder"
