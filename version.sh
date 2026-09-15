@@ -56,11 +56,15 @@ package_lock_paths=(
 
 for lock_path in "${package_lock_paths[@]}"; do
   [[ -f "$lock_path" ]] || continue
-  lock_version="$(perl -0777 -ne 'print $1 if /^\s*\{.*?"version"\s*:\s*"(\d+\.\d+\.\d+)"/s' "$lock_path")"
-  [[ -n "$lock_version" ]] || continue
-  CHILLSHARP_OLD_VERSION="$lock_version" CHILLSHARP_VERSION="$new_version" perl -0pi -e \
-    's/\Q$ENV{CHILLSHARP_OLD_VERSION}\E/$ENV{CHILLSHARP_VERSION}/g' \
-    "$lock_path"
+  # Do not replace the old version globally: third-party packages may happen
+  # to use the same version number as ChillSharp.
+  CHILLSHARP_VERSION="$new_version" perl -0pi -e '
+    s/("version"\s*:\s*")\d+\.\d+\.\d+("\s*,?)/$1$ENV{CHILLSHARP_VERSION}$2/;
+    s/("\@chill-sharp\/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^?)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
+    s#(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
+    s/("(?:\.\.\/)?chill-sharp-(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+    s/("node_modules\/\@chill-sharp\/(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+  ' "$lock_path"
 done
 
 python_project_path="$script_dir/extra/chill-sharp-py-client/pyproject.toml"

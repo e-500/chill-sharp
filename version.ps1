@@ -84,10 +84,31 @@ foreach ($relativePath in $packageLockPaths) {
     $path = Join-Path $PSScriptRoot $relativePath
     if (Test-Path -LiteralPath $path) {
         $lockFile = Get-Content -LiteralPath $path -Raw
-        $lockVersionMatch = [regex]::Match($lockFile, '(?s)^\s*\{.*?"version"\s*:\s*"(?<version>\d+\.\d+\.\d+)"')
-        if ($lockVersionMatch.Success) {
-            $lockFile = $lockFile.Replace($lockVersionMatch.Groups['version'].Value, $newVersion)
+
+        # Do not replace the old version globally: third-party packages may happen
+        # to use the same version number as ChillSharp.
+        $lockVersionMatch = [regex]::Match($lockFile, '(?s)\A\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*"(?<version>\d+\.\d+\.\d+)"')
+        if (-not $lockVersionMatch.Success) {
+            throw "Could not find the root package version in $path."
         }
+        $versionGroup = $lockVersionMatch.Groups['version']
+        $lockFile = $lockFile.Substring(0, $versionGroup.Index) + $newVersion + $lockFile.Substring($versionGroup.Index + $versionGroup.Length)
+        $lockFile = [regex]::Replace($lockFile, '("@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^?)\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(?s)("(?:\.\./)?chill-sharp-(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(?s)("node_modules/@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
         [System.IO.File]::WriteAllText($path, $lockFile, [System.Text.UTF8Encoding]::new($false))
     }
 }
