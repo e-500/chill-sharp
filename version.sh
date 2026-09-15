@@ -59,13 +59,14 @@ for lock_path in "${package_lock_paths[@]}"; do
   [[ -f "$lock_path" ]] || continue
   # Do not replace the old version globally: third-party packages may happen
   # to use the same version number as ChillSharp.
+  # Stay inside each package object: link entries have no version field.
   CHILLSHARP_VERSION="$new_version" perl -0pi -e '
     s/("version"\s*:\s*")\d+\.\d+\.\d+("\s*,?)/$1$ENV{CHILLSHARP_VERSION}$2/;
     s/(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/s;
     s/("\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/g;
     s#(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)#$1$ENV{CHILLSHARP_VERSION}$2#g;
-    s/("(?:\.\.\/)?chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
-    s/("node_modules\/\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{.*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+    s/("(?:\.\.\/)?chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{[^{}]*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
+    s/("node_modules\/\@chill-sharp\/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{[^{}]*?"version"\s*:\s*")\d+\.\d+\.\d+/$1$ENV{CHILLSHARP_VERSION}/sg;
   ' "$lock_path"
 done
 
