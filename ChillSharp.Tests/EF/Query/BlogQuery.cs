@@ -11,7 +11,11 @@ namespace ChillSharp.Tests.EF.Query
 {
     public class BlogQuery : ChillQuery
     {
-        [ChillProperty]
+
+        [ChillProperty(
+            UniquePropertyKeyString: "AF868D2D-360A-485C-904D-DAFD7A830A8A",
+            PrimaryLanguageLabel: "Blog title",
+            SecondaryLanguageLabel: "Titolo del blog")]
         public string Title { get; set; } = string.Empty;
 
         /// <summary>

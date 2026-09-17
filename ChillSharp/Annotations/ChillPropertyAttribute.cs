@@ -39,26 +39,90 @@ namespace ChillSharp.Annotations
         /// The optional CallerMemberName attribute automatically supplies the name of the member
         /// (e.g., a property or method) to which this attribute is applied, unless explicitly provided.
         /// </summary>
-        /// <param name="FieldName">
-        /// The name of the field or property this attribute is applied to.
+        /// <param name="PropertyName">
+        /// The name of the property this attribute is applied to.
         /// Automatically filled in by the compiler when not manually provided.
         /// </param>
         /// <param name="CallOnInflate">
         /// If set ChillSharp call OnInflate() asking to load the collection or the property in general
         /// </param>
-        public ChillPropertyAttribute([CallerMemberName] string? Name = null, bool CallOnInflate = false)
+        /// <param name="UniquePropertyKey">
+        /// Unique key for the property to store the label for translation purposes
+        /// </param>
+        /// <param name="PrimaryLanguageLabel">
+        /// Primary language label text (International english)
+        /// </param>
+        /// <param name="SecondaryLanguageLabel">
+        /// Secondary language label text (Software house / Developer language)
+        /// </param>
+        public ChillPropertyAttribute(
+            [CallerMemberName] string? PropertyName = null, 
+            bool CallOnInflate = false)
         {
-            this.Name = Name;
-            this._CallOnInflate = CallOnInflate;
+            this.PropertyName = PropertyName;
+            this.CallOnInflate = CallOnInflate;
+        }
+
+        /// <summary>
+        /// The constructor for ChillPropertyAttribute WITH LABEL TEXTS
+        /// The optional CallerMemberName attribute automatically supplies the name of the member
+        /// (e.g., a property or method) to which this attribute is applied, unless explicitly provided.
+        /// </summary>
+        /// <param name="UniquePropertyKey">
+        /// Unique key for the property to store the label for translation purposes
+        /// </param>
+        /// <param name="PrimaryLanguageLabel">
+        /// Primary language label text (International english)
+        /// </param>
+        /// <param name="SecondaryLanguageLabel">
+        /// Secondary language label text (Software house / Developer language)
+        /// </param>
+        /// <param name="PropertyName">
+        /// The name of the property this attribute is applied to.
+        /// Automatically filled in by the compiler when not manually provided.
+        /// </param>
+        /// <param name="CallOnInflate">
+        /// If set ChillSharp call OnInflate() asking to load the collection or the property in general
+        /// </param>
+        public ChillPropertyAttribute(
+            string UniquePropertyKeyString,
+            string PrimaryLanguageLabel,
+            string SecondaryLanguageLabel,
+            [CallerMemberName] string? PropertyName = null,
+            bool CallOnInflate = false)
+        {
+            this.PropertyName = PropertyName;
+            this.CallOnInflate = CallOnInflate;
+            this.UniquePropertyKey = new Guid(UniquePropertyKeyString);
+            this.PrimaryLanguageLabel = PrimaryLanguageLabel;
+            this.SecondaryLanguageLabel = SecondaryLanguageLabel;
         }
 
         /// <summary>
         /// Holds the name of the field or property associated with this attribute.
         /// This is kept private, but could be used internally if reflection is applied.
         /// </summary>
-        private string? Name = null;
+        public string? PropertyName { get; }
 
-        private bool _CallOnInflate = false;
-        public bool CallOnInflate { get { return _CallOnInflate; } }
+        /// <summary>
+        /// Tells ChillSharp engine to call OnInflate() to populate the property
+        /// Generally because EF can't do it automatically (eg. NotMapped)
+        /// </summary>
+        public bool CallOnInflate { get; }
+
+        /// <summary>
+        /// Unique key for the property to store the label for translation purposes
+        /// </summary>
+        public Guid? UniquePropertyKey { get; }
+
+        /// <summary>
+        /// Primary language label text (International english)
+        /// </summary>
+        public string? PrimaryLanguageLabel { get; }
+
+        /// <summary>
+        /// Secondary language label text (Software house / Developer language)
+        /// </summary>
+        public string? SecondaryLanguageLabel { get ; }
     }
 }

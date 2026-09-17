@@ -76,7 +76,7 @@ namespace ChillSharp.Dto
         /// <summary>
         /// A dictionary mapping field names (property keys) to their corresponding values.
         /// </summary>
-        public Dictionary<string, dynamic?> Properties { get; set; } = new Dictionary<string, dynamic?>();
+        public Dictionary<string, object?> Properties { get; set; } = new Dictionary<string, object?>();
 
         #region HELPERS
 
@@ -186,7 +186,7 @@ namespace ChillSharp.Dto
                     // OTHER PROPERTY TYPES
                     else 
                     {
-                        return (dynamic?)ef_prop.GetValue(Entity);
+                        return (object?)ef_prop.GetValue(Entity);
                     }
                 });
         }

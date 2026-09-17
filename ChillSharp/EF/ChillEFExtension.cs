@@ -17,8 +17,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Dto;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
+using System.Linq.Expressions;
 
 namespace ChillSharp.EF
 {
@@ -119,26 +121,35 @@ namespace ChillSharp.EF
             return values;
         }
 
-        ////public static bool IsManyToMany<TEntity, TCollection>(
-        ////    this CollectionEntry<TEntity, TCollection> collection)
-        ////    where TEntity : class
-        ////    where TCollection : class
-        //public static bool IsOneToMany(this CollectionEntry collection)
-        //{
-        //    var navigationMetadata = collection.Metadata as INavigation
-        //        ?? throw new InvalidOperationException($"Navigation '{collection.Metadata.Name}' is not a collection navigation.");
+        public static IQueryable<Dictionary<string, object?>> SelectRequiredProperties<TEntity>(
+            this IQueryable<TEntity> Query,
+            IEnumerable<ChillDtoProperty> RequiredProperties)
+            where TEntity : class
+        {
+            var param = Expression.Parameter(typeof(TEntity), "e");
 
-        //    return (navigationMetadata.IsCollection && navigationMetadata.Inverse != null && !navigationMetadata.Inverse.IsCollection);
-        //}
+            var addMethod = typeof(Dictionary<string, object?>)
+                .GetMethod("Add")!;
 
-        //public static bool OneToManyInerseReference(this CollectionEntry collection)
-        //{
-        //    var navigationMetadata = collection.Metadata as INavigation
-        //        ?? throw new InvalidOperationException($"Navigation '{collection.Metadata.Name}' is not a collection navigation.");
+            var bindings = RequiredProperties.Select(p =>
+                Expression.ElementInit(
+                    addMethod,
+                    Expression.Constant(p.PropertyName),
+                    Expression.Convert(
+                        Expression.Property(param, p.PropertyName),
+                        typeof(object)
+                    )
+                )
+            );
 
-        //    navigationMetadata.Inverse.
+            var body = Expression.ListInit(
+                Expression.New(typeof(Dictionary<string, object?>)),
+                bindings
+            );
 
-        //    return (navigationMetadata.IsCollection && navigationMetadata.Inverse != null && navigationMetadata.Inverse.IsCollection);
-        //}
+            var lambda = Expression.Lambda<Func<TEntity, Dictionary<string, object?>>>(body, param);
+
+            return Query.Select(lambda);
+        }
     }
 }

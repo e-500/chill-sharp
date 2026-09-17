@@ -17,9 +17,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace ChillSharp
@@ -112,33 +114,6 @@ namespace ChillSharp
             return ChillType;
         }
 
-        public IChillEntity ActivateDetachedChillEntity(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-            return (IChillEntity)res;
-        }
-
-        public IChillEntity ActivateChillEntity(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-            return (IChillEntity)res;
-        }
-
-        public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException($"Activator was unable to activate ({fullChillType}) using current context assembly");
-            return (IChillQuery<IChillEntity>)res;
-        }
-
         private object _GetDbSet(DbContext ctx, string ChillType)
         {
             var entityType = ActivateChillEntity(ChillType).GetType();
@@ -153,6 +128,91 @@ namespace ChillSharp
                 throw new ChillException($"DbSet for {ChillType} not found");
 
             return dbSet;
+        }
+
+        /// <summary>
+        /// Creates a new, detached instance of a Chill entity based on the provided
+        /// Chill type identifier.
+        /// </summary>
+        /// <param name="ChillType">
+        /// The short Chill type name used to resolve the fully qualified entity type
+        /// within the current context assembly.
+        /// </param>
+        /// <returns>
+        /// A newly instantiated <see cref="IChillEntity"/> that is not attached to
+        /// the current <see cref="DbContext"/> and has no tracking state.
+        /// </returns>
+        /// <exception cref="ChillException">
+        /// Thrown when the Chill type cannot be resolved or instantiated using
+        /// the current context assembly.
+        /// </exception>
+        public IChillEntity ActivateDetachedChillEntity(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
+
+            return (IChillEntity)res;
+        }
+
+        /// <summary>
+        /// Instantiates a Chill entity of the specified type using the current
+        /// context assembly.
+        /// </summary>
+        /// <param name="ChillType">
+        /// The short Chill type identifier used to resolve the fully qualified
+        /// entity type name.
+        /// </param>
+        /// <returns>
+        /// A newly created instance of <see cref="IChillEntity"/>.
+        /// </returns>
+        /// <exception cref="ChillException">
+        /// Thrown when the Chill entity type cannot be resolved or instantiated
+        /// using the current context assembly.
+        /// </exception>
+        /// <remarks>
+        /// This method performs runtime type activation only. It does not attach
+        /// the created entity to a <see cref="DbContext"/> or apply any tracking
+        /// or initialization logic beyond construction.
+        /// </remarks>
+        public IChillEntity ActivateChillEntity(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
+
+            return (IChillEntity)res;
+        }
+
+        /// <summary>
+        /// Instantiates a <see cref="IChillQuery{IChillEntity}"/> implementation based on the
+        /// provided Chill type identifier.
+        /// </summary>
+        /// <param name="ChillType">
+        /// The short Chill type name used to resolve the fully qualified query type
+        /// within the current context assembly.
+        /// </param>
+        /// <returns>
+        /// A newly created instance of a type implementing
+        /// <see cref="IChillQuery{IChillEntity}"/>.
+        /// </returns>
+        /// <exception cref="ChillException">
+        /// Thrown when the Chill type cannot be resolved or instantiated using
+        /// the current context assembly.
+        /// </exception>
+        public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
+        {
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
+
+            return (IChillQuery<IChillEntity>)res;
         }
 
         private IChillEntity? _Find(object DbSet, Guid Guid)
@@ -175,11 +235,6 @@ namespace ChillSharp
 
             return (IChillEntity)result;
         }
-
-        //public IChillEntityMetadata? Metadata(string ChillType)
-        //{
-
-        //}
 
         /// <summary>
         /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
@@ -368,4 +423,4 @@ namespace ChillSharp
             }
         }
     }
-}
+        }

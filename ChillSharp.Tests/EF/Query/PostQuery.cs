@@ -11,7 +11,10 @@ namespace ChillSharp.Tests.EF.Query
 {
     public class PostQuery : ChillQuery
     {
-        [ChillProperty]
+        [ChillProperty(
+            UniquePropertyKeyString: "34FA82DC-5DAF-4BA8-978F-D94CE2564240",
+            PrimaryLanguageLabel: "Title",
+            SecondaryLanguageLabel: "Titolo")]
         public string Title { get; set; } = string.Empty;
 
         /// <summary>
