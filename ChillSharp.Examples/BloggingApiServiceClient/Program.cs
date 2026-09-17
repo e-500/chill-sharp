@@ -1,52 +1,31 @@
-﻿using ChillSharp.Api;
+﻿/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
-using ChillSharp.EF;
-using ChillSharp.Examples.CustomChillApiService.Model;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System.Collections.Generic;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Text.Json;
 using ChillDtoEntity = ChillSharp.Client.Dto.ChillDtoEntity;
 
-namespace ChillSharp.Examples.CustomChillApiService
+namespace ChillSharp.Examples.BloggingApiService
 {
-    internal class Program
-	{
-        private static void StartApiService()
-        {
-            var apiServer = Task.Run(() =>
-            {
-                // Activate BloggingContext (implements IChillContext)
-                var ctx = new BloggingContext();
-                ctx.Database.Migrate();
-                
-				// CREATE
-				var builder = WebApplication.CreateBuilder(new string[0]);
-                
-				// ADD
-				builder.Services.AddDbContext<BloggingContext>(options =>
-                        options.UseSqlite($"Data Source={ctx.DbPath}"));
-                builder.Services.AddChillApi<BloggingContext>();
-
-				// BUILD
-                var app = builder.Build();
-                
-				// MAP
-				app.MapChillApi();
-                app.MapGet("/", () => "CustomChillApiService is running!");
-                
-				// RUN
-				app.Run();
-            });
-            apiServer.Wait(5000);
-        }
-
+    internal class ProgramWithTestData
+    {
         private static ChillDtoEntity CreateBlog(ChillSharpClient Client)
         {
             // Create a new Blog
@@ -157,12 +136,23 @@ namespace ChillSharp.Examples.CustomChillApiService
 		{
             try
             {
-                StartApiService();
+                // Init client
                 ChillSharpClient cli = new ChillSharpClient("http://localhost:5000/api/chill");
+
+                // Creating a blog
+                Console.WriteLine("Creating a new blog");
                 var blog = CreateBlog(cli);
+
+                // Create first blog post
+                Console.WriteLine("Creating the first blog post");
                 var post1 = CreateFirstBlogPost(cli, blog);
+
+                // Create a chunk of posts
+                Console.WriteLine("Creating 20 blog posts");
                 CreateTwentyPosts(cli, blog);
 
+                // Quering for blog entity and Posts collection in one query
+                Console.WriteLine("Quering blog with posts");
                 PrintBlogByGuid(cli, blog.Guid);
             }
             catch (Exception ex)

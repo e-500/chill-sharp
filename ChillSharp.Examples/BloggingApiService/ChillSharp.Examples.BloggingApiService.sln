@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36811.4 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Examples.BloggingApiService", "ChillSharp.Examples.BloggingApiService.csproj", "{265458D8-8689-2F01-98FF-53476AA20B49}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{265458D8-8689-2F01-98FF-53476AA20B49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{265458D8-8689-2F01-98FF-53476AA20B49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{265458D8-8689-2F01-98FF-53476AA20B49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{265458D8-8689-2F01-98FF-53476AA20B49}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {526E4B49-4B3E-4D6A-B9F9-ACAE53E79D0D}
+	EndGlobalSection
+EndGlobal
