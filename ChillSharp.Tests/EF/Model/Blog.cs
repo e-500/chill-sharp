@@ -54,7 +54,8 @@ namespace ChillSharp.Tests.EF.Model
         public string Url { get; set; } = string.Empty;
 
 
-        [ChillProperty(
+        [ChillProperty]
+        [ChillRelation(
             UniquePropertyKeyString: "9501DEFE-7504-45E4-884B-D2BAB3BE9701",
             PrimaryLanguageLabel: "Blog posts",
             SecondaryLanguageLabel: "Post del blog",

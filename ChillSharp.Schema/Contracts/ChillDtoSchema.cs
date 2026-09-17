@@ -20,6 +20,7 @@
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -81,9 +82,16 @@ namespace ChillSharp.Schema.Contracts
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
 
+        /// <summary>
+        /// Relation metadata derived from annotated collection properties.
+        /// </summary>
+        public List<ChillDtoSchemaRelation> Relations { get; set; } = new();
+
         IReadOnlyDictionary<string, string> IChillDtoSchema.Metadata => Metadata;
 
         IReadOnlyList<IChillDtoPropertySchema> IChillDtoSchema.Properties => Properties;
+
+        IReadOnlyList<IChillDtoSchemaRelation> IChillDtoSchema.Relations => Relations;
 
         /// <summary>
         /// Builds schema metadata from an entity instance.
@@ -124,7 +132,11 @@ namespace ChillSharp.Schema.Contracts
 
             var ef_props = chillEntity.GetType().GetProperties().Where(prop =>
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
+            var entityProperties = ef_props.ToList();
+            var relationProperties = chillEntity.GetType().GetProperties().Where(prop =>
+                prop.IsDefined(typeof(ChillRelationAttribute), false)).ToList();
+            schema.Properties = entityProperties.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
+            schema.Relations = BuildRelations(type, relationProperties, shrinkTypePrefix, context);
 
             return schema;
         }
@@ -172,6 +184,222 @@ namespace ChillSharp.Schema.Contracts
             schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, shrinkTypePrefix, context, cultureName)).ToList();
 
             return schema;
+        }
+
+        private static List<ChillDtoSchemaRelation> BuildRelations(
+            Type parentType,
+            IEnumerable<PropertyInfo> properties,
+            string shrinkTypePrefix,
+            IChillContext? context)
+        {
+            var relations = new List<ChillDtoSchemaRelation>();
+
+            foreach (var property in properties)
+            {
+                var relation = CreateRelation(parentType, property, shrinkTypePrefix, context);
+                if (relation != null)
+                {
+                    relations.Add(relation);
+                }
+            }
+
+            return relations;
+        }
+
+        private static ChillDtoSchemaRelation? CreateRelation(
+            Type parentType,
+            PropertyInfo collectionProperty,
+            string shrinkTypePrefix,
+            IChillContext? context)
+        {
+            var propertySchema = ChillDtoPropertySchema.FromPropertyInfo(collectionProperty, shrinkTypePrefix, context);
+            if (propertySchema.PropertyType != ChillDtoPropertyType.ChillEntityCollection)
+            {
+                return null;
+            }
+
+            var relationEntityType = GetCollectionElementType(collectionProperty.PropertyType);
+            if (relationEntityType == null)
+            {
+                return null;
+            }
+
+            var parentReferenceProperty = ResolveParentReferenceProperty(parentType, relationEntityType, shrinkTypePrefix, context);
+            if (parentReferenceProperty == null)
+            {
+                return null;
+            }
+
+            var relationAttr = collectionProperty.GetCustomAttribute<ChillRelationAttribute>(inherit: true);
+            var relationQueryType = ResolveRelationQueryType(collectionProperty, relationEntityType, relationAttr, shrinkTypePrefix, context);
+            var fixedValues = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                [parentReferenceProperty.Name] = "@{mock}"
+            };
+
+            var fixedQueryValues = new Dictionary<string, string>(StringComparer.Ordinal);
+            if (SupportsParentQueryFilter(relationQueryType, parentReferenceProperty, shrinkTypePrefix, context))
+            {
+                fixedQueryValues[parentReferenceProperty.Name] = "@{mock}";
+            }
+
+            return new ChillDtoSchemaRelation
+            {
+                ChillType = ChillTypeResolver.NormalizeChillType(relationEntityType, shrinkTypePrefix),
+                ChillQuery = relationQueryType == null
+                    ? string.Empty
+                    : ChillTypeResolver.NormalizeChillType(relationQueryType, shrinkTypePrefix),
+                FixedValues = fixedValues,
+                FixedQueryValues = fixedQueryValues,
+                RelationLabel = new ChillDtoSchemaRelationLabel
+                {
+                    LabelGuid = relationAttr?.UniquePropertyKey,
+                    PrimaryDefaultText = relationAttr?.PrimaryLanguageLabel ?? collectionProperty.Name,
+                    SecondaryDefaultText = relationAttr?.SecondaryLanguageLabel ?? relationAttr?.PrimaryLanguageLabel ?? collectionProperty.Name
+                }
+            };
+        }
+
+        private static PropertyInfo? ResolveParentReferenceProperty(
+            Type parentType,
+            Type relationEntityType,
+            string shrinkTypePrefix,
+            IChillContext? context)
+        {
+            var normalizedParentType = ChillTypeResolver.NormalizeChillType(parentType, shrinkTypePrefix);
+
+            var candidates = relationEntityType
+                .GetProperties()
+                .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), inherit: true))
+                .Select(prop => new
+                {
+                    Property = prop,
+                    Schema = ChillDtoPropertySchema.FromPropertyInfo(prop, shrinkTypePrefix, context)
+                })
+                .Where(x => x.Schema.PropertyType == ChillDtoPropertyType.ChillEntity
+                    && string.Equals(x.Schema.ReferenceChillType, normalizedParentType, StringComparison.Ordinal))
+                .Select(x => x.Property)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+
+            return candidates
+                .OrderByDescending(prop => prop.PropertyType == parentType)
+                .ThenByDescending(prop => string.Equals(prop.Name, parentType.Name, StringComparison.Ordinal))
+                .ThenBy(prop => prop.Name, StringComparer.Ordinal)
+                .First();
+        }
+
+        private static Type? ResolveRelationQueryType(
+            PropertyInfo collectionProperty,
+            Type relationEntityType,
+            ChillRelationAttribute? relationAttr,
+            string shrinkTypePrefix,
+            IChillContext? context)
+        {
+            var explicitReferenceQueryType = relationAttr?.ReferenceChillTypeQuery;
+            if (!string.IsNullOrWhiteSpace(explicitReferenceQueryType))
+            {
+                try
+                {
+                    var assembly = context?.GetType().Assembly ?? collectionProperty.DeclaringType?.Assembly;
+                    var chillTypePrefix = context?.GetChillTypePrefix() ?? shrinkTypePrefix.Trim().TrimEnd('.');
+                    if (assembly != null)
+                    {
+                        return ChillTypeResolver.ResolveType(assembly, explicitReferenceQueryType, chillTypePrefix);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            var propertySchema = ChillDtoPropertySchema.FromPropertyInfo(collectionProperty, shrinkTypePrefix, context);
+            if (!string.IsNullOrWhiteSpace(propertySchema.ReferenceChillTypeQuery))
+            {
+                try
+                {
+                    var assembly = context?.GetType().Assembly ?? collectionProperty.DeclaringType?.Assembly;
+                    var chillTypePrefix = context?.GetChillTypePrefix() ?? shrinkTypePrefix.Trim().TrimEnd('.');
+                    if (assembly != null)
+                    {
+                        return ChillTypeResolver.ResolveType(assembly, propertySchema.ReferenceChillTypeQuery, chillTypePrefix);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            var assemblyToScan = context?.GetType().Assembly ?? collectionProperty.DeclaringType?.Assembly;
+            if (assemblyToScan == null)
+            {
+                return null;
+            }
+
+            var candidates = ChillAssemblyDiscovery.GetCandidateAssemblies(assemblyToScan)
+                .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
+                .Where(type => (type.IsPublic || type.IsNestedPublic)
+                    && type.IsClass
+                    && !type.IsAbstract
+                    && typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type)
+                    && ChillQueryTypeResolver.ResolveRelatedEntityType(type) == relationEntityType)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+
+            var preferredName = relationEntityType.Name + "Query";
+            return candidates.FirstOrDefault(type => string.Equals(type.Name, preferredName, StringComparison.Ordinal))
+                ?? (candidates.Count == 1 ? candidates[0] : null);
+        }
+
+        private static bool SupportsParentQueryFilter(
+            Type? relationQueryType,
+            PropertyInfo parentReferenceProperty,
+            string shrinkTypePrefix,
+            IChillContext? context)
+        {
+            if (relationQueryType == null)
+            {
+                return false;
+            }
+
+            var queryProperty = relationQueryType.GetProperty(parentReferenceProperty.Name);
+            if (queryProperty == null || !queryProperty.IsDefined(typeof(ChillPropertyAttribute), inherit: true))
+            {
+                return false;
+            }
+
+            var schema = ChillDtoPropertySchema.FromPropertyInfo(queryProperty, shrinkTypePrefix, context);
+            var normalizedParentType = ChillTypeResolver.NormalizeChillType(parentReferenceProperty.PropertyType, shrinkTypePrefix);
+
+            return schema.PropertyType == ChillDtoPropertyType.ChillEntity
+                && string.Equals(schema.ReferenceChillType, normalizedParentType, StringComparison.Ordinal);
+        }
+
+        private static Type? GetCollectionElementType(Type collectionType)
+        {
+            if (collectionType.IsArray)
+            {
+                var elementType = collectionType.GetElementType();
+                return elementType != null && typeof(IChillEntity).IsAssignableFrom(elementType)
+                    ? elementType
+                    : null;
+            }
+
+            var enumerableType = new[] { collectionType }
+                .Concat(collectionType.GetInterfaces())
+                .FirstOrDefault(type => type.IsGenericType
+                    && type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
+                    && typeof(IChillEntity).IsAssignableFrom(type.GetGenericArguments()[0]));
+
+            return enumerableType?.GetGenericArguments()[0];
         }
 
         private static string? ResolveQueryRelatedChillType(Type queryType, string shrinkTypePrefix)

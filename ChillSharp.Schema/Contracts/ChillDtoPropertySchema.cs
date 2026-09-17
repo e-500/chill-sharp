@@ -55,6 +55,7 @@ namespace ChillSharp.Schema.Contracts
         {
             var chillAttr = propInfo.GetCustomAttribute<ChillPropertyAttribute>();
             var propertyType = propInfo.PropertyType;
+            var hasExplicitPropertyType = chillAttr is { PropertyType: not ChillDtoPropertyType.Unknown };
             var schema = new ChillDtoPropertySchema
             {
                 Name = propInfo.Name,
@@ -65,7 +66,9 @@ namespace ChillSharp.Schema.Contracts
                     context,
                     cultureName),
                 MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
-                PropertyType = ChillDtoPropertyMapper.Map(propertyType),
+                PropertyType = hasExplicitPropertyType
+                    ? chillAttr!.PropertyType
+                    : ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
                 IsReadOnly = ResolveIsReadOnly(propInfo, chillAttr),
                 MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
@@ -85,7 +88,10 @@ namespace ChillSharp.Schema.Contracts
             };
 
             ApplyPrecisionFallbacks(propInfo, schema);
-            PromoteStringJsonProperties(schema);
+            if (!hasExplicitPropertyType)
+            {
+                PromoteStringJsonProperties(schema);
+            }
 
             if (!string.IsNullOrEmpty(shrinkTypePrefix) && !shrinkTypePrefix.EndsWith("."))
                 shrinkTypePrefix += ".";
@@ -128,6 +134,11 @@ namespace ChillSharp.Schema.Contracts
         /// Detailed description of the property's logical Chill type.
         /// </summary>
         public ChillDtoPropertyType PropertyType { get; set; } = new ChillDtoPropertyType();
+
+        /// <summary>
+        /// Agent-friendly string form of <see cref="PropertyType"/> for request payload construction.
+        /// </summary>
+        public string SimplePropertyType => ToSimplePropertyType(PropertyType);
 
         /// <summary>
         /// CLR property name.
@@ -547,6 +558,28 @@ namespace ChillSharp.Schema.Contracts
             {
                 schema.PropertyType = ChillDtoPropertyType.Json;
             }
+        }
+
+        private static string ToSimplePropertyType(ChillDtoPropertyType propertyType)
+        {
+            return propertyType switch
+            {
+                ChillDtoPropertyType.Guid => "guid",
+                ChillDtoPropertyType.Integer => "int",
+                ChillDtoPropertyType.Decimal => "decimal",
+                ChillDtoPropertyType.Date => "date",
+                ChillDtoPropertyType.Time => "time",
+                ChillDtoPropertyType.DateTime => "datetime",
+                ChillDtoPropertyType.Duration => "duration",
+                ChillDtoPropertyType.Boolean => "bool",
+                ChillDtoPropertyType.String => "string",
+                ChillDtoPropertyType.Text => "text",
+                ChillDtoPropertyType.Json => "json",
+                ChillDtoPropertyType.ChillEntity => "chill-entity",
+                ChillDtoPropertyType.ChillEntityCollection => "chill-entity-collection",
+                ChillDtoPropertyType.ChillQuery => "chill-query",
+                _ => "unknown"
+            };
         }
 
         private static string ResolveRegexPattern(PropertyInfo propInfo)

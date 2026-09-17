@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Attachment", "Ch
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Schema.Abstractions", "ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj", "{E2D35C70-0E53-4AB8-B0F2-B3F43A326741}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChillSharp.Template", "ChillSharp.Template\ChillSharp.Template.csproj", "{9DAE055C-224F-4C6D-9FAE-A86D07A56210}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{E2D35C70-0E53-4AB8-B0F2-B3F43A326741}.Release|x64.Build.0 = Release|Any CPU
 		{E2D35C70-0E53-4AB8-B0F2-B3F43A326741}.Release|x86.ActiveCfg = Release|Any CPU
 		{E2D35C70-0E53-4AB8-B0F2-B3F43A326741}.Release|x86.Build.0 = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|x64.Build.0 = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Debug|x86.Build.0 = Debug|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|x64.ActiveCfg = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|x64.Build.0 = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|x86.ActiveCfg = Release|Any CPU
+		{9DAE055C-224F-4C6D-9FAE-A86D07A56210}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,174 @@
+<section class="chill-form-shell">
+  @if (showSchemaHeader() && schema()?.displayName) {
+    <header class="form-header">
+      <p class="form-kicker"><app-chill-i18n-label [labelGuid]="'2DDE962B-086C-47B1-8A48-B16F0E34C0A3'" [primaryDefaultText]="'Chill schema'" [secondaryDefaultText]="'Schema Chill'" /></p>
+      <h2>{{ schema()?.displayName }}</h2>
+    </header>
+  }
+
+  @if (layout.isLayoutEditingEnabled()) {
+    <div class="form-actions">
+      <button type="button" class="layout-button" (click)="toggleEditMode()" [disabled]="isSavingLayout()">
+        @if (isSavingLayout()) {
+          <app-chill-i18n-button-label [labelGuid]="'F9BFE458-EA0D-4E27-A8A9-C7EE0C02F9FB'" [primaryDefaultText]="'Saving layout...'" [secondaryDefaultText]="'Salvataggio layout...'" />
+        } @else if (isEditMode()) {
+          <app-chill-i18n-button-label [labelGuid]="'D7EA89E2-4AF2-455A-8FA9-33540E61D7C5'" [primaryDefaultText]="'Done'" [secondaryDefaultText]="'Fine'" />
+        } @else {
+          <app-chill-i18n-button-label [labelGuid]="'872638CF-0346-4351-A53A-62A6B78B94FE'" [primaryDefaultText]="'Edit mode'" [secondaryDefaultText]="'Modalita modifica'" />
+        }
+      </button>
+
+      @if (isEditMode()) {
+        <label class="column-count">
+          <span><app-chill-i18n-label [labelGuid]="'665D0BFB-D1BB-4D53-B58A-C578CA559A0B'" [primaryDefaultText]="'Columns'" [secondaryDefaultText]="'Colonne'" /></span>
+          <select
+            [ngModel]="layoutState().columnCount"
+            (ngModelChange)="updateColumnCount($event)"
+            name="form-column-count">
+            @for (columnCount of columnOptions; track columnCount) {
+              <option [ngValue]="columnCount">{{ columnCount }}</option>
+            }
+          </select>
+        </label>
+
+        <button type="button" class="layout-button secondary" (click)="addEmptyCell()">
+          <app-chill-i18n-button-label [labelGuid]="'7B8C7557-FB39-4C6C-B70F-D70F87EC7517'" [primaryDefaultText]="'Add empty cell'" [secondaryDefaultText]="'Aggiungi cella vuota'" />
+        </button>
+
+        <button type="button" class="layout-button secondary" (click)="resetLayout()">
+          <app-chill-i18n-button-label [labelGuid]="'408CE646-58A0-4657-8192-D1C79BFE7F91'" [primaryDefaultText]="'Reset'" [secondaryDefaultText]="'Reset'" />
+        </button>
+
+        <button type="button" class="layout-button secondary" (click)="refreshSchemaFromModel()" [disabled]="isSavingLayout()">
+          @if (isRefreshingSchema()) {
+            <app-chill-i18n-button-label [labelGuid]="'8628775B-B831-44F2-8A38-909F40E2F7B3'" [primaryDefaultText]="'Updating schema...'" [secondaryDefaultText]="'Aggiornamento schema...'" />
+          } @else {
+            <app-chill-i18n-button-label [labelGuid]="'62953302-B951-4FD1-BD08-4B7649A91BAF'" [primaryDefaultText]="'Update'" [secondaryDefaultText]="'Aggiorna'" />
+          }
+        </button>
+      }
+    </div>
+  }
+
+  @if (layoutError()) {
+    <div class="empty-state error-state">{{ layoutError() }}</div>
+  }
+
+  @if (resolvedSubmitError()) {
+    <div class="notice error notice-dismissible">
+      <span>{{ resolvedSubmitError() }}</span>
+      <button type="button" class="notice-close" (click)="clearSubmitError()" [attr.aria-label]="chill.T('0C4C06EF-A105-468F-B1E2-AEA8EB96A4DC', 'Dismiss error', 'Chiudi errore')">x</button>
+    </div>
+  }
+
+  @if (genericValidationMessage()) {
+    <div class="notice error">
+      <span>{{ genericValidationMessage() }}</span>
+    </div>
+  }
+
+  @if (properties().length === 0) {
+    <div class="empty-state">{{ chill.T('3D7ABF07-6E0C-4F99-A0C8-C936C44322C6', 'No schema properties available.', 'Nessuna proprietà di schema disponibile.') }}</div>
+  } @else {
+    <form class="chill-form" (ngSubmit)="submit()">
+      <div class="form-grid" [style.grid-template-columns]="gridTemplateColumns()">
+        @for (item of layoutItems(); track trackByProperty($index, item)) {
+          <section
+            class="form-cell"
+            [class.empty-cell]="item.kind === 'empty' || (item.kind === 'property' && item.hidden && !isEditMode())"
+            [class.edit-mode]="isEditMode()"
+            [style.grid-column]="'span ' + item.span"
+            [draggable]="isEditMode()"
+            (dragstart)="beginDrag($event, item.id)"
+            (dragover)="allowDrop($event)"
+            (drop)="dropProperty(item.id)"
+            (dragend)="endDrag()">
+            @if (isEditMode()) {
+              <div
+                class="cell-toolbar"
+                (click)="$event.stopPropagation()">
+                <div class="cell-toolbar__title-row">
+                  <span>
+                    @if (item.kind === 'property') {
+                      {{ item.property.displayName || item.property.name }}
+                    } @else {
+                      {{ chill.T('278389E7-9C0F-4849-B7C8-B904CC0E4AAA', 'Empty cell', 'Cella vuota') }}
+                    }
+                  </span>
+                  @if (item.kind === 'property') {
+                    <input
+                      type="checkbox"
+                      class="field-visibility-checkbox"
+                      [checked]="!item.hidden"
+                      (mousedown)="$event.stopPropagation()"
+                      (click)="$event.stopPropagation()"
+                      (change)="updatePropertyHidden(item.property.name, !$any($event.target).checked)"
+                      [name]="'hidden-' + item.property.name"
+                      [attr.aria-label]="chill.T('D72C8236-361A-4053-86B8-6F5A9D6983F6', 'Show field', 'Mostra campo')" />
+                  }
+                </div>
+                <div class="cell-toolbar__settings-row">
+                  @if (item.kind === 'property') {
+                    <button type="button" class="cell-toolbar__icon-button" (click)="openPropertySettings(item.property)" [attr.aria-label]="chill.T('40E9838A-70F2-4E89-BE38-BBE44027D253', 'Edit property settings', 'Modifica impostazioni proprietà')">
+                      <span class="material-symbol-icon">tune</span>
+                    </button>
+                    <select
+                      class="property-type-select"
+                      [ngModel]="item.property.propertyType"
+                      (ngModelChange)="updatePropertyType(item.property, $event)"
+                      [name]="'propertyType-' + item.property.name"
+                      [attr.aria-label]="chill.T('A1803D67-C40D-41AF-BFD2-8F9B0E34C48B', 'Property type', 'Tipo proprietà')">
+                      @for (option of propertyTypeOptions; track option.value) {
+                        <option [ngValue]="option.value" [disabled]="isPropertyTypeOptionDisabled(item.property, option.value)">{{ option.label }}</option>
+                      }
+                    </select>
+                  } @else {
+                    <span class="cell-toolbar__icon-spacer"></span>
+                    <span class="cell-toolbar__select-spacer"></span>
+                  }
+                  <div class="span-controls">
+                    <button type="button" class="cell-toolbar__icon-button" (click)="decreaseSpan(item.id)" [attr.aria-label]="chill.T('DB73501A-618F-48C7-A6BC-613B44729887', 'Decrease field span', 'Riduci larghezza campo')">
+                      <span class="material-symbol-icon" aria-hidden="true">remove</span>
+                    </button>
+                    <span class="span-controls__value">{{ item.span }}</span>
+                    <button type="button" class="cell-toolbar__icon-button" (click)="increaseSpan(item.id)" [attr.aria-label]="chill.T('63E1E823-9015-4551-A43B-4B672E988B4A', 'Increase field span', 'Aumenta larghezza campo')">
+                      <span class="material-symbol-icon" aria-hidden="true">add</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+            @else 
+            {
+              @if (item.kind === 'property' && !item.hidden) {
+                <app-chill-polymorphic-input
+                  [form]="form()"
+                  [schema]="schema()"
+                  [propertyNames]="[item.property.name]"
+                  [readonlyPropertyNames]="readonlyPropertyNames()"
+                  [externalErrors]="serverFieldErrors()"
+                  (validityChange)="updatePropertyValidity(item.property.name, $event)"
+                  (fieldBlur)="handlePropertyBlur($event)" />
+              } @else {
+                <div class="empty-cell-body"></div>
+              }
+            }
+          </section>
+        }
+      </div>
+
+      @if (!isEditMode() && renderSubmitInsideForm() && !hasCustomSubmitHandler()) {
+        <button type="submit" [disabled]="!canSubmit()">
+          @if (submitLabelGuid() && submitPrimaryDefaultText() && submitSecondaryDefaultText()) {
+            <app-chill-i18n-button-label
+              [labelGuid]="submitLabelGuid()!"
+              [primaryDefaultText]="submitPrimaryDefaultText()!"
+              [secondaryDefaultText]="submitSecondaryDefaultText()!" />
+          } @else {
+            {{ submitLabel() }}
+          }
+        </button>
+      }
+    </form>
+  }
+</section>

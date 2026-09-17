@@ -357,7 +357,7 @@ namespace ChillSharp.Tests
                 await using (var verificationContext = TestApiHost.CreateDbContext())
                 {
                     var createdPost = await verificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
-                    Assert.AreEqual($"Configured author::Configured title::{createdPost.Checksum}", createdPost.FullTextContent);
+                    Assert.AreEqual($"configured author::configured title::{createdPost.Checksum}", createdPost.FullTextContent);
                 }
 
                 client.SetEntityOptions(new ChillDtoEntityOptions
@@ -387,7 +387,7 @@ namespace ChillSharp.Tests
 
                 await using var updatedVerificationContext = TestApiHost.CreateDbContext();
                 var updatedPost = await updatedVerificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
-                Assert.AreEqual("Configured title updated|dummy-user|", updatedPost.FullTextContent);
+                Assert.AreEqual("configured title updated|dummy-user|", updatedPost.FullTextContent);
 
                 var blog = client.Create(new ChillDtoEntity
                 {
@@ -429,7 +429,7 @@ namespace ChillSharp.Tests
 
                 await using var relatedVerificationContext = TestApiHost.CreateDbContext();
                 var relatedPost = await relatedVerificationContext.Post.FirstAsync(x => x.Guid == related.Guid);
-                Assert.AreEqual("Related blog https://related.example Related author", relatedPost.FullTextContent);
+                Assert.AreEqual("related blog https://related.example related author", relatedPost.FullTextContent);
             }
             finally
             {
@@ -558,8 +558,8 @@ namespace ChillSharp.Tests
             TestApiHost.EnsureStarted(6002);
 
             var client = new ChillSharpClient("http://localhost:6002/api/chill");
-            var tokenA = $"alpha-{Guid.NewGuid():N}";
-            var tokenB = $"beta-{Guid.NewGuid():N}";
+            var tokenA = $"Perché-{Guid.NewGuid():N}";
+            var tokenB = $"Beta-{Guid.NewGuid():N}";
 
             client.SetEntityOptions(new ChillDtoEntityOptions
             {
@@ -567,7 +567,7 @@ namespace ChillSharp.Tests
                 FullTextContentFormatString = "{Title} {Author}"
             });
 
-            client.Create(new ChillDtoEntity
+            var matchingPost = client.Create(new ChillDtoEntity
             {
                 ChillType = "Model.Post",
                 Guid = Guid.NewGuid(),
@@ -605,7 +605,7 @@ namespace ChillSharp.Tests
                 ChillType = "Query.PostQuery",
                 ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
             };
-            query.Properties.Add("FullTextSearch", $"{tokenA} {tokenB}");
+            query.Properties.Add("FullTextSearch", $"{tokenA.Replace("é", "è", StringComparison.Ordinal)} {tokenB}");
 
             var result = client.Query(query);
 
@@ -614,6 +614,158 @@ namespace ChillSharp.Tests
             Assert.HasCount(1, result.Results);
             Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
             Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
+
+            using var db = TestApiHost.CreateDbContext();
+            var persistedPost = db.Post.First(x => x.Guid == matchingPost.Guid);
+            Assert.IsTrue(persistedPost.FullTextContent.Contains("perche", StringComparison.Ordinal));
+            Assert.IsFalse(persistedPost.FullTextContent.Contains('é'));
+            Assert.IsFalse(persistedPost.FullTextContent.Contains('è'));
+        }
+
+        [TestMethod]
+        public void Step009_QueryFullTextSearchUsesQuotedPhrasesWithoutTokenSplit()
+        {
+            TestApiHost.EnsureStarted(6002);
+
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
+            var termA = $"La{Guid.NewGuid():N}";
+            var termB = $"Nazione{Guid.NewGuid():N}";
+
+            client.SetEntityOptions(new ChillDtoEntityOptions
+            {
+                ChillType = "Model.Post",
+                FullTextContentFormatString = "{Title} {Author}"
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = $"{termA} {termB}",
+                    ["Author"] = "quoted-phrase-match"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = termA,
+                    ["Author"] = $"gap {termB}"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = $"Del{termA} {termB}",
+                    ["Author"] = "quoted-leading-wildcard-match"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = $"{termA} {termB}Extra",
+                    ["Author"] = "quoted-trailing-wildcard-match"
+                }
+            });
+
+            var doubleQuotedQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            doubleQuotedQuery.Properties.Add("FullTextSearch", $"\"{termA} {termB}\"");
+
+            var doubleQuotedResult = client.Query(doubleQuotedQuery);
+
+            Assert.IsNotNull(doubleQuotedResult);
+            Assert.IsNotNull(doubleQuotedResult.Results);
+            Assert.HasCount(1, doubleQuotedResult.Results);
+            Assert.AreEqual($"{termA} {termB}", doubleQuotedResult.Results[0].GetString("Title"));
+
+            var singleQuotedQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            singleQuotedQuery.Properties.Add("FullTextSearch", $"'{termA} {termB}'");
+
+            var singleQuotedResult = client.Query(singleQuotedQuery);
+
+            Assert.IsNotNull(singleQuotedResult);
+            Assert.IsNotNull(singleQuotedResult.Results);
+            Assert.HasCount(1, singleQuotedResult.Results);
+            Assert.AreEqual($"{termA} {termB}", singleQuotedResult.Results[0].GetString("Title"));
+
+            var leadingWildcardQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            leadingWildcardQuery.Properties.Add("FullTextSearch", $"\"*{termA} {termB}\"");
+
+            var leadingWildcardResult = client.Query(leadingWildcardQuery);
+
+            Assert.IsNotNull(leadingWildcardResult);
+            Assert.IsNotNull(leadingWildcardResult.Results);
+            Assert.HasCount(2, leadingWildcardResult.Results);
+            Assert.IsTrue(leadingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-phrase-match"));
+            Assert.IsTrue(leadingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-leading-wildcard-match"));
+
+            var percentLeadingWildcardQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            percentLeadingWildcardQuery.Properties.Add("FullTextSearch", $"\"%{termA.ToLowerInvariant()} {termB.ToUpperInvariant()}\"");
+
+            var percentLeadingWildcardResult = client.Query(percentLeadingWildcardQuery);
+
+            Assert.IsNotNull(percentLeadingWildcardResult);
+            Assert.IsNotNull(percentLeadingWildcardResult.Results);
+            Assert.HasCount(2, percentLeadingWildcardResult.Results);
+            Assert.IsTrue(percentLeadingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-phrase-match"));
+            Assert.IsTrue(percentLeadingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-leading-wildcard-match"));
+
+            var trailingWildcardQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            trailingWildcardQuery.Properties.Add("FullTextSearch", $"\"{termA} {termB}*\"");
+
+            var trailingWildcardResult = client.Query(trailingWildcardQuery);
+
+            Assert.IsNotNull(trailingWildcardResult);
+            Assert.IsNotNull(trailingWildcardResult.Results);
+            Assert.HasCount(2, trailingWildcardResult.Results);
+            Assert.IsTrue(trailingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-phrase-match"));
+            Assert.IsTrue(trailingWildcardResult.Results.Any(x => x.GetString("Author") == "quoted-trailing-wildcard-match"));
+
+            var middleWildcardQuery = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            middleWildcardQuery.Properties.Add("FullTextSearch", $"\"{termA}*{termB}\"");
+
+            var middleWildcardResult = client.Query(middleWildcardQuery);
+
+            Assert.IsNotNull(middleWildcardResult);
+            Assert.IsNotNull(middleWildcardResult.Results);
+            Assert.HasCount(4, middleWildcardResult.Results);
         }
 
         [TestMethod]
@@ -936,6 +1088,55 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public void Step019_LookupUsesQuotedPhrasesWithoutTokenSplit()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-phrase-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var termA = $"lookup-la-{Guid.NewGuid():N}";
+            var termB = $"lookup-nazione-{Guid.NewGuid():N}";
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = $"{termA} {termB}",
+                Author = "quoted-lookup-match",
+                FullTextContent = ChillFullTextSearchNormalizer.Normalize($"{termA} {termB} quoted-lookup-match"),
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = termA,
+                Author = $"gap {termB}",
+                FullTextContent = ChillFullTextSearchNormalizer.Normalize($"{termA} gap {termB}"),
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+
+            var lookup = new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Model.Post",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            lookup.Properties["FullTextSearch"] = $"\"{termA} {termB}\"";
+
+            var result = dtoEngine.Lookup(lookup);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.HasCount(1, result.Results);
+            Assert.AreEqual($"{termA} {termB}", result.Results[0].Properties["Title"]?.ToString());
+            Assert.AreEqual("quoted-lookup-match", result.Results[0].Properties["Author"]?.ToString());
+        }
+
+        [TestMethod]
         public void Step020_BaseChillQueryOnQueryResolvesDbSetFromEntityType()
         {
             var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-autoquery-{Guid.NewGuid():N}.db");
@@ -1064,7 +1265,7 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 10, 30, 15, DateTimeKind.Utc), target.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtOffset.Kind);
-                Assert.AreEqual(DateTimeOffset.Parse("2024-01-10T12:30:15.000+02:00", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), target.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), target.RecordedAtOffset);
                 Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
                 Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
 
@@ -1092,7 +1293,27 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtOffset.Kind);
-                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(1)), targetWithoutOffsets.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 11, 30, 15, TimeSpan.Zero), targetWithoutOffsets.RecordedAtOffset);
+
+                var targetWithDateTimeOffsetValue = new TemporalMappingEntity();
+                var sourceValuesWithDateTimeOffsetValue = new Dictionary<string, object?>
+                {
+                    ["RecordedAtOffset"] = new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2))
+                };
+
+                applyPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    targetWithDateTimeOffsetValue,
+                    "Tests.TemporalMappingEntity",
+                    sourceValuesWithDateTimeOffsetValue,
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    "TemporalMappingEntity",
+                    false,
+                    null
+                ]);
+
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), targetWithDateTimeOffsetValue.RecordedAtOffset);
             }
             finally
             {

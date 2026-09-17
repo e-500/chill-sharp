@@ -1,0 +1,70 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.permissions-page {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  gap: 1.5rem;
+  padding: 1.5rem 0.5rem;
+  overflow-y: auto;
+}
+
+.hero {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.hero h1,
+.hero p {
+  margin: 0;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 64rem;
+  color: var(--text-muted);
+}
+
+.notice,
+.empty-state {
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border-color);
+  background: var(--surface-2);
+  color: var(--text-main);
+  font: inherit;
+}
+
+.empty-state {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 42rem;
+}
+
+.empty-state h2,
+.empty-state p {
+  margin: 0;
+}
+
+.notice.error {
+  color: #8b1e3f;
+  border-color: rgba(139, 30, 63, 0.2);
+  background: rgba(255, 240, 244, 0.92);
+}
+
+@media (max-width: 720px) {
+  .permissions-page {
+    padding: 1rem 0.25rem;
+  }
+}

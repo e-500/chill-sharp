@@ -265,9 +265,10 @@ namespace ChillSharp.Client
         /// </summary>
         /// <param name="chillType">The identifier of the chill type for which to retrieve the schema. Cannot be null or empty.</param>
         /// <param name="chillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
+        /// <param name="update">When <see langword="true"/>, asks the server to refresh persisted schema fields from the current runtime model.</param>
         /// <returns>A <see cref="ChillDtoSchema"/> object containing the schema definition if found; otherwise, <see langword="null"/>.</returns>
         /// <exception cref="ChillClientException">Thrown if the remote service returns an error response or if an unexpected error occurs during the request.</exception>
-        public ChillDtoSchema? GetSchema(string chillType, string chillViewCode, string? cultureName = null)
+        public ChillDtoSchema? GetSchema(string chillType, string chillViewCode, string? cultureName = null, bool update = false)
         {
             var encodedType = Uri.EscapeDataString(chillType);
             var encodedView = Uri.EscapeDataString(chillViewCode);
@@ -276,6 +277,10 @@ namespace ChillSharp.Client
             if (!string.IsNullOrWhiteSpace(effectiveCultureName))
             {
                 relativeUrl += $"&cultureName={Uri.EscapeDataString(effectiveCultureName)}";
+            }
+            if (update)
+            {
+                relativeUrl += "&update=true";
             }
 
             return SendJson<ChillDtoSchema>(HttpMethod.Get, BuildSchemaUrl(relativeUrl), payload: null);

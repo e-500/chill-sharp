@@ -1,0 +1,317 @@
+<section class="chill-table-shell">
+  @if (showSchemaHeader() && schema()?.displayName) {
+    <header class="table-header">
+      <div class="table-header__title-row">
+        <div class="table-header__title">
+          <p class="table-kicker"><app-chill-i18n-label [labelGuid]="'2DDE962B-086C-47B1-8A48-B16F0E34C0A3'" [primaryDefaultText]="'Chill schema'" [secondaryDefaultText]="'Schema Chill'" /></p>
+          <h2>{{ schema()?.displayName }}</h2>
+        </div>
+
+        <div class="table-header__mobile-controls">
+          @if (enableFullTextSearch()) {
+            <button
+              type="button"
+              class="table-search__icon-button table-search__icon-button--mobile"
+              (click)="toggleFullTextSearch()"
+              [attr.aria-label]="chill.T('54E62296-DB94-4973-A2AE-49902D5E25E5', 'Full text search', 'Ricerca full text')">
+              <span class="material-symbol-icon" aria-hidden="true">search</span>
+            </button>
+          }
+
+          @if (showMobileTaskClose()) {
+            <button
+              type="button"
+              class="table-header__task-close"
+              (click)="closeMobileTask()"
+              [attr.aria-label]="chill.T('D2566993-8138-408A-9153-904454528781', 'Close task', 'Chiudi attivita')">
+              <span class="material-symbol-icon" aria-hidden="true">close</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (enableFullTextSearch()) {
+        <div class="table-search" [class.is-open]="isFullTextSearchOpen()">
+          @if (isFullTextSearchOpen()) {
+            <input
+              #fullTextSearchInput
+              type="search"
+              class="table-search__input"
+              [ngModel]="fullTextSearchText()"
+              (ngModelChange)="updateFullTextSearchText($event)"
+              (keydown.enter)="submitFullTextSearch()"
+              (keydown.escape)="resetFullTextSearch()"
+              [placeholder]="chill.T('D513421E-1C00-425E-A89B-E736A440474F', 'Search', 'Cerca')"
+              [attr.aria-label]="chill.T('54E62296-DB94-4973-A2AE-49902D5E25E5', 'Full text search', 'Ricerca full text')" />
+            <button
+              type="button"
+              class="table-search__icon-button"
+              (click)="resetFullTextSearch()"
+              [attr.aria-label]="chill.T('34015BA4-E0CA-460E-B82B-A4E2D4D8A184', 'Clear', 'Pulisci')">
+              <span class="material-symbol-icon" aria-hidden="true">close</span>
+            </button>
+          } @else {
+            <button
+              type="button"
+              class="table-search__icon-button"
+              (click)="toggleFullTextSearch()"
+              [attr.aria-label]="chill.T('54E62296-DB94-4973-A2AE-49902D5E25E5', 'Full text search', 'Ricerca full text')">
+              <span class="material-symbol-icon" aria-hidden="true">search</span>
+            </button>
+          }
+        </div>
+      }
+    </header>
+  }
+
+  @if (layout.isLayoutEditingEnabled()) {
+    <div class="table-actions">
+      @if (isEditLayoutMode() && hiddenColumns().length > 0) {
+        <label class="hidden-column-picker">
+          <span>{{ chill.T('3758A6E6-85C1-481D-BF57-A531E79661B8', 'Show column', 'Mostra colonna') }}</span>
+          <select #hiddenColumnSelect (change)="revealColumn(hiddenColumnSelect.value); hiddenColumnSelect.value = ''">
+            <option value="">{{ chill.T('D1A15B17-B3C2-49A8-90AA-BAE81ECA8D69', 'Select hidden column', 'Seleziona colonna nascosta') }}</option>
+            @for (column of hiddenColumns(); track column.name) {
+              <option [value]="column.name">{{ column.displayName || column.name }}</option>
+            }
+          </select>
+        </label>
+      }
+      <button type="button" class="layout-button" (click)="toggleEditLayoutMode()" [disabled]="isSavingLayout()">
+        @if (isSavingLayout()) {
+          <app-chill-i18n-button-label [labelGuid]="'B46C82D8-443E-45DE-8D49-C270656B511E'" [primaryDefaultText]="'Saving layout...'" [secondaryDefaultText]="'Salvataggio layout...'" />
+        } @else if (isEditLayoutMode()) {
+          <app-chill-i18n-button-label [labelGuid]="'7C681F13-4245-447F-B66A-D9A3A500D322'" [primaryDefaultText]="'Done'" [secondaryDefaultText]="'Fine'" />
+        } @else {
+          <app-chill-i18n-button-label [labelGuid]="'9D0B43AC-47B4-4C63-98C7-DB0118C9C0CF'" [primaryDefaultText]="'Edit layout mode'" [secondaryDefaultText]="'Modalita modifica layout'" />
+        }
+      </button>
+      @if (isEditLayoutMode()) {
+        <button type="button" class="layout-button" (click)="refreshSchemaFromModel()" [disabled]="isSavingLayout()">
+          @if (isRefreshingSchema()) {
+            <app-chill-i18n-button-label [labelGuid]="'8628775B-B831-44F2-8A38-909F40E2F7B3'" [primaryDefaultText]="'Updating schema...'" [secondaryDefaultText]="'Aggiornamento schema...'" />
+          } @else {
+            <app-chill-i18n-button-label [labelGuid]="'62953302-B951-4FD1-BD08-4B7649A91BAF'" [primaryDefaultText]="'Update'" [secondaryDefaultText]="'Aggiorna'" />
+          }
+        </button>
+      }
+    </div>
+  }
+
+  @if (layoutError()) {
+    <div class="empty-state error-state">{{ layoutError() }}</div>
+  }
+
+  @if (visibleColumns().length === 0) {
+    <div class="empty-state">{{ chill.T('3D7ABF07-6E0C-4F99-A0C8-C936C44322C6', 'No schema properties available.', 'Nessuna proprietà di schema disponibile.') }}</div>
+  } @else {
+    <div class="table-wrap" [class.is-edit-layout-mode]="isEditLayoutMode()">
+      <table
+        class="chill-table"
+        [class.has-selection-column]="hasSelectionColumn()"
+        [class.is-edit-layout-mode]="isEditLayoutMode()"
+        [class.has-inline-cell-edit]="activeCellEdit() !== null"
+        [style.--chill-table-min-width]="tableMinimumWidth()"
+        [style.--chill-table-mobile-min-width]="mobileTableMinimumWidth()">
+        <colgroup>
+          @if (hasSelectionColumn()) {
+            <col class="selection-column" />
+          }
+          @if (hasActionColumn()) {
+            <col class="action-column" />
+          }
+          @for (column of visibleColumns(); track column.name) {
+            <col class="data-column" [style.width.%]="isColumnEditing(column) ? null : columnWidthPercent(column)" />
+          }
+        </colgroup>
+        <thead>
+          <tr>
+            @if (hasSelectionColumn()) {
+              <th scope="col" class="selection-column"></th>
+            }
+            @if (hasActionColumn()) {
+              <th scope="col" class="action-column">#</th>
+            }
+            @for (column of visibleColumns(); track column.name) {
+              <th
+                scope="col"
+                [draggable]="isEditLayoutMode()"
+                (dragstart)="beginDrag($event, column.name)"
+                (dragover)="allowDrop($event)"
+                (drop)="dropColumn(column.name)"
+                (dragend)="endDrag()"
+                [class.is-sortable]="!isEditLayoutMode() && canSortColumn(column)"
+                [class.is-sorted]="sortDirectionFor(column) !== null"
+                (click)="!isEditLayoutMode() && canSortColumn(column) && toggleColumnSort(column)">
+                @if (isEditLayoutMode()) {
+                  <div class="column-editor" (click)="$event.stopPropagation()">
+                    <div class="column-editor__title-row">
+                      <input
+                        type="text"
+                        class="column-name-input"
+                        [ngModel]="column.displayName"
+                        (ngModelChange)="updateColumnDisplayName(column.name, $event)"
+                        [name]="'displayName-' + column.name" />
+                      <input
+                        type="checkbox"
+                        [checked]="!column.hidden"
+                        (change)="updateColumnHidden(column.name, !$any($event.target).checked)"
+                        [name]="'hidden-' + column.name"
+                        [attr.aria-label]="chill.T('C6610992-9D61-4EBA-8D13-92F34521AB64', 'Show column', 'Mostra colonna')" />
+                    </div>
+                    <div class="column-editor__settings-row">
+                      <button
+                        type="button"
+                        class="column-icon-button"
+                        (click)="openPropertySettings(column)"
+                        [attr.aria-label]="chill.T('40E9838A-70F2-4E89-BE38-BBE44027D253', 'Edit property settings', 'Modifica impostazioni proprietà')">
+                        <span class="material-symbol-icon">tune</span>
+                      </button>
+                      <select
+                        class="property-type-select"
+                        [ngModel]="column.propertyType"
+                        (ngModelChange)="updatePropertyType(column, $event)"
+                        [name]="'propertyType-' + column.name"
+                        [attr.aria-label]="chill.T('A1803D67-C40D-41AF-BFD2-8F9B0E34C48B', 'Property type', 'Tipo proprietà')">
+                        @for (option of propertyTypeOptions; track option.value) {
+                          <option [ngValue]="option.value" [disabled]="isPropertyTypeOptionDisabled(column, option.value)">{{ option.label }}</option>
+                        }
+                      </select>
+                      <div class="column-width-controls" [attr.aria-label]="chill.T('53796BE9-AF5C-487D-9B26-468C1B75FE54', 'Column width proportion', 'Proporzione larghezza colonna')">
+                        <button
+                          type="button"
+                          class="column-icon-button"
+                          (click)="updateColumnWidthProportion(column.name, -1)"
+                          [disabled]="!canDecreaseColumnWidth(column)"
+                          [attr.aria-label]="chill.T('8C3198E8-F1CA-4B1B-A91B-A02B48FF9219', 'Decrease column width', 'Riduci larghezza colonna')">
+                          <span class="material-symbol-icon" aria-hidden="true">remove</span>
+                        </button>
+                        <span class="column-width-value">{{ columnWidthLabel(column) }}</span>
+                        <button
+                          type="button"
+                          class="column-icon-button"
+                          (click)="updateColumnWidthProportion(column.name, 1)"
+                          [disabled]="!canIncreaseColumnWidth(column)"
+                          [attr.aria-label]="chill.T('30EA851D-40AB-4AD2-A4C8-D2E77C5162BB', 'Increase column width', 'Aumenta larghezza colonna')">
+                          <span class="material-symbol-icon" aria-hidden="true">add</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                } @else {
+                  <span>{{ column.displayName || column.name }}</span>
+                  @if (canSortColumn(column)) {
+                    <span class="column-sort-indicator" aria-hidden="true">
+                      @switch (sortDirectionFor(column)) {
+                        @case ('ASC') { ↑ }
+                        @case ('DESC') { ↓ }
+                        @default { ↕ }
+                      }
+                    </span>
+                  }
+                }
+              </th>
+            }
+          </tr>
+        </thead>
+
+        <tbody>
+          @if (displayedEntities().length === 0) {
+            <tr>
+              <td [attr.colspan]="visibleColumns().length + (hasActionColumn() ? 1 : 0) + (hasSelectionColumn() ? 1 : 0)" class="empty-row">{{ chill.T('D43AB4B7-3FD0-486C-88FF-7214FB45A1CA', 'No entities to display.', 'Nessuna entità da visualizzare.') }}</td>
+            </tr>
+          } @else {
+            @for (entity of displayedEntities(); track trackByEntity($index, entity)) {
+              <tr
+                [class.pending-row]="isPendingRow(entity)"
+                [class.deleted-row]="isDeletedRow(entity)"
+                [class.refreshed-row]="isRefreshFlashRow(entity)">
+                @if (hasSelectionColumn()) {
+                  <td class="selection-column">
+                    <input
+                      type="checkbox"
+                      class="row-selection-checkbox"
+                      [checked]="isRowSelected(entity)"
+                      [disabled]="isRowSelectionDisabled(entity)"
+                      [attr.aria-label]="selectionColumn()?.ariaLabel || chill.T('2EE7A0D9-CDE2-4F72-9BE1-B86A91D4B208', 'Select row', 'Seleziona riga')"
+                      (change)="toggleRowSelection(entity, $any($event.target).checked)" />
+                  </td>
+                }
+                @if (hasActionColumn()) {
+                  <td class="action-column" [class.menu-open]="isRowActionMenuOpen(entity)">
+                    <div class="row-action-menu">
+                      <button
+                        type="button"
+                        class="row-action-menu__trigger"
+                        (click)="toggleRowActionMenu($event, entity)"
+                        [attr.aria-label]="chill.T('7143A8CE-9D46-4509-8D26-AC954C88F277', 'Open row actions', 'Apri azioni riga')">
+                        <span class="material-symbol-icon">more_horiz</span>
+                      </button>
+
+                      @if (isRowActionMenuOpen(entity)) {
+                        <div class="row-action-menu__panel" [ngStyle]="rowActionMenuStyle()" (click)="$event.stopPropagation()">
+                        @for (action of resolvedRowActions(); track $index) {
+                          <button
+                            type="button"
+                            class="row-action-menu__item"
+                            (click)="runRowAction(action, entity)"
+                            [disabled]="isRowActionDisabled(action, entity)"
+                            [attr.aria-label]="rowActionLabel(action)">
+                            <span
+                              class="row-action-button__icon"
+                              [class.material-symbol-icon]="rowActionIconClass(action) === 'material-symbol-icon'">{{ rowActionIcon(action) }}</span>
+                            <span class="row-action-menu__label">
+                              @if (action.labelGuid && action.primaryDefaultText && action.secondaryDefaultText) {
+                                <app-chill-i18n-label
+                                  [labelGuid]="action.labelGuid"
+                                  [primaryDefaultText]="action.primaryDefaultText"
+                                  [secondaryDefaultText]="action.secondaryDefaultText"
+                                  [editable]="false" />
+                              } @else {
+                                {{ rowActionLabel(action) }}
+                              }
+                            </span>
+                          </button>
+                        }
+                        </div>
+                      }
+                    </div>
+                  </td>
+                }
+                @for (column of visibleColumns(); track column.name) {
+                  <td
+                    class="data-cell"
+                    [style.width.%]="isColumnEditing(column) ? null : columnWidthPercent(column)"
+                    [class.is-editing]="isCellEditing(entity, column)"
+                    (dblclick)="activateCellEdit(entity, column)"
+                    (focusout)="handleCellFocusOut($event)">
+                    @if (isCellEditing(entity, column)) {
+                      <div class="data-cell__editor" (keydown)="handleCellEditorKeydown($event)">
+                        <app-chill-polymorphic-input
+                          [form]="activeCellEdit()?.form ?? null"
+                          [schema]="schema()"
+                          [propertyNames]="[column.name]"
+                          [readonlyPropertyNames]="readonlyPropertyNames()"
+                          [showLabels]="false"
+                          [externalErrors]="rowFieldErrors(entity)"
+                          (valueChange)="handleCellValueChange($event)"
+                          (validityChange)="handleCellValidityChange($event)"
+                          (lookupDialogOpenChange)="handleLookupDialogOpenChange($event)"
+                          (editorDialogOpenChange)="handleLookupDialogOpenChange($event)" />
+                      </div>
+                    } @else {
+                      <app-chill-polymorphic-output
+                        [source]="entity"
+                        [schema]="schema()"
+                        [propertyName]="column.name" />
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</section>

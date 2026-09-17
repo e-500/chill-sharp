@@ -146,6 +146,10 @@ namespace ChillSharp.Api
             {
                 identityOptions.AccessTokenLifetime = options.AccessTokenLifetime;
                 identityOptions.RefreshTokenLifetime = options.RefreshTokenLifetime;
+                identityOptions.EnableOAuthEndpoints = options.EnableOAuthEndpoints;
+                identityOptions.OAuthBasePath = NormalizeIdentityOAuthPath(options.OAuthBasePath, options.ApiBasePath, "chill-auth/oauth");
+                identityOptions.OAuthProtectedResourcePath = NormalizeIdentityOAuthPath(options.OAuthProtectedResourcePath, options.ApiBasePath, "chill-mcp");
+                identityOptions.OAuthAuthorizationCodeLifetime = options.OAuthAuthorizationCodeLifetime;
                 identityOptions.CreateChillAuthUserOnRegister = options.CreateChillAuthUserOnRegister;
                 identityOptions.ReturnPasswordResetTokensInResponse = options.ReturnPasswordResetTokensInResponse;
                 identityOptions.SendPasswordResetEmails = options.SendPasswordResetEmails;
@@ -382,6 +386,24 @@ namespace ChillSharp.Api
                 parameters.Skip(1).All(parameter => parameter.IsOptional);
         }
 
+        private static string NormalizeIdentityOAuthPath(string configuredPath, string apiBasePath, string suffix)
+        {
+            var normalizedConfiguredPath = configuredPath?.Trim() ?? string.Empty;
+            var defaultPath = suffix.Equals("chill-mcp", StringComparison.Ordinal)
+                ? "/api/chill-mcp"
+                : "/api/chill-auth/oauth";
+
+            if (!string.Equals(normalizedConfiguredPath, defaultPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return normalizedConfiguredPath;
+            }
+
+            var normalizedApiBasePath = NormalizeRouteSegment(apiBasePath);
+            return string.IsNullOrWhiteSpace(normalizedApiBasePath)
+                ? "/" + suffix
+                : $"/{normalizedApiBasePath}/{suffix}";
+        }
+
         private sealed class ChillApiRouteBasePathConvention(string apiBasePath) : IControllerModelConvention
         {
             private readonly string _apiBasePath = NormalizeRouteSegment(apiBasePath);
@@ -492,6 +514,29 @@ namespace ChillSharp.Api
             ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable,
             value => TimeSpan.FromDays(value),
             TimeSpan.FromDays(14));
+
+        /// <summary>
+        /// Gets or sets whether OAuth endpoints for ChatGPT and remote MCP clients are enabled.
+        /// </summary>
+        public bool EnableOAuthEndpoints { get; set; } = true;
+
+        /// <summary>
+        /// Gets or sets the route prefix used by the OAuth endpoints. Defaults to <c>/api/chill-auth/oauth</c>.
+        /// </summary>
+        public string OAuthBasePath { get; set; } = "/api/chill-auth/oauth";
+
+        /// <summary>
+        /// Gets or sets the relative MCP resource path advertised to MCP OAuth clients.
+        /// </summary>
+        public string OAuthProtectedResourcePath { get; set; } = "/api/chill-mcp";
+
+        /// <summary>
+        /// Gets or sets the lifetime of one-time authorization codes issued by the OAuth authorize endpoint.
+        /// </summary>
+        public TimeSpan OAuthAuthorizationCodeLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+            ChillAuthIdentityApiOptions.OAuthAuthorizationCodeLifetimeMinutesEnvironmentVariable,
+            value => TimeSpan.FromMinutes(value),
+            TimeSpan.FromMinutes(5));
 
         /// <summary>
         /// Gets or sets whether register should also create the matching ChillSharp auth user.

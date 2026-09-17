@@ -1,0 +1,59 @@
+<section class="crud-page">
+  @if (errorMessage()) {
+    <div class="notice error notice-dismissible">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="notice-close" (click)="clearErrorMessage()" [attr.aria-label]="chill.T('0C4C06EF-A105-468F-B1E2-AEA8EB96A4DC', 'Dismiss error', 'Chiudi errore')">x</button>
+    </div>
+  }
+
+  @if (validationErrorMessage()) {
+    <div class="notice error">
+      <span>{{ validationErrorMessage() }}</span>
+    </div>
+  }
+
+  @if (isLoadingSchemaList()) {
+    <div class="notice"><app-chill-i18n-label [labelGuid]="'77C1E6C4-D380-40C8-9BA8-31A611A9DA15'" [primaryDefaultText]="'Loading query schemas...'" [secondaryDefaultText]="'Caricamento degli schemi di query...'" /></div>
+  } @else if (isLoadingSchema()) {
+    <div class="notice"><app-chill-i18n-label [labelGuid]="'FE514A29-58AB-4842-ABDB-D348D05385E8'" [primaryDefaultText]="'Loading selected schema...'" [secondaryDefaultText]="'Caricamento dello schema selezionato...'" /></div>
+  } @else if (querySchema()) {
+    <section class="panel">
+      <section class="content">
+        @if (isSearching()) {
+          <div class="notice">{{ chill.T('6734CE10-8F49-4E20-8ADB-C6AEF407399E', 'Running query...', 'Esecuzione query in corso...') }}</div>
+        }
+
+        <app-chill-table
+          [schema]="resultSchema()"
+          [entities]="pagedResults()"
+          [selectionColumn]="selectionColumn()"
+          [rowActions]="activeRowActions()"
+          [ordering]="queryModel()?.ordering ?? null"
+          [enableInlineEditing]="!isInlineEditDisabled()"
+          [readonlyPropertyNames]="readonlyEntityPropertyNames()"
+          [showSchemaHeader]="showTableHeader()"
+          [showMobileTaskClose]="showMobileTaskClose()"
+          [enableFullTextSearch]="canOpenSearchDialog()"
+          [fullTextSearch]="currentFullTextSearch()"
+          [validationFocus]="validationFocus()"
+          (cellEditCommit)="handleInlineCellEdit($event)"
+          (fullTextSearchChange)="applyFullTextSearch($event)"
+          (mobileTaskClose)="closeActiveTask()"
+          (schemaUpdated)="handleResultSchemaUpdated($event)"
+          (sortChange)="applyOrdering($event)" />
+
+        @if (canGoToPreviousPage() || canGoToNextPage()) {
+          <footer class="pagination">
+            <button type="button" (click)="goToPreviousPage()" [disabled]="!canGoToPreviousPage()">
+              {{ chill.T('15FA9D58-C1F9-4A70-8B67-C2D4232D6B89', 'Previous', 'Precedente') }}
+            </button>
+            <p>{{ pageLabel() }}</p>
+            <button type="button" (click)="goToNextPage()" [disabled]="!canGoToNextPage()">
+              {{ chill.T('F42E54FE-F561-4251-B284-28B9230D70F7', 'Next', 'Successiva') }}
+            </button>
+          </footer>
+        }
+      </section>
+    </section>
+  }
+</section>

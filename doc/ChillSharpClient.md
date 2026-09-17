@@ -207,6 +207,16 @@ var lookup = client.Lookup(new ChillDtoQuery
 });
 ```
 
+`FullTextSearch` searches against ChillSharp `FullTextContent`. Unquoted text is normalized, split on whitespace, and AND-matched, so every token must be present. Matching single or double quotes search one normalized phrase with word boundaries:
+
+| Search text | Meaning |
+| --- | --- |
+| `release notes` | Match records containing both `release` and `notes`. |
+| `"la nazione"` | Match the exact phrase as whole words, for example `bla bla la nazione bla bla`, but not `bla bla della nazione bla bla`. |
+| `"*la nazione"` or `"%la nazione"` | Relax the left boundary, so `della nazione` can match. |
+| `"la nazione*"` or `"la nazione%"` | Relax the right boundary, so a suffix can match. |
+| `"la*nazione"` or `"la%nazione"` | Treat the middle wildcard as a token separator and apply normal AND token matching. |
+
 ## Batch Operations
 
 Use `Chunk` to send several operations in one HTTP call.

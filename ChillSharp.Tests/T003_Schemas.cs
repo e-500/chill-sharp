@@ -241,6 +241,8 @@ namespace ChillSharp.Tests
             var schema = await schemaService.GetSchemaAsync("Model.Post", "default");
             Assert.IsNotNull(schema);
             Assert.IsTrue(schema.HandleAttachments);
+            Assert.IsTrue(schema.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", schema.MCPDescription);
 
             await schemaService.SetSchemaAsync(new ChillDtoSchema
             {
@@ -252,6 +254,115 @@ namespace ChillSharp.Tests
             var compactSchema = await schemaService.GetSchemaAsync("Model.Post", "compact");
             Assert.IsNotNull(compactSchema);
             Assert.IsTrue(compactSchema.HandleAttachments);
+            Assert.IsTrue(compactSchema.EnableMCP);
+            Assert.AreEqual("Post MCP runtime description.", compactSchema.MCPDescription);
+        }
+
+        [TestMethod]
+        public async Task Step007_GetSchemaUpdateRefreshesPersistedPropertiesFromRuntimeModel()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-update-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                new ChillSharp.Schema.ChillSchemaCache());
+
+            await schemaService.SetSchemaAsync(new ChillDtoSchema
+            {
+                ChillType = "Model.Post",
+                ChillViewCode = "default",
+                DisplayName = "Persisted post",
+                Properties =
+                [
+                    new ChillDtoPropertySchema
+                    {
+                        Name = nameof(Post.Title),
+                        DisplayName = "Custom title"
+                    },
+                    new ChillDtoPropertySchema
+                    {
+                        Name = "RemovedProperty",
+                        DisplayName = "Removed property"
+                    }
+                ]
+            });
+
+            var staleSchema = await schemaService.GetSchemaAsync("Model.Post", "default");
+            Assert.IsNotNull(staleSchema);
+            Assert.IsTrue(staleSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+            Assert.IsFalse(staleSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+
+            var refreshedSchema = await schemaService.GetSchemaAsync("Model.Post", "default", update: true);
+            Assert.IsNotNull(refreshedSchema);
+            Assert.IsTrue(refreshedSchema.Properties.Any(x => x.Name == nameof(Post.Blog)));
+            Assert.IsTrue(refreshedSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+            Assert.AreEqual("Custom title", refreshedSchema.Properties.Single(x => x.Name == nameof(Post.Title)).DisplayName);
+            Assert.IsFalse(refreshedSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+
+            var persistedSchema = await schemaService.GetSchemaAsync("Model.Post", "default");
+            Assert.IsNotNull(persistedSchema);
+            Assert.IsFalse(persistedSchema.Properties.Any(x => x.Name == "RemovedProperty"));
+            Assert.IsTrue(persistedSchema.Properties.Any(x => x.Name == nameof(Post.Author)));
+        }
+
+        [TestMethod]
+        public async Task Step008_GetSchemaUpdateRefreshesPersistedRelationsFromRuntimeModel()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-relations-update-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                new ChillSharp.Schema.ChillSchemaCache());
+
+            await schemaService.SetSchemaAsync(new ChillDtoSchema
+            {
+                ChillType = "Model.Blog",
+                ChillViewCode = "default",
+                DisplayName = "Persisted blog",
+                Relations =
+                [
+                    new ChillDtoSchemaRelation
+                    {
+                        ChillType = "Model.LegacyPost",
+                        ChillQuery = "Query.LegacyPostQuery",
+                        RelationLabel = new ChillDtoSchemaRelationLabel
+                        {
+                            PrimaryDefaultText = "Legacy posts",
+                            SecondaryDefaultText = "Legacy posts"
+                        }
+                    }
+                ]
+            });
+
+            var staleSchema = await schemaService.GetSchemaAsync("Model.Blog", "default");
+            Assert.IsNotNull(staleSchema);
+            Assert.HasCount(1, staleSchema.Relations);
+            Assert.AreEqual("Model.LegacyPost", staleSchema.Relations.Single().ChillType);
+
+            var refreshedSchema = await schemaService.GetSchemaAsync("Model.Blog", "default", update: true);
+            Assert.IsNotNull(refreshedSchema);
+            Assert.HasCount(1, refreshedSchema.Relations);
+            Assert.AreEqual("Model.Post", refreshedSchema.Relations.Single().ChillType);
+            Assert.AreEqual("Query.PostQuery", refreshedSchema.Relations.Single().ChillQuery);
+            Assert.AreEqual("Blog posts", refreshedSchema.Relations.Single().RelationLabel.PrimaryDefaultText);
+
+            var persistedSchema = await schemaService.GetSchemaAsync("Model.Blog", "default");
+            Assert.IsNotNull(persistedSchema);
+            Assert.HasCount(1, persistedSchema.Relations);
+            Assert.AreEqual("Model.Post", persistedSchema.Relations.Single().ChillType);
+            Assert.AreEqual("Query.PostQuery", persistedSchema.Relations.Single().ChillQuery);
         }
 
         [TestMethod]
@@ -313,11 +424,30 @@ namespace ChillSharp.Tests
             var schema = ChillDtoPropertySchema.FromPropertyInfo(property!, "ChillSharp.Tests");
 
             Assert.AreEqual(ChillDtoPropertyType.Json, schema.PropertyType);
+            Assert.AreEqual("json", schema.SimplePropertyType);
             Assert.AreEqual("json", schema.CustomFormat);
         }
 
         [TestMethod]
-        public void Step013_PropertySchemaInfersReferenceTypeForEnumerableAndArrayEntityCollections()
+        public void Step013_PropertySchemaUsesExplicitAttributePropertyType()
+        {
+            var textProperty = typeof(ExplicitPropertyTypeHolder).GetProperty(nameof(ExplicitPropertyTypeHolder.LongDescription));
+            var jsonProperty = typeof(ExplicitPropertyTypeHolder).GetProperty(nameof(ExplicitPropertyTypeHolder.JsonPayload));
+
+            Assert.IsNotNull(textProperty);
+            Assert.IsNotNull(jsonProperty);
+
+            var textSchema = ChillDtoPropertySchema.FromPropertyInfo(textProperty!, "ChillSharp.Tests");
+            var jsonSchema = ChillDtoPropertySchema.FromPropertyInfo(jsonProperty!, "ChillSharp.Tests");
+
+            Assert.AreEqual(ChillDtoPropertyType.Text, textSchema.PropertyType);
+            Assert.AreEqual("text", textSchema.SimplePropertyType);
+            Assert.AreEqual(ChillDtoPropertyType.Json, jsonSchema.PropertyType);
+            Assert.AreEqual("json", jsonSchema.SimplePropertyType);
+        }
+
+        [TestMethod]
+        public void Step014_PropertySchemaInfersReferenceTypeForEnumerableAndArrayEntityCollections()
         {
             var enumerableProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.EnumerableTargets));
             var arrayProperty = typeof(CollectionReferenceHolder).GetProperty(nameof(CollectionReferenceHolder.ArrayTargets));
@@ -329,9 +459,58 @@ namespace ChillSharp.Tests
             var arraySchema = ChillDtoPropertySchema.FromPropertyInfo(arrayProperty!, "ChillSharp.Tests");
 
             Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, enumerableSchema.PropertyType);
+            Assert.AreEqual("chill-entity-collection", enumerableSchema.SimplePropertyType);
             Assert.AreEqual("Schemas+FallbackLookupTarget", enumerableSchema.ReferenceChillType);
             Assert.AreEqual(ChillDtoPropertyType.ChillEntityCollection, arraySchema.PropertyType);
+            Assert.AreEqual("chill-entity-collection", arraySchema.SimplePropertyType);
             Assert.AreEqual("Schemas+FallbackLookupTarget", arraySchema.ReferenceChillType);
+        }
+
+        [TestMethod]
+        public void Step022_EntitySchemaExposesRelationMetadataForAnnotatedCollections()
+        {
+            var context = new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB");
+
+            var schema = ChillDtoSchema.FromIChillEntity(new Blog(), "default", context.GetChillTypePrefix(), context);
+
+            Assert.HasCount(1, schema.Relations);
+            Assert.AreEqual(nameof(Blog.Posts), schema.Properties.Single(x => x.Name == nameof(Blog.Posts)).DisplayName);
+
+            var relation = schema.Relations.Single();
+            Assert.AreEqual("Model.Post", relation.ChillType);
+            Assert.AreEqual("Query.PostQuery", relation.ChillQuery);
+            Assert.AreEqual("@{mock}", relation.FixedValues[nameof(Post.Blog)]);
+            Assert.AreEqual("@{mock}", relation.FixedQueryValues[nameof(Post.Blog)]);
+            Assert.AreEqual(Guid.Parse("9501DEFE-7504-45E4-884B-D2BAB3BE9701"), relation.RelationLabel.LabelGuid);
+            Assert.AreEqual("Blog posts", relation.RelationLabel.PrimaryDefaultText);
+            Assert.AreEqual("Post del blog", relation.RelationLabel.SecondaryDefaultText);
+        }
+
+        [TestMethod]
+        public void Step021_ChillQueryFullTextSearchExposesDetailedSchemaHints()
+        {
+            var property = typeof(ChillQuery).GetProperty(nameof(ChillQuery.FullTextSearch));
+
+            Assert.IsNotNull(property);
+
+            var schema = ChillDtoPropertySchema.FromPropertyInfo(property!);
+
+            Assert.AreEqual("Full-text search", schema.DisplayName);
+            Assert.AreEqual(ChillDtoPropertyType.String, schema.PropertyType);
+            Assert.AreEqual("string", schema.SimplePropertyType);
+            Assert.AreEqual(false, schema.IsNullable);
+            Assert.AreEqual(false, schema.IsReadOnly);
+            Assert.AreEqual(0, schema.MinLength);
+            Assert.AreEqual(4096, schema.MaxLength);
+            Assert.AreEqual("full-text-search", schema.CustomFormat);
+            StringAssert.Contains(schema.MCPDescription, "broad keyword search");
+            StringAssert.Contains(schema.MCPDescription, "AND matching");
+            StringAssert.Contains(schema.MCPDescription, "IChillEntity.FullTextContent");
+            Assert.AreEqual("Properties.FullTextSearch", schema.Metadata["payloadPath"]);
+            Assert.AreEqual("full-text-contains", schema.Metadata["matching"]);
+            Assert.AreEqual("AND", schema.Metadata["matchLogic"]);
+            Assert.AreEqual("ChillFullTextSearchNormalizer", schema.Metadata["normalizer"]);
+            Assert.AreEqual("ignored", schema.Metadata["emptyBehavior"]);
         }
 
 
@@ -927,8 +1106,8 @@ namespace ChillSharp.Tests
         {
             private readonly List<ChillDtoMenuItem> _menuItems = [];
 
-            public Task<IChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
-                => Task.FromResult<IChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
+            public Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default, bool update = false)
+                => Task.FromResult<ChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
 
             public Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default)
                 => Task.FromResult(schema);
@@ -967,9 +1146,9 @@ namespace ChillSharp.Tests
                 return Task.CompletedTask;
             }
 
-            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken)
+            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken, bool update)
             {
-                throw new NotImplementedException();
+                return GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken, update);
             }
         }
         private sealed class StubDtoEngine : IChillDtoEngine
@@ -997,6 +1176,15 @@ namespace ChillSharp.Tests
         {
             [ChillProperty(CustomFormat = "json")]
             public string Payload { get; set; } = "{}";
+        }
+
+        private sealed class ExplicitPropertyTypeHolder
+        {
+            [ChillProperty(PropertyType = ChillDtoPropertyType.Text)]
+            public string LongDescription { get; set; } = string.Empty;
+
+            [ChillProperty(PropertyType = ChillDtoPropertyType.Json)]
+            public string JsonPayload { get; set; } = "{}";
         }
 
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery

@@ -56,9 +56,9 @@ public sealed class ChillSchemaController : ControllerBase
     }
 
     [HttpGet("get-schema")]
-    public async Task<IActionResult> GetSchema([FromQuery] string ChillType, [FromQuery] string ChillViewCode, [FromQuery] string? CultureName = null)
+    public async Task<IActionResult> GetSchema([FromQuery] string ChillType, [FromQuery] string ChillViewCode, [FromQuery] string? CultureName = null, [FromQuery] bool Update = false)
     {
-        return Ok(await _schemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName));
+        return Ok(await _schemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName, update: Update));
     }
 
     [HttpGet("get-schema-list")]
