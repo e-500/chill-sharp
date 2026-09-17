@@ -1,5 +1,8 @@
 # ChillSharp Configuration Reference
 
+Versione italiana: [Italiano](../it/Configuration/README.md)
+
+
 This document lists the environment variables currently used by ChillSharp and by the example ChillSharp host in `ChillSharp.Examples/BloggingApiService`.
 
 Use it as a quick reference when configuring Docker, `docker compose`, or another deployment target.

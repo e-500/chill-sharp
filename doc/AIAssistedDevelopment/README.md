@@ -1,5 +1,8 @@
 # AI-Assisted Development Guide
 
+Versione italiana: [Italiano](../it/AIAssistedDevelopment/README.md)
+
+
 This document explains how ChillSharp can help when you build software with AI assistance and still want the codebase to remain structured, stable, and reviewable.
 
 The key idea is simple: AI tools are much more reliable when they work inside a constrained, repetitive, well-defined architecture than when they are asked to manually keep many controllers, DTOs, endpoints, and validation paths in sync.

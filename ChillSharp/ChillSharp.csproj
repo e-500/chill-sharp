@@ -15,7 +15,6 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <IsPackable>true</IsPackable>
         <Description>ChillSharp is a powerful .NET library designed to streamline the management of complex data models and accelerate the development of web APIs. Built on top of Entity Framework Core, ChillSharp abstracts the complexity of database interactions while providing a lightweight, web-friendly layer for querying, creating, updating, and deleting entities through Data Transfer Objects (DTOs).</Description>
-        <Version>1.0.132</Version>
         <Authors>Andrea Piovesan</Authors>
         <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludeBuiltinModuleOutputs</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
@@ -32,6 +31,18 @@
         <None Include="..\README.md">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\doc\**\*">
+            <Pack>True</Pack>
+            <PackagePath>doc\</PackagePath>
+        </None>
+        <None Include="..\ChillSharp.Template\.agents\skills\**\*">
+            <Pack>True</Pack>
+            <PackagePath>.agents\skills\</PackagePath>
+        </None>
+        <None Include="..\.agents\skills\chillsharp-menu-json\**\*">
+            <Pack>True</Pack>
+            <PackagePath>.agents\skills\chillsharp-menu-json\</PackagePath>
         </None>
     </ItemGroup>
 
@@ -57,6 +68,24 @@
             <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Mcp\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Mcp.dll" />
             <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.Attachment\bin\$(Configuration)\$(TargetFramework)\ChillSharp.Attachment.dll" />
             <BuildOutputInPackage Include="$(MSBuildProjectDirectory)\..\ChillSharp.AspNetCore\bin\$(Configuration)\$(TargetFramework)\ChillSharp.AspNetCore.dll" />
+        </ItemGroup>
+    </Target>
+
+    <Target Name="IncludeTemplateCustomizationScripts" BeforeTargets="_GetPackageFiles">
+        <PropertyGroup>
+            <TemplateCustomizationScriptsPath>$(BaseIntermediateOutputPath)template-customization\</TemplateCustomizationScriptsPath>
+        </PropertyGroup>
+        <Copy SourceFiles="$(MSBuildProjectDirectory)\..\ChillSharp.Template\upgrade.ps1;$(MSBuildProjectDirectory)\..\ChillSharp.Template\upgrade.sh"
+              DestinationFiles="$(TemplateCustomizationScriptsPath)upgrade.ps1.template;$(TemplateCustomizationScriptsPath)upgrade.sh.template" />
+        <ItemGroup>
+            <None Include="$(TemplateCustomizationScriptsPath)upgrade.ps1.template">
+                <Pack>True</Pack>
+                <PackagePath>template-customization\</PackagePath>
+            </None>
+            <None Include="$(TemplateCustomizationScriptsPath)upgrade.sh.template">
+                <Pack>True</Pack>
+                <PackagePath>template-customization\</PackagePath>
+            </None>
         </ItemGroup>
     </Target>
 

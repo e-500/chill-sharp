@@ -1,0 +1,11 @@
+:host { display: block; }
+
+input, select, textarea {
+  width: 100%; padding: .75rem .85rem; border-radius: .45rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border-color));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 32%, transparent), transparent 30%), linear-gradient(180deg, color-mix(in srgb, var(--surface-0) 96%, rgba(2, 16, 25, .14)), color-mix(in srgb, var(--surface-1) 92%, rgba(1, 10, 18, .18)));
+  color: var(--text-main); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent), 0 0 .7rem color-mix(in srgb, var(--accent) 6%, transparent);
+}
+input[type='checkbox'] { width: 1rem; height: 1rem; padding: 0; }
+textarea { resize: vertical; }
+:host-context(:root[data-theme='dark']) input, :host-context(:root[data-theme='dark']) select, :host-context(:root[data-theme='dark']) textarea { background: rgba(9, 19, 26, .58); }

@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+upgrade_script_version=0
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
-template_project_path="$script_dir/ChillSharp.Template.csproj"
+csproj_files=("$script_dir"/*.csproj)
+if [ ${#csproj_files[@]} -eq 0 ] || [ ! -f "${csproj_files[0]}" ]; then
+  die "Could not find a .csproj file in '$script_dir'."
+elif [ ${#csproj_files[@]} -gt 1 ]; then
+  die "Found multiple .csproj files in '$script_dir': ${csproj_files[*]}."
+fi
+template_project_path="${csproj_files[0]}"
+template_project_name="$(basename -- "$template_project_path")"
 local_package_folder="$script_dir/nupkgs"
 restore_state_folder="$script_dir/obj"
 shared_folder="${CHILL_NUGET_SHARED_FOLDER:-$HOME/source/nuget-shared}"
@@ -157,6 +165,76 @@ remove_stale_restore_state() {
   fi
 }
 
+extract_chillsharp_skills() {
+  local nupkg_path="$1"
+  local target_folder="$2"
+
+  python3 -c '
+import zipfile, os, sys
+nupkg = sys.argv[1]
+target = sys.argv[2]
+agents_dir = os.path.join(target, ".agents")
+skills_dir = os.path.join(agents_dir, "skills")
+
+if os.path.exists(skills_dir):
+    import shutil
+    shutil.rmtree(skills_dir)
+os.makedirs(skills_dir, exist_ok=True)
+
+with zipfile.ZipFile(nupkg, "r") as z:
+    for name in z.namelist():
+        if name.startswith(".agents/skills/") and not name.endswith("/"):
+            rel_path = name[len(".agents/skills/"):]
+            dest = os.path.join(skills_dir, rel_path)
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            with open(dest, "wb") as f_out:
+                f_out.write(z.read(name))
+' "$nupkg_path" "$target_folder"
+}
+
+update_upgrade_script_if_newer() {
+  local nupkg_path="$1"
+  local script_path="$2"
+
+  python3 -c '
+import os, re, stat, sys, tempfile, zipfile
+
+nupkg_path, script_path, current_version = sys.argv[1], sys.argv[2], int(sys.argv[3])
+entry_name = "template-customization/upgrade.sh.template"
+
+with zipfile.ZipFile(nupkg_path, "r") as archive:
+    try:
+        entry = archive.getinfo(entry_name)
+    except KeyError:
+        sys.exit(0)
+
+    contents = archive.read(entry).decode("utf-8")
+
+match = re.search(r"(?m)^\\s*upgrade_script_version\\s*=\\s*(\\d+)\\s*$", contents)
+if match is None:
+    raise RuntimeError("The packaged upgrade script does not define a valid upgrade_script_version.")
+
+packaged_version = int(match.group(1))
+if packaged_version <= current_version:
+    sys.exit(0)
+
+script_dir = os.path.dirname(os.path.abspath(script_path))
+original_mode = stat.S_IMODE(os.stat(script_path).st_mode)
+fd, temporary_script_path = tempfile.mkstemp(prefix=".upgrade-", dir=script_dir)
+try:
+    with os.fdopen(fd, "w", encoding="utf-8", newline="") as file:
+        file.write(contents)
+    os.chmod(temporary_script_path, original_mode)
+    os.replace(temporary_script_path, script_path)
+finally:
+    if os.path.exists(temporary_script_path):
+        os.unlink(temporary_script_path)
+
+print(f"Updated upgrade.sh from internal version {current_version} to {packaged_version}. Rerun the script to continue the package upgrade.")
+sys.exit(10)
+' "$nupkg_path" "$script_path" "$upgrade_script_version"
+}
+
 if ! command -v python3 >/dev/null 2>&1; then
   die "Required command 'python3' was not found."
 fi
@@ -179,13 +257,24 @@ while IFS= read -r -d '' existing_package; do
 done < <(find "$local_package_folder" -maxdepth 1 -type f -name 'ChillSharp.*.nupkg' -print0)
 
 cp -f -- "$source_archive_path" "$destination_archive_path"
+if update_upgrade_script_if_newer "$destination_archive_path" "${BASH_SOURCE[0]}"; then
+  :
+else
+  update_status=$?
+  if [[ "$update_status" -eq 10 ]]; then
+    exit 0
+  fi
+  die 'Could not update upgrade.sh from the ChillSharp package.'
+fi
 set_chillsharp_package_reference_version "$template_project_path" "$package_version"
+extract_chillsharp_skills "$destination_archive_path" "$script_dir"
 
 removed_global_cache_path="$(remove_chillsharp_global_package_cache "$package_version" || true)"
 mapfile -t removed_restore_state_paths < <(remove_stale_restore_state "$restore_state_folder")
 
 printf "Copied ChillSharp %s from '%s' to '%s'.\n" "$package_version" "$source_archive_path" "$destination_archive_path"
-printf "Updated ChillSharp.Template.csproj to ChillSharp %s.\n" "$package_version"
+printf "Updated %s to ChillSharp %s.\n" "$template_project_name" "$package_version"
+printf "Extracted and updated agent skills in '.agents/skills/'.\n"
 printf "Saved CHILL_NUGET_SHARED_FOLDER to '%s'.\n" "$env_file"
 
 if [[ -n "${removed_global_cache_path//[[:space:]]/}" ]]; then

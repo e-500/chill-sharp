@@ -3,6 +3,11 @@ import { Component, ElementRef, OnDestroy, OnInit, computed, inject, input, sign
 import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import type { ChillEntity, ChillPropertySchema, ChillSchema } from '../models/chill-schema.models';
 import { ChillService } from '../services/chill.service';
+import { ChillPolymorphicOutputBooleanControlComponent } from './chill-polymorphic-output-controls/chill-polymorphic-output-boolean-control.component';
+import { ChillPolymorphicOutputLookupControlComponent } from './chill-polymorphic-output-controls/chill-polymorphic-output-lookup-control.component';
+import { ChillPolymorphicOutputNumberControlComponent } from './chill-polymorphic-output-controls/chill-polymorphic-output-number-control.component';
+import { ChillPolymorphicOutputTemporalControlComponent } from './chill-polymorphic-output-controls/chill-polymorphic-output-temporal-control.component';
+import { ChillPolymorphicOutputValueControlComponent } from './chill-polymorphic-output-controls/chill-polymorphic-output-value-control.component';
 
 const CHILL_PROPERTY_TYPE = {
   Unknown: 0,
@@ -24,20 +29,26 @@ const CHILL_PROPERTY_TYPE = {
 @Component({
   selector: 'app-chill-polymorphic-output',
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    CommonModule,
+    ChillPolymorphicOutputBooleanControlComponent,
+    ChillPolymorphicOutputLookupControlComponent,
+    ChillPolymorphicOutputNumberControlComponent,
+    ChillPolymorphicOutputTemporalControlComponent,
+    ChillPolymorphicOutputValueControlComponent
+  ],
   template: `
     <span class="polymorphic-output" [title]="titleText()">
-      @if (spacedDisplayParts(); as parts) {
-        <span class="polymorphic-output__spaced-parts">
-          @for (part of parts; track $index; let isFirst = $first) {
-            @if (!isFirst) {
-              <span class="polymorphic-output__spaced-parts-separator"> </span>
-            }
-            <span class="polymorphic-output__spaced-parts-part">{{ part }}</span>
-          }
-        </span>
+      @if (isTemporalProperty()) {
+        <app-chill-polymorphic-output-temporal-control [parts]="spacedDisplayParts()" [text]="displayText()" />
+      } @else if (isBooleanProperty()) {
+        <app-chill-polymorphic-output-boolean-control [text]="displayText()" />
+      } @else if (isNumberProperty()) {
+        <app-chill-polymorphic-output-number-control [text]="displayText()" />
+      } @else if (isLookupProperty()) {
+        <app-chill-polymorphic-output-lookup-control [text]="displayText()" />
       } @else {
-        {{ displayText() }}
+        <app-chill-polymorphic-output-value-control [text]="displayText()" />
       }
     </span>
   `,
@@ -117,6 +128,29 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
 
   // #region Helper Methods
 
+  isBooleanProperty(): boolean {
+    return this.property()?.propertyType === CHILL_PROPERTY_TYPE.Boolean;
+  }
+
+  isNumberProperty(): boolean {
+    const propertyType = this.property()?.propertyType;
+    return propertyType === CHILL_PROPERTY_TYPE.Integer || propertyType === CHILL_PROPERTY_TYPE.Decimal;
+  }
+
+  isTemporalProperty(): boolean {
+    const propertyType = this.property()?.propertyType;
+    return propertyType === CHILL_PROPERTY_TYPE.Date
+      || propertyType === CHILL_PROPERTY_TYPE.Time
+      || propertyType === CHILL_PROPERTY_TYPE.DateTime;
+  }
+
+  isLookupProperty(): boolean {
+    const propertyType = this.property()?.propertyType;
+    return propertyType === CHILL_PROPERTY_TYPE.ChillEntity
+      || propertyType === CHILL_PROPERTY_TYPE.ChillEntityCollection
+      || propertyType === CHILL_PROPERTY_TYPE.ChillQuery;
+  }
+
   /**
    * Reads a property from the entity bag first, then falls back to top-level camelCase/PascalCase fields.
    */
@@ -150,30 +184,47 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
     }
 
     const propertyType = property?.propertyType ?? CHILL_PROPERTY_TYPE.Unknown;
+    let formattedValue: string;
     switch (propertyType) {
       case CHILL_PROPERTY_TYPE.Integer:
       case CHILL_PROPERTY_TYPE.Decimal:
-        return this.formatNumber(value);
+        formattedValue = this.formatNumber(value);
+        break;
       case CHILL_PROPERTY_TYPE.Boolean:
-        return value === true
+        formattedValue = value === true
           ? this.chill.T('1A29951D-C442-4187-B0AA-F80454DEB09D', 'Yes', 'Si')
           : this.chill.T('8A65EBA6-81BD-4733-87D5-4CFE3F5C2D3F', 'No', 'No');
+        break;
       case CHILL_PROPERTY_TYPE.Date:
-        return this.formatDate(value);
+        formattedValue = this.formatDate(value);
+        break;
       case CHILL_PROPERTY_TYPE.Time:
-        return this.formatTime(value);
+        formattedValue = this.formatTime(value);
+        break;
       case CHILL_PROPERTY_TYPE.DateTime:
-        return this.formatDateTime(value);
+        formattedValue = this.formatDateTime(value);
+        break;
       case CHILL_PROPERTY_TYPE.ChillEntity:
       case CHILL_PROPERTY_TYPE.ChillQuery:
-        return this.formatObjectValue(value, preferFullLabel);
+        formattedValue = this.formatObjectValue(value, preferFullLabel);
+        break;
       default:
-        if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-          return String(value);
-        }
-
-        return this.formatObjectValue(value, preferFullLabel);
+        formattedValue = typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+          ? String(value)
+          : this.formatObjectValue(value, preferFullLabel);
+        break;
     }
+
+    return formattedValue
+      ? `${formattedValue}${this.staticSuffix(property)}`
+      : '';
+  }
+
+  private staticSuffix(property: ChillPropertySchema | null): string {
+    const value = property?.metadata?.['staticSuffix'];
+    return typeof value === 'string' || typeof value === 'number'
+      ? String(value).trim()
+      : '';
   }
 
   /**

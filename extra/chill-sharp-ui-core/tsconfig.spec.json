@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": ["jasmine"],
+    "baseUrl": ".",
+    "paths": {
+      "monaco-editor/esm/vs/editor/editor.api": ["./src/testing/monaco-editor.stub.ts"]
+    }
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+}

@@ -10,7 +10,7 @@ import { ChillService } from './services/chill.service';
 
 const requireAuthGuard: CanActivateFn = () => {
   const chill = inject(ChillService);
-  if (chill.isAuthenticated()) {
+  if (!chill.expireSessionIfNeeded() && chill.isAuthenticated()) {
     return true;
   }
 

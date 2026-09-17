@@ -16,7 +16,6 @@
     <IsPackable>false</IsPackable>
     <PackageOutputPath>C:\source\repos-vs22\NuGetLocalPackages\</PackageOutputPath>
     <Description>Authentication components for ChillSharp.</Description>
-    <Version>1.0.132</Version>
     <Authors>Andrea Piovesan</Authors>
   </PropertyGroup>
 

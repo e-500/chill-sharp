@@ -1,5 +1,8 @@
 # ChillSharp MCP Module
 
+Versione italiana: [Italiano](../it/Mcp/README.md)
+
+
 This document describes the `ChillSharp.Mcp` module, how to register it in an ASP.NET Core host, and how to prepare a `DbContext` and model so AI agents can consume the exposed schema and query surface efficiently.
 
 `ChillSharp.Mcp` uses the official MCP C# SDK and exposes a Model Context Protocol server backed by your ChillSharp context.

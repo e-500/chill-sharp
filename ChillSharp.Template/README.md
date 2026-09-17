@@ -43,3 +43,7 @@ The script suggests `C:\source\nuget-shared` first and asks you to confirm it or
 - `Model/Example.cs`: entity properties
 - `Model/Logic/Example.cs`: entity behavior
 - `Model/Query/ExampleQuery.cs`: query filters
+
+## Agent skills
+
+The template includes `.agents/skills/` guidance for model preparation, automatic schema metadata, internationalization, MCP exposure, permission granularity, and client plugin development. The NuGet upgrade scripts refresh these skills from the package into generated backend client projects.

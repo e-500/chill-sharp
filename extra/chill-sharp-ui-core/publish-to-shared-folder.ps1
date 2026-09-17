@@ -16,6 +16,8 @@ $sharedClientPackageDirectories = @(
 )
 $packageJsonPath = Join-Path $scriptDirectory 'package.json'
 $distPath = Join-Path $scriptDirectory 'dist'
+$templateScriptsPath = Join-Path $repositoryRoot 'extra\chill-sharp-ui-template'
+$documentationPath = Join-Path $repositoryRoot 'doc'
 $nodeModulesPath = Join-Path $scriptDirectory 'node_modules'
 $ngPackagrPackagePath = Join-Path $nodeModulesPath 'ng-packagr\package.json'
 
@@ -123,6 +125,19 @@ finally {
 if (-not (Test-Path -LiteralPath $distPath)) {
   throw "Build completed but dist folder was not found at '$distPath'."
 }
+
+$templateCustomizationPath = Join-Path $distPath 'template-customization'
+New-Item -ItemType Directory -Path $templateCustomizationPath -Force | Out-Null
+Copy-Item -LiteralPath (Join-Path $templateScriptsPath 'upgrade.ps1') -Destination (Join-Path $templateCustomizationPath 'upgrade.ps1.template') -Force
+Copy-Item -LiteralPath (Join-Path $templateScriptsPath 'upgrade.sh') -Destination (Join-Path $templateCustomizationPath 'upgrade.sh.template') -Force
+if (Test-Path -LiteralPath (Join-Path $distPath '.agents')) {
+  Remove-Item -LiteralPath (Join-Path $distPath '.agents') -Recurse -Force
+}
+Copy-Item -LiteralPath (Join-Path $templateScriptsPath '.agents') -Destination (Join-Path $distPath '.agents') -Recurse -Force
+if (Test-Path -LiteralPath (Join-Path $distPath 'doc')) {
+  Remove-Item -LiteralPath (Join-Path $distPath 'doc') -Recurse -Force
+}
+Copy-Item -LiteralPath $documentationPath -Destination (Join-Path $distPath 'doc') -Recurse -Force
 
 # Ensure the destination folder exists and compute the expected tarball name for the built package.
 if (-not (Test-Path -LiteralPath $SharedFolder)) {

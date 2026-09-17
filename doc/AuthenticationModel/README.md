@@ -89,7 +89,7 @@ These endpoints manage:
 - any other value works as a prefix match, for example `SECTION-A` allows nodes whose menu hierarchy starts with `SECTION-A`
 - an empty merged menu hierarchy set means no menu access
 
-For the full menu-tree model and endpoint behavior, see [doc/MenuModel.md](../MenuModel.md).
+For the full menu-tree model and endpoint behavior, see [MenuGuide/README.md](../MenuGuide/README.md).
 
 ## Token Lifetimes
 

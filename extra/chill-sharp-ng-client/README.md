@@ -427,4 +427,4 @@ If you need typed model clients, generate them from your host OpenAPI document a
 
 Menu items include `positionNo`, which the backend persists and uses to order siblings.
 
-For the complete tree model, delete behavior, and `MenuHierarchy` filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).
+For the complete tree model, delete behavior, and `MenuHierarchy` filtering behavior, see [../../doc/MenuGuide/README.md](../../doc/MenuGuide/README.md).

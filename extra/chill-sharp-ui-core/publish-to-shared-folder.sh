@@ -56,6 +56,7 @@ archive_name_for_package_dir() {
 
 package_json_path="$script_dir/package.json"
 dist_path="$script_dir/dist"
+template_scripts_path="$repository_root/extra/chill-sharp-ui-template"
 node_modules_path="$script_dir/node_modules"
 ng_packagr_package_path="$node_modules_path/ng-packagr/package.json"
 
@@ -120,6 +121,13 @@ if [[ ! -d "$dist_path" ]]; then
   printf "Error: Build completed but dist folder was not found at '%s'.\n" "$dist_path" >&2
   exit 1
 fi
+
+template_customization_path="$dist_path/template-customization"
+mkdir -p -- "$template_customization_path"
+cp -f -- "$template_scripts_path/upgrade.ps1" "$template_customization_path/upgrade.ps1.template"
+cp -f -- "$template_scripts_path/upgrade.sh" "$template_customization_path/upgrade.sh.template"
+rm -rf -- "$dist_path/.agents"
+cp -R -- "$template_scripts_path/.agents" "$dist_path/.agents"
 
 mkdir -p -- "$shared_folder"
 archive_package_name="${package_name#@}"

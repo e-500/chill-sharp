@@ -1,5 +1,8 @@
 # ChillSharp Date And Time Serialization
 
+Versione italiana: [Italiano](it/DateTimeSerialization.md)
+
+
 This document explains how ChillSharp serializes and parses `DateTimeOffset`, `DateTime`, `DateOnly`, and `TimeOnly` values in DTO payloads.
 
 It also compares ChillSharp behavior with the default ASP.NET Core `System.Text.Json` behavior so you can quickly see what is standard .NET behavior and what is ChillSharp-specific behavior.

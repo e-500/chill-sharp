@@ -1,5 +1,8 @@
 # ChillSharp.Client
 
+Versione italiana: [Italiano](it/ChillSharpClient.md)
+
+
 `ChillSharp.Client` is the .NET client library for calling a ChillSharp host from console apps, workers, tests, desktop apps, or other .NET services.
 
 Use it when the consumer is .NET. For browser frameworks or Python automation, use the generic clients under `extra-libs/` or generate a host-specific client from OpenAPI.
@@ -456,6 +459,6 @@ client.LoginAuthAccount(...); // calls /api/chill-auth/login
 ## Related Documentation
 
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
-- [MenuModel.md](./MenuModel.md)
+- [MenuGuide/README.md](./MenuGuide/README.md)
 - [AttachmentModel/README.md](./AttachmentModel/README.md)
 - [ClientGeneration/README.md](./ClientGeneration/README.md)

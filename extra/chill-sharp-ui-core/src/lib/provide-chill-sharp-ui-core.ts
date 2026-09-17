@@ -55,10 +55,41 @@ function readStoredAccessToken(): string {
   }
 
   try {
-    const parsed = JSON.parse(rawSession) as { accessToken?: string };
-    return parsed.accessToken?.trim() ?? '';
+    const parsed = JSON.parse(rawSession) as { accessToken?: string; accessTokenExpiresUtc?: string };
+    const accessToken = parsed.accessToken?.trim() ?? '';
+    if (!accessToken || isAccessTokenExpired(parsed.accessTokenExpiresUtc, accessToken)) {
+      if (accessToken) {
+        globalThis.localStorage?.removeItem(SESSION_STORAGE_KEY);
+      }
+      return '';
+    }
+
+    return accessToken;
   } catch {
     return '';
+  }
+}
+
+function isAccessTokenExpired(accessTokenExpiresUtc: string | undefined, accessToken: string): boolean {
+  const expiresAt = Date.parse(accessTokenExpiresUtc ?? '');
+  if (Number.isFinite(expiresAt)) {
+    return expiresAt <= Date.now();
+  }
+
+  const [, payload] = accessToken.split('.');
+  if (!payload) {
+    return false;
+  }
+
+  try {
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decodedPayload = globalThis.atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '='));
+    const expiresAtSeconds = JSON.parse(decodedPayload).exp;
+    return typeof expiresAtSeconds === 'number'
+      && Number.isFinite(expiresAtSeconds)
+      && expiresAtSeconds * 1_000 <= Date.now();
+  } catch {
+    return false;
   }
 }
 

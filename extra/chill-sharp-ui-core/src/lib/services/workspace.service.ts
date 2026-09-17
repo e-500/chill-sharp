@@ -26,6 +26,8 @@ export interface WorkspaceTaskInstance {
   description: string;
   component: WorkspaceTaskComponentType;
   toolbarScope: string;
+  /** The task that launched this task, when it is still open in the workspace. */
+  parentTaskId?: string | null;
   menuItemGuid?: string | null;
   inputs?: Record<string, unknown>;
   route: WorkspaceTaskRoute;
@@ -37,6 +39,7 @@ export interface OpenCrudTaskRequest {
   displayName?: string | null;
   queryChillType?: string | null;
   componentConfiguration?: CrudPageComponentConfiguration | null;
+  parentTaskId?: string | null;
 }
 
 export interface OpenWorkspaceTaskRequest {
@@ -44,6 +47,7 @@ export interface OpenWorkspaceTaskRequest {
   title?: string | null;
   description?: string | null;
   configuration?: WorkspaceTaskConfiguration | null;
+  parentTaskId?: string | null;
 }
 
 @Injectable({
@@ -177,7 +181,13 @@ export class WorkspaceService {
       return;
     }
 
-    const task = await this.createStaticTaskInstance(taskDefinition, request.title, request.description, request.configuration ?? null);
+    const task = await this.createStaticTaskInstance(
+      taskDefinition,
+      request.title,
+      request.description,
+      request.configuration ?? null,
+      request.parentTaskId
+    );
     if (!task) {
       return;
     }
@@ -196,7 +206,8 @@ export class WorkspaceService {
       componentName: 'crud',
       title: request.displayName?.trim() || chillType,
       description: `CRUD task for ${chillType}`,
-      configuration
+      configuration,
+      parentTaskId: request.parentTaskId
     });
   }
 
@@ -233,16 +244,19 @@ export class WorkspaceService {
   }
 
   async closeTask(taskInstanceId: string): Promise<void> {
-    const canCloseTask = await this.confirmTaskCanBeLeft(taskInstanceId);
-    if (!canCloseTask) {
-      return;
+    const taskIdsToClose = this.getTaskAndDescendantIds(taskInstanceId);
+    for (const taskId of taskIdsToClose) {
+      const canCloseTask = await this.confirmTaskCanBeLeft(taskId);
+      if (!canCloseTask) {
+        return;
+      }
     }
 
     let nextActiveTaskId: string | null = this.activeTaskIdState();
 
     this.openTaskInstancesState.update((tasks) => {
-      const nextTasks = tasks.filter((task) => task.id !== taskInstanceId);
-      if (nextActiveTaskId === taskInstanceId) {
+      const nextTasks = tasks.filter((task) => !taskIdsToClose.has(task.id));
+      if (nextActiveTaskId && taskIdsToClose.has(nextActiveTaskId)) {
         nextActiveTaskId = nextTasks[nextTasks.length - 1]?.id ?? null;
       }
       return nextTasks;
@@ -357,7 +371,8 @@ export class WorkspaceService {
     taskDefinition: WorkspaceTaskDefinition,
     titleOverride?: string | null,
     descriptionOverride?: string | null,
-    configuration?: WorkspaceTaskConfiguration | null
+    configuration?: WorkspaceTaskConfiguration | null,
+    parentTaskId?: string | null
   ): Promise<WorkspaceTaskInstance | null> {
     const component = await this.taskRegistry.resolveComponent(taskDefinition.componentName);
     if (!component) {
@@ -377,6 +392,7 @@ export class WorkspaceService {
       description,
       component,
       toolbarScope,
+      parentTaskId: this.normalizeParentTaskId(parentTaskId),
       menuItemGuid: null,
       inputs: taskDefinition.kind === 'remote' || taskDefinition.usesTaskConfigurationInputs
         ? {
@@ -634,6 +650,30 @@ export class WorkspaceService {
 
   private normalizeComponentName(value: string): string {
     return value.trim().toLowerCase();
+  }
+
+  private getTaskAndDescendantIds(taskInstanceId: string): Set<string> {
+    const taskIds = new Set<string>([taskInstanceId]);
+    let hasNewDescendants = true;
+
+    while (hasNewDescendants) {
+      hasNewDescendants = false;
+      for (const task of this.openTaskInstancesState()) {
+        if (task.parentTaskId && taskIds.has(task.parentTaskId) && !taskIds.has(task.id)) {
+          taskIds.add(task.id);
+          hasNewDescendants = true;
+        }
+      }
+    }
+
+    return taskIds;
+  }
+
+  private normalizeParentTaskId(parentTaskId: string | null | undefined): string | null {
+    const normalizedParentTaskId = parentTaskId?.trim() ?? '';
+    return this.openTaskInstancesState().some((task) => task.id === normalizedParentTaskId)
+      ? normalizedParentTaskId
+      : null;
   }
 
   private normalizeConfiguration(configuration: WorkspaceTaskConfiguration | null | undefined): WorkspaceTaskConfiguration | null {

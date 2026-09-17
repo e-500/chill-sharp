@@ -445,7 +445,7 @@ const childMenu = await client.getMenu("8d0946dc-fc2b-4d95-b5ca-6f12d9618a5b");
 
 `getMenu()` returns one tree level at a time.
 
-For the full menu-tree contract and `MenuHierarchy` filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).
+For the full menu-tree contract and `MenuHierarchy` filtering behavior, see [../../doc/MenuGuide/README.md](../../doc/MenuGuide/README.md).
 
 ### Set menu
 
@@ -474,7 +474,7 @@ Use `deleteMenu()` to remove one menu item and all nested child nodes below it.
 await client.deleteMenu("8d0946dc-fc2b-4d95-b5ca-6f12d9618a5b");
 ```
 
-For parent handling, delete behavior, validation rules, and filtering behavior, see [../../doc/MenuModel.md](../../doc/MenuModel.md).
+For parent handling, delete behavior, validation rules, and filtering behavior, see [../../doc/MenuGuide/README.md](../../doc/MenuGuide/README.md).
 
 ## I18n Operations
 

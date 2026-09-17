@@ -29,8 +29,14 @@ This folder contains the reference documentation for ChillSharp.
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
 
-- [MenuModel.md](./MenuModel.md)
+- [MenuGuide/README.md](./MenuGuide/README.md)
   Backend-managed menu tree, menu endpoints, and `MenuHierarchy` filtering rules.
+
+- [MenuGuide/Relations.md](./MenuGuide/Relations.md)
+  Configure EF Core and ChillSharp schema metadata for one-to-many relations.
+
+- [UiCore/README.md](./UiCore/README.md)
+  Shared Angular UI scope and CRUD menu-task configuration.
 
 - [PermissionModel/README.md](./PermissionModel/README.md)
   The permission model used by `ChillSharp.Auth`, including precedence, scopes, and how entity/property access is resolved.

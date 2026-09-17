@@ -59,23 +59,42 @@ import { WorkspaceService } from '../services/workspace.service';
         </div>
 
         <div class="taskbar__desktop">
-          @for (task of workspace.openTasks(); track task.id) {
-            <div class="taskbar__item" [class.active]="workspace.activeTask()?.id === task.id">
-              <button type="button" class="taskbar__link" (click)="activateTask(task.id)">
-                {{ task.title }}
-              </button>
-              <button
-                type="button"
-                class="taskbar__close"
-                (click)="closeTask(task.id)"
-                [attr.aria-label]="'Close ' + task.title">
-                x
-              </button>
-            </div>
+          @for (task of rootTasks(); track task.id) {
+            <ng-container
+              [ngTemplateOutlet]="taskItem"
+              [ngTemplateOutletContext]="{ $implicit: task }" />
           }
         </div>
       }
     </div>
+
+    <ng-template #taskItem let-task>
+      <div class="taskbar__task-group">
+        <div class="taskbar__item" [class.active]="workspace.activeTask()?.id === task.id">
+          <button type="button" class="taskbar__link" (click)="activateTask(task.id)">
+            {{ task.title }}
+          </button>
+          <button
+            type="button"
+            class="taskbar__close"
+            (click)="closeTask(task.id)"
+            [attr.aria-label]="'Close ' + task.title">
+            x
+          </button>
+        </div>
+
+        @let children = childTasks(task.id);
+        @if (children.length > 0) {
+          <div class="taskbar__children">
+            @for (child of children; track child.id) {
+              <ng-container
+                [ngTemplateOutlet]="taskItem"
+                [ngTemplateOutletContext]="{ $implicit: child }" />
+            }
+          </div>
+        }
+      </div>
+    </ng-template>
   `
 })
 export class WorkspaceTaskbarComponent {
@@ -87,5 +106,14 @@ export class WorkspaceTaskbarComponent {
 
   closeTask(taskId: string): void {
     void this.workspace.closeTask(taskId);
+  }
+
+  rootTasks() {
+    const openTaskIds = new Set(this.workspace.openTasks().map((task) => task.id));
+    return this.workspace.openTasks().filter((task) => !task.parentTaskId || !openTaskIds.has(task.parentTaskId));
+  }
+
+  childTasks(parentTaskId: string) {
+    return this.workspace.openTasks().filter((task) => task.parentTaskId === parentTaskId);
   }
 }
