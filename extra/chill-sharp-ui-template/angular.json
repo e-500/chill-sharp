@@ -27,6 +27,11 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               {
+                "glob": "*.js",
+                "input": "node_modules/@chill-sharp/ui-core/service-worker",
+                "output": "/"
+              },
+              {
                 "glob": "**/*",
                 "input": "public"
               },
@@ -99,6 +104,11 @@
             "tsConfig": "tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
+              {
+                "glob": "*.js",
+                "input": "node_modules/@chill-sharp/ui-core/service-worker",
+                "output": "/"
+              },
               {
                 "glob": "**/*",
                 "input": "public"
