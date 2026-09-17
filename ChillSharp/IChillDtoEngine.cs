@@ -94,5 +94,23 @@ namespace ChillSharp
         /// </summary>
         /// <param name="DtoEntity">The DTO identifying the entity to delete.</param>
         void Delete(ChillDtoEntity DtoEntity);
+
+        /// <summary>
+        /// Retrieves the schema definition for a specified chill type and view code.
+        /// </summary>
+        /// <param name="ChillType">The identifier representing the chill type for which the schema is requested. Cannot be null or empty.</param>
+        /// <param name="ChillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
+        /// <returns>A ChillDtoSchema object containing the schema definition for the specified chill type and view code. Returns
+        /// null if no matching schema is found.</returns>
+        ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode);
+
+        /// <summary>
+        /// Sets the schema definition used for DTO operations and returns the previous schema.
+        /// </summary>
+        /// <remarks>Use this method to change the schema used for DTO serialization or validation. Changing the
+        /// schema may affect subsequent DTO processing.</remarks>
+        /// <param name="Schema">The schema to be applied for DTO operations. Cannot be null.</param>
+        /// <returns>The previous schema definition before the update. Returns null if no schema was previously set.</returns>
+        ChillDtoSchema SetSchema(ChillDtoSchema Schema);
     }
 }

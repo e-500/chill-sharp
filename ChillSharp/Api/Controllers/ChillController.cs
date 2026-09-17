@@ -19,7 +19,6 @@
 
 using ChillSharp.Dto;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
 
 namespace ChillSharp.Api.Controllers
 {
@@ -164,6 +163,45 @@ namespace ChillSharp.Api.Controllers
         {
             Chunk.ForEach(operation => operation.Execute(_ce));
             return Ok(Chunk);
+        }
+
+        /// <summary>
+        /// Returns the schema information for the specified chill type with specific view code.
+        /// </summary>
+        /// <remarks>The returned schema data can be used to understand the structure or configuration
+        /// associated with the specified chill type and view code. This endpoint is typically used to support dynamic
+        /// UI generation or validation scenarios.</remarks>
+        /// <param name="ChillType">The type of chill for which to retrieve schema information. Cannot be null or empty.</param>
+        /// <param name="ChillViewCode">The code representing the specific chill view to query. Cannot be null or empty.</param>
+        /// <returns>An <see cref="IActionResult"/> containing the schema data for the requested chill type and view code.</returns>
+        [HttpGet]
+        [Route("get-schema")]
+        public IActionResult GetSchema(string ChillType, string ChillViewCode)
+        {
+            return Ok(_ce.GetSchema(ChillType, ChillViewCode));
+        }
+
+        /// <summary>
+        /// Persists the provided schema information for a specific chill type and view code.
+        /// </summary>
+        /// <param name="Schema">The <see cref="ChillDtoSchema"/> containing the schema metadata, field definitions and view-specific configuration to be stored or updated.
+        /// This object must not be <c>null</c> and should include valid <see cref="ChillDtoSchema.ChillType"/> and <see cref="ChillDtoSchema.ChillViewCode"/> values.</param>
+        /// <returns>
+        /// An <see cref="IActionResult"/> containing the persisted <see cref="ChillDtoSchema"/> as returned by the Chill DTO engine.
+        /// On success the endpoint returns HTTP 200 with the saved schema payload.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">Thrown if the <paramref name="Schema"/> argument is <c>null</c>.</exception>
+        /// <exception cref="InvalidOperationException">May be thrown if the engine cannot persist the schema due to validation or persistence errors.</exception>
+        /// <remarks>
+        /// This endpoint delegates the persistence work to <see cref="IChillDtoEngine.SetSchema(ChillDtoSchema)"/>.
+        /// The engine implementation is responsible for creating or updating the stored schema record based on the provided data.
+        /// Consumers should validate the schema's required properties (for example, ChillType and ChillViewCode) before calling this endpoint.
+        /// </remarks>
+        [HttpPost]
+        [Route("set-schema")]
+        public IActionResult SetSchema(ChillDtoSchema Schema)
+        {
+            return Ok(_ce.SetSchema(Schema));
         }
     }
 }
