@@ -12,6 +12,7 @@ $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $publishScriptPaths = @(
   (Join-Path $scriptDirectory 'chill-sharp-ts-client\publish-to-shared-folder.ps1'),
   (Join-Path $scriptDirectory 'chill-sharp-ng-client\publish-to-shared-folder.ps1'),
+  (Join-Path $scriptDirectory 'chill-sharp-ui-core\publish-to-shared-folder.ps1'),
   (Join-Path $scriptDirectory 'chill-sharp-react-client\publish-to-shared-folder.ps1'),
   (Join-Path $scriptDirectory 'chill-sharp-vue-client\publish-to-shared-folder.ps1')
 )

@@ -37,8 +37,7 @@ These endpoints are registered by `MapChillApi()`.
 
 | Method | Path | Description |
 | --- | --- | --- |
-| GET | `/api` | Basic ChillSharp health response. |
-| GET | `/api/` | Same as `/api`; useful for reverse proxies and browser probes. |
+| GET | `/api` | Basic ChillSharp health response, also matched when callers request `/api/`. |
 | GET | `/api/test` | Basic ChillSharp health response. |
 | GET | `/api/license` | Returns ChillSharp license and project metadata. |
 

@@ -41,7 +41,7 @@ export {
   PermissionAction,
   PermissionEffect,
   PermissionScope
-} from "chill-sharp-ts-client";
+} from "@chill-sharp/ts-client";
 export type {
   AuthPermissionRule,
   AuthPermissionRuleItem,
@@ -79,6 +79,6 @@ export type {
   RegisterAuthIdentityRequest,
   SetAuthRoleRequest,
   SetAuthUserRequest
-} from "chill-sharp-ts-client";
+} from "@chill-sharp/ts-client";
 
 

@@ -29,7 +29,7 @@ import type {
   GetTextRequest,
   GetTextResponse,
   JsonObject
-} from "chill-sharp-ts-client";
+} from "@chill-sharp/ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: TData | null;

@@ -1,0 +1,43 @@
+import type { AuthRole, AuthUser } from '../../models/chill-auth.models';
+import { ChillService } from '../../services/chill.service';
+import { type AuthSearchSelectOption } from './auth-search-select.component';
+import { type PermissionEditorRow } from './permission-editor.component';
+import * as i0 from "@angular/core";
+export declare class RolePermissionComponent {
+    readonly chill: ChillService;
+    private readonly dialog;
+    readonly users: import("@angular/core").InputSignal<AuthUser[]>;
+    readonly roles: import("@angular/core").InputSignal<AuthRole[]>;
+    readonly roleCreated: import("@angular/core").OutputEmitterRef<AuthRole>;
+    readonly roleUpdated: import("@angular/core").OutputEmitterRef<AuthRole>;
+    readonly selectedRoleGuid: import("@angular/core").WritableSignal<string>;
+    readonly isLoadingDetails: import("@angular/core").WritableSignal<boolean>;
+    readonly isSaving: import("@angular/core").WritableSignal<boolean>;
+    readonly errorMessage: import("@angular/core").WritableSignal<string>;
+    readonly successMessage: import("@angular/core").WritableSignal<string>;
+    readonly selectedUserGuids: import("@angular/core").WritableSignal<string[]>;
+    readonly permissionRows: import("@angular/core").WritableSignal<PermissionEditorRow[]>;
+    readonly originalSnapshot: import("@angular/core").WritableSignal<string>;
+    readonly selectionVersion: import("@angular/core").WritableSignal<number>;
+    readonly roleOptions: import("@angular/core").Signal<AuthSearchSelectOption[]>;
+    readonly selectedRole: import("@angular/core").Signal<AuthRole | null>;
+    readonly hasSelection: import("@angular/core").Signal<boolean>;
+    readonly hasChanges: import("@angular/core").Signal<boolean>;
+    readonly saveDisabled: import("@angular/core").Signal<boolean>;
+    constructor();
+    selectRole(roleGuid: string): void;
+    toggleUser(userGuid: string, checked: boolean): void;
+    updatePermissionRows(rows: PermissionEditorRow[]): void;
+    save(): void;
+    userLabel(user: AuthUser): string;
+    openCreateRoleDialog(): Promise<void>;
+    openEditRoleDialog(): Promise<void>;
+    private loadSelectedRole;
+    private toPermissionRow;
+    private toPermissionPayload;
+    private serializeSnapshot;
+    private clearSelectionState;
+    static ɵfac: i0.ɵɵFactoryDeclaration<RolePermissionComponent, never>;
+    static ɵcmp: i0.ɵɵComponentDeclaration<RolePermissionComponent, "app-role-permission", never, { "users": { "alias": "users"; "required": false; "isSignal": true; }; "roles": { "alias": "roles"; "required": false; "isSignal": true; }; }, { "roleCreated": "roleCreated"; "roleUpdated": "roleUpdated"; }, never, never, true, never>;
+}
+//# sourceMappingURL=role-permission.component.d.ts.map

@@ -82,11 +82,13 @@ internal sealed class ChillAuthClaimsIdentityResolver : IChillAuthIdentityResolv
 internal sealed class ChillAuthEntityAclService : IChillEntityAclService
 {
     private readonly IChillAuthService _authService;
+    private readonly IChillAuthEntityAclCache _cache;
     private readonly IChillAuthIdentityResolver _identityResolver;
 
-    public ChillAuthEntityAclService(IChillAuthService authService, IChillAuthIdentityResolver identityResolver)
+    public ChillAuthEntityAclService(IChillAuthService authService, IChillAuthEntityAclCache cache, IChillAuthIdentityResolver identityResolver)
     {
         _authService = authService;
+        _cache = cache;
         _identityResolver = identityResolver;
     }
 
@@ -98,15 +100,28 @@ internal sealed class ChillAuthEntityAclService : IChillEntityAclService
             return false;
         }
 
-        var user = await _authService.GetUserByExternalIdAsync(externalId, cancellationToken);
-        if (user == null || !user.IsActive)
+        if (!_cache.TryGetUser(externalId, out var userSnapshot) || userSnapshot == null)
+        {
+            var user = await _authService.GetUserByExternalIdAsync(externalId, cancellationToken);
+            userSnapshot = user == null
+                ? ChillAuthEntityAclUserSnapshot.Denied
+                : new ChillAuthEntityAclUserSnapshot(user.Guid, user.IsActive);
+            _cache.SetUser(externalId, userSnapshot);
+        }
+
+        if (!userSnapshot.IsActive || !userSnapshot.UserGuid.HasValue)
         {
             return false;
         }
 
+        if (_cache.TryGetDecision(externalId, module, entityName, action, out var isAllowed))
+        {
+            return isAllowed;
+        }
+
         var result = await _authService.EvaluateEntityPermissionAsync(new EvaluateEntityPermissionRequest
         {
-            UserGuid = user.Guid,
+            UserGuid = userSnapshot.UserGuid.Value,
             Action = action switch
             {
                 ChillEntityAclAction.Query => PermissionAction.Query,
@@ -119,6 +134,7 @@ internal sealed class ChillAuthEntityAclService : IChillEntityAclService
             EntityName = entityName
         }, cancellationToken);
 
+        _cache.SetDecision(externalId, module, entityName, action, result.IsAllowed);
         return result.IsAllowed;
     }
 }
@@ -143,6 +159,7 @@ public static class ChillAuthIdentityIntegrationExtensions
         }
 
         services.AddScoped<IChillAuthIdentityResolver, ChillAuthClaimsIdentityResolver>();
+        services.AddSingleton<IChillAuthEntityAclCache, ChillAuthEntityAclCache>();
         services.AddScoped<IChillEntityAclService, ChillAuthEntityAclService>();
         return services;
     }

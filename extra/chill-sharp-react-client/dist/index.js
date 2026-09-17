@@ -19,4 +19,4 @@
 export { ChillSharpProvider, useChillSharpClient } from "./context.js";
 export { useAutocompleteMutation, useEntityChanges, useEntityMutation, useQueryMutation, useSchema, useSchemaList, useTest, useText, useTexts, useValidateMutation, useVersion } from "./hooks.js";
 export { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
-export { API_BASE_PATH, ChillSharpClient, ChillSharpClientError, PermissionAction, PermissionEffect, PermissionScope } from "chill-sharp-ts-client";
+export { API_BASE_PATH, ChillSharpClient, ChillSharpClientError, PermissionAction, PermissionEffect, PermissionScope } from "@chill-sharp/ts-client";

@@ -27,7 +27,7 @@ import type {
   ChillValidationError,
   GetTextRequest,
   JsonObject
-} from "chill-sharp-ts-client";
+} from "@chill-sharp/ts-client";
 
 export interface UseChillAsyncState<TData> {
   data: ReadonlyRef<TData | null>;

@@ -54,16 +54,19 @@ internal sealed class ChillAuthTokenService : IChillAuthTokenService
     private readonly IChillAuthDbContext _context;
     private readonly IDataProtector _protector;
     private readonly ChillAuthIdentityApiOptions _options;
+    private readonly IChillAuthAccessTokenValidationCache _validationCache;
     private readonly TimeProvider _timeProvider;
 
     public ChillAuthTokenService(
         IChillAuthDbContext context,
         IDataProtectionProvider dataProtectionProvider,
+        IChillAuthAccessTokenValidationCache validationCache,
         IOptions<ChillAuthIdentityApiOptions> options,
         TimeProvider? timeProvider = null)
     {
         _context = context;
         _protector = dataProtectionProvider.CreateProtector(AccessTokenPurpose);
+        _validationCache = validationCache;
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
@@ -84,6 +87,7 @@ internal sealed class ChillAuthTokenService : IChillAuthTokenService
 
         _context.RefreshTokens.Add(session);
         await _context.SaveChangesAsync(cancellationToken);
+        _validationCache.Set(ChillAuthAccessTokenValidationSnapshot.FromEntity(session), now.UtcDateTime);
 
         return BuildTokenResponse(session, refreshToken, now);
     }
@@ -103,19 +107,28 @@ internal sealed class ChillAuthTokenService : IChillAuthTokenService
         session.ExpiresUtc = now.Add(_options.RefreshTokenLifetime).UtcDateTime;
 
         await _context.SaveChangesAsync(cancellationToken);
+        _validationCache.Set(ChillAuthAccessTokenValidationSnapshot.FromEntity(session), now.UtcDateTime);
         return BuildTokenResponse(session, rotatedRefreshToken, now);
     }
 
     public async Task RevokeAsync(Guid sessionGuid, CancellationToken cancellationToken = default)
     {
         var session = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Guid == sessionGuid, cancellationToken);
-        if (session == null || session.RevokedUtc.HasValue)
+        if (session == null)
         {
+            _validationCache.Remove(sessionGuid);
+            return;
+        }
+
+        if (session.RevokedUtc.HasValue)
+        {
+            _validationCache.Set(ChillAuthAccessTokenValidationSnapshot.FromEntity(session), _timeProvider.GetUtcNow().UtcDateTime);
             return;
         }
 
         session.RevokedUtc = _timeProvider.GetUtcNow().UtcDateTime;
         await _context.SaveChangesAsync(cancellationToken);
+        _validationCache.Set(ChillAuthAccessTokenValidationSnapshot.FromEntity(session), _timeProvider.GetUtcNow().UtcDateTime);
     }
 
     public async Task<ClaimsPrincipal?> ValidateAccessTokenAsync(string accessToken, CancellationToken cancellationToken = default)
@@ -136,11 +149,23 @@ internal sealed class ChillAuthTokenService : IChillAuthTokenService
             return null;
         }
 
-        var session = await _context.RefreshTokens
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Guid == payload.SessionGuid, cancellationToken);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        ChillAuthAccessTokenValidationSnapshot? snapshot;
+        if (!_validationCache.TryGet(payload.SessionGuid, nowUtc, out snapshot) || snapshot == null)
+        {
+            var session = await _context.RefreshTokens
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Guid == payload.SessionGuid, cancellationToken);
+            if (session == null)
+            {
+                return null;
+            }
 
-        if (session == null || session.RevokedUtc.HasValue || session.ExpiresUtc <= _timeProvider.GetUtcNow().UtcDateTime)
+            snapshot = ChillAuthAccessTokenValidationSnapshot.FromEntity(session);
+            _validationCache.Set(snapshot, nowUtc);
+        }
+
+        if (snapshot.RevokedUtc.HasValue || snapshot.ExpiresUtc <= nowUtc)
         {
             return null;
         }

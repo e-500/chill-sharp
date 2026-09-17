@@ -1,6 +1,6 @@
 import React from "react";
-import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillSharpClientOptions } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
+import type { ChillSharpClientOptions } from "@chill-sharp/ts-client";
 export interface ChillSharpProviderProps {
     baseUrl: string;
     client?: ChillSharpClient;

@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 import { InjectionToken } from "@angular/core";
-import { ChillSharpClient } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
 export const CHILL_SHARP_CLIENT = new InjectionToken("CHILL_SHARP_CLIENT");
 export function createChillSharpClient(config) {
     if (config.client) {

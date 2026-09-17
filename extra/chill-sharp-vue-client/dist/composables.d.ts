@@ -1,5 +1,5 @@
 import { type Ref } from "vue";
-import type { ChillEntityChangeCallback, ChillValidationError, JsonObject } from "chill-sharp-ts-client";
+import type { ChillEntityChangeCallback, ChillValidationError, JsonObject } from "@chill-sharp/ts-client";
 export interface UseChillAsyncState<TData> {
     data: ReadonlyRef<TData | null>;
     error: ReadonlyRef<unknown>;

@@ -26,6 +26,7 @@ using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Net;
 using System.Reflection;
 using System.Text.Json;
 
@@ -34,6 +35,24 @@ namespace ChillSharp.Tests
     [TestClass]
     public sealed class Basics
     {
+        [TestMethod]
+        public async Task Step000_ApiRootEndpoints_AreReachable()
+        {
+            TestApiHost.EnsureStarted(6002);
+
+            using var httpClient = new HttpClient();
+
+            using var apiResponse = await httpClient.GetAsync("http://localhost:6002/api");
+            apiResponse.EnsureSuccessStatusCode();
+            Assert.AreEqual(HttpStatusCode.OK, apiResponse.StatusCode);
+            Assert.AreEqual("ChillSharp is up and running!", await apiResponse.Content.ReadAsStringAsync());
+
+            using var apiSlashResponse = await httpClient.GetAsync("http://localhost:6002/api/");
+            apiSlashResponse.EnsureSuccessStatusCode();
+            Assert.AreEqual(HttpStatusCode.OK, apiSlashResponse.StatusCode);
+            Assert.AreEqual("ChillSharp is up and running!", await apiSlashResponse.Content.ReadAsStringAsync());
+        }
+
         /// <summary>
         /// Creates a post through the Chill API and verifies that it can be queried back.
         /// </summary>

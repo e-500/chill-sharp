@@ -19,7 +19,7 @@
 
 import { Inject, Injectable } from "@angular/core";
 import { from, Observable } from "rxjs";
-import { ChillSharpClient } from "chill-sharp-ts-client";
+import { ChillSharpClient } from "@chill-sharp/ts-client";
 import type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
@@ -56,7 +56,7 @@ import type {
   UpdateAuthPermissionRuleRequest,
   UpdateAuthRoleRequest,
   UpdateAuthUserRequest
-} from "chill-sharp-ts-client";
+} from "@chill-sharp/ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 
