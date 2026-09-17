@@ -23,13 +23,13 @@ using ChillSharp.EF;
 namespace ChillSharp.Attachment.Model;
 
 /// <summary>
-/// Lists attachments linked to a specific Chill entity.
+/// Lists file metadata linked to a specific Chill entity.
 /// </summary>
 [ChillEntity(
     UniquePropertyKeyString: "2C9303C2-7693-4341-B365-C05F8ED2FBA4",
-    PrimaryLanguageLabel: "Attachment query",
-    SecondaryLanguageLabel: "Ricerca allegati")]
-public sealed class AttachmentQuery : ChillQuery
+    PrimaryLanguageLabel: "File metadata query",
+    SecondaryLanguageLabel: "Ricerca metadati file")]
+public sealed class FileMetadataQuery : ChillQuery
 {
     [ChillProperty(
         UniquePropertyKeyString: "45EAF070-9057-4258-9EB8-C6D3F17D8344",
