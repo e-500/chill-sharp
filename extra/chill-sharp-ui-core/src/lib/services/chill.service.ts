@@ -186,6 +186,7 @@ export class ChillService {
   private readonly chill = inject(ChillSharpNgClient);
   private readonly router = inject(Router);
   private readonly sessionState = signal<AuthSession | null>(this.readStoredSession());
+  private readonly canManagePermissionsState = signal(false);
   private readonly canManageSchemaState = signal(false);
   private readonly userPreferencesState = signal<StoredUserPreferences>(this.readStoredUserPreferences());
   private readonly textVersion = signal(0);
@@ -198,6 +199,7 @@ export class ChillService {
   private sessionExpiryTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 
   readonly session = this.sessionState.asReadonly();
+  readonly canManagePermissions = this.canManagePermissionsState.asReadonly();
   readonly canManageSchema = this.canManageSchemaState.asReadonly();
   readonly userPreferences = this.userPreferencesState.asReadonly();
   readonly isAuthenticated = computed(() => this.sessionState() !== null);
@@ -222,6 +224,7 @@ export class ChillService {
 
   async initialize(): Promise<void> {
     if (!this.isAuthenticated()) {
+      this.canManagePermissionsState.set(false);
       this.canManageSchemaState.set(false);
       return;
     }
@@ -230,11 +233,12 @@ export class ChillService {
       clearSessionOnNotFound: true
     });
     if (!preferences || !this.isAuthenticated()) {
+      this.canManagePermissionsState.set(false);
       this.canManageSchemaState.set(false);
       return;
     }
 
-    await this.loadCurrentUserSchemaAccess();
+    await this.loadCurrentUserAccess();
   }
 
   version(): string {
@@ -1322,6 +1326,7 @@ export class ChillService {
     localStorage.removeItem(SESSION_STORAGE_KEY);
     localStorage.removeItem(USER_PREFERENCES_STORAGE_KEY);
     this.sessionState.set(null);
+    this.canManagePermissionsState.set(false);
     this.canManageSchemaState.set(false);
     this.persistUserPreferences(this.createEmptyUserPreferences());
     this.syncClientSession(null);
@@ -1333,17 +1338,20 @@ export class ChillService {
       this.loadCurrentUserPreferences({
         clearSessionOnNotFound: false
       }),
-      this.loadCurrentUserSchemaAccess()
+      this.loadCurrentUserAccess()
     ]);
   }
 
-  private async loadCurrentUserSchemaAccess(): Promise<void> {
+  private async loadCurrentUserAccess(): Promise<void> {
     try {
       const response = await firstValueFrom(this.chill.getAuthPermissions());
-      this.canManageSchemaState.set(this.isAuthenticated() && response.user?.canManageSchema === true);
+      const isAuthenticated = this.isAuthenticated();
+      this.canManagePermissionsState.set(isAuthenticated && response.user?.canManagePermissions === true);
+      this.canManageSchemaState.set(isAuthenticated && response.user?.canManageSchema === true);
     } catch (error) {
+      this.canManagePermissionsState.set(false);
       this.canManageSchemaState.set(false);
-      console.warn('[ChillService] Unable to load current user schema access', error);
+      console.warn('[ChillService] Unable to load current user access', error);
     }
   }
 

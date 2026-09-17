@@ -22,6 +22,7 @@ publish_script_paths=(
   "$script_dir/chill-sharp-ui-core/publish-to-shared-folder.sh"
   "$script_dir/chill-sharp-react-client/publish-to-shared-folder.sh"
   "$script_dir/chill-sharp-vue-client/publish-to-shared-folder.sh"
+  "$script_dir/chill-sharp-create-app/publish-to-shared-folder.sh"
 )
 
 for publish_script_path in "${publish_script_paths[@]}"; do

@@ -47,6 +47,7 @@ $packageJsonPaths = @(
     'extra/chill-sharp-react-client/package.json',
     'extra/chill-sharp-vue-client/package.json',
     'extra/chill-sharp-ui-core/package.json',
+    'extra/chill-sharp-create-app/package.json',
     'extra/chill-sharp-ui-template/package.json'
 )
 
@@ -61,11 +62,11 @@ foreach ($relativePath in $packageJsonPaths) {
         param($match)
         "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
     }, 1)
-    $manifest = [regex]::Replace($manifest, '("@chill-sharp/(?:ts-client|ng-client|ui-core)"\s*:\s*"\^)\d+\.\d+\.\d+', {
+    $manifest = [regex]::Replace($manifest, '("@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^)\d+\.\d+\.\d+', {
         param($match)
         "$($match.Groups[1].Value)$newVersion"
     })
-    $manifest = [regex]::Replace($manifest, '(file:\./packages/chill-sharp-(?:ts-client|ng-client|ui-core)-)\d+\.\d+\.\d+(\.tgz)', {
+    $manifest = [regex]::Replace($manifest, '(file:\./packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)', {
         param($match)
         "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
     })
@@ -84,10 +85,36 @@ foreach ($relativePath in $packageLockPaths) {
     $path = Join-Path $PSScriptRoot $relativePath
     if (Test-Path -LiteralPath $path) {
         $lockFile = Get-Content -LiteralPath $path -Raw
-        $lockVersionMatch = [regex]::Match($lockFile, '(?s)^\s*\{.*?"version"\s*:\s*"(?<version>\d+\.\d+\.\d+)"')
-        if ($lockVersionMatch.Success) {
-            $lockFile = $lockFile.Replace($lockVersionMatch.Groups['version'].Value, $newVersion)
+
+        # Do not replace the old version globally: third-party packages may happen
+        # to use the same version number as ChillSharp.
+        # Stay inside each package object: link entries have no version field.
+        $lockVersionMatch = [regex]::Match($lockFile, '(?s)\A\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*"(?<version>\d+\.\d+\.\d+)"')
+        if (-not $lockVersionMatch.Success) {
+            throw "Could not find the root package version in $path."
         }
+        $versionGroup = $lockVersionMatch.Groups['version']
+        $lockFile = $lockFile.Substring(0, $versionGroup.Index) + $newVersion + $lockFile.Substring($versionGroup.Index + $versionGroup.Length)
+        $lockFile = [regex]::Replace($lockFile, '(?s)(""\s*:\s*\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"version"\s*:\s*")\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '("@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*"\^?)\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(file:(?:\./)?packages/chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)-)\d+\.\d+\.\d+(\.tgz)', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion$($match.Groups[2].Value)"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(?s)("(?:\.\./)?chill-sharp-(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{[^{}]*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
+        $lockFile = [regex]::Replace($lockFile, '(?s)("node_modules/@chill-sharp/(?:ts-client|ng-client|react-client|vue-client|ui-core|create-app)"\s*:\s*\{[^{}]*?"version"\s*:\s*")\d+\.\d+\.\d+', {
+            param($match)
+            "$($match.Groups[1].Value)$newVersion"
+        })
         [System.IO.File]::WriteAllText($path, $lockFile, [System.Text.UTF8Encoding]::new($false))
     }
 }
