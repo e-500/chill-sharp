@@ -23,6 +23,7 @@ import { useChillSharpClient } from "./context.js";
 import type {
   ChillDtoSchema,
   ChillDtoSchemaListItem,
+  ChillUserPreferences,
   ChillEntityChangeCallback,
   ChillEntityChangeSubscription,
   ChillValidationError,
@@ -228,6 +229,31 @@ export function useTest(): UseChillAsyncState<string> {
     isLoading,
     reload: load
   };
+}
+
+export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPreferences> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<ChillUserPreferences | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const load = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await client.getCurrentUserPreferences();
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, [client]);
+  return { data, error, isLoading, reload: load };
 }
 
 export function useQueryMutation(): UseChillMutationState<JsonObject> {

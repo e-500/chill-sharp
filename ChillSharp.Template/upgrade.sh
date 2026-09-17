@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-upgrade_script_version=0
+upgrade_script_version=1
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 csproj_files=("$script_dir"/*.csproj)
 if [ ${#csproj_files[@]} -eq 0 ] || [ ! -f "${csproj_files[0]}" ]; then
@@ -192,6 +192,45 @@ with zipfile.ZipFile(nupkg, "r") as z:
 ' "$nupkg_path" "$target_folder"
 }
 
+extract_chillsharp_documentation() {
+  local nupkg_path="$1"
+  local target_folder="$2"
+
+  python3 -c '
+import os, shutil, sys, zipfile
+
+nupkg = sys.argv[1]
+target = sys.argv[2]
+documentation_dir = os.path.join(target, "doc")
+
+if os.path.exists(documentation_dir):
+    shutil.rmtree(documentation_dir)
+os.makedirs(documentation_dir, exist_ok=True)
+
+documentation_root = os.path.abspath(documentation_dir)
+with zipfile.ZipFile(nupkg, "r") as archive:
+    for entry in archive.infolist():
+        if not entry.filename.startswith("doc/"):
+            continue
+
+        relative_path = entry.filename[len("doc/"):]
+        if not relative_path:
+            continue
+
+        destination = os.path.abspath(os.path.join(documentation_dir, relative_path))
+        if os.path.commonpath((documentation_root, destination)) != documentation_root:
+            raise RuntimeError(f"Refusing to extract documentation outside '{documentation_root}'.")
+
+        if entry.is_dir():
+            os.makedirs(destination, exist_ok=True)
+            continue
+
+        os.makedirs(os.path.dirname(destination), exist_ok=True)
+        with archive.open(entry) as source, open(destination, "wb") as output:
+            shutil.copyfileobj(source, output)
+' "$nupkg_path" "$target_folder"
+}
+
 update_upgrade_script_if_newer() {
   local nupkg_path="$1"
   local script_path="$2"
@@ -268,6 +307,7 @@ else
 fi
 set_chillsharp_package_reference_version "$template_project_path" "$package_version"
 extract_chillsharp_skills "$destination_archive_path" "$script_dir"
+extract_chillsharp_documentation "$destination_archive_path" "$script_dir"
 
 removed_global_cache_path="$(remove_chillsharp_global_package_cache "$package_version" || true)"
 mapfile -t removed_restore_state_paths < <(remove_stale_restore_state "$restore_state_folder")
@@ -275,6 +315,7 @@ mapfile -t removed_restore_state_paths < <(remove_stale_restore_state "$restore_
 printf "Copied ChillSharp %s from '%s' to '%s'.\n" "$package_version" "$source_archive_path" "$destination_archive_path"
 printf "Updated %s to ChillSharp %s.\n" "$template_project_name" "$package_version"
 printf "Extracted and updated agent skills in '.agents/skills/'.\n"
+printf "Extracted and updated documentation in 'doc/'.\n"
 printf "Saved CHILL_NUGET_SHARED_FOLDER to '%s'.\n" "$env_file"
 
 if [[ -n "${removed_global_cache_path//[[:space:]]/}" ]]; then

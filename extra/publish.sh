@@ -208,14 +208,23 @@ select_packages() {
 
 set_publish_mode() {
   printf '\nPublish targets:\n'
-  printf '1. extra npm packages\n'
-  printf '2. ChillSharp NuGet packages\n\n'
+  printf '1. ChillSharp NuGet packages\n'
+  printf '2. Extra npm packages\n\n'
 
   local target_choice
   target_choice="$(read_menu_choice 'Select publish target' 1 2)"
 
   case "$target_choice" in
     1)
+      local nuget_folder
+      read -r -p "NuGet shared folder path [$nuget_shared_folder]: " nuget_folder
+      if [[ -n "${nuget_folder//[[:space:]]/}" ]]; then
+        nuget_shared_folder="$nuget_folder"
+      fi
+
+      printf '\nUpdated NuGet package output folder: %s\n' "$nuget_shared_folder"
+      ;;
+    2)
       mapfile -t selected_indexes < <(select_packages)
 
       printf '\nPublish modes:\n'
@@ -264,15 +273,6 @@ set_publish_mode() {
           "${package_labels[$index]}" \
           "$(mode_label "${package_modes[$index]}" "${package_shared_folders[$index]}")"
       done
-      ;;
-    2)
-      local nuget_folder
-      read -r -p "NuGet shared folder path [$nuget_shared_folder]: " nuget_folder
-      if [[ -n "${nuget_folder//[[:space:]]/}" ]]; then
-        nuget_shared_folder="$nuget_folder"
-      fi
-
-      printf '\nUpdated NuGet package output folder: %s\n' "$nuget_shared_folder"
       ;;
   esac
 }
@@ -474,22 +474,22 @@ publish_nuget_packages() {
 
 publish_packages() {
   printf '\nPublish targets:\n'
-  printf '1. extra npm packages\n'
-  printf '2. ChillSharp NuGet packages\n\n'
+  printf '1. ChillSharp NuGet packages\n'
+  printf '2. Extra npm packages\n\n'
 
   local target_choice
   target_choice="$(read_menu_choice 'Select publish target' 1 2)"
 
   case "$target_choice" in
     1)
+      publish_nuget_packages
+      ;;
+    2)
       mapfile -t selected_indexes < <(select_packages)
       local index
       for index in "${selected_indexes[@]}"; do
         publish_package "$index"
       done
-      ;;
-    2)
-      publish_nuget_packages
       ;;
   esac
 

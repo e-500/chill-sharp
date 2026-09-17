@@ -27,6 +27,7 @@ import type {
   AuthPermissionRule,
   ChangePasswordRequest,
   ChangePasswordResponse,
+  ChillUserPreferences,
   CreateAuthPermissionRuleRequest,
   CreateAuthRoleRequest,
   CreateAuthUserRequest,
@@ -128,6 +129,10 @@ export class ChillSharpNgClient {
 
   version(): string {
     return CHILL_SHARP_NG_CLIENT_VERSION;
+  }
+
+  setCultureName(cultureName?: string | null): void {
+    this.client.setCultureName(cultureName);
   }
 
   test(): Observable<string> {
@@ -244,6 +249,10 @@ export class ChillSharpNgClient {
 
   getAuthPermissions(): Observable<GetAuthPermissionsResponse> {
     return from(this.client.getAuthPermissions());
+  }
+
+  getCurrentUserPreferences(): Observable<ChillUserPreferences> {
+    return from(this.client.getCurrentUserPreferences());
   }
 
   getAuthUserList(): Observable<AuthUserListItem[]> {

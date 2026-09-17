@@ -36,6 +36,7 @@ public class ChillAuthService : IChillAuthService
     private readonly IChillAuthDbContext _context;
     private readonly IChillContext _chillContext;
     private readonly IChillAuthManagementAccessCache _managementAccessCache;
+    private readonly IChillAuthUserPreferencesCache? _userPreferencesCache;
     private readonly IHttpContextAccessor? _httpContextAccessor;
     private readonly IChillAuthIdentityResolver? _identityResolver;
     #endregion
@@ -50,13 +51,15 @@ public class ChillAuthService : IChillAuthService
         IChillContext chillContext,
         IChillAuthManagementAccessCache managementAccessCache,
         IHttpContextAccessor? httpContextAccessor = null,
-        IChillAuthIdentityResolver? identityResolver = null)
+        IChillAuthIdentityResolver? identityResolver = null,
+        IChillAuthUserPreferencesCache? userPreferencesCache = null)
     {
         _context = context;
         _chillContext = chillContext;
         _managementAccessCache = managementAccessCache;
         _httpContextAccessor = httpContextAccessor;
         _identityResolver = identityResolver;
+        _userPreferencesCache = userPreferencesCache;
     }
     #endregion
 
@@ -174,10 +177,12 @@ public class ChillAuthService : IChillAuthService
         }
 
         AuthUser user;
+        string? previousExternalId = null;
         if (request.Guid.HasValue && request.Guid.Value != Guid.Empty)
         {
             user = await _context.Users.FirstOrDefaultAsync(x => x.Guid == request.Guid.Value, cancellationToken)
                 ?? throw new ArgumentException("The referenced user does not exist.");
+            previousExternalId = user.ExternalId;
         }
         else
         {
@@ -197,6 +202,7 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
+        user.PreferredTheme = request.PreferredTheme.Trim();
         if (!isSelfTarget)
         {
             user.IsActive = request.IsActive;
@@ -212,7 +218,9 @@ public class ChillAuthService : IChillAuthService
             await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
         }
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateUserPreferences(previousExternalId);
         InvalidateManagementAccess(user.ExternalId);
+        CacheUserPreferences(user);
 
         return (await GetManagedUserAsync(user.Guid, cancellationToken))!;
     }
@@ -354,17 +362,23 @@ public class ChillAuthService : IChillAuthService
     }
 
     /// <inheritdoc />
-    public Task<AuthUser?> GetUserByExternalIdAsync(string externalId, CancellationToken cancellationToken = default)
+    public async Task<AuthUser?> GetUserByExternalIdAsync(string externalId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(externalId))
         {
-            return Task.FromResult<AuthUser?>(null);
+            return null;
         }
 
         var normalized = externalId.Trim();
-        return _context.Users
+        var user = await _context.Users
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.ExternalId == normalized, cancellationToken);
+        if (user != null)
+        {
+            CacheUserPreferences(user);
+        }
+
+        return user;
     }
 
     /// <inheritdoc />
@@ -382,6 +396,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = request.DisplayTimeZone.Trim(),
             DisplayDateFormat = request.DisplayDateFormat.Trim(),
             DisplayNumberFormat = request.DisplayNumberFormat.Trim(),
+            PreferredTheme = request.PreferredTheme.Trim(),
             IsActive = request.IsActive,
             MenuHierarchy = request.MenuHierarchy.Trim(),
             CanManagePermissions = request.CanManagePermissions,
@@ -391,6 +406,7 @@ public class ChillAuthService : IChillAuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
+        CacheUserPreferences(user);
         return user;
     }
 
@@ -407,6 +423,7 @@ public class ChillAuthService : IChillAuthService
 
         var isSelfTarget = await IsCurrentActorUserAsync(user.Guid, cancellationToken);
 
+        var previousExternalId = user.ExternalId;
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
@@ -414,6 +431,7 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
+        user.PreferredTheme = request.PreferredTheme.Trim();
         // Only if the updating user (JWT authenticated user) if different from update request user,
         // allow updating IsActive, CanManagePermissions and CanManageSchema
         // to prevent users from locking themselves out or losing permissions by mistake
@@ -428,7 +446,10 @@ public class ChillAuthService : IChillAuthService
         // 
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateUserPreferences(previousExternalId);
+        InvalidateManagementAccess(previousExternalId);
         InvalidateManagementAccess(user.ExternalId);
+        CacheUserPreferences(user);
         return user;
     }
 
@@ -442,6 +463,7 @@ public class ChillAuthService : IChillAuthService
         }
 
         InvalidateManagementAccess(user.ExternalId);
+        InvalidateUserPreferences(user.ExternalId);
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
@@ -782,6 +804,24 @@ public class ChillAuthService : IChillAuthService
             _managementAccessCache.InvalidateAll();
         else
             _managementAccessCache.Invalidate(externalId);
+    }
+
+    private void InvalidateUserPreferences(string? externalId)
+    {
+        if (!string.IsNullOrWhiteSpace(externalId))
+        {
+            _userPreferencesCache?.Invalidate(externalId);
+        }
+    }
+
+    private void CacheUserPreferences(AuthUser user)
+    {
+        _userPreferencesCache?.Set(user.ExternalId, new ChillUserPreferences(
+            user.DisplayCultureName,
+            user.DisplayTimeZone,
+            user.DisplayDateFormat,
+            user.DisplayNumberFormat,
+            user.PreferredTheme));
     }
     #endregion
 
@@ -1310,6 +1350,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = user.DisplayTimeZone,
             DisplayDateFormat = user.DisplayDateFormat,
             DisplayNumberFormat = user.DisplayNumberFormat,
+            PreferredTheme = user.PreferredTheme,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,
@@ -1358,6 +1399,7 @@ public class ChillAuthService : IChillAuthService
             DisplayTimeZone = user.DisplayTimeZone,
             DisplayDateFormat = user.DisplayDateFormat,
             DisplayNumberFormat = user.DisplayNumberFormat,
+            PreferredTheme = user.PreferredTheme,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,

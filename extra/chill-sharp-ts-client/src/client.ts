@@ -200,6 +200,7 @@ export interface AuthUserListItem extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -222,6 +223,15 @@ export interface AuthTokenResponse extends JsonObject {
   refreshTokenExpiresUtc: string;
   userId: string;
   userName: string;
+}
+
+/** Display preferences resolved for the current authenticated user. */
+export interface ChillUserPreferences extends JsonObject {
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
+  preferredTheme: string;
 }
 
 export interface RegisterAuthIdentityRequest extends JsonObject {
@@ -354,6 +364,7 @@ export interface SetAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -371,6 +382,7 @@ export interface CreateAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -385,6 +397,7 @@ export interface UpdateAuthUserRequest extends JsonObject {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -486,7 +499,7 @@ export class ChillSharpClient {
   private static readonly attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
-  private readonly cultureName: string | null;
+  private cultureName: string | null;
   private readonly signalRWithCredentials: boolean;
 
   private username: string | null;
@@ -632,6 +645,11 @@ export class ChillSharpClient {
 
   version(): string {
     return CHILL_SHARP_TS_CLIENT_VERSION;
+  }
+
+  /** Updates the default culture used by calls that do not provide one explicitly. */
+  setCultureName(cultureName?: string | null): void {
+    this.cultureName = this.normalizeOptionalValue(cultureName);
   }
 
   test(): Promise<string> {
@@ -799,6 +817,10 @@ export class ChillSharpClient {
     return this.sendAuthJson<GetAuthPermissionsResponse>("GET", "get-permissions");
   }
 
+  getCurrentUserPreferences(): Promise<ChillUserPreferences> {
+    return this.sendAuthJson<ChillUserPreferences>("GET", "current-user-preferences");
+  }
+
   getAuthUserList(): Promise<AuthUserListItem[]> {
     return this.sendAuthJson<AuthUserListItem[]>("GET", "get-user-list");
   }
@@ -828,6 +850,7 @@ export class ChillSharpClient {
       displayTimeZone: payload.displayTimeZone,
       displayDateFormat: payload.displayDateFormat,
       displayNumberFormat: payload.displayNumberFormat,
+      preferredTheme: payload.preferredTheme,
       isActive: payload.isActive,
       canManagePermissions: payload.canManagePermissions,
       canManageSchema: payload.canManageSchema,

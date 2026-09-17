@@ -61,6 +61,7 @@ export interface AuthUser {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme?: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -75,6 +76,7 @@ export interface CreateAuthUserRequest {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme?: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -89,6 +91,7 @@ export interface UpdateAuthUserRequest {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme?: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -101,6 +104,7 @@ export interface UpdateUserProfileRequest {
   displayTimeZone: string;
   displayDateFormat: string;
   displayNumberFormat: string;
+  preferredTheme?: string;
 }
 
 export interface AuthRole {

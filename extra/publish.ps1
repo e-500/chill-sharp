@@ -139,13 +139,24 @@ function Set-PublishMode {
   # Let the user change publish settings for either npm packages or the ChillSharp NuGet package output.
   Write-Host ''
   Write-Host 'Publish targets:'
-  Write-Host '1. extra npm packages'
-  Write-Host '2. ChillSharp NuGet packages'
+  Write-Host '1. ChillSharp NuGet packages'
+  Write-Host '2. Extra npm packages'
   Write-Host ''
 
   $targetChoice = Read-MenuChoice -Prompt 'Select publish target' -ValidChoices @('1', '2')
   switch ($targetChoice) {
     '1' {
+      $nugetFolder = [string](Read-Host "NuGet shared folder path [$script:NuGetSharedFolder]")
+      if ([string]::IsNullOrWhiteSpace($nugetFolder)) {
+        $nugetFolder = $script:NuGetSharedFolder
+      }
+
+      $script:NuGetSharedFolder = $nugetFolder
+
+      Write-Host ''
+      Write-Host "Updated NuGet package output folder: $script:NuGetSharedFolder"
+    }
+    '2' {
       $selectedPackages = Select-Packages
 
       Write-Host ''
@@ -187,17 +198,6 @@ function Set-PublishMode {
         Write-Host "- $($package.Label): $(Get-ModeLabel -Mode $package.Mode -SharedFolder $package.SharedFolder)"
       }
     }
-    '2' {
-      $nugetFolder = [string](Read-Host "NuGet shared folder path [$script:NuGetSharedFolder]")
-      if ([string]::IsNullOrWhiteSpace($nugetFolder)) {
-        $nugetFolder = $script:NuGetSharedFolder
-      }
-
-      $script:NuGetSharedFolder = $nugetFolder
-
-      Write-Host ''
-      Write-Host "Updated NuGet package output folder: $script:NuGetSharedFolder"
-    }
   }
 }
 
@@ -237,21 +237,21 @@ function Publish-Packages {
   # Publish either extra npm packages or the ChillSharp NuGet package set.
   Write-Host ''
   Write-Host 'Publish targets:'
-  Write-Host '1. extra npm packages'
-  Write-Host '2. ChillSharp NuGet packages'
+  Write-Host '1. ChillSharp NuGet packages'
+  Write-Host '2. Extra npm packages'
   Write-Host ''
 
   $targetChoice = Read-MenuChoice -Prompt 'Select publish target' -ValidChoices @('1', '2')
   switch ($targetChoice) {
     '1' {
+      Publish-NuGetPackages
+    }
+    '2' {
       $selectedPackages = Select-Packages
 
       foreach ($package in $selectedPackages) {
         Publish-Package -Package $package
       }
-    }
-    '2' {
-      Publish-NuGetPackages
     }
   }
 

@@ -72,6 +72,7 @@ public sealed class AuthApi
             DisplayTimeZone = "W. Europe Standard Time",
             DisplayDateFormat = "DD/MM/YYYY",
             DisplayNumberFormat = "1.000,00",
+            PreferredTheme = "cini",
             IsActive = true
         });
 
@@ -103,6 +104,7 @@ public sealed class AuthApi
         Assert.AreEqual("W. Europe Standard Time", persistedUser.DisplayTimeZone);
         Assert.AreEqual("DD/MM/YYYY", persistedUser.DisplayDateFormat);
         Assert.AreEqual("1.000,00", persistedUser.DisplayNumberFormat);
+        Assert.AreEqual("cini", persistedUser.PreferredTheme);
     }
 
     /// <summary>
@@ -310,7 +312,7 @@ public sealed class AuthApi
         Assert.IsNotNull(revokedRefreshToken);
         Assert.IsTrue(revokedRefreshToken.RevokedUtc.HasValue);
         Assert.AreEqual("it-IT", persistedAuthUser.DisplayCultureName);
-        Assert.AreEqual("W. Europe Standard Time", persistedAuthUser.DisplayTimeZone);
+        Assert.AreEqual("Europe/Rome", persistedAuthUser.DisplayTimeZone);
         Assert.AreEqual("DD/MM/YYYY", persistedAuthUser.DisplayDateFormat);
         Assert.AreEqual("1.000,00", persistedAuthUser.DisplayNumberFormat);
     }
@@ -892,15 +894,18 @@ public sealed class AuthApi
             DisplayTimeZone = "Europe/Rome",
             DisplayDateFormat = "DD/MM/YYYY",
             DisplayNumberFormat = "1.000,00",
+            PreferredTheme = "client-specific-theme",
             IsActive = true
         });
 
         Assert.AreEqual("it-IT", response.DisplayCultureName);
         Assert.AreEqual("Europe/Rome", response.DisplayTimeZone);
+        Assert.AreEqual("client-specific-theme", response.PreferredTheme);
 
         var persistedUser = await context.Users.FirstAsync(x => x.Guid == response.Guid);
         Assert.AreEqual("it-IT", persistedUser.DisplayCultureName);
         Assert.AreEqual("Europe/Rome", persistedUser.DisplayTimeZone);
+        Assert.AreEqual("client-specific-theme", persistedUser.PreferredTheme);
     }
 
     [TestMethod]

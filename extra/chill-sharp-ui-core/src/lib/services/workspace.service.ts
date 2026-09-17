@@ -5,14 +5,16 @@ import { firstValueFrom } from 'rxjs';
 import type { CrudPageComponentConfiguration } from '../pages/crud/crud-page.component';
 import type { ChillMenuItem } from '../models/chill-menu.models';
 import type { WorkspaceTaskComponent, WorkspaceTaskComponentType, WorkspaceTaskConfiguration } from '../models/workspace-task.models';
-import { WORKSPACE_THEME_STORAGE_KEY } from '../storage-keys';
+import { CHILL_SHARP_UI_CORE_OPTIONS } from '../provide-chill-sharp-ui-core';
 import { ChillService } from './chill.service';
 import { WorkspaceDialogService } from './workspace-dialog.service';
 import { WorkspaceLayoutService } from './workspace-layout.service';
 import { WorkspaceTaskDefinition, WorkspaceTaskRegistryService } from './workspace-task-registry.service';
 const ACTIVE_MENU_ITEM_QUERY_PARAM = 'activeMenuItem';
 
-export type WorkspaceTheme = 'bright' | 'dark' | 'soft' | 'cini';
+export type WorkspaceTheme = string;
+
+const BUILT_IN_THEMES = ['bright', 'dark', 'soft'];
 
 interface WorkspaceTaskRoute {
   taskType: string;
@@ -61,18 +63,18 @@ export class WorkspaceService {
   private readonly layout = inject(WorkspaceLayoutService);
   private readonly taskRegistry = inject(WorkspaceTaskRegistryService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly uiCoreOptions = inject(CHILL_SHARP_UI_CORE_OPTIONS, { optional: true });
 
   private readonly drawerOpenState = signal(true);
   private readonly activeTaskIdState = signal<string | null>(null);
   private readonly openTaskInstancesState = signal<WorkspaceTaskInstance[]>([]);
   private taskComponentResolver: ((taskId: string) => WorkspaceTaskComponent | null) | null = null;
-  private readonly storedThemePreference = this.readStoredThemePreference();
-  private readonly hasExplicitThemePreferenceState = signal(this.storedThemePreference !== null);
-  private readonly themeState = signal<WorkspaceTheme>(this.storedThemePreference ?? this.readSystemThemePreference());
+  private readonly themeState = signal<WorkspaceTheme>(this.readSystemThemePreference());
 
   readonly availableTasks = computed(() => this.taskRegistry.definitions());
   readonly isDrawerOpen = this.drawerOpenState.asReadonly();
   readonly theme = this.themeState.asReadonly();
+  readonly themes = this.resolveThemes();
   readonly isLayoutEditingEnabled = this.layout.isLayoutEditingEnabled;
   readonly openTasks = this.openTaskInstancesState.asReadonly();
   readonly activeTask = computed(() => this.openTaskInstancesState()
@@ -83,6 +85,11 @@ export class WorkspaceService {
       const theme = this.themeState();
       this.document.documentElement.setAttribute('data-theme', theme);
       this.document.documentElement.style.setProperty('color-scheme', theme === 'dark' ? 'dark' : 'light');
+    });
+
+    effect(() => {
+      const preferredTheme = this.chill.preferredTheme().trim().toLowerCase();
+      this.themeState.set(this.isAvailableTheme(preferredTheme) ? preferredTheme : this.readSystemThemePreference());
     });
 
     this.bindSystemThemePreference();
@@ -292,9 +299,17 @@ export class WorkspaceService {
   }
 
   setTheme(theme: WorkspaceTheme): void {
+    if (!this.isAvailableTheme(theme)) {
+      return;
+    }
+
     this.themeState.set(theme);
-    this.hasExplicitThemePreferenceState.set(true);
-    globalThis.localStorage?.setItem(WORKSPACE_THEME_STORAGE_KEY, theme);
+    const userId = this.chill.session()?.userId.trim() ?? '';
+    if (!userId) {
+      return;
+    }
+
+    void firstValueFrom(this.chill.updatePreferredTheme(userId, theme)).catch(() => undefined);
   }
 
   toggleLayoutEditingEnabled(): void {
@@ -469,7 +484,7 @@ export class WorkspaceService {
 
     const mediaQuery = globalThis.matchMedia('(prefers-color-scheme: dark)');
     const applySystemTheme = () => {
-      if (this.hasExplicitThemePreferenceState()) {
+      if (this.chill.preferredTheme().trim()) {
         return;
       }
 
@@ -481,19 +496,6 @@ export class WorkspaceService {
     const handleChange = () => applySystemTheme();
     mediaQuery.addEventListener('change', handleChange);
     this.destroyRef.onDestroy(() => mediaQuery.removeEventListener('change', handleChange));
-  }
-
-  private readStoredThemePreference(): WorkspaceTheme | null {
-    const storedTheme = globalThis.localStorage?.getItem(WORKSPACE_THEME_STORAGE_KEY)?.trim().toLowerCase();
-    switch (storedTheme) {
-      case 'dark':
-      case 'soft':
-      case 'cini':
-      case 'bright':
-        return storedTheme;
-      default:
-        return null;
-    }
   }
 
   private readSystemThemePreference(): WorkspaceTheme {
@@ -650,6 +652,17 @@ export class WorkspaceService {
 
   private normalizeComponentName(value: string): string {
     return value.trim().toLowerCase();
+  }
+
+  private resolveThemes(): WorkspaceTheme[] {
+    const additionalThemes = this.uiCoreOptions?.additionalThemes ?? [];
+    return [...new Set([...BUILT_IN_THEMES, ...additionalThemes
+      .map((theme) => theme.trim().toLowerCase())
+      .filter((theme) => theme.length > 0)])];
+  }
+
+  private isAvailableTheme(theme: string): theme is WorkspaceTheme {
+    return this.themes.includes(theme);
   }
 
   private getTaskAndDescendantIds(taskInstanceId: string): Set<string> {

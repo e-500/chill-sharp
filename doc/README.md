@@ -11,6 +11,9 @@ This folder contains the reference documentation for ChillSharp.
 - [ModelPreparation.md](./ModelPreparation.md)
   Prepare an EF Core model so ChillSharp can activate entities, run lifecycle hooks, generate schema metadata, and persist audit fields.
 
+- [ReferenceExistence.md](./ReferenceExistence.md)
+  Check whether an EF Core reference has foreign-key values without loading its related entity, including databases without enforced FK constraints.
+
 - [RegisterContext.md](./RegisterContext.md)
   Register ChillSharp modules against a host `DbContext` and map the API surface.
 
@@ -28,6 +31,9 @@ This folder contains the reference documentation for ChillSharp.
 
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
+
+- [CurrentUserPreferences.md](./CurrentUserPreferences.md)
+  Cached authenticated-user culture, time-zone, date-format, and number-format preferences for `IChillContext` and entity lifecycle hooks.
 
 - [MenuGuide/README.md](./MenuGuide/README.md)
   Backend-managed menu tree, menu endpoints, and `MenuHierarchy` filtering rules.

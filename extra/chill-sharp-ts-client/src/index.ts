@@ -37,6 +37,7 @@ export type {
   AuthUserListItem,
   ChangePasswordRequest,
   ChangePasswordResponse,
+  ChillUserPreferences,
   ChillDtoEntity,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,

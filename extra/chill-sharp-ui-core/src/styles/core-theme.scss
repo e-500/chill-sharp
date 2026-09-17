@@ -530,6 +530,8 @@ a {
 
 .workspace-topbar__center {
   min-width: 0;
+  align-self: stretch;
+  display: flex;
 }
 
 .workspace-toolbar-actions {
@@ -1082,6 +1084,7 @@ a {
 
 .taskbar {
   min-width: 0;
+  height: 100%;
   display: block;
   overflow-x: auto;
   padding-bottom: 0.2rem;
@@ -1094,11 +1097,12 @@ a {
 }
 
 .taskbar__item {
+  height: 100%;
   display: inline-flex;
   align-items: center;
   gap: 0.15rem;
-  padding: 0.25rem;
-  border-radius: 999px;
+  padding: 0 0.25rem;
+  border-radius: 1rem;
   border: 1px solid var(--border-color);
   background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
   white-space: nowrap;
@@ -1108,36 +1112,21 @@ a {
   background: color-mix(in srgb, var(--accent) 50%, var(--surface-2));
 }
 
-.taskbar__desktop,
-.taskbar__children {
+.taskbar__desktop {
   display: flex;
   align-items: center;
-}
-
-.taskbar__desktop {
+  height: 100%;
   gap: 0.5rem;
 }
 
-.taskbar__task-group {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-}
-
-.taskbar__children {
-  gap: 0.35rem;
-  margin-left: -0.65rem;
-  padding-left: 0.5rem;
-}
-
-.taskbar__children .taskbar__item {
-  background: color-mix(in srgb, var(--accent) 25%, var(--surface-2));
+.taskbar__breadcrumb {
+  color: var(--text-muted);
 }
 
 .taskbar__link,
 .taskbar__close {
   padding: 0.55rem 0.8rem;
-  border-radius: 999px;
+  border-radius: 1rem;
   background: transparent;
   color: var(--text-main);
 }

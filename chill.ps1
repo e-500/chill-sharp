@@ -27,11 +27,13 @@ function Show-TestMenu {
     Write-Host ''
     Write-Host '1. Test ChillSharp core (C#)'
     Write-Host '2. Test ChillSharp Ui Core (Angular)'
+    Write-Host '3. Test Ui Core polymorphic input/output preferences (Angular)'
     Write-Host '0. Back'
     Write-Host ''
-    switch (Read-MenuChoice -Prompt 'Select an option' -ValidChoices @('1', '2', '0')) {
+    switch (Read-MenuChoice -Prompt 'Select an option' -ValidChoices @('1', '2', '3', '0')) {
       '1' { & dotnet test $coreTestProjectPath; if ($LASTEXITCODE -ne 0) { throw 'ChillSharp core tests failed.' }; Pause-ForUser }
       '2' { Push-Location $uiCorePath; try { & npm test; if ($LASTEXITCODE -ne 0) { throw 'ChillSharp UI Core tests failed.' } } finally { Pop-Location }; Pause-ForUser }
+      '3' { Push-Location $uiCorePath; try { & npm test -- --include=src/lib/services/chill.service.spec.ts --include=src/lib/lib/chill-polymorphic-input.component.spec.ts --include=src/lib/lib/chill-polymorphic-output.component.spec.ts; if ($LASTEXITCODE -ne 0) { throw 'ChillSharp UI Core polymorphic preference tests failed.' } } finally { Pop-Location }; Pause-ForUser }
       '0' { return }
     }
   }

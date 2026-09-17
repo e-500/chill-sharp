@@ -89,3 +89,17 @@ Provide lifecycle hooks inside your entities by overriding virtual methods:
 
 - Audit fields: `Checksum`, `LastUpdateUser`, `LastUpdate`, `LastUpdateUtcOffset` are managed automatically on `ChillEntity`.
 - Ensure new entities are registered as `DbSet<T>` properties in your context class so they are tracked by EF Core.
+
+## 5. Check A Reference Without Loading It
+
+For a dependent-side reference navigation backed by an EF Core foreign-key mapping, use `Exist()` on its `ReferenceEntry` when code only needs to know whether the dependent currently has FK values:
+
+```csharp
+var exampleExists = context.Entry(example)
+    .Reference(x => x.Owner)
+    .Exist();
+```
+
+`Exist()` is intentionally singular (not `Exists`). With its default `false` argument it does not load the related entity. `Exist(true)` loads it only when every FK component has a value. This works when the database does not enforce a physical FK constraint, provided EF Core still has a configured relationship and FK properties. It is a presence check for FK values, not proof that a principal row exists: an orphaned value still returns `true`.
+
+Read the packaged `doc/ReferenceExistence.md` reference before using this for composite keys, shadow FKs, or legacy databases.

@@ -11,11 +11,17 @@ Questa cartella contiene la documentazione di riferimento di ChillSharp.
 - [ModelPreparation.md](./ModelPreparation.md)
   Prepara un modello EF Core in modo che ChillSharp possa attivare le entita, eseguire gli hook del ciclo di vita, generare metadati di schema e salvare i campi di audit.
 
+- [ReferenceExistence.md](./ReferenceExistence.md)
+  Verifica se un riferimento EF Core ha valori di chiave esterna senza caricare l'entita correlata, anche con database senza vincoli FK applicati.
+
 - [RegisterContext.md](./RegisterContext.md)
   Registra i moduli ChillSharp su un `DbContext` host e mappa la superficie API.
 
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Flussi account basati su Identity, endpoint di gestione auth, strategie di bootstrap e configurazione di API protette.
+
+- [CurrentUserPreferences.md](./CurrentUserPreferences.md)
+  Preferenze in cache di cultura, fuso orario e formati dell'utente autenticato per `IChillContext` e gli hook del ciclo di vita delle entita.
 
 - [PermissionModel/README.md](./PermissionModel/README.md)
   Il modello di permessi usato da `ChillSharp.Auth`, incluse precedenza, scope e modalita di risoluzione dell'accesso a entita e proprieta.

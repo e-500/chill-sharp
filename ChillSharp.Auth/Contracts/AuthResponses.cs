@@ -92,6 +92,7 @@ public class AuthUserListItemResponse
     public string DisplayTimeZone { get; set; } = string.Empty;
     public string DisplayDateFormat { get; set; } = string.Empty;
     public string DisplayNumberFormat { get; set; } = string.Empty;
+    public string PreferredTheme { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public bool CanManagePermissions { get; set; }
     public bool CanManageSchema { get; set; }

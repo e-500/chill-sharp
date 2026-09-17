@@ -103,6 +103,19 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Gets the display preferences associated with the current logical Chill operation.
+        /// </summary>
+        /// <remarks>
+        /// Hosts using ChillSharp.Auth can implement this by returning the current value of
+        /// <c>IChillAuthUserPreferencesAccessor.Current</c>. The default preserves compatibility
+        /// for contexts that do not have an authenticated user.
+        /// </remarks>
+        ChillUserPreferences GetCurrentUserPreferences()
+        {
+            return ChillUserPreferences.Empty;
+        }
+
+        /// <summary>
         /// Gets the user name associated with the current logical Chill operation.
         /// </summary>
         /// <remarks>

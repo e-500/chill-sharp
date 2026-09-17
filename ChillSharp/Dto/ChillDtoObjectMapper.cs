@@ -49,7 +49,6 @@ namespace ChillSharp.Dto
             var defaultSchema = ResolveDefaultSchema(context, chillType);
             var dbx = (DbContext)context;
             var sourceEntityType = dbx.Model.FindEntityType(source.GetType());
-            var sourceIsMappedEntity = sourceEntityType != null;
 
             return properties.ToDictionary(
                 property => property.Name,
@@ -57,6 +56,8 @@ namespace ChillSharp.Dto
                 {
                     var propertyName = property.Name;
 
+                    // Must run before reading the CLR property: it may populate a
+                    // calculated / [NotMapped] property.
                     if (property.Attribute.CallOnInflate)
                     {
                         onInflate?.Invoke(propertyName);
@@ -64,47 +65,48 @@ namespace ChillSharp.Dto
 
                     if (property.IsEntityReference)
                     {
-                        if (!sourceIsMappedEntity || dbx.Entry(source).Reference(propertyName).Exist(true))
-                        {
-                            var entity = (IChillEntity?)property.Getter(source);
-                            if (entity == null)
-                                return null;
+                        // A Chill entity reference is not necessarily an EF navigation.
+                        // For example, [NotMapped] properties populated by OnInflate.
+                        var navigation = sourceEntityType?.FindNavigation(propertyName);
 
-                            return new ChillDtoEntity(context, entity, resolveSubProperties?.Invoke(propertyName) ?? []);
+                        if (navigation != null &&
+                            !dbx.Entry(source).Reference(propertyName).Exist(true))
+                        {
+                            return null;
                         }
 
-                        return null;
+                        var entity = (IChillEntity?)property.Getter(source);
+                        return entity == null
+                            ? null
+                            : new ChillDtoEntity(
+                                context,
+                                entity,
+                                resolveSubProperties?.Invoke(propertyName) ?? []);
                     }
 
                     if (property.IsEntityCollection)
                     {
-                        // Check if property is mapped in EF model
                         var navigation = sourceEntityType?.FindNavigation(propertyName);
 
+                        // Load only mapped EF collection navigations.
                         if (navigation != null)
                         {
-                            // Load and serialize any kind of collection
                             dbx.Entry(source).Collection(propertyName).Load();
-
-                            //if (dbx.Entry(source).Collection(propertyName).IsImplicitManyToMany())
-                            //{
-                            //    dbx.Entry(source).Collection(propertyName).Load();
-                            //}
-                            //else 
-                            //{
-                            //    return null; // Not loaded and not an implicit many-to-many, return null to avoid unintended loading
-                            //}
                         }
 
                         var collection = (IEnumerable<IChillEntity>?)property.Getter(source);
-                        if (collection == null)
-                            return null;
-
-                        return collection.Select(item => new ChillDtoEntity(context, item, resolveSubProperties?.Invoke(propertyName) ?? []));
+                        return collection?.Select(item => new ChillDtoEntity(
+                            context,
+                            item,
+                            resolveSubProperties?.Invoke(propertyName) ?? []));
                     }
 
                     var value = property.Getter(source);
-                    var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
+                    var propertyType = ResolvePropertyType(
+                        defaultSchema,
+                        propertyName,
+                        property.DefaultDtoPropertyType);
+
                     return ConvertFromClrValue(value, property.PropertyType, propertyType);
                 });
         }
@@ -125,7 +127,7 @@ namespace ChillSharp.Dto
         {
             var dbx = (DbContext)context;
             var defaultSchema = ResolveDefaultSchema(context, chillType);
-            var targetIsMappedEntity = dbx.Model.FindEntityType(target.GetType()) != null;
+            var targetEntityType = dbx.Model.FindEntityType(target.GetType());
 
             foreach (var property in properties)
             {
@@ -143,10 +145,12 @@ namespace ChillSharp.Dto
                     continue;
                 }
 
-                // Can handle only implicit many-to-many relations, skip other type of collections.
-                // Them should be managed separately
-                if (targetIsMappedEntity &&
-                    property.IsEntityCollection &&
+                // A Chill entity collection is not necessarily an EF navigation.
+                // Restrict EF-managed collections to implicit many-to-many relations,
+                // but let [NotMapped] collections be assigned through their CLR setter.
+                var navigation = targetEntityType?.FindNavigation(propertyName);
+                if (property.IsEntityCollection &&
+                    navigation != null &&
                     !dbx.Entry(target).Collection(propertyName).IsImplicitManyToMany())
                 {
                     continue;
@@ -161,7 +165,8 @@ namespace ChillSharp.Dto
                         propertyName,
                         value,
                         defaultSchema,
-                        loadTrackedCollections);
+                        loadTrackedCollections,
+                        navigation != null);
 
                     if (property.Setter == null)
                         throw new ChillException($"Property {propertyName} on chillable {objectLabel} is not writable");
@@ -169,7 +174,7 @@ namespace ChillSharp.Dto
                     property.Setter(target, parsedValue);
 
                     // Additional: To ensure to write null even if reference is not loaded
-                    if (targetIsMappedEntity &&
+                    if (navigation != null &&
                         value == null &&
                         property.IsEntityReference)
                     {
@@ -190,7 +195,8 @@ namespace ChillSharp.Dto
             string propertyName,
             object? value,
             IChillDtoSchema? defaultSchema,
-            bool loadTrackedCollections)
+            bool loadTrackedCollections,
+            bool entityCollectionIsMappedNavigation)
         {
             if (value == null)
                 return null;
@@ -211,7 +217,8 @@ namespace ChillSharp.Dto
                 if (property.IsEntityCollection)
                 {
                     var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText(), IncomingJsonOptions);
-                    return ConvertEntityCollection(dbx, target, property, propertyName, incomingCollection, loadTrackedCollections);
+                    return ConvertEntityCollection(dbx, target, property, propertyName, incomingCollection,
+                        loadTrackedCollections, entityCollectionIsMappedNavigation);
                 }
 
                 var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
@@ -227,7 +234,8 @@ namespace ChillSharp.Dto
 
             if (property.IsEntityCollection)
             {
-                return ConvertEntityCollection(dbx, target, property, propertyName, value as IEnumerable<ChillDtoEntity>, loadTrackedCollections);
+                return ConvertEntityCollection(dbx, target, property, propertyName, value as IEnumerable<ChillDtoEntity>,
+                    loadTrackedCollections, entityCollectionIsMappedNavigation);
             }
 
             var resolvedPropertyType = ResolvePropertyType(defaultSchema, propertyName, property.DefaultDtoPropertyType);
@@ -240,12 +248,13 @@ namespace ChillSharp.Dto
             ChillDtoPropertyAccessor property,
             string propertyName,
             IEnumerable<ChillDtoEntity>? incomingCollection,
-            bool loadTrackedCollections)
+            bool loadTrackedCollections,
+            bool entityCollectionIsMappedNavigation)
         {
             if (incomingCollection == null)
                 return null;
 
-            if (loadTrackedCollections)
+            if (loadTrackedCollections && entityCollectionIsMappedNavigation)
                 dbx.Entry(target).Collection(propertyName).Load();
 
             if (property.CollectionElementType == null || property.CollectionFactory == null)

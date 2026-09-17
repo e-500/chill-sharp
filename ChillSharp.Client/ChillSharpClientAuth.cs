@@ -19,6 +19,7 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
+using ChillSharp;
 using System.Net.Http;
 using System.Linq;
 
@@ -29,6 +30,16 @@ namespace ChillSharp.Client
     /// </summary>
     public partial class ChillSharpClient
     {
+        /// <summary>
+        /// Returns the current authenticated user's culture, time-zone, date-format, and number-format preferences.
+        /// </summary>
+        public ChillUserPreferences GetCurrentUserPreferences()
+        {
+            var result = SendAuthJson<ChillUserPreferences>(HttpMethod.Get, "current-user-preferences");
+            if (result == null) throw new ChillClientException("Unexpected null current user preferences result");
+            return result;
+        }
+
         /// <summary>
         /// Registers a new Identity account and stores the returned token pair inside the client.
         /// </summary>
@@ -139,6 +150,7 @@ namespace ChillSharp.Client
                 DisplayTimeZone = user.DisplayTimeZone,
                 DisplayDateFormat = user.DisplayDateFormat,
                 DisplayNumberFormat = user.DisplayNumberFormat,
+                PreferredTheme = user.PreferredTheme,
                 IsActive = user.IsActive,
                 CanManagePermissions = user.CanManagePermissions,
                 CanManageSchema = user.CanManageSchema,
@@ -168,6 +180,7 @@ namespace ChillSharp.Client
                     DisplayTimeZone = request.DisplayTimeZone,
                     DisplayDateFormat = request.DisplayDateFormat,
                     DisplayNumberFormat = request.DisplayNumberFormat,
+                    PreferredTheme = request.PreferredTheme,
                     IsActive = request.IsActive,
                     CanManagePermissions = request.CanManagePermissions,
                     CanManageSchema = request.CanManageSchema,
@@ -186,6 +199,7 @@ namespace ChillSharp.Client
                     DisplayTimeZone = request.DisplayTimeZone,
                     DisplayDateFormat = request.DisplayDateFormat,
                     DisplayNumberFormat = request.DisplayNumberFormat,
+                    PreferredTheme = request.PreferredTheme,
                     IsActive = request.IsActive,
                     CanManagePermissions = request.CanManagePermissions,
                     CanManageSchema = request.CanManageSchema,
@@ -515,6 +529,7 @@ namespace ChillSharp.Client
                 DisplayTimeZone = user.DisplayTimeZone,
                 DisplayDateFormat = user.DisplayDateFormat,
                 DisplayNumberFormat = user.DisplayNumberFormat,
+                PreferredTheme = user.PreferredTheme,
                 IsActive = user.IsActive,
                 CanManagePermissions = user.CanManagePermissions,
                 CanManageSchema = user.CanManageSchema,

@@ -95,9 +95,18 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
     this.schema()?.properties.find((candidate) => candidate.name === this.propertyName()) ?? null
   );
   readonly value = computed(() => this.readPropertyValue(this.source(), this.propertyName()));
-  readonly spacedDisplayParts = computed(() => this.buildSpacedDisplayParts(this.value(), this.property()));
-  readonly displayText = computed(() => this.formatValue(this.value(), this.property(), false));
-  readonly titleText = computed(() => this.formatValue(this.value(), this.property(), true));
+  readonly spacedDisplayParts = computed(() => {
+    this.chill.userPreferences();
+    return this.buildSpacedDisplayParts(this.value(), this.property());
+  });
+  readonly displayText = computed(() => {
+    this.chill.userPreferences();
+    return this.formatValue(this.value(), this.property(), false);
+  });
+  readonly titleText = computed(() => {
+    this.chill.userPreferences();
+    return this.formatValue(this.value(), this.property(), true);
+  });
   // #endregion
 
   // #region Component Lifecycle
@@ -239,7 +248,7 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Formats valid date-time strings with the local formatter and otherwise preserves the raw value.
+   * Formats date-time instants with the authenticated user's date format and IANA time zone.
    */
   private formatDateTime(value: JsonValue): string {
     if (typeof value !== 'string' || !value.trim()) {
@@ -283,15 +292,8 @@ export class ChillPolymorphicOutputComponent implements OnInit, OnDestroy {
   }
 
   private formatNumber(value: JsonValue): string {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      return this.chill.formatDisplayNumber(value);
-    }
-
-    if (typeof value === 'string' && value.trim()) {
-      const parsedValue = this.chill.parseDisplayDecimal(value);
-      return parsedValue === null
-        ? value
-        : this.chill.formatDisplayNumber(parsedValue);
+    if ((typeof value === 'number' && Number.isFinite(value)) || (typeof value === 'string' && value.trim())) {
+      return this.chill.formatApiNumber(value);
     }
 
     return '';

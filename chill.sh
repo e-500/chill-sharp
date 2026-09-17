@@ -12,10 +12,11 @@ read_menu_choice() { local prompt="$1"; shift; local choice; while true; do read
 show_test_menu() {
   while true; do
     clear || true
-    printf 'Test Menu\n=========\n\n1. Test ChillSharp core (C#)\n2. Test ChillSharp Ui Core (Angular)\n0. Back\n\n'
-    case "$(read_menu_choice 'Select an option' 1 2 0)" in
+    printf 'Test Menu\n=========\n\n1. Test ChillSharp core (C#)\n2. Test ChillSharp Ui Core (Angular)\n3. Test Ui Core polymorphic input/output preferences (Angular)\n0. Back\n\n'
+    case "$(read_menu_choice 'Select an option' 1 2 3 0)" in
       1) dotnet test "$core_test_project_path"; pause_for_user ;;
       2) (cd "$ui_core_path" && npm test); pause_for_user ;;
+      3) (cd "$ui_core_path" && npm test -- --include=src/lib/services/chill.service.spec.ts --include=src/lib/lib/chill-polymorphic-input.component.spec.ts --include=src/lib/lib/chill-polymorphic-output.component.spec.ts); pause_for_user ;;
       0) return ;;
     esac
   done

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { WorkspaceService } from '../services/workspace.service';
+import { WorkspaceService, type WorkspaceTaskInstance } from '../services/workspace.service';
 
 @Component({
   selector: 'app-workspace-taskbar',
@@ -59,42 +59,26 @@ import { WorkspaceService } from '../services/workspace.service';
         </div>
 
         <div class="taskbar__desktop">
-          @for (task of rootTasks(); track task.id) {
-            <ng-container
-              [ngTemplateOutlet]="taskItem"
-              [ngTemplateOutletContext]="{ $implicit: task }" />
+          @for (task of workspace.openTasks(); track task.id) {
+            <div class="taskbar__item" [class.active]="workspace.activeTask()?.id === task.id">
+              <button type="button" class="taskbar__link" (click)="activateTask(task.id)">
+                @if (taskBreadcrumb(task); as breadcrumb) {
+                  <span class="taskbar__breadcrumb">{{ breadcrumb }} &gt;</span>
+                }
+                {{ task.title }}
+              </button>
+              <button
+                type="button"
+                class="taskbar__close"
+                (click)="closeTask(task.id)"
+                [attr.aria-label]="'Close ' + task.title">
+                x
+              </button>
+            </div>
           }
         </div>
       }
     </div>
-
-    <ng-template #taskItem let-task>
-      <div class="taskbar__task-group">
-        <div class="taskbar__item" [class.active]="workspace.activeTask()?.id === task.id">
-          <button type="button" class="taskbar__link" (click)="activateTask(task.id)">
-            {{ task.title }}
-          </button>
-          <button
-            type="button"
-            class="taskbar__close"
-            (click)="closeTask(task.id)"
-            [attr.aria-label]="'Close ' + task.title">
-            x
-          </button>
-        </div>
-
-        @let children = childTasks(task.id);
-        @if (children.length > 0) {
-          <div class="taskbar__children">
-            @for (child of children; track child.id) {
-              <ng-container
-                [ngTemplateOutlet]="taskItem"
-                [ngTemplateOutletContext]="{ $implicit: child }" />
-            }
-          </div>
-        }
-      </div>
-    </ng-template>
   `
 })
 export class WorkspaceTaskbarComponent {
@@ -108,12 +92,57 @@ export class WorkspaceTaskbarComponent {
     void this.workspace.closeTask(taskId);
   }
 
-  rootTasks() {
-    const openTaskIds = new Set(this.workspace.openTasks().map((task) => task.id));
-    return this.workspace.openTasks().filter((task) => !task.parentTaskId || !openTaskIds.has(task.parentTaskId));
+  taskBreadcrumb(task: WorkspaceTaskInstance): string {
+    if (!task.parentTaskId) {
+      return '';
+    }
+
+    const componentConfiguration = task.inputs?.['componentConfiguration'];
+    if (!this.isRecord(componentConfiguration)) {
+      return '';
+    }
+
+    const fixedQueryValues = componentConfiguration['fixedQueryValues'];
+    if (!this.isRecord(fixedQueryValues)) {
+      return '';
+    }
+
+    return Object.values(fixedQueryValues)
+      .map((value) => this.entityBreadcrumbLabel(value))
+      .filter((label): label is string => !!label)
+      .join(', ');
   }
 
-  childTasks(parentTaskId: string) {
-    return this.workspace.openTasks().filter((task) => task.parentTaskId === parentTaskId);
+  private entityBreadcrumbLabel(value: unknown): string | null {
+    if (!this.isRecord(value)) {
+      return null;
+    }
+
+    const properties = this.isRecord(value['properties']) ? value['properties'] : null;
+    return this.readText(value, ['shortLabel', 'ShortLabel'])
+      || this.readText(properties, ['shortLabel', 'ShortLabel'])
+      || this.readText(value, ['label', 'Label'])
+      || this.readText(properties, ['label', 'Label'])
+      || this.readText(value, ['guid', 'Guid']).slice(0, 8)
+      || null;
+  }
+
+  private readText(record: Record<string, unknown> | null, keys: string[]): string {
+    if (!record) {
+      return '';
+    }
+
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    return '';
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
   }
 }

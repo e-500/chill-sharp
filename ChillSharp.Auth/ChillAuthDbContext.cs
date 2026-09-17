@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Auth.Model;
+using ChillSharp.Auth.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth;
@@ -27,12 +28,16 @@ namespace ChillSharp.Auth;
 /// </summary>
 public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
 {
+    private readonly IChillAuthUserPreferencesAccessor? _userPreferencesAccessor;
     /// <summary>
     /// Initializes a new auth context instance.
     /// </summary>
     /// <param name="options">The EF Core options for the context.</param>
-    public ChillAuthDbContext(DbContextOptions<ChillAuthDbContext> options) : base(options)
+    public ChillAuthDbContext(
+        DbContextOptions<ChillAuthDbContext> options,
+        IChillAuthUserPreferencesAccessor? userPreferencesAccessor = null) : base(options)
     {
+        _userPreferencesAccessor = userPreferencesAccessor;
     }
 
     /// <summary>
@@ -87,6 +92,23 @@ public class ChillAuthDbContext : DbContext, IChillAuthDbContext, IChillContext
     public string GetSecondaryCultureName()
     {
         return "it-IT";
+    }
+
+    /// <summary>
+    /// Uses the authenticated user's cached display culture when it is available.
+    /// </summary>
+    public string GetDefaultUserCultureName()
+    {
+        var cultureName = GetCurrentUserPreferences().DisplayCultureName;
+        return string.IsNullOrWhiteSpace(cultureName) ? GetPrimaryCultureName() : cultureName;
+    }
+
+    /// <summary>
+    /// Gets the cached display preferences for the authenticated request user.
+    /// </summary>
+    public ChillUserPreferences GetCurrentUserPreferences()
+    {
+        return _userPreferencesAccessor?.Current ?? ChillUserPreferences.Empty;
     }
 
     /// <summary>
