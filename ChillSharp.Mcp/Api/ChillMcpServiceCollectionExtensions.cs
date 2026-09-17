@@ -14,7 +14,7 @@ public static class ChillMcpServiceCollectionExtensions
     /// <summary>
     /// Adds the ChillSharp MCP module and binds it to an existing Chill context and schema-aware DbContext.
     /// </summary>
-    public static IServiceCollection AddChillMcp<TContext>(this IServiceCollection services)
+    public static IServiceCollection AddChillMcpApi<TContext>(this IServiceCollection services)
         where TContext : DbContext, IChillContext, IChillSchemaDbContext
     {
         services.AddControllers()
@@ -44,7 +44,9 @@ public static class ChillMcpServiceCollectionExtensions
         });
 
         services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
-        services.TryAddScoped<IChillSchemaService, ChillSchemaService>();
+        services.TryAddScoped<IChillSchemaRuntimeContext>(provider =>
+            new ChillContextSchemaRuntimeContext(provider.GetRequiredService<IChillContext>()));
+        services.TryAddScoped<IChillSchemaResolverService, ChillSchemaService>();
         services.AddScoped<IChillMcpService, ChillMcpService>();
         return services;
     }

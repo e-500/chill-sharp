@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.EF.ServiceModel.I18n;
 using ChillSharp.I18n.Contracts;
+using ChillSharp.I18n.Model;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 

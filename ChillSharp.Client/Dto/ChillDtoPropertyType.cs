@@ -76,6 +76,11 @@ namespace ChillSharp.Client.Dto
         Text = 81,
 
         /// <summary>
+        /// JSON value serialized and transported as a string.
+        /// </summary>
+        Json = 99,
+
+        /// <summary>
         /// Represents an entity that is associated with a chill or cooling process.
         /// </summary>
         ChillEntity = 1000,

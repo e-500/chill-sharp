@@ -32,10 +32,10 @@ namespace ChillSharp.Tests
         public void Step001_CreateEntityWithAnEmptyCollection()
         {
             // Start the shared API host only once for the whole test run.
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Use the HTTP client wrapper against the Chill endpoints.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             // Create a Blog entity without any Posts children.
             var e = new ChillDtoEntity();
@@ -61,7 +61,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.AreEqual(1, qRes.Results.Count);
+            Assert.HasCount(1, qRes.Results);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -82,7 +82,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step002_AddEntityToCollection()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure a blog exists before linking a post to it.
             if (!BlogGuid.HasValue)
@@ -91,7 +91,7 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(BlogGuid);
 
             // Load the parent Blog DTO so it can be used as the foreign-key reference.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var q = new ChillDtoQuery();
             q.ChillType = "Query.BlogQuery";
@@ -99,7 +99,7 @@ namespace ChillSharp.Tests
             var qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
-            Assert.AreEqual(1, qBlog.Results.Count);
+            Assert.HasCount(1, qBlog.Results);
             var blog = qBlog.Results[0];
 
             // Create a Post and attach it to the Blog by sending the Blog DTO as reference.
@@ -126,7 +126,7 @@ namespace ChillSharp.Tests
             qBlog = cli.Query(q);
             Assert.IsNotNull(qBlog);
             Assert.IsNotNull(qBlog.Results);
-            Assert.AreEqual(1, qBlog.Results.Count);
+            Assert.HasCount(1, qBlog.Results);
             blog = qBlog.Results[0];
             Assert.IsNotNull(blog);
             Assert.IsTrue(blog.HasValue("Title"));
@@ -152,7 +152,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step003_RemoveEntityFromCollection()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure there is a blog with one linked post.
             if (!BlogGuid.HasValue)
@@ -162,7 +162,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual(1, BlogDtoWithCollection.GetCollection("Posts").Count());
 
             // Load the current child entity and verify the expected starting state.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var post = BlogDtoWithCollection.GetCollection("Posts").First();
             Assert.IsNotNull(post);
@@ -183,7 +183,7 @@ namespace ChillSharp.Tests
             var qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
-            Assert.AreEqual(1, qr.Results.Count);
+            Assert.HasCount(1, qr.Results);
             var qPost = qr.Results[0];
 
             Assert.IsNotNull(qPost);
@@ -200,7 +200,7 @@ namespace ChillSharp.Tests
             qr = cli.Query(q);
             Assert.IsNotNull(qr);
             Assert.IsNotNull(qr.Results);
-            Assert.AreEqual(0, qr.Results.Count);
+            Assert.IsEmpty(qr.Results);
         }
     }
 }

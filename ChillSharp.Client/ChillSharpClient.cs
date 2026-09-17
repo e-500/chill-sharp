@@ -111,6 +111,19 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Sends a generic full-text lookup request to the ChillSharp API.
+        /// </summary>
+        /// <param name="Query">Lookup DTO whose <c>ChillType</c> targets an entity type.</param>
+        /// <returns>The response mapped back into a ChillDtoQuery object.</returns>
+        public ChillDtoQuery Lookup(ChillDtoQuery Query)
+        {
+            var result = SendJson<ChillDtoQuery>(HttpMethod.Post, BuildChillUrl("lookup"), Query);
+            if (result == null)
+                throw new ChillClientException("Unexpected null lookup result");
+            return result;
+        }
+
+        /// <summary>
         /// Executes a FIND operation on the given entity.
         /// </summary>
         public ChillDtoEntity? Find(ChillDtoEntity Entity)
@@ -310,6 +323,46 @@ namespace ChillSharp.Client
             return result;
         }
 
+        /// <summary>
+        /// Retrieves root menu items or the children of a specific parent menu item.
+        /// </summary>
+        public List<ChillDtoMenuItem> GetMenu(Guid? parentGuid = null)
+        {
+            var relativeUrl = "get-menu";
+            if (parentGuid.HasValue)
+            {
+                relativeUrl += $"?parentGuid={Uri.EscapeDataString(parentGuid.Value.ToString())}";
+            }
+
+            return SendJson<List<ChillDtoMenuItem>>(HttpMethod.Get, BuildSchemaUrl(relativeUrl), payload: null)
+                ?? new List<ChillDtoMenuItem>();
+        }
+
+        /// <summary>
+        /// Creates or updates a menu item through the schema-management API.
+        /// </summary>
+        public ChillDtoMenuItem SetMenu(ChillDtoMenuItem menuItem)
+        {
+            if (menuItem == null)
+                throw new ArgumentNullException(nameof(menuItem));
+
+            var result = SendJson<ChillDtoMenuItem>(HttpMethod.Post, BuildSchemaUrl("set-menu"), menuItem);
+            if (result == null)
+                throw new ChillClientException("Unexpected null menu item result");
+            return result;
+        }
+
+
+        /// <summary>
+        /// Deletes a menu item and all of its descendants through the schema-management API.
+        /// </summary>
+        public void DeleteMenu(Guid menuItemGuid)
+        {
+            if (menuItemGuid == Guid.Empty)
+                throw new ArgumentException("menuItemGuid is required.", nameof(menuItemGuid));
+
+            SendJson<object>(HttpMethod.Delete, BuildSchemaUrl($"delete-menu?menuItemGuid={Uri.EscapeDataString(menuItemGuid.ToString())}"), payload: null, expectResponseBody: false);
+        }
         internal T? SendAuthJson<T>(HttpMethod method, string relativeUrl, object? payload = null, bool expectResponseBody = true, bool allowAnonymous = false)
         {
             return SendJson<T>(method, BuildAuthUrl(relativeUrl), payload, expectResponseBody, allowAnonymous);
@@ -330,7 +383,7 @@ namespace ChillSharp.Client
                     {
                         var refreshedToken = SendAuthJson<AuthTokenResponse>(
                             HttpMethod.Post,
-                            "account/refresh",
+                            "refresh",
                             new RefreshAuthTokenRequest { RefreshToken = _RefreshToken },
                             allowAnonymous: true);
 
@@ -351,7 +404,7 @@ namespace ChillSharp.Client
                 {
                     var token = SendAuthJson<AuthTokenResponse>(
                         HttpMethod.Post,
-                        "account/login",
+                        "login",
                         new LoginAuthIdentityRequest
                         {
                             UserNameOrEmail = _UserName,
@@ -394,6 +447,15 @@ namespace ChillSharp.Client
             {
                 _Password = null;
             }
+        }
+
+        internal void ClearAuthToken()
+        {
+            _AccessToken = null;
+            _AccessTokenIssuedUtc = null;
+            _AccessTokenExpiresUtc = null;
+            _RefreshToken = null;
+            _RefreshTokenExpiresUtc = null;
         }
 
         internal string GetAuthBaseUrl()

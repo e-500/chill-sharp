@@ -35,8 +35,9 @@ namespace ChillSharp
     /// </para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -49,12 +50,10 @@ namespace ChillSharp
         /// <param name="Context">The ChillSharp database context.</param>
         public ChillDtoEngine(
             IChillContext Context,
-            IChillSchemaService? schemaService = null,
             IChillEntityChangeDispatcher? changeDispatcher = null)
         {
             _Engine = new ChillEngine(Context);
             _Context = Context;
-            _SchemaService = schemaService;
             _ChangeDispatcher = changeDispatcher;
         }
 
@@ -71,7 +70,6 @@ namespace ChillSharp
 
         private IChillContext _Context;
         private ChillEngine _Engine;
-        private IChillSchemaService? _SchemaService;
         private readonly IChillEntityChangeDispatcher? _ChangeDispatcher;
         private readonly List<ChillEntityChangeNotification> _pendingEntityChanges = [];
 
@@ -198,6 +196,23 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Executes a generic full-text lookup directly against an entity type.
+        /// </summary>
+        /// <param name="DtoQuery">The DTO containing the target entity type and lookup parameters.</param>
+        /// <returns>The same DTO with lookup results embedded.</returns>
+        public ChillDtoQuery Lookup(ChillDtoQuery DtoQuery)
+        {
+            DtoQuery.Results = _Engine.Lookup(
+                    DtoQuery.ChillType,
+                    DtoQuery.Properties.GetValueOrDefault(nameof(ChillQuery.FullTextSearch))?.ToString(),
+                    DtoQuery.Pagination)
+                .Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties))
+                .ToList();
+
+            return DtoQuery;
+        }
+
+        /// <summary>
         /// Validates an entity DTO without persisting changes.
         /// </summary>
         /// <param name="DtoEntity">The DTO containing the entity state to validate.</param>
@@ -293,38 +308,6 @@ namespace ChillSharp
             DtoEntity.ToEntity(_Context, e);
             _Engine.Delete(e);
             QueueEntityChange(DtoEntity.ChillType, DtoEntity.Guid, ChillEntityChangeNotification.DeletedAction);
-        }
-
-        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.GetSchemaAsync(ChillType, ChillViewCode, CultureName).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.SetSchemaAsync(Schema).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoEntityOptions GetEntityOptions(string ChillType)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.GetEntityOptionsAsync(ChillType).GetAwaiter().GetResult();
-        }
-
-        public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions)
-        {
-            if (_SchemaService == null)
-                throw new ChillException("Chill schema service is not registered.");
-
-            return _SchemaService.SetEntityOptionsAsync(EntityOptions).GetAwaiter().GetResult();
         }
 
         private void QueueEntityChange(IChillEntity entity, string action)

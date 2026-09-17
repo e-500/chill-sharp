@@ -12,7 +12,7 @@ public sealed class McpApi
     [TestMethod]
     public async Task Step001_GetResourceListReturnsOnlyMcpEnabledResources()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
@@ -43,12 +43,15 @@ public sealed class McpApi
         await context.Database.EnsureCreatedAsync();
 
         var schemaCache = new ChillSharp.Schema.ChillSchemaCache();
-        var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, schemaCache);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                schemaCache);
         var mcpService = new ChillMcpService(context, schemaService);
 
         Assert.IsNull(await mcpService.GetResourceAsync("Model.Post"));
 
-        await schemaService.SetEntityOptionsAsync(new ChillDtoEntityOptions
+        await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
         {
             ChillType = "Model.Post",
             EnableMCP = true,

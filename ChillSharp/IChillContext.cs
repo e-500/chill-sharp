@@ -20,8 +20,11 @@
 using ChillSharp.Dto;
 using ChillSharp.Annotations;
 using ChillSharp.EF;
-using System.Collections;
+using ChillSharp.Schema;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace ChillSharp
 {
@@ -35,8 +38,9 @@ namespace ChillSharp
     /// </para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -177,131 +181,41 @@ namespace ChillSharp
         }
 
         /// <summary>
-        /// Resolves the runtime entity options for the specified Chill type.
+        /// Returns the schema resolver associated with the current Chill context.
         /// </summary>
-        /// <remarks>
-        /// When the current context also exposes an <c>EntityOptionsEntries</c> set, the default implementation
-        /// reads the persisted row from that set; otherwise it falls back to the built-in defaults.
-        /// </remarks>
-        /// <param name="chillType">The logical Chill type identifier.</param>
-        /// <returns>The resolved entity options.</returns>
-        ChillDtoEntityOptions GetEntityOptions(string chillType)
+        IChillSchemaResolverService GetSchemaService()
         {
-            var normalizedType = string.IsNullOrWhiteSpace(chillType) ? "default" : chillType.Trim();
-            return GetCachedEntityOptions(this, normalizedType, () =>
+            if (ChillContextSchemaServiceCache.Cache.TryGetValue(this, out var cachedSchemaService))
             {
-                var defaultOptions = new ChillDtoEntityOptions
-                {
-                    ChillType = normalizedType,
-                    ChecksumEnabled = true,
-                    EnableMCP = GetDefaultEnableMCP(this, normalizedType),
-                    MCPDescription = GetDefaultMCPDescription(this, normalizedType),
-                    ChangeLogEnabled = false
-                };
+                return cachedSchemaService;
+            }
 
-                var entriesProperty = GetType().GetProperty("EntityOptionsEntries");
-                var entries = entriesProperty?.GetValue(this);
-                if (entries == null)
-                    return defaultOptions;
-
-                var localProperty = entries.GetType().GetProperty("Local");
-                if (TryResolveEntityOptions(localProperty?.GetValue(entries) as IEnumerable, normalizedType, out var localOptions))
-                    return localOptions;
-
+            if (this is DbContext dbContext)
+            {
                 try
                 {
-                    if (TryResolveEntityOptions(entries as IEnumerable, normalizedType, out var persistedOptions))
-                        return persistedOptions;
+                    var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
+                    var schemaService = serviceProvider.GetService(typeof(IChillSchemaResolverService)) as IChillSchemaResolverService;
+                    if (schemaService != null)
+                        return schemaService;
                 }
                 catch
                 {
-                    return defaultOptions;
                 }
-
-                return defaultOptions;
-            });
+            }
+            throw new ChillException(
+                $"No {nameof(IChillSchemaResolverService)} is available for context type {GetType().FullName}.");
         }
 
         /// <summary>
-        /// Returns whether checksum calculation is enabled for the specified Chill type.
+        /// Associates a schema resolver with the current Chill context instance.
         /// </summary>
-        /// <param name="chillType">The logical Chill type identifier.</param>
-        /// <returns><see langword="true"/> when checksum calculation is enabled; otherwise <see langword="false"/>.</returns>
-        bool IsEntityChecksumEnabled(string chillType)
+        void RegisterSchemaService(IChillSchemaResolverService schemaService)
         {
-            return GetEntityOptions(chillType).ChecksumEnabled;
-        }
+            ArgumentNullException.ThrowIfNull(schemaService);
 
-        private static bool TryResolveEntityOptions(IEnumerable? entries, string chillType, out ChillDtoEntityOptions options)
-        {
-            if (entries != null)
-            {
-                foreach (var entry in entries)
-                {
-                    if (entry == null)
-                        continue;
-
-                    var entryType = entry.GetType();
-                    var entryChillType = entryType.GetProperty("ChillType")?.GetValue(entry) as string;
-                    if (!string.Equals(entryChillType, chillType, StringComparison.Ordinal))
-                        continue;
-
-                    options = new ChillDtoEntityOptions
-                    {
-                        ChillType = entryChillType ?? chillType,
-                        ChecksumEnabled = entryType.GetProperty("ChecksumEnabled")?.GetValue(entry) as bool? ?? true,
-                        LabelFormatString = entryType.GetProperty("LabelFormatString")?.GetValue(entry) as string,
-                        ShortLabelFormatString = entryType.GetProperty("ShortLabelFormatString")?.GetValue(entry) as string,
-                        FullTextContentFormatString = entryType.GetProperty("FullTextContentFormatString")?.GetValue(entry) as string,
-                        EnableMCP = entryType.GetProperty("EnableMCP")?.GetValue(entry) as bool? ?? false,
-                        MCPDescription = entryType.GetProperty("MCPDescription")?.GetValue(entry) as string,
-                        ChangeLogEnabled = entryType.GetProperty("ChangeLogEnabled")?.GetValue(entry) as bool? ?? false
-                    };
-                    return true;
-                }
-            }
-
-            options = null!;
-            return false;
-        }
-
-        private static ChillDtoEntityOptions GetCachedEntityOptions(IChillContext context, string chillType, Func<ChillDtoEntityOptions> factory)
-        {
-            var runtimeCacheType = Type.GetType("ChillSharp.Schema.ChillEntityOptionsRuntimeCache, ChillSharp.Schema");
-            var getOrAddMethod = runtimeCacheType?.GetMethod("GetOrAdd", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
-            if (getOrAddMethod == null)
-                return factory();
-
-            return (ChillDtoEntityOptions)getOrAddMethod.Invoke(null, [context, chillType, factory])!;
-        }
-
-        private static bool GetDefaultEnableMCP(IChillContext context, string chillType)
-        {
-            return ResolveEntityAttribute(context, chillType)?.EnableMCP ?? false;
-        }
-
-        private static string? GetDefaultMCPDescription(IChillContext context, string chillType)
-        {
-            return ResolveEntityAttribute(context, chillType)?.MCPDescription;
-        }
-
-        private static ChillEntityAttribute? ResolveEntityAttribute(IChillContext context, string chillType)
-        {
-            try
-            {
-                var resolvedType = ChillTypeResolver.ResolveType(
-                    context.GetType().Assembly,
-                    chillType,
-                    context.GetChillTypePrefix());
-
-                return resolvedType.GetCustomAttributes(typeof(ChillEntityAttribute), inherit: true)
-                    .OfType<ChillEntityAttribute>()
-                    .FirstOrDefault();
-            }
-            catch
-            {
-                return null;
-            }
+            ChillContextSchemaServiceCache.Cache.Remove(this);
+            ChillContextSchemaServiceCache.Cache.Add(this, schemaService);
         }
 
         private static MetadataCatalog GetMetadataCatalog(IChillContext context)
@@ -431,4 +345,11 @@ namespace ChillSharp
     {
         internal static readonly ConcurrentDictionary<(System.Reflection.Assembly Assembly, string Prefix), MetadataCatalog> MetadataCache = new();
     }
+
+    internal static class ChillContextSchemaServiceCache
+    {
+        internal static readonly ConditionalWeakTable<IChillContext, IChillSchemaResolverService> Cache = new();
+    }
 }
+
+

@@ -28,7 +28,7 @@ namespace ChillSharp.Api
     public sealed class ChillEntityChangeHub : Hub
     {
         public const string NotificationMethodName = "EntitiesChanged";
-        internal const string HubRouteSuffix = "notify";
+        public const string HubRouteSuffix = "notify";
 
         private readonly IChillContext _context;
 

@@ -42,6 +42,8 @@ internal interface IChillAuthTokenService
 
     Task<AuthTokenResponse> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
 
+    Task RevokeAsync(Guid sessionGuid, CancellationToken cancellationToken = default);
+
     Task<ClaimsPrincipal?> ValidateAccessTokenAsync(string accessToken, CancellationToken cancellationToken = default);
 }
 
@@ -102,6 +104,18 @@ internal sealed class ChillAuthTokenService : IChillAuthTokenService
 
         await _context.SaveChangesAsync(cancellationToken);
         return BuildTokenResponse(session, rotatedRefreshToken, now);
+    }
+
+    public async Task RevokeAsync(Guid sessionGuid, CancellationToken cancellationToken = default)
+    {
+        var session = await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Guid == sessionGuid, cancellationToken);
+        if (session == null || session.RevokedUtc.HasValue)
+        {
+            return;
+        }
+
+        session.RevokedUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<ClaimsPrincipal?> ValidateAccessTokenAsync(string accessToken, CancellationToken cancellationToken = default)
@@ -291,9 +305,56 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         return await _tokenService.IssueAsync(userId, userName, cancellationToken);
     }
 
+    public async Task<string> CreateManagedIdentityUserAsync(CreateAuthUserRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!_userManager.SupportsUserEmail || _userStore is not IUserEmailStore<TUser> emailStore)
+        {
+            throw new InvalidOperationException("Managed user creation requires an Identity user store with email support.");
+        }
+
+        var userName = RequireValue(request.UserName, nameof(request.UserName));
+        var email = RequireValue(request.Email, nameof(request.Email));
+
+        if (await _userManager.FindByNameAsync(userName) != null)
+        {
+            throw new InvalidOperationException("An Identity account with the requested user name already exists.");
+        }
+
+        if (await _userManager.FindByEmailAsync(email) != null)
+        {
+            throw new InvalidOperationException("An Identity account with the requested email already exists.");
+        }
+
+        var user = Activator.CreateInstance<TUser>() ?? throw new InvalidOperationException($"Cannot create an instance of {typeof(TUser).Name}.");
+        await _userStore.SetUserNameAsync(user, userName, cancellationToken);
+        await emailStore.SetEmailAsync(user, email, cancellationToken);
+
+        var createResult = await _userManager.CreateAsync(user, CreateUnknownPassword());
+        if (!createResult.Succeeded)
+        {
+            throw new InvalidOperationException(FormatIdentityErrors(createResult));
+        }
+
+        await SendPasswordResetForUserAsync(user, cancellationToken);
+
+        return await _userManager.GetUserIdAsync(user)
+            ?? throw new InvalidOperationException("The created Identity user did not expose a user id.");
+    }
+
     public Task<AuthTokenResponse> RefreshAsync(RefreshAuthTokenRequest request, CancellationToken cancellationToken = default)
     {
         return _tokenService.RefreshAsync(request.RefreshToken, cancellationToken);
+    }
+
+    public async Task LogoutAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
+    {
+        var sessionClaim = principal.FindFirst("chill_auth_session")?.Value;
+        if (!Guid.TryParse(sessionClaim, out var sessionGuid))
+        {
+            return;
+        }
+
+        await _tokenService.RevokeAsync(sessionGuid, cancellationToken);
     }
 
     public async Task<ChangePasswordResponse> ChangePasswordAsync(ClaimsPrincipal principal, ChangePasswordRequest request, CancellationToken cancellationToken = default)
@@ -327,34 +388,7 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
             };
         }
 
-        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        var userId = await _userManager.GetUserIdAsync(user);
-
-        if (_options.SendPasswordResetEmails)
-        {
-            var emailAddress = await GetUserEmailAsync(user);
-            if (!string.IsNullOrWhiteSpace(emailAddress) && !string.IsNullOrWhiteSpace(userId))
-            {
-                var userName = await _userManager.GetUserNameAsync(user) ?? emailAddress;
-                await _passwordResetEmailSender.SendAsync(
-                    emailAddress,
-                    userName,
-                    userId,
-                    token,
-                    cancellationToken);
-            }
-            else
-            {
-                _logger.LogWarning("Password-reset email delivery was requested but the target account does not expose a usable email address.");
-            }
-        }
-
-        return new PasswordResetTokenResponse
-        {
-            IsAccepted = true,
-            UserId = _options.ReturnPasswordResetTokensInResponse ? userId : null,
-            ResetToken = _options.ReturnPasswordResetTokensInResponse ? token : null
-        };
+        return await SendPasswordResetForUserAsync(user, cancellationToken);
     }
 
     public async Task<ResetPasswordResponse> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
@@ -397,6 +431,38 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
 
         var email = await _userManager.GetEmailAsync(user);
         return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+    }
+
+    private async Task<PasswordResetTokenResponse> SendPasswordResetForUserAsync(TUser user, CancellationToken cancellationToken)
+    {
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var userId = await _userManager.GetUserIdAsync(user);
+
+        if (_options.SendPasswordResetEmails)
+        {
+            var emailAddress = await GetUserEmailAsync(user);
+            if (!string.IsNullOrWhiteSpace(emailAddress) && !string.IsNullOrWhiteSpace(userId))
+            {
+                var userName = await _userManager.GetUserNameAsync(user) ?? emailAddress;
+                await _passwordResetEmailSender.SendAsync(
+                    emailAddress,
+                    userName,
+                    userId,
+                    token,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning("Password-reset email delivery was requested but the target account does not expose a usable email address.");
+            }
+        }
+
+        return new PasswordResetTokenResponse
+        {
+            IsAccepted = true,
+            UserId = _options.ReturnPasswordResetTokensInResponse ? userId : null,
+            ResetToken = _options.ReturnPasswordResetTokensInResponse ? token : null
+        };
     }
 
     private static DisplayPreferences BuildDisplayPreferences(string? displayCultureName)
@@ -520,6 +586,34 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         }
 
         return normalized;
+    }
+
+    private static string CreateUnknownPassword()
+    {
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        const string lower = "abcdefghijkmnopqrstuvwxyz";
+        const string digits = "23456789";
+        const string symbols = "!@$?_+-=";
+        const string all = upper + lower + digits + symbols;
+
+        Span<char> buffer = stackalloc char[24];
+        buffer[0] = upper[RandomNumberGenerator.GetInt32(upper.Length)];
+        buffer[1] = lower[RandomNumberGenerator.GetInt32(lower.Length)];
+        buffer[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
+        buffer[3] = symbols[RandomNumberGenerator.GetInt32(symbols.Length)];
+
+        for (var index = 4; index < buffer.Length; index++)
+        {
+            buffer[index] = all[RandomNumberGenerator.GetInt32(all.Length)];
+        }
+
+        for (var index = buffer.Length - 1; index > 0; index--)
+        {
+            var swapIndex = RandomNumberGenerator.GetInt32(index + 1);
+            (buffer[index], buffer[swapIndex]) = (buffer[swapIndex], buffer[index]);
+        }
+
+        return new string(buffer);
     }
 
     private sealed record DisplayPreferences(

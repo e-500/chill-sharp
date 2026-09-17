@@ -38,6 +38,7 @@ namespace ChillSharp.Api.Controllers
     /// <para>Endpoints:<br/>
     /// <list type="bullet">
     ///   <item><description>POST: api/chill/query  → Executes a data query based on a <see cref="ChillDtoQuery"/>.</description></item>
+    ///   <item><description>POST: api/chill/lookup → Executes a generic full-text lookup against an entity type.</description></item>
     ///   <item><description>POST: api/chill/find   → Retrieves a specific entity using a <see cref="ChillDtoEntity"/>.</description></item>
     ///   <item><description>POST: api/chill/create → Creates a new entity in the database.</description></item>
     ///   <item><description>POST: api/chill/update → Updates an existing entity.</description></item>
@@ -51,8 +52,9 @@ namespace ChillSharp.Api.Controllers
     /// which handles the underlying database operations via an <see cref="IChillContext"/> implementation.</para>
     ///
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or removal must comply with GPLv3 licensing terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// ©️2025 Andrea Piovesan</para>
     /// </summary>
@@ -97,6 +99,21 @@ namespace ChillSharp.Api.Controllers
             if (authorizationResult != null)
                 return authorizationResult;
             return Ok(_ce.Query(DtoQuery));
+        }
+
+        /// <summary>
+        /// Executes a generic full-text lookup against the entity type specified by <see cref="ChillDtoQuery.ChillType"/>.
+        /// </summary>
+        /// <param name="DtoQuery">The lookup DTO containing the entity type, search text, and requested result properties.</param>
+        /// <returns>The lookup DTO with matching entities in <see cref="ChillDtoQuery.Results"/>.</returns>
+        [HttpPost]
+        [Route("lookup")]
+        public async Task<IActionResult> Lookup(ChillDtoQuery DtoQuery, CancellationToken cancellationToken)
+        {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
+            return Ok(_ce.Lookup(DtoQuery));
         }
 
         /// <summary>

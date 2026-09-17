@@ -63,13 +63,9 @@ builder.Services.AddAuthentication(ChillAuthIdentityDefaults.AuthenticationSchem
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddChillApi<BloggingContext>(options =>
+builder.Services.AddChillApi<BloggingContext, IdentityUser>(options =>
 {
     options.ProtectedApi = true;
-});
-
-builder.Services.AddChillAuthIdentityApi<BloggingContext, IdentityUser>(options =>
-{
     options.ReturnPasswordResetTokensInResponse = true;
     options.InitializeRootUserOnStartup = true;
     options.CreateChillAuthUserForRoot = true;
@@ -213,7 +209,7 @@ var refreshed = client.RefreshAuthAccount();
 ## Notes
 
 - Use `options.ProtectedApi = true` on `AddChillApi<TContext>(...)` if your ChillSharp endpoints must require authentication.
-- The root user created by `AddChillAuthIdentityApi(...)` is the bootstrap administrator path. When `CreateChillAuthUserForRoot = true`, the linked ChillSharp `AuthUser` is created with `CanManagePermissions = true`.
+- The root user created by `AddChillApi<TContext, TUser>(...)` is the bootstrap administrator path. When `CreateChillAuthUserForRoot = true`, the linked ChillSharp `AuthUser` is created with `CanManagePermissions = true`.
 - `CreateChillAuthUser = true` creates the linked ChillSharp `AuthUser`, but it does not automatically grant admin permissions.
 - `DisplayCultureName` on registration presets `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat` for the linked `AuthUser`.
 - For production, bootstrap the first administrator deliberately, for example through root-user initialization or a trusted install-time flow.

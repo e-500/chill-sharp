@@ -88,7 +88,7 @@ Possono coesistere contesti diversi con valori diversi. ChillSharp non assume un
 
 - `Guid`
 - `Label`, `ShortLabel`, `FullTextContent`
-- `Checksum`, `LastUpdateUser`, `LastUpdateUtc`
+- `Checksum`, `LastUpdateUser`, `LastUpdate`, `LastUpdateUtcOffset`
 - comportamento di ciclo di vita predefinito
 
 Gli hook disponibili sono:
@@ -122,7 +122,8 @@ Dopo gli aggiornamenti, ChillSharp salva automaticamente:
 
 - `Checksum`
 - `LastUpdateUser`
-- `LastUpdateUtc`
+- `LastUpdate`
+- `LastUpdateUtcOffset`
 
 La logica di audit e applicata tramite il percorso `IChillEntity` usato da `ChillEngine`, quindi una classe derivata puo ridefinire `OnAfterUpdate()` senza saltare l'aggiornamento di audit della base.
 

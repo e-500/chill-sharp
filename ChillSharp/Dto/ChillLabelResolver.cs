@@ -26,7 +26,7 @@ namespace ChillSharp.Dto;
 /// Resolution is context-aware: each <see cref="IChillContext"/> can define its own primary and secondary
 /// culture names, so multiple Chill contexts can coexist with different language conventions.
 /// </remarks>
-internal static class ChillLabelResolver
+public static class ChillLabelResolver
 {
     /// <summary>
     /// Chooses the best label for the current UI culture using the context's configured primary and secondary cultures.

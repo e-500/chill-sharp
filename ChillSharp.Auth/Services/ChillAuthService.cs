@@ -19,8 +19,11 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
+using ChillSharp.Auth.Api;
 using ChillSharp;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace ChillSharp.Auth.Services;
 
@@ -33,6 +36,8 @@ public class ChillAuthService : IChillAuthService
     private readonly IChillAuthDbContext _context;
     private readonly IChillContext _chillContext;
     private readonly IChillAuthManagementAccessCache _managementAccessCache;
+    private readonly IHttpContextAccessor? _httpContextAccessor;
+    private readonly IChillAuthIdentityResolver? _identityResolver;
     #endregion
 
     #region Construction
@@ -40,11 +45,18 @@ public class ChillAuthService : IChillAuthService
     /// Initializes the service with the auth persistence abstraction.
     /// </summary>
     /// <param name="context">The auth store used for reads and writes.</param>
-    public ChillAuthService(IChillAuthDbContext context, IChillContext chillContext, IChillAuthManagementAccessCache managementAccessCache)
+    public ChillAuthService(
+        IChillAuthDbContext context,
+        IChillContext chillContext,
+        IChillAuthManagementAccessCache managementAccessCache,
+        IHttpContextAccessor? httpContextAccessor = null,
+        IChillAuthIdentityResolver? identityResolver = null)
     {
         _context = context;
         _chillContext = chillContext;
         _managementAccessCache = managementAccessCache;
+        _httpContextAccessor = httpContextAccessor;
+        _identityResolver = identityResolver;
     }
     #endregion
 
@@ -89,6 +101,7 @@ public class ChillAuthService : IChillAuthService
                     Name = role.Name,
                     Description = role.Description,
                     IsActive = role.IsActive,
+                    MenuHierarchy = role.MenuHierarchy,
                     Permissions = rules
                         .Where(x => x.RoleGuid == role.Guid)
                         .Select(ToPermissionRuleResponse)
@@ -144,6 +157,7 @@ public class ChillAuthService : IChillAuthService
     public async Task<AuthUserDetailsResponse> SetUserAsync(SetAuthUserRequest request, CancellationToken cancellationToken = default)
     {
         ValidateUser(request.ExternalId, request.UserName);
+        ValidateUserDisplayPreferences(request.DisplayCultureName, request.DisplayTimeZone);
 
         var roleGuids = request.RoleGuids
             .Where(x => x != Guid.Empty)
@@ -174,6 +188,8 @@ public class ChillAuthService : IChillAuthService
             _context.Users.Add(user);
         }
 
+        var isSelfTarget = await IsCurrentActorUserAsync(user.Guid, cancellationToken);
+
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
@@ -181,13 +197,20 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
-        user.IsActive = request.IsActive;
-        user.CanManagePermissions = request.CanManagePermissions;
-        user.CanManageSchema = request.CanManageSchema;
+        if (!isSelfTarget)
+        {
+            user.IsActive = request.IsActive;
+            user.CanManagePermissions = request.CanManagePermissions;
+            user.CanManageSchema = request.CanManageSchema;
+        }
+        user.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
-        await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
-        await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
+        if (!isSelfTarget)
+        {
+            await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
+            await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
+        }
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
 
@@ -277,6 +300,11 @@ public class ChillAuthService : IChillAuthService
             }
         }
 
+        if (await RoleChangeAffectsCurrentActorAsync(request.Guid, userGuids, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change roles that affect their own effective permissions.");
+        }
+
         AuthRole role;
         if (request.Guid.HasValue && request.Guid.Value != Guid.Empty)
         {
@@ -295,6 +323,7 @@ public class ChillAuthService : IChillAuthService
         role.Name = request.Name.Trim();
         role.Description = request.Description.Trim();
         role.IsActive = request.IsActive;
+        role.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         await SyncRoleUsersAsync(role.Guid, userGuids, cancellationToken);
@@ -354,6 +383,7 @@ public class ChillAuthService : IChillAuthService
             DisplayDateFormat = request.DisplayDateFormat.Trim(),
             DisplayNumberFormat = request.DisplayNumberFormat.Trim(),
             IsActive = request.IsActive,
+            MenuHierarchy = request.MenuHierarchy.Trim(),
             CanManagePermissions = request.CanManagePermissions,
             CanManageSchema = request.CanManageSchema
         };
@@ -375,6 +405,8 @@ public class ChillAuthService : IChillAuthService
             return null;
         }
 
+        var isSelfTarget = await IsCurrentActorUserAsync(user.Guid, cancellationToken);
+
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
@@ -382,9 +414,18 @@ public class ChillAuthService : IChillAuthService
         user.DisplayTimeZone = request.DisplayTimeZone.Trim();
         user.DisplayDateFormat = request.DisplayDateFormat.Trim();
         user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
-        user.IsActive = request.IsActive;
-        user.CanManagePermissions = request.CanManagePermissions;
-        user.CanManageSchema = request.CanManageSchema;
+        // Only if the updating user (JWT authenticated user) if different from update request user,
+        // allow updating IsActive, CanManagePermissions and CanManageSchema
+        // to prevent users from locking themselves out or losing permissions by mistake
+        // or gain permissions they shouldn't have.
+        if (!isSelfTarget)
+        {
+            user.IsActive = request.IsActive;
+            user.CanManagePermissions = request.CanManagePermissions;
+            user.CanManageSchema = request.CanManageSchema;
+        }
+        user.MenuHierarchy = request.MenuHierarchy.Trim();
+        // 
 
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess(user.ExternalId);
@@ -435,7 +476,8 @@ public class ChillAuthService : IChillAuthService
             Guid = Guid.NewGuid(),
             Name = request.Name.Trim(),
             Description = request.Description.Trim(),
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            MenuHierarchy = request.MenuHierarchy.Trim()
         };
 
         _context.Roles.Add(role);
@@ -458,6 +500,7 @@ public class ChillAuthService : IChillAuthService
         role.Name = request.Name.Trim();
         role.Description = request.Description.Trim();
         role.IsActive = request.IsActive;
+        role.MenuHierarchy = request.MenuHierarchy.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
         InvalidateManagementAccess();
@@ -495,6 +538,11 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> AssignRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
+        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change their own role assignments.");
+        }
+
         var userExists = await _context.Users.AnyAsync(x => x.Guid == userGuid, cancellationToken);
         var roleExists = await _context.Roles.AnyAsync(x => x.Guid == roleGuid, cancellationToken);
         if (!userExists || !roleExists)
@@ -523,6 +571,11 @@ public class ChillAuthService : IChillAuthService
     /// <inheritdoc />
     public async Task<bool> RemoveRoleAsync(Guid userGuid, Guid roleGuid, CancellationToken cancellationToken = default)
     {
+        if (await IsCurrentActorUserAsync(userGuid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change their own role assignments.");
+        }
+
         var membership = await _context.UserRoles.FirstOrDefaultAsync(x => x.UserGuid == userGuid && x.RoleGuid == roleGuid, cancellationToken);
         if (membership is null)
         {
@@ -573,6 +626,7 @@ public class ChillAuthService : IChillAuthService
     public async Task<AuthPermissionRule> CreatePermissionRuleAsync(CreateAuthPermissionRuleRequest request, CancellationToken cancellationToken = default)
     {
         await ValidatePermissionRuleAsync(request.UserGuid, request.RoleGuid, request.Scope, request.Module, request.EntityName, request.PropertyName, request.AppliesToAllProperties, cancellationToken);
+        await EnsureRuleDoesNotAffectCurrentActorAsync(request.UserGuid, request.RoleGuid, cancellationToken);
 
         var rule = new AuthPermissionRule
         {
@@ -607,6 +661,11 @@ public class ChillAuthService : IChillAuthService
             return null;
         }
 
+        var currentUserGuid = rule.UserGuid;
+        var currentRoleGuid = rule.RoleGuid;
+        await EnsureRuleDoesNotAffectCurrentActorAsync(currentUserGuid, currentRoleGuid, cancellationToken);
+        await EnsureRuleDoesNotAffectCurrentActorAsync(request.UserGuid, request.RoleGuid, cancellationToken);
+
         rule.UserGuid = request.UserGuid;
         rule.RoleGuid = request.RoleGuid;
         rule.Effect = request.Effect;
@@ -631,6 +690,8 @@ public class ChillAuthService : IChillAuthService
         {
             return false;
         }
+
+        await EnsureRuleDoesNotAffectCurrentActorAsync(rule.UserGuid, rule.RoleGuid, cancellationToken);
 
         _context.PermissionRules.Remove(rule);
         await _context.SaveChangesAsync(cancellationToken);
@@ -725,6 +786,71 @@ public class ChillAuthService : IChillAuthService
     #endregion
 
     #region Synchronization Helpers
+    private async Task<AuthUser?> GetCurrentActorAsync(CancellationToken cancellationToken)
+    {
+        var principal = _httpContextAccessor?.HttpContext?.User;
+        if (principal?.Identity?.IsAuthenticated != true || _identityResolver is null)
+        {
+            return null;
+        }
+
+        var externalId = _identityResolver.ResolveExternalId(principal);
+        if (string.IsNullOrWhiteSpace(externalId))
+        {
+            return null;
+        }
+
+        return await GetUserByExternalIdAsync(externalId, cancellationToken);
+    }
+
+    private async Task<bool> IsCurrentActorUserAsync(Guid userGuid, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        return actor?.Guid == userGuid;
+    }
+
+    private async Task<bool> RoleChangeAffectsCurrentActorAsync(Guid? roleGuid, IReadOnlyList<Guid> requestedUserGuids, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        if (actor is null)
+        {
+            return false;
+        }
+
+        if (requestedUserGuids.Contains(actor.Guid))
+        {
+            return true;
+        }
+
+        if (!roleGuid.HasValue || roleGuid.Value == Guid.Empty)
+        {
+            return false;
+        }
+
+        return await _context.UserRoles.AnyAsync(
+            x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid,
+            cancellationToken);
+    }
+
+    private async Task EnsureRuleDoesNotAffectCurrentActorAsync(Guid? userGuid, Guid? roleGuid, CancellationToken cancellationToken)
+    {
+        var actor = await GetCurrentActorAsync(cancellationToken);
+        if (actor is null)
+        {
+            return;
+        }
+
+        if (userGuid == actor.Guid)
+        {
+            throw new InvalidOperationException("Users cannot change permission rules that affect themselves.");
+        }
+
+        if (roleGuid.HasValue && await _context.UserRoles.AnyAsync(x => x.RoleGuid == roleGuid.Value && x.UserGuid == actor.Guid, cancellationToken))
+        {
+            throw new InvalidOperationException("Users cannot change permission rules that affect their own roles.");
+        }
+    }
+
     private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)
     {
         var existingMemberships = await _context.UserRoles
@@ -972,6 +1098,70 @@ public class ChillAuthService : IChillAuthService
         }
     }
 
+    private static void ValidateUserDisplayPreferences(string? displayCultureName, string? displayTimeZone)
+    {
+        var normalizedCultureName = displayCultureName?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedCultureName))
+        {
+            if (!IsSpecificCultureName(normalizedCultureName))
+            {
+                throw new ArgumentException("DisplayCultureName must be a valid culture name in the format ll-RR, for example it-IT or en-GB.");
+            }
+        }
+
+        var normalizedTimeZone = displayTimeZone?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedTimeZone) &&
+            !IsIanaTimeZoneId(normalizedTimeZone))
+        {
+            throw new ArgumentException("DisplayTimeZone must be a valid IANA time zone id, for example Europe/Rome or America/New_York.");
+        }
+    }
+
+    private static bool IsSpecificCultureName(string cultureName)
+    {
+        if (cultureName.Length != 5 ||
+            !char.IsLower(cultureName[0]) ||
+            !char.IsLower(cultureName[1]) ||
+            cultureName[2] != '-' ||
+            !char.IsUpper(cultureName[3]) ||
+            !char.IsUpper(cultureName[4]))
+        {
+            return false;
+        }
+
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(cultureName);
+            return string.Equals(culture.Name, cultureName, StringComparison.Ordinal);
+        }
+        catch (CultureNotFoundException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsIanaTimeZoneId(string timeZoneId)
+    {
+        if (TimeZoneInfo.TryConvertIanaIdToWindowsId(timeZoneId, out _))
+        {
+            return true;
+        }
+
+        try
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return timeZone.HasIanaId && string.Equals(timeZone.Id, timeZoneId, StringComparison.Ordinal);
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return false;
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return false;
+        }
+    }
+
     private static void ValidateRole(string roleName)
     {
         if (string.IsNullOrWhiteSpace(roleName))
@@ -1122,7 +1312,8 @@ public class ChillAuthService : IChillAuthService
             DisplayNumberFormat = user.DisplayNumberFormat,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
-            CanManageSchema = user.CanManageSchema
+            CanManageSchema = user.CanManageSchema,
+            MenuHierarchy = user.MenuHierarchy
         };
     }
 
@@ -1133,7 +1324,8 @@ public class ChillAuthService : IChillAuthService
             Guid = role.Guid,
             Name = role.Name,
             Description = role.Description,
-            IsActive = role.IsActive
+            IsActive = role.IsActive,
+            MenuHierarchy = role.MenuHierarchy
         };
     }
 
@@ -1169,6 +1361,7 @@ public class ChillAuthService : IChillAuthService
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,
+            MenuHierarchy = user.MenuHierarchy,
             Roles = roles.Select(ToRoleListItem).ToList(),
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };
@@ -1182,6 +1375,7 @@ public class ChillAuthService : IChillAuthService
             Name = role.Name,
             Description = role.Description,
             IsActive = role.IsActive,
+            MenuHierarchy = role.MenuHierarchy,
             Users = users.Select(ToUserListItem).ToList(),
             Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
         };
@@ -1253,3 +1447,7 @@ public class ChillAuthService : IChillAuthService
     }
     #endregion
 }
+
+
+
+

@@ -42,12 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Contracts\ChillDtoSchema.cs" />
-    <Compile Remove="Contracts\ChillDtoSchemaListItem.cs" />
-    <Compile Remove="Contracts\ChillDtoEntityOptions.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" />
     <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
     <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
   </ItemGroup>

@@ -146,6 +146,16 @@ public class AuthUser : ChillEntity
     public bool CanManageSchema { get; set; }
 
     /// <summary>
+    /// Menu hierarchy prefix used to filter the menu tree for this user.
+    /// </summary>
+    [Column("menu-hierarchy")]
+    [ChillProperty(
+        "9E405C8F-A9E0-4681-8494-340E5A1D4857",
+        "Menu hierarchy",
+        "Gerarchia menu")]
+    public string MenuHierarchy { get; set; } = string.Empty;
+
+    /// <summary>
     /// Role memberships assigned to the user.
     /// </summary>
     [ChillProperty(
@@ -159,3 +169,5 @@ public class AuthUser : ChillEntity
         return string.IsNullOrWhiteSpace(DisplayName) ? UserName : DisplayName;
     }
 }
+
+

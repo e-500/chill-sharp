@@ -26,8 +26,9 @@ namespace ChillSharp.Annotations
     /// <para>It can store metadata about the field's type and nullability.</para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -75,6 +76,21 @@ namespace ChillSharp.Annotations
         /// Enables publication of the entity as an MCP resource.
         /// </summary>
         public bool EnableMCP { get; set; }
+
+        /// <summary>
+        /// Default format string used to build the entity label.
+        /// </summary>
+        public string? LabelFormatString { get; set; }
+
+        /// <summary>
+        /// Default format string used to build the entity short label.
+        /// </summary>
+        public string? ShortLabelFormatString { get; set; }
+
+        /// <summary>
+        /// Default format string used to build the entity full text content.
+        /// </summary>
+        public string? FullTextContentFormatString { get; set; }
 
         /// <summary>
         /// Description exposed to MCP clients for the entity resource.

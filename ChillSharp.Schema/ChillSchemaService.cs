@@ -17,32 +17,50 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-using ChillSharp.Dto;
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Schema.Model;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using ChillSharp.Schema.Contracts;
+using ChillSharp.Dto;
 
 namespace ChillSharp.Schema;
 
 /// <summary>
-/// Default implementation of <see cref="IChillSchemaService"/> backed by EF Core persistence.
+/// Default implementation of <see cref="IChillSchemaManagementService"/> backed by EF Core persistence.
 /// </summary>
-public class ChillSchemaService : IChillSchemaService
+public class ChillSchemaService : IChillSchemaService, IChillSchemaResolverService
 {
     private readonly IChillSchemaDbContext _schemaContext;
-    private readonly IChillContext _chillContext;
+    private readonly IChillSchemaRuntimeContext _runtimeContext;
     private readonly IChillSchemaCache _schemaCache;
 
     /// <summary>
     /// Initializes the schema service.
     /// </summary>
-    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillContext chillContext, IChillSchemaCache schemaCache)
+    public ChillSchemaService(IChillSchemaDbContext schemaContext, IChillSchemaRuntimeContext runtimeContext, IChillSchemaCache schemaCache)
     {
         _schemaContext = schemaContext;
-        _chillContext = chillContext;
+        _runtimeContext = runtimeContext;
         _schemaCache = schemaCache;
+
+        if (schemaContext is IChillContext chillContext)
+        {
+            chillContext.RegisterSchemaService(this);
+        }
+    }
+
+    /// <inheritdoc />
+    public IChillDtoSchema? ResolveSchema(string chillType, string chillViewCode, string? cultureName = null)
+    {
+        return GetSchemaAsync(chillType, chillViewCode, cultureName).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc />
+    public IChillDtoEntityOptions GetEntityOptions(string chillType)
+    {
+        return GetEntityOptionsAsync(chillType).GetAwaiter().GetResult();
     }
 
     /// <inheritdoc />
@@ -181,7 +199,7 @@ public class ChillSchemaService : IChillSchemaService
 
         await _schemaContext.SaveChangesAsync(cancellationToken);
         _schemaCache.InvalidateEntityOptions(chillType);
-        ChillEntityOptionsRuntimeCache.Invalidate(_chillContext, chillType);
+        ChillEntityOptionsRuntimeCache.Invalidate(_runtimeContext.RuntimeContextKey, chillType);
 
         return _schemaCache.SetEntityOptions(new ChillDtoEntityOptions
         {
@@ -196,27 +214,138 @@ public class ChillSchemaService : IChillSchemaService
         });
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ChillDtoMenuItem>> GetMenuAsync(Guid? parentGuid = null, CancellationToken cancellationToken = default)
+    {
+        var rows = await _schemaContext.MenuItems
+            .AsNoTracking()
+            .Include(x => x.Parent)
+            .Where(x => x.ParentGuid == parentGuid)
+            .OrderBy(x => x.PositionNo)
+            .ThenBy(x => x.Title)
+            .ThenBy(x => x.Guid)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(MapMenuItem).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<ChillDtoMenuItem> SetMenuAsync(ChillDtoMenuItem menuItem, CancellationToken cancellationToken = default)
+    {
+        if (menuItem == null)
+            throw new ArgumentNullException(nameof(menuItem));
+
+        var parentGuid = menuItem.Parent?.Guid;
+        ChillMenuItemEntry? parent = null;
+        if (parentGuid.HasValue && parentGuid.Value != Guid.Empty)
+        {
+            parent = await _schemaContext.MenuItems
+                .FirstOrDefaultAsync(x => x.Guid == parentGuid.Value, cancellationToken)
+                ?? throw new ArgumentException("The referenced parent menu item does not exist.");
+        }
+
+        ChillMenuItemEntry row;
+
+        bool exists = false;
+        if (menuItem.Guid != Guid.Empty)
+            exists = await _schemaContext.MenuItems.AnyAsync(x => x.Guid == menuItem.Guid, cancellationToken);
+
+        if (exists)
+        {
+            row = await _schemaContext.MenuItems
+                .Include(x => x.Parent)
+                .FirstOrDefaultAsync(x => x.Guid == menuItem.Guid, cancellationToken)
+                ?? throw new ArgumentException("The referenced menu item does not exist.");
+        }
+        else
+        {
+            row = new ChillMenuItemEntry
+            {
+                Guid = (menuItem.Guid == Guid.Empty) ? Guid.NewGuid() : menuItem.Guid
+            };
+            _schemaContext.MenuItems.Add(row);
+        }
+
+        if (parent != null && parent.Guid == row.Guid)
+            throw new ArgumentException("A menu item cannot be its own parent.");
+
+        var resolvedMenuHierarchy = string.IsNullOrWhiteSpace(menuItem.MenuHierarchy)
+            ? row.MenuHierarchy
+            : NormalizeRequiredText(menuItem.MenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+
+        row.PositionNo = menuItem.PositionNo;
+        row.Title = NormalizeRequiredText(menuItem.Title, nameof(menuItem.Title), 255);
+        row.Description = NormalizeOptionalText(menuItem.Description);
+        row.ParentGuid = parent?.Guid;
+        row.Parent = parent;
+        row.ComponentName = menuItem.ComponentName; // NormalizeRequiredText(menuItem.ComponentName, nameof(menuItem.ComponentName), 255);
+        row.ComponentConfigurationJson = NormalizeOptionalText(menuItem.ComponentConfigurationJson);
+        row.MenuHierarchy = NormalizeRequiredText(resolvedMenuHierarchy, nameof(menuItem.MenuHierarchy), 512);
+        row.UpdatedUtc = DateTime.UtcNow;
+
+        await _schemaContext.SaveChangesAsync(cancellationToken);
+
+        row = await _schemaContext.MenuItems
+            .AsNoTracking()
+            .Include(x => x.Parent)
+            .FirstAsync(x => x.Guid == row.Guid, cancellationToken);
+
+        return MapMenuItem(row);
+    }
+
+
+    /// <inheritdoc />
+    public async Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default)
+    {
+        if (menuItemGuid == Guid.Empty)
+            throw new ArgumentException("'menuItemGuid' is required.", nameof(menuItemGuid));
+
+        var menuRows = await _schemaContext.MenuItems
+            .ToListAsync(cancellationToken);
+
+        var rowsByGuid = menuRows.ToDictionary(x => x.Guid);
+        if (!rowsByGuid.ContainsKey(menuItemGuid))
+            throw new ArgumentException("The referenced menu item does not exist.", nameof(menuItemGuid));
+
+        var descendantGuids = new HashSet<Guid>();
+        var pending = new Stack<Guid>();
+        pending.Push(menuItemGuid);
+
+        while (pending.Count > 0)
+        {
+            var currentGuid = pending.Pop();
+            if (!descendantGuids.Add(currentGuid))
+                continue;
+
+            foreach (var childGuid in menuRows.Where(x => x.ParentGuid == currentGuid).Select(x => x.Guid))
+            {
+                pending.Push(childGuid);
+            }
+        }
+
+        var rowsToDelete = menuRows
+            .Where(x => descendantGuids.Contains(x.Guid))
+            .ToList();
+
+        _schemaContext.MenuItems.RemoveRange(rowsToDelete);
+        await _schemaContext.SaveChangesAsync(cancellationToken);
+    }
     private ChillDtoSchema BuildSchema(string chillType, string chillViewCode, string cultureName)
     {
-        var activatedType = ChillTypeResolver.ActivateType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
+        var activatedType = ChillTypeResolver.ActivateType(_runtimeContext.ModelAssembly, chillType, _runtimeContext.ChillTypePrefix);
         var fullChillType = PrepareFullChillType(chillType);
-
-        if (activatedType is IChillEntity chillEntity)
+        var schema = _runtimeContext.BuildSchema(activatedType, chillViewCode, cultureName);
+        if (schema is ChillDtoSchema typedSchema)
         {
-            return ChillDtoSchema.FromIChillEntity(chillEntity, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
+            return typedSchema;
         }
 
-        if (activatedType is IChillQuery<IChillEntity> chillQuery)
-        {
-            return ChillDtoSchema.FromIChillQuery(chillQuery, chillViewCode, _chillContext.GetChillTypePrefix(), _chillContext, cultureName);
-        }
-
-        throw new ChillException($"Activated type '{fullChillType}' is not a Chill entity or query.");
+        throw new ChillException($"The runtime schema builder returned '{schema.GetType().FullName}' instead of {nameof(ChillDtoSchema)} for '{fullChillType}'.");
     }
 
     private string PrepareFullChillType(string chillType)
     {
-        return ChillTypeResolver.PrepareFullChillType(chillType, _chillContext.GetChillTypePrefix());
+        return ChillTypeResolver.PrepareFullChillType(chillType, _runtimeContext.ChillTypePrefix);
     }
 
     private static string NormalizeKey(string value)
@@ -229,6 +358,44 @@ public class ChillSchemaService : IChillSchemaService
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
+    private static string NormalizeRequiredText(string? value, string parameterName, int maxLength)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new ArgumentException($"'{parameterName}' is required.", parameterName);
+
+        if (normalized.Length > maxLength)
+            throw new ArgumentException($"'{parameterName}' cannot exceed {maxLength} characters.", parameterName);
+
+        return normalized;
+    }
+
+    private static ChillDtoMenuItem MapMenuItem(ChillMenuItemEntry row)
+    {
+        return new ChillDtoMenuItem
+        {
+            Guid = row.Guid,
+            PositionNo = row.PositionNo,
+            Title = row.Title,
+            Description = row.Description,
+            Parent = row.Parent == null
+                ? null
+                : new ChillDtoMenuItem
+                {
+                    Guid = row.Parent.Guid,
+                    PositionNo = row.Parent.PositionNo,
+                    Title = row.Parent.Title,
+                    Description = row.Parent.Description,
+                    ComponentName = row.Parent.ComponentName,
+                    ComponentConfigurationJson = row.Parent.ComponentConfigurationJson,
+                    MenuHierarchy = row.Parent.MenuHierarchy
+                },
+            ComponentName = row.ComponentName,
+            ComponentConfigurationJson = row.ComponentConfigurationJson,
+            MenuHierarchy = row.MenuHierarchy
+        };
+    }
+
     private ChillDtoEntityOptions CreateDefaultEntityOptions(string chillType)
     {
         var defaults = ResolveEntityAttributeDefaults(chillType);
@@ -237,17 +404,20 @@ public class ChillSchemaService : IChillSchemaService
         {
             ChillType = chillType,
             ChecksumEnabled = true,
+            LabelFormatString = defaults.LabelFormatString,
+            ShortLabelFormatString = defaults.ShortLabelFormatString,
+            FullTextContentFormatString = defaults.FullTextContentFormatString,
             EnableMCP = defaults.EnableMCP,
             MCPDescription = defaults.MCPDescription,
             ChangeLogEnabled = false
         };
     }
 
-    private (bool EnableMCP, string? MCPDescription) ResolveEntityAttributeDefaults(string chillType)
+    private (string? LabelFormatString, string? ShortLabelFormatString, string? FullTextContentFormatString, bool EnableMCP, string? MCPDescription) ResolveEntityAttributeDefaults(string chillType)
     {
         try
         {
-            var resolvedType = ChillTypeResolver.ResolveType(_chillContext.GetType().Assembly, chillType, _chillContext.GetChillTypePrefix());
+            var resolvedType = ChillTypeResolver.ResolveType(_runtimeContext.ModelAssembly, chillType, _runtimeContext.ChillTypePrefix);
             var chillAttribute = resolvedType.GetCustomAttributes(typeof(ChillEntityAttribute), inherit: true)
                 .OfType<ChillEntityAttribute>()
                 .FirstOrDefault();
@@ -255,7 +425,12 @@ public class ChillSchemaService : IChillSchemaService
             if (chillAttribute == null)
                 return default;
 
-            return (chillAttribute.EnableMCP, NormalizeOptionalText(chillAttribute.MCPDescription));
+            return (
+                NormalizeOptionalText(chillAttribute.LabelFormatString),
+                NormalizeOptionalText(chillAttribute.ShortLabelFormatString),
+                NormalizeOptionalText(chillAttribute.FullTextContentFormatString),
+                chillAttribute.EnableMCP,
+                NormalizeOptionalText(chillAttribute.MCPDescription));
         }
         catch
         {
@@ -266,7 +441,7 @@ public class ChillSchemaService : IChillSchemaService
     private string NormalizeCultureName(string? cultureName)
     {
         return string.IsNullOrWhiteSpace(cultureName)
-            ? NormalizeKey(_chillContext.GetDefaultUserCultureName())
+            ? NormalizeKey(_runtimeContext.DefaultUserCultureName)
             : NormalizeKey(cultureName);
     }
 
@@ -279,3 +454,7 @@ public class ChillSchemaService : IChillSchemaService
         };
     }
 }
+
+
+
+

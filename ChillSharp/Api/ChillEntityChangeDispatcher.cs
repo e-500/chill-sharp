@@ -26,7 +26,7 @@ namespace ChillSharp.Api
         Task DispatchAsync(IReadOnlyCollection<ChillEntityChangeNotification> changes, CancellationToken cancellationToken = default);
     }
 
-    internal sealed class ChillEntityChangeDispatcher : IChillEntityChangeDispatcher
+    public sealed class ChillEntityChangeDispatcher : IChillEntityChangeDispatcher
     {
         private readonly IHubContext<ChillEntityChangeHub> _hubContext;
 

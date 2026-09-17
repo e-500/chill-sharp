@@ -19,6 +19,7 @@
 
 using ChillSharp.Annotations;
 using ChillSharp.Dto;
+using ChillSharp.Schema;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Reflection;
@@ -33,8 +34,9 @@ namespace ChillSharp.EF
     /// <para>Implementing this interface allows automatic handling of entity lifecycle events.</para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -75,14 +77,20 @@ namespace ChillSharp.EF
             UniquePropertyKeyString: "19604008-C926-4A9C-90C4-73D6FB8D37BB",
             PrimaryLanguageLabel: "Last update timestamp",
             SecondaryLanguageLabel: "Timestamp ultimo aggiornamento")]
-        public DateTime? LastUpdateUtc { get; set; }
+        public DateTime? LastUpdate { get; set; }
+
+        [ChillProperty(
+            UniquePropertyKeyString: "A4F84437-2E55-4637-AF2C-C6CA5B1D5D78",
+            PrimaryLanguageLabel: "Last update UTC offset",
+            SecondaryLanguageLabel: "Offset UTC ultimo aggiornamento")]
+        public int LastUpdateUtcOffset { get; set; }
 
         #region IChillEntity implementation
         #region CREATE
         /// <summary>
         /// Initializes default fields or calculated values when the entity is created.
         /// Called automatically by the <c>CREATE()</c> method.
-        /// <para>Example: <c>CreatedAt = DateTime.UtcNow;</c></para>
+        /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
         public virtual void OnCreate(IChillContext Context) { Guid = Guid.NewGuid(); }
@@ -141,10 +149,13 @@ namespace ChillSharp.EF
         /// <param name="Context">The active database context.</param>
         private void UpdateAuditFields(IChillContext Context)
         {
-            LastUpdateUtc = DateTime.UtcNow;
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+            var serverNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, systemTimeZone);
+            LastUpdate = serverNow.DateTime;
+            LastUpdateUtcOffset = (int)serverNow.Offset.TotalMinutes;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
-            Checksum = Context.IsEntityChecksumEnabled(chillType) ? CalculateChecksum() : 0;
+            Checksum = Context.GetSchemaService().GetEntityOptions(chillType).ChecksumEnabled ? CalculateChecksum() : 0;
         }
         #endregion
 
@@ -218,7 +229,7 @@ namespace ChillSharp.EF
 
             foreach (var property in chillProperties)
             {
-                if (property.Name is nameof(Checksum) or nameof(LastUpdateUser) or nameof(LastUpdateUtc))
+                if (property.Name is nameof(Checksum) or nameof(LastUpdateUser) or nameof(LastUpdate) or nameof(LastUpdateUtcOffset))
                 {
                     continue;
                 }
@@ -263,7 +274,7 @@ namespace ChillSharp.EF
         internal void AppendChangeLogSnapshot(IChillContext context)
         {
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), context.GetChillTypePrefix());
-            if (!context.GetEntityOptions(chillType).ChangeLogEnabled)
+            if (!ChillSchemaResolverBridge.GetEntityOptions(context, chillType).ChangeLogEnabled)
             {
                 return;
             }

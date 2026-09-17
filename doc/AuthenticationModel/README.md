@@ -77,6 +77,17 @@ These endpoints manage:
 - `DisplayDateFormat`
 - `DisplayNumberFormat`
 
+`AuthUser` and `AuthRole` also carry:
+
+- `MenuHierarchy`
+
+`MenuHierarchy` is used by the schema menu endpoints to filter which menu nodes are visible to the current user.
+
+- `*` means full menu access
+- any other value works as a prefix match, for example `SECTION-A` allows nodes whose menu hierarchy starts with `SECTION-A`
+
+For the full menu-tree model and endpoint behavior, see [doc/MenuModel.md](../MenuModel.md).
+
 ## Context Requirements
 
 The host context must:

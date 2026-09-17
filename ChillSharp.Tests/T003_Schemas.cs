@@ -20,6 +20,7 @@
 using ChillSharp.Client;
 using ChillSharp.Dto;
 using ChillSharp.EF;
+using ChillSharp.Annotations;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
 using ChillSharp.Schema.Api;
@@ -33,6 +34,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.Reflection;
+using System.ComponentModel.DataAnnotations;
+using ChillSharp.Schema.Contracts;
+using ChillSharp.Schema;
 
 namespace ChillSharp.Tests
 {
@@ -42,10 +46,10 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step001_TestSchema()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
-            var defaultCultureClient = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill", CultureName: "it-IT");
+            var defaultCultureClient = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var blogSchema = cli.GetSchema("Model.Blog", "default");
             Assert.IsNotNull(blogSchema, "GetSchema('Model.Blog', 'default') returned null");
@@ -63,7 +67,11 @@ namespace ChillSharp.Tests
             var postSchema = cli.GetSchema("Model.Post", "default");
             Assert.IsNotNull(postSchema, "GetSchema('Model.Post', 'default') returned null");
             var authorProperty = postSchema.Properties.Where(x => x.Name == "Author").FirstOrDefault();
+            var blogProperty = postSchema.Properties.Where(x => x.Name == "Blog").FirstOrDefault();
             Assert.IsNotNull(authorProperty, "Post schema properties don't contains 'Author' property");
+            Assert.IsNotNull(blogProperty, "Post schema properties don't contains 'Blog' property");
+            Assert.AreEqual("Model.Blog", blogProperty.ReferenceChillType);
+            Assert.AreEqual("Query.BlogQuery", blogProperty.ReferenceChillTypeQuery);
             authorProperty.DisplayName = "Post author";
             postSchema.EnableMCP = true;
             postSchema.MCPDescription = "Post resource published through schema overrides.";
@@ -131,7 +139,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step005_OpenGenericQueryDefinitionCanBeActivated()
         {
-            var resolverType = typeof(ChillDtoSchema).Assembly.GetType("ChillSharp.Dto.ChillTypeResolver");
+            var resolverType = typeof(IChillContext).Assembly.GetType("ChillSharp.Dto.ChillTypeResolver");
             Assert.IsNotNull(resolverType, "Unable to locate ChillTypeResolver");
 
             var method = resolverType.GetMethod("ActivateType", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
@@ -147,15 +155,15 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step006_GetSchemaListReturnsRegisteredEntitiesAndQueries()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var italianClient = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
-            var defaultClient = new ChillSharpClient("http://localhost:5000/api/chill");
+            var italianClient = new ChillSharpClient("http://localhost:6002/api/chill", CultureName: "it-IT");
+            var defaultClient = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var italianItems = italianClient.GetSchemaList();
             var defaultItems = defaultClient.GetSchemaList();
 
-            Assert.IsTrue(italianItems.Count >= 4, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
+            Assert.IsGreaterThanOrEqualTo(4, italianItems.Count, "Expected at least Blog/Post entities and BlogQuery/PostQuery queries.");
 
             var blogEntity = italianItems.Single(x => x.Type == "entity" && x.ChillType == "Model.Blog");
             Assert.AreEqual("Blog", blogEntity.Name);
@@ -180,20 +188,23 @@ namespace ChillSharp.Tests
             await using var context = new EF.DummyContext(options);
             await context.Database.EnsureCreatedAsync();
             var cache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
-            var dtoEngine = new ChillDtoEngine(context, schemaService);
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+            var dtoEngine = new ChillDtoEngine(context); //, schemaService);
 
-            var defaultOptions = dtoEngine.GetEntityOptions("Model.Post");
+            var defaultOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.AreEqual("Model.Post", defaultOptions.ChillType);
             Assert.IsTrue(defaultOptions.ChecksumEnabled);
             Assert.IsFalse(defaultOptions.ChangeLogEnabled);
             Assert.IsFalse(defaultOptions.EnableMCP);
             Assert.AreEqual("Post resource exposed to MCP clients.", defaultOptions.MCPDescription);
-            Assert.IsNull(defaultOptions.LabelFormatString);
-            Assert.IsNull(defaultOptions.ShortLabelFormatString);
-            Assert.IsNull(defaultOptions.FullTextContentFormatString);
+            Assert.AreEqual("{Title} - {Author}", defaultOptions.LabelFormatString);
+            Assert.AreEqual("{Title}", defaultOptions.ShortLabelFormatString);
+            Assert.AreEqual("{Title} {Author}", defaultOptions.FullTextContentFormatString);
 
-            var updatedOptions = dtoEngine.SetEntityOptions(new ChillDtoEntityOptions
+            var updatedOptions = schemaService.SetEntityOptionsAsync(new ChillDtoEntityOptions
             {
                 ChillType = "Model.Post",
                 ChecksumEnabled = false,
@@ -203,7 +214,7 @@ namespace ChillSharp.Tests
                 EnableMCP = true,
                 MCPDescription = "Post MCP runtime description.",
                 ChangeLogEnabled = true
-            });
+            }).GetAwaiter().GetResult();
 
             Assert.AreEqual("Model.Post", updatedOptions.ChillType);
             Assert.IsFalse(updatedOptions.ChecksumEnabled);
@@ -214,7 +225,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual("{Author}.{Title}", updatedOptions.ShortLabelFormatString);
             Assert.AreEqual("{Title}::{Author}", updatedOptions.FullTextContentFormatString);
 
-            var persistedOptions = dtoEngine.GetEntityOptions("Model.Post");
+            var persistedOptions = schemaService.GetEntityOptions("Model.Post");
             Assert.IsFalse(persistedOptions.ChecksumEnabled);
             Assert.IsTrue(persistedOptions.ChangeLogEnabled);
             Assert.IsTrue(persistedOptions.EnableMCP);
@@ -240,17 +251,366 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
-        public void Step010_SchemaControllerEndpointsRespond()
+        public async Task Step010_SchemaControllerEndpointsRespond()
         {
-            var controller = CreateSchemaController();
+            var controller = await CreateSchemaController();
 
-            Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchema("Model.Post", "default"));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetSchema("Model.Post", "default"));
             Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchemaList());
-            Assert.IsInstanceOfType<OkObjectResult>(controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
-            Assert.IsInstanceOfType<OkObjectResult>(controller.GetEntityOptions("Model.Post"));
-            Assert.IsInstanceOfType<OkObjectResult>(controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetEntityOptions("Model.Post"));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.GetMenu(cancellationToken: CancellationToken.None));
+            var guid = Guid.NewGuid();
+            Assert.IsInstanceOfType<OkObjectResult>(await controller.SetMenu(new ChillDtoMenuItem { Guid = guid, PositionNo = 1, Title = "Menu", ComponentName = "CRUD", MenuHierarchy = "TEST" }, CancellationToken.None));
+            Assert.IsInstanceOfType<NoContentResult>(await controller.DeleteMenu(guid, CancellationToken.None));
         }
 
+        [TestMethod]
+        public void Step011_PropertySchemaInfersReferenceQueryTypeOnlyWhenMatchingQueryExists()
+        {
+            var inferredProperty = typeof(FallbackReferenceHolder).GetProperty(nameof(FallbackReferenceHolder.InferredTarget));
+            var blankProperty = typeof(FallbackReferenceHolder).GetProperty(nameof(FallbackReferenceHolder.BlogWithoutQuery));
+
+            Assert.IsNotNull(inferredProperty);
+            Assert.IsNotNull(blankProperty);
+
+            var inferredSchema = ChillDtoPropertySchema.FromPropertyInfo(inferredProperty!, "ChillSharp.Tests");
+            var blankSchema = ChillDtoPropertySchema.FromPropertyInfo(blankProperty!, "ChillSharp.Tests");
+
+            Assert.AreEqual("Schemas+FallbackLookupTarget", inferredSchema.ReferenceChillType);
+            Assert.AreEqual("Schemas+FallbackLookupTargetQuery", inferredSchema.ReferenceChillTypeQuery);
+            Assert.AreEqual("EF.Model.Blog", blankSchema.ReferenceChillType);
+            Assert.AreEqual(string.Empty, blankSchema.ReferenceChillTypeQuery);
+        }
+
+        [TestMethod]
+        public void Step012_PropertySchemaMarksJsonFormattedStringsAsJsonType()
+        {
+            var property = typeof(JsonPayloadHolder).GetProperty(nameof(JsonPayloadHolder.Payload));
+
+            Assert.IsNotNull(property);
+
+            var schema = ChillDtoPropertySchema.FromPropertyInfo(property!, "ChillSharp.Tests");
+
+            Assert.AreEqual(ChillDtoPropertyType.Json, schema.PropertyType);
+            Assert.AreEqual("json", schema.CustomFormat);
+        }
+
+
+        [TestMethod]
+        public async Task Step013_MenuEndpointsFilterByUserAndRoleHierarchy()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+            var authService = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+            var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Section A",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A"
+            });
+            var sectionB = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Section B",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-B"
+            });
+            var sectionAChild = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 5,
+                Title = "Section A Child",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A.CHILD",
+                Parent = new ChillDtoMenuItem { Guid = sectionA.Guid }
+            });
+
+            var role = await authService.CreateRoleAsync(new ChillSharp.Auth.Contracts.CreateAuthRoleRequest
+            {
+                Name = $"menu-role-{Guid.NewGuid():N}",
+                Description = "Menu role",
+                MenuHierarchy = "SECTION-A"
+            });
+
+            var user = await authService.CreateUserAsync(new ChillSharp.Auth.Contracts.CreateAuthUserRequest
+            {
+                ExternalId = "menu-user",
+                UserName = "menu-user",
+                DisplayName = "Menu User",
+                MenuHierarchy = "SECTION-A"
+            });
+
+            await authService.AssignRoleAsync(user.Guid, role.Guid);
+
+            var controller = new ChillSchemaController(
+                context,
+                schemaService,
+                authService,
+                new StubIdentityResolver());
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "menu-user")
+                    ], authenticationType: "Test"))
+                }
+            };
+
+            var rootResult = (OkObjectResult)await controller.GetMenu(cancellationToken: CancellationToken.None);
+            var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
+            Assert.HasCount(1, rootItems);
+            Assert.AreEqual(sectionA.Guid, rootItems[0].Guid);
+            Assert.AreEqual(20, rootItems[0].PositionNo);
+
+            var childResult = (OkObjectResult)await controller.GetMenu(sectionA.Guid, CancellationToken.None);
+            var childItems = (IReadOnlyList<ChillDtoMenuItem>)childResult.Value!;
+            Assert.HasCount(1, childItems);
+            Assert.AreEqual(sectionAChild.Guid, childItems[0].Guid);
+            Assert.AreEqual(5, childItems[0].PositionNo);
+
+            Assert.AreNotEqual(sectionB.Guid, rootItems[0].Guid);
+        }
+
+        [TestMethod]
+        public async Task Step014_DeleteMenuRemovesDescendants()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-delete-menu-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var root = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Root",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT"
+            });
+            var child = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Child",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.CHILD",
+                Parent = new ChillDtoMenuItem { Guid = root.Guid }
+            });
+            await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 30,
+                Title = "Grandchild",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.CHILD.GRANDCHILD",
+                Parent = new ChillDtoMenuItem { Guid = child.Guid }
+            });
+            var sibling = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 5,
+                Title = "Sibling",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SIBLING"
+            });
+
+            await schemaService.DeleteMenuAsync(root.Guid, CancellationToken.None);
+
+            var remainingRootItems = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
+            Assert.HasCount(1, remainingRootItems);
+            Assert.AreEqual(sibling.Guid, remainingRootItems[0].Guid);
+            Assert.AreEqual(5, remainingRootItems[0].PositionNo);
+
+            var deletedChildren = await schemaService.GetMenuAsync(root.Guid, CancellationToken.None);
+            Assert.IsEmpty(deletedChildren);
+        }
+
+        [TestMethod]
+        public async Task Step015_MenuPersistsAndOrdersByPositionNo()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-order-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var later = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Later",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.LATER"
+            });
+
+            var earlier = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Earlier",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.EARLIER"
+            });
+
+            var samePositionButLaterTitle = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Zeta",
+                ComponentName = "CRUD",
+                MenuHierarchy = "ROOT.ZETA"
+            });
+
+            var ordered = await schemaService.GetMenuAsync(cancellationToken: CancellationToken.None);
+
+            Assert.HasCount(3, ordered);
+            CollectionAssert.AreEqual(
+                new[] { earlier.Guid, samePositionButLaterTitle.Guid, later.Guid },
+                ordered.Select(x => x.Guid).ToArray());
+            CollectionAssert.AreEqual(
+                new[] { 10, 10, 20 },
+                ordered.Select(x => x.PositionNo).ToArray());
+        }
+
+        [TestMethod]
+        public async Task Step016_SetMenuPreservesCurrentHierarchyWhenPayloadHierarchyIsBlank()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-preserve-hierarchy-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var created = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 1,
+                Title = "Posts",
+                ComponentName = "CRUD",
+                MenuHierarchy = "CONTENT.POSTS"
+            });
+
+            var updated = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                Guid = created.Guid,
+                PositionNo = 2,
+                Title = "Posts Updated",
+                ComponentName = "CRUD",
+                MenuHierarchy = "   "
+            });
+
+            Assert.AreEqual("CONTENT.POSTS", updated.MenuHierarchy);
+            Assert.AreEqual(2, updated.PositionNo);
+            Assert.AreEqual("Posts Updated", updated.Title);
+        }
+
+        [TestMethod]
+        public async Task Step017_GetMenuReturnsAllItemsWhenUserHierarchyIsBlank()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schema-menu-empty-user-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+            var authService = new ChillAuthService(context, context, new ChillAuthManagementAccessCache());
+
+            var sectionA = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 10,
+                Title = "Section A",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-A"
+            });
+            var sectionB = await schemaService.SetMenuAsync(new ChillDtoMenuItem
+            {
+                PositionNo = 20,
+                Title = "Section B",
+                ComponentName = "CRUD",
+                MenuHierarchy = "SECTION-B"
+            });
+
+            var role = await authService.CreateRoleAsync(new ChillSharp.Auth.Contracts.CreateAuthRoleRequest
+            {
+                Name = $"menu-open-role-{Guid.NewGuid():N}",
+                Description = "Menu open role",
+                MenuHierarchy = "SECTION-A"
+            });
+
+            var user = await authService.CreateUserAsync(new ChillSharp.Auth.Contracts.CreateAuthUserRequest
+            {
+                ExternalId = "menu-open-user",
+                UserName = "menu-open-user",
+                DisplayName = "Menu Open User",
+                MenuHierarchy = string.Empty
+            });
+
+            await authService.AssignRoleAsync(user.Guid, role.Guid);
+
+            var controller = new ChillSchemaController(
+                context,
+                schemaService,
+                authService,
+                new StubIdentityResolver());
+            controller.ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, "menu-open-user")
+                    ], authenticationType: "Test"))
+                }
+            };
+
+            var rootResult = (OkObjectResult)await controller.GetMenu(cancellationToken: CancellationToken.None);
+            var rootItems = (IReadOnlyList<ChillDtoMenuItem>)rootResult.Value!;
+
+            Assert.HasCount(2, rootItems);
+            CollectionAssert.AreEqual(
+                new[] { sectionA.Guid, sectionB.Guid },
+                rootItems.Select(x => x.Guid).ToArray());
+        }
         private sealed class TypedBlogQuery : IChillQuery<IChillEntity>, IChillQuery<Blog>
         {
             public Guid? Guid { get; set; }
@@ -290,9 +650,24 @@ namespace ChillSharp.Tests
             }
         }
 
-        private static ChillSchemaController CreateSchemaController()
+        private async static Task<ChillSchemaController> CreateSchemaController()
         {
-            var controller = new ChillSchemaController(new StubDtoEngine(), new TestChillContext("ChillSharp.Tests.EF", "en-GB", "it-IT", "en-GB"));
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-schemas-{Guid.NewGuid():N}.db");
+
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(
+                context,
+                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+                cache);
+
+            var controller = new ChillSchemaController(context, schemaService);
             controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext()
@@ -316,7 +691,7 @@ namespace ChillSharp.Tests
             var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
             var filters = new List<IFilterMetadata>();
             var actionArguments = new Dictionary<string, object?>();
-            var controller = CreateSchemaController();
+            var controller = await CreateSchemaController();
             var executingContext = new ActionExecutingContext(actionContext, filters, actionArguments, controller);
 
             await filter.OnActionExecutionAsync(executingContext, () =>
@@ -355,12 +730,62 @@ namespace ChillSharp.Tests
             }
         }
 
+        private sealed class StubSchemaService : IChillSchemaService
+        {
+            private readonly List<ChillDtoMenuItem> _menuItems = [];
+
+            public Task<IChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default)
+                => Task.FromResult<IChillDtoSchema?>(new ChillDtoSchema { ChillType = chillType, ChillViewCode = chillViewCode });
+
+            public Task<ChillDtoSchema> SetSchemaAsync(ChillDtoSchema schema, CancellationToken cancellationToken = default)
+                => Task.FromResult(schema);
+
+            public Task<ChillDtoEntityOptions> GetEntityOptionsAsync(string chillType, CancellationToken cancellationToken = default)
+                => Task.FromResult(new ChillDtoEntityOptions { ChillType = chillType });
+
+            public Task<ChillDtoEntityOptions> SetEntityOptionsAsync(ChillDtoEntityOptions entityOptions, CancellationToken cancellationToken = default)
+                => Task.FromResult(entityOptions);
+
+            public Task<IReadOnlyList<ChillDtoMenuItem>> GetMenuAsync(Guid? parentGuid = null, CancellationToken cancellationToken = default)
+                => Task.FromResult<IReadOnlyList<ChillDtoMenuItem>>(_menuItems.Where(x => x.Parent?.Guid == parentGuid).ToList());
+
+            public Task<ChillDtoMenuItem> SetMenuAsync(ChillDtoMenuItem menuItem, CancellationToken cancellationToken = default)
+            {
+                if (menuItem.Guid == Guid.Empty)
+                    menuItem.Guid = Guid.NewGuid();
+                _menuItems.RemoveAll(x => x.Guid == menuItem.Guid);
+                _menuItems.Add(menuItem);
+                return Task.FromResult(menuItem);
+            }
+            public Task DeleteMenuAsync(Guid menuItemGuid, CancellationToken cancellationToken = default)
+            {
+                var pending = new Stack<Guid>();
+                pending.Push(menuItemGuid);
+                while (pending.Count > 0)
+                {
+                    var currentGuid = pending.Pop();
+                    var childGuids = _menuItems.Where(x => x.Parent?.Guid == currentGuid).Select(x => x.Guid).ToList();
+                    _menuItems.RemoveAll(x => x.Guid == currentGuid);
+                    foreach (var childGuid in childGuids)
+                    {
+                        pending.Push(childGuid);
+                    }
+                }
+                return Task.CompletedTask;
+            }
+
+            Task<ChillDtoSchema?> IChillSchemaService.GetSchemaAsync(string chillType, string chillViewCode, string? cultureName, CancellationToken cancellationToken)
+            {
+                throw new NotImplementedException();
+            }
+        }
         private sealed class StubDtoEngine : IChillDtoEngine
         {
             public void BeginTransaction() => throw new NotSupportedException();
             public void CommitTransaction() => throw new NotSupportedException();
             public void RollbackTransaction() => throw new NotSupportedException();
             public ChillDtoQuery Query(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
+            public ChillDtoQuery Lookup(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
             public ChillDtoEntity? Find(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public ChillDtoEntity Create(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
             public ChillDtoEntity Update(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
@@ -375,12 +800,41 @@ namespace ChillSharp.Tests
             public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions) => EntityOptions;
         }
 
+        private sealed class JsonPayloadHolder
+        {
+            [ChillProperty(CustomFormat = "json")]
+            public string Payload { get; set; } = "{}";
+        }
+
         public sealed class OpenGenericBlogQuery<Blog> : ChillQuery
         {
             public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
             {
                 return Array.Empty<IChillEntity>().AsQueryable();
             }
+        }
+
+        private sealed class FallbackLookupTarget : ChillEntity
+        {
+            [Key]
+            public override Guid Guid { get; set; }
+        }
+
+        private sealed class FallbackLookupTargetQuery : ChillQuery
+        {
+            public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+            {
+                return Array.Empty<IChillEntity>().AsQueryable();
+            }
+        }
+
+        private sealed class FallbackReferenceHolder
+        {
+            [ChillProperty]
+            public FallbackLookupTarget? InferredTarget { get; set; }
+
+            [ChillProperty]
+            public Blog? BlogWithoutQuery { get; set; }
         }
 
         private sealed class TestChillContext : IChillContext
@@ -420,5 +874,10 @@ namespace ChillSharp.Tests
         }
     }
 }
+
+
+
+
+
 
 

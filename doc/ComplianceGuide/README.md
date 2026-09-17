@@ -69,8 +69,9 @@ Reference:
 
 `ChillEntity` automatically maintains:
 
-- `LastUpdateUtc`
+- `LastUpdate`
 - `LastUpdateUser`
+- `LastUpdateUtcOffset`
 - `Checksum`
 
 These values are updated as part of the runtime path used by ChillSharp during updates, which helps enforce a consistent minimum audit trail without depending on every derived entity to remember to do it manually.
@@ -162,7 +163,7 @@ If you want to use ChillSharp as part of a compliance-oriented architecture, the
 3. enable `ChillSharp.Auth` for authenticated systems
 4. configure roles and permission rules with default-deny posture
 5. verify that `GetCurrentUserName()` is correctly implemented in your `IChillContext`
-6. preserve and monitor `LastUpdateUtc`, `LastUpdateUser`, and `Checksum`
+6. preserve and monitor `LastUpdate`, `LastUpdateUtcOffset`, `LastUpdateUser`, and `Checksum`
 7. secure the host with HTTPS, logging, backups, patching, and operational controls outside ChillSharp
 
 ## Related Documents

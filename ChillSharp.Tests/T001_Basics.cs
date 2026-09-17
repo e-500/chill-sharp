@@ -25,6 +25,7 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 
@@ -40,10 +41,10 @@ namespace ChillSharp.Tests
         public void Step001_AddEntity()
         {
             // Start the shared API host only once for the whole test run.
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Use the HTTP client wrapper against the Chill endpoints.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             // Create a new Post entity.
             var e = new ChillDtoEntity();
@@ -65,7 +66,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.AreEqual(1, qRes.Results.Count);
+            Assert.HasCount(1, qRes.Results);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -84,7 +85,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step002_UpdateEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure a seed entity exists for this step.
             if (!PostGuid.HasValue)
@@ -93,7 +94,7 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(PostGuid);
 
             // Update only the Title field.
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -109,7 +110,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.AreEqual(1, qRes.Results.Count);
+            Assert.HasCount(1, qRes.Results);
             var qEntity = qRes.Results[0];
             Assert.IsNotNull(qEntity);
             Assert.IsTrue(qEntity.HasValue("Title"));
@@ -124,7 +125,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step003_DeleteEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure the entity exists before attempting deletion.
             if (!PostGuid.HasValue)
@@ -132,7 +133,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(PostGuid);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -146,7 +147,7 @@ namespace ChillSharp.Tests
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
-            Assert.AreEqual(0, qRes.Results.Count);
+            Assert.IsEmpty(qRes.Results);
         }
 
         /// <summary>
@@ -155,7 +156,7 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step004_FindEntity()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
             // Ensure the entity exists before trying to find it.
             if (!PostGuid.HasValue)
@@ -163,7 +164,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(PostGuid);
 
-            var cli = new ChillSharpClient("http://localhost:5000/api/chill");
+            var cli = new ChillSharpClient("http://localhost:6002/api/chill");
 
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
@@ -180,9 +181,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step005_BaseEntityStoresAuditFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var postGuid = Guid.NewGuid();
 
             var createEntity = new ChillDtoEntity
@@ -198,11 +199,15 @@ namespace ChillSharp.Tests
             await using var initialContext = TestApiHost.CreateDbContext();
             var createdPost = await initialContext.Post.FirstAsync(x => x.Guid == postGuid);
             var initialChecksum = createdPost.Checksum;
-            var initialLastUpdateUtc = createdPost.LastUpdateUtc;
+            var initialLastUpdate = createdPost.LastUpdate;
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
 
             Assert.AreEqual("dummy-user", createdPost.LastUpdateUser);
-            Assert.IsTrue(createdPost.Checksum > 0);
-            Assert.IsNotNull(createdPost.LastUpdateUtc);
+            Assert.IsGreaterThan(0L, createdPost.Checksum);
+            Assert.IsNotNull(createdPost.LastUpdate);
+            Assert.AreEqual(
+                (int)systemTimeZone.GetUtcOffset(createdPost.LastUpdate!.Value).TotalMinutes,
+                createdPost.LastUpdateUtcOffset);
 
             await Task.Delay(20);
 
@@ -218,184 +223,253 @@ namespace ChillSharp.Tests
             var updatedPost = await updatedContext.Post.FirstAsync(x => x.Guid == postGuid);
 
             Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
-            Assert.IsTrue(updatedPost.LastUpdateUtc.HasValue && initialLastUpdateUtc.HasValue && updatedPost.LastUpdateUtc.Value > initialLastUpdateUtc.Value);
+            Assert.IsTrue(updatedPost.LastUpdate.HasValue && initialLastUpdate.HasValue && updatedPost.LastUpdate.Value > initialLastUpdate.Value);
+            Assert.AreEqual(
+                (int)systemTimeZone.GetUtcOffset(updatedPost.LastUpdate!.Value).TotalMinutes,
+                updatedPost.LastUpdateUtcOffset);
             Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
         }
 
         [TestMethod]
         public void Step006_ChecksumCalculationCanBeDisabledAndReEnabledPerEntityType()
         {
+            TestApiHost.EnsureStarted(6002);
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
+
             var chillType = "Model.Post";
-            using (var disabledContext = new EF.DummyContext())
+            var chillTypeGuid = Guid.NewGuid();
+
+            var entityOption = client.GetEntityOptions(chillType);
+            entityOption.ChecksumEnabled = false;
+            client.SetEntityOptions(entityOption);
+
+            var disabledEntity = new ChillDtoEntity
             {
-                disabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
-                {
-                    Guid = Guid.NewGuid(),
-                    ChillType = chillType,
-                    ChecksumEnabled = false
-                });
+                ChillType = "Model.Post",
+                Guid = chillTypeGuid
+            };
+            disabledEntity.Properties.Add("Title", "Checksum disabled");
+            disabledEntity.Properties.Add("Author", "Tester");
+            disabledEntity.Properties.Add("Checksum", -1L);
+            disabledEntity = client.Create(disabledEntity);
+            Assert.IsNotNull(disabledEntity.GetInt64("Checksum"));
+            Assert.AreEqual(0L, disabledEntity.GetInt64("Checksum"));
 
-                var disabledEntity = new Post
-                {
-                    Title = "Checksum disabled",
-                    Author = "Tester"
-                };
+            entityOption.ChecksumEnabled = true;
+            client.SetEntityOptions(entityOption);
 
-                ((IChillEntity)disabledEntity).OnAfterUpdate(disabledContext);
-
-                Assert.AreEqual("dummy-user", disabledEntity.LastUpdateUser);
-                Assert.AreEqual(0L, disabledEntity.Checksum);
-            }
-
-            using (var enabledContext = new EF.DummyContext())
+            var enabledEntity = new ChillDtoEntity
             {
-                ChillEntityOptionsRuntimeCache.Invalidate(enabledContext, chillType);
-                enabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
-                {
-                    Guid = Guid.NewGuid(),
-                    ChillType = chillType,
-                    ChecksumEnabled = true
-                });
-
-                var enabledEntity = new Post
-                {
-                    Title = "Checksum enabled",
-                    Author = "Tester"
-                };
-
-                ((IChillEntity)enabledEntity).OnAfterUpdate(enabledContext);
-
-                Assert.AreEqual("dummy-user", enabledEntity.LastUpdateUser);
-                Assert.IsTrue(enabledEntity.Checksum > 0);
-            }
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid()
+            };
+            enabledEntity.Properties.Add("Title", "Checksum disabled");
+            enabledEntity.Properties.Add("Author", "Tester");
+            enabledEntity = client.Create(enabledEntity);
+            Assert.IsNotNull(enabledEntity.GetInt64("Checksum"));
+            long value = enabledEntity.GetInt64("Checksum").Value;
+            Assert.IsGreaterThan<long>(0L, value);
         }
 
         [TestMethod]
         public async Task Step007_LabelAndShortLabelCanUseConfiguredFormatStrings()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-entity-options-{Guid.NewGuid():N}.db");
+            TestApiHost.EnsureStarted(6002);
 
-            var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
-                .Options;
-
-            await using var context = new EF.DummyContext(options);
-            await context.Database.EnsureCreatedAsync();
-            var cache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var chillType = "Model.Post";
+            var originalOptions = client.GetEntityOptions(chillType);
 
-            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            try
             {
-                ChillType = chillType,
-                LabelFormatString = "{Title} - {Author} - {FullTextContent}",
-                ShortLabelFormatString = "{Author}.{Title}",
-                FullTextContentFormatString = "{Author}::{Title}::{Checksum}"
-            });
+                client.SetEntityOptions(new ChillDtoEntityOptions
+                {
+                    ChillType = chillType,
+                    ChecksumEnabled = originalOptions.ChecksumEnabled,
+                    ChangeLogEnabled = originalOptions.ChangeLogEnabled,
+                    EnableMCP = originalOptions.EnableMCP,
+                    MCPDescription = originalOptions.MCPDescription,
+                    LabelFormatString = "{Title} - {Author} - {FullTextContent}",
+                    ShortLabelFormatString = "{Author}.{Title}",
+                    FullTextContentFormatString = "{Author}::{Title}::{Checksum}"
+                });
 
-            var post = new Post
+                var created = client.Create(new ChillDtoEntity
+                {
+                    ChillType = chillType,
+                    Guid = Guid.NewGuid(),
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = "Configured title",
+                        ["Author"] = "Configured author"
+                    }
+                });
+
+                Assert.AreEqual("Configured title - Configured author - ", created.Label);
+                Assert.AreEqual("Configured author.Configured title", created.ShortLabel);
+
+                await using (var verificationContext = TestApiHost.CreateDbContext())
+                {
+                    var createdPost = await verificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
+                    Assert.AreEqual($"Configured author::Configured title::{createdPost.Checksum}", createdPost.FullTextContent);
+                }
+
+                client.SetEntityOptions(new ChillDtoEntityOptions
+                {
+                    ChillType = chillType,
+                    ChecksumEnabled = originalOptions.ChecksumEnabled,
+                    ChangeLogEnabled = originalOptions.ChangeLogEnabled,
+                    EnableMCP = originalOptions.EnableMCP,
+                    MCPDescription = originalOptions.MCPDescription,
+                    LabelFormatString = "{Author}",
+                    ShortLabelFormatString = "{Title}",
+                    FullTextContentFormatString = "{Title}|{LastUpdateUser}|{FullTextContent}"
+                });
+
+                var updated = client.Update(new ChillDtoEntity
+                {
+                    ChillType = chillType,
+                    Guid = created.Guid,
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = "Configured title updated"
+                    }
+                });
+
+                Assert.AreEqual("Configured author", updated.Label);
+                Assert.AreEqual("Configured title updated", updated.ShortLabel);
+
+                await using var updatedVerificationContext = TestApiHost.CreateDbContext();
+                var updatedPost = await updatedVerificationContext.Post.FirstAsync(x => x.Guid == created.Guid);
+                Assert.AreEqual("Configured title updated|dummy-user|", updatedPost.FullTextContent);
+            }
+            finally
             {
-                Title = "Configured title",
-                Author = "Configured author"
-            };
-
-            Assert.AreEqual("Configured title - Configured author - ", post.GetLabel(context));
-            Assert.AreEqual("Configured author.Configured title", post.GetShortLabel(context));
-            Assert.AreEqual("Configured author::Configured title::0", post.GetFullTextContent(context));
-
-            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
-            {
-                ChillType = chillType,
-                LabelFormatString = "{Author}",
-                ShortLabelFormatString = "{Title}",
-                FullTextContentFormatString = "{Title}|{LastUpdateUser}|{FullTextContent}"
-            });
-
-            Assert.AreEqual("Configured author", post.GetLabel(context));
-            Assert.AreEqual("Configured title", post.GetShortLabel(context));
-            Assert.AreEqual("Configured title||", post.GetFullTextContent(context));
+                client.SetEntityOptions(originalOptions);
+            }
         }
 
         [TestMethod]
         public async Task Step008_ChangeLogStoresSnapshotHistoryAndMocksLinkedEntities()
         {
-            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-changelog-{Guid.NewGuid():N}.db");
-            var options = new DbContextOptionsBuilder<EF.DummyContext>()
-                .UseSqlite($"Data Source={databasePath}")
-                .Options;
+            TestApiHost.EnsureStarted(6002);
 
-            await using var context = new EF.DummyContext(options);
-            await context.Database.EnsureCreatedAsync();
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
+            var originalPostOptions = client.GetEntityOptions("Model.Post");
+            var originalBlogOptions = client.GetEntityOptions("Model.Blog");
+            var suffix = Guid.NewGuid().ToString("N");
 
-            context.EntityOptionsEntries.AddRange(
-                new ChillEntityOptionsEntry
+            try
+            {
+                client.SetEntityOptions(new ChillDtoEntityOptions
                 {
-                    Guid = Guid.NewGuid(),
                     ChillType = "Model.Post",
-                    ChangeLogEnabled = true
-                },
-                new ChillEntityOptionsEntry
-                {
-                    Guid = Guid.NewGuid(),
-                    ChillType = "Model.Blog",
+                    ChecksumEnabled = originalPostOptions.ChecksumEnabled,
+                    LabelFormatString = originalPostOptions.LabelFormatString,
+                    ShortLabelFormatString = originalPostOptions.ShortLabelFormatString,
+                    FullTextContentFormatString = originalPostOptions.FullTextContentFormatString,
+                    EnableMCP = originalPostOptions.EnableMCP,
+                    MCPDescription = originalPostOptions.MCPDescription,
                     ChangeLogEnabled = true
                 });
-            await context.SaveChangesAsync();
 
-            var engine = new ChillEngine(context);
+                client.SetEntityOptions(new ChillDtoEntityOptions
+                {
+                    ChillType = "Model.Blog",
+                    ChecksumEnabled = originalBlogOptions.ChecksumEnabled,
+                    LabelFormatString = originalBlogOptions.LabelFormatString,
+                    ShortLabelFormatString = originalBlogOptions.ShortLabelFormatString,
+                    FullTextContentFormatString = originalBlogOptions.FullTextContentFormatString,
+                    EnableMCP = originalBlogOptions.EnableMCP,
+                    MCPDescription = originalBlogOptions.MCPDescription,
+                    ChangeLogEnabled = true
+                });
 
-            var blog = (Blog)engine.Create(new Blog
+                var blog = client.Create(new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = Guid.NewGuid(),
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = $"Tracked blog {suffix}",
+                        ["Url"] = $"https://tracked.example/{suffix}"
+                    }
+                });
+
+                var post = client.Create(new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = Guid.NewGuid(),
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = $"Tracked post {suffix}",
+                        ["Author"] = "Andrea",
+                        ["Blog"] = blog.Mock()
+                    }
+                });
+
+                client.Update(new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Guid = post.Guid,
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Title"] = $"Tracked post updated {suffix}"
+                    }
+                });
+
+                client.Update(new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = blog.Guid,
+                    Properties = new Dictionary<string, object?>
+                    {
+                        ["Url"] = $"https://tracked.example/{suffix}/v2"
+                    }
+                });
+
+                await using var context = TestApiHost.CreateDbContext();
+                var persistedPost = await context.Post.Include(x => x.Blog).FirstAsync(x => x.Guid == post.Guid);
+                var persistedBlog = await context.Blog.Include(x => x.Posts).FirstAsync(x => x.Guid == blog.Guid);
+
+                var postLog = JsonDocument.Parse(persistedPost.ChangeLog);
+                var postSnapshots = postLog.RootElement;
+                Assert.AreEqual(2, postSnapshots.GetArrayLength());
+
+                var latestPost = postSnapshots[1];
+                Assert.AreEqual($"Tracked post updated {suffix}", latestPost.GetProperty("Properties").GetProperty("Title").GetString());
+                var blogMock = latestPost.GetProperty("Properties").GetProperty("Blog");
+                Assert.AreEqual(persistedBlog.Guid, blogMock.GetProperty("Guid").GetGuid());
+                Assert.AreEqual(persistedBlog.Label, blogMock.GetProperty("Label").GetString());
+                Assert.AreEqual(persistedBlog.ShortLabel, blogMock.GetProperty("ShortLabel").GetString());
+                Assert.IsFalse(blogMock.TryGetProperty("Properties", out _));
+
+                var blogLog = JsonDocument.Parse(persistedBlog.ChangeLog);
+                var blogSnapshots = blogLog.RootElement;
+                Assert.AreEqual(2, blogSnapshots.GetArrayLength());
+
+                var latestBlog = blogSnapshots[1];
+                Assert.AreEqual($"https://tracked.example/{suffix}/v2", latestBlog.GetProperty("Properties").GetProperty("Url").GetString());
+                var postsMock = latestBlog.GetProperty("Properties").GetProperty("Posts");
+                Assert.AreEqual(1, postsMock.GetArrayLength());
+                Assert.AreEqual(persistedPost.Guid, postsMock[0].GetProperty("Guid").GetGuid());
+                Assert.AreEqual(persistedPost.Label, postsMock[0].GetProperty("Label").GetString());
+                Assert.AreEqual(persistedPost.ShortLabel, postsMock[0].GetProperty("ShortLabel").GetString());
+                Assert.IsFalse(postsMock[0].TryGetProperty("Properties", out _));
+            }
+            finally
             {
-                Title = "Tracked blog",
-                Url = "https://tracked.example"
-            });
-
-            var post = (Post)engine.Create(new Post
-            {
-                Title = "Tracked post",
-                Author = "Andrea",
-                Blog = blog
-            });
-
-            post.Title = "Tracked post updated";
-            engine.Update(post);
-
-            await context.Entry(blog).Collection(x => x.Posts!).LoadAsync();
-            blog.Url = "https://tracked.example/v2";
-            engine.Update(blog);
-
-            var postLog = JsonDocument.Parse(post.ChangeLog);
-            var postSnapshots = postLog.RootElement;
-            Assert.AreEqual(2, postSnapshots.GetArrayLength());
-
-            var latestPost = postSnapshots[1];
-            Assert.AreEqual("Tracked post updated", latestPost.GetProperty("Properties").GetProperty("Title").GetString());
-            var blogMock = latestPost.GetProperty("Properties").GetProperty("Blog");
-            Assert.AreEqual(blog.Guid, blogMock.GetProperty("Guid").GetGuid());
-            Assert.AreEqual(blog.Label, blogMock.GetProperty("Label").GetString());
-            Assert.AreEqual(blog.ShortLabel, blogMock.GetProperty("ShortLabel").GetString());
-            Assert.IsFalse(blogMock.TryGetProperty("Properties", out _));
-
-            var blogLog = JsonDocument.Parse(blog.ChangeLog);
-            var blogSnapshots = blogLog.RootElement;
-            Assert.AreEqual(2, blogSnapshots.GetArrayLength());
-
-            var latestBlog = blogSnapshots[1];
-            Assert.AreEqual("https://tracked.example/v2", latestBlog.GetProperty("Properties").GetProperty("Url").GetString());
-            var postsMock = latestBlog.GetProperty("Properties").GetProperty("Posts");
-            Assert.AreEqual(1, postsMock.GetArrayLength());
-            Assert.AreEqual(post.Guid, postsMock[0].GetProperty("Guid").GetGuid());
-            Assert.AreEqual(post.Label, postsMock[0].GetProperty("Label").GetString());
-            Assert.AreEqual(post.ShortLabel, postsMock[0].GetProperty("ShortLabel").GetString());
-            Assert.IsFalse(postsMock[0].TryGetProperty("Properties", out _));
+                client.SetEntityOptions(originalPostOptions);
+                client.SetEntityOptions(originalBlogOptions);
+            }
         }
 
         [TestMethod]
         public void Step009_QueryFullTextSearchSplitsTokensAndUsesAndLogic()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var tokenA = $"alpha-{Guid.NewGuid():N}";
             var tokenB = $"beta-{Guid.NewGuid():N}";
 
@@ -449,7 +523,7 @@ namespace ChillSharp.Tests
 
             Assert.IsNotNull(result);
             Assert.IsNotNull(result.Results);
-            Assert.AreEqual(1, result.Results.Count);
+            Assert.HasCount(1, result.Results);
             Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
             Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
         }
@@ -457,9 +531,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step010_AutocompleteEntityReturnsUpdatedFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var entity = new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -478,9 +552,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step011_AutocompleteQueryReturnsUpdatedFields()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var query = new ChillDtoQuery
             {
                 ChillType = "Query.BlogQuery"
@@ -497,9 +571,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public async Task Step012_AutocompleteDoesNotPersistEntityChanges()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var created = client.Create(new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -626,9 +700,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step016_ValidateEntityReturnsValidationErrors()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var errors = client.Validate(new ChillDtoEntity
             {
                 ChillType = "Model.Blog",
@@ -647,9 +721,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step017_ValidateQueryReturnsValidationErrors()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var errors = client.Validate(new ChillDtoQuery
             {
                 ChillType = "Query.BlogQuery",
@@ -667,9 +741,9 @@ namespace ChillSharp.Tests
         [TestMethod]
         public void Step018_ChunkSupportsValidateAndAutocompleteOperations()
         {
-            TestApiHost.EnsureStarted();
+            TestApiHost.EnsureStarted(6002);
 
-            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var client = new ChillSharpClient("http://localhost:6002/api/chill");
             var operations = client.Chunk(
             [
                 new ChillOperation
@@ -724,10 +798,278 @@ namespace ChillSharp.Tests
             Assert.AreEqual("https://autocomplete.local/chunk-autocomplete", operations[2].Entity!.GetString("Url"));
         }
 
+        [TestMethod]
+        public void Step019_LookupPerformsGenericFullTextSearchAgainstEntityType()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-lookup-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var tokenA = $"lookup-alpha-{Guid.NewGuid():N}";
+            var tokenB = $"lookup-beta-{Guid.NewGuid():N}";
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = tokenA,
+                Author = tokenB,
+                FullTextContent = $"{tokenA} {tokenB}",
+                LastUpdateUser = string.Empty
+            });
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = tokenA,
+                Author = "lookup-single-token",
+                FullTextContent = $"{tokenA} lookup-single-token",
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var dtoEngine = new ChillDtoEngine(db);
+
+            var lookup = new ChillSharp.Dto.ChillDtoQuery
+            {
+                ChillType = "Model.Post",
+                ResultProperties = ChillSharp.Dto.ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            lookup.Properties["FullTextSearch"] = $"{tokenA} {tokenB}";
+
+            var result = dtoEngine.Lookup(lookup);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.HasCount(1, result.Results);
+            Assert.AreEqual(tokenA, result.Results[0].Properties["Title"]?.ToString());
+            Assert.AreEqual(tokenB, result.Results[0].Properties["Author"]?.ToString());
+        }
+
+        [TestMethod]
+        public void Step020_BaseChillQueryOnQueryResolvesDbSetFromEntityType()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-autoquery-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            using var db = new EF.DummyContext(options);
+            db.Database.EnsureCreated();
+
+            var engine = new ChillEngine(db);
+            var token = $"auto-query-{Guid.NewGuid():N}";
+
+            db.Post.Add(new Post
+            {
+                Guid = Guid.NewGuid(),
+                Title = token,
+                Author = "default-query",
+                FullTextContent = token,
+                LastUpdateUser = string.Empty
+            });
+            db.SaveChanges();
+
+            var results = engine.Query(new AutoPostQuery
+            {
+                FullTextSearch = token
+            });
+
+            Assert.HasCount(1, results);
+            Assert.AreEqual(token, ((Post)results[0]).Title);
+        }
+
+        [TestMethod]
+        public async Task Step021_ToEntityAcceptsCamelCaseDtoPropertiesAndNestedEntities()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-camelcase-dto-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var db = new EF.DummyContext(options);
+            await db.Database.EnsureCreatedAsync();
+
+            var blog = new Blog
+            {
+                Guid = Guid.NewGuid(),
+                Title = "Mapped blog",
+                Url = "https://mapped.local"
+            };
+            db.Blog.Add(blog);
+            await db.SaveChangesAsync();
+
+            var blogPayload = JsonDocument.Parse($$"""
+            {
+              "guid": "{{blog.Guid:D}}",
+              "chillType": "Model.Blog",
+              "label": "Mapped blog",
+              "shortLabel": "Mapped blog"
+            }
+            """);
+
+            var dto = new ChillSharp.Dto.ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["title"] = "Camel title",
+                    ["author"] = "Camel author",
+                    ["blog"] = blogPayload.RootElement.Clone()
+                }
+            };
+
+            var post = new Post();
+            dto.ToEntity(db, post);
+
+            Assert.AreEqual("Camel title", post.Title);
+            Assert.AreEqual("Camel author", post.Author);
+            Assert.IsNotNull(post.Blog);
+            Assert.AreEqual(blog.Guid, post.Blog.Guid);
+        }
+
+        [TestMethod]
+        public void Step022_ApplyPropertiesNormalizesTemporalValuesUsingConfiguredSystemTimeZone()
+        {
+            var originalEnvironmentValue = Environment.GetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, "Europe/Rome");
+                ChillSharpInitOptions.Initialize();
+
+                using var db = TestApiHost.CreateDbContext();
+                var target = new TemporalMappingEntity();
+                var sourceValues = new Dictionary<string, object?>
+                {
+                    ["OccurredAtUtc"] = "2024-01-10T12:30:15.000Z",
+                    ["OccurredAtOffset"] = "2024-01-10T12:30:15.000+02:00",
+                    ["RecordedAtOffset"] = "2024-01-10T12:30:15.000+02:00",
+                    ["PublishedOn"] = "2024-01-10T23:59:58.321-05:00",
+                    ["PublishedAt"] = "2024-01-10T23:59:58.321-05:00"
+                };
+
+                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+                Assert.IsNotNull(mapperType);
+
+                var applyPropertiesMethod = mapperType.GetMethod(
+                    "ApplyProperties",
+                    BindingFlags.Public | BindingFlags.Static);
+
+                Assert.IsNotNull(applyPropertiesMethod);
+
+                applyPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    target,
+                    "Tests.TemporalMappingEntity",
+                    sourceValues,
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    "TemporalMappingEntity",
+                    false,
+                    null
+                ]);
+
+                Assert.AreEqual(new DateTime(2024, 1, 10, 13, 30, 15), target.OccurredAtUtc);
+                Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15), target.OccurredAtOffset);
+                Assert.AreEqual(DateTimeOffset.Parse("2024-01-10T12:30:15.000+02:00", CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), target.RecordedAtOffset);
+                Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
+                Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, originalEnvironmentValue);
+                ChillSharpInitOptions.Initialize();
+            }
+        }
+
+        [TestMethod]
+        public void Step023_BuildPropertiesSerializesTemporalValuesWithSystemTimeZoneOnlyForDateTimeTypes()
+        {
+            var originalEnvironmentValue = Environment.GetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName);
+
+            try
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, "Europe/Rome");
+                ChillSharpInitOptions.Initialize();
+
+                using var db = TestApiHost.CreateDbContext();
+                var source = new TemporalMappingEntity
+                {
+                    OccurredAtUtc = new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Utc),
+                    OccurredAtOffset = new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Unspecified),
+                    RecordedAtOffset = new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2)),
+                    PublishedOn = new DateOnly(2024, 1, 10),
+                    PublishedAt = new TimeOnly(23, 59, 58, 321)
+                };
+
+                var mapperType = typeof(ChillEngine).Assembly.GetType("ChillSharp.Dto.ChillDtoObjectMapper");
+                Assert.IsNotNull(mapperType);
+
+                var buildPropertiesMethod = mapperType.GetMethod(
+                    "BuildProperties",
+                    BindingFlags.Public | BindingFlags.Static);
+
+                Assert.IsNotNull(buildPropertiesMethod);
+
+                var properties = (Dictionary<string, object?>?)buildPropertiesMethod.Invoke(null,
+                [
+                    db,
+                    source,
+                    "Tests.TemporalMappingEntity",
+                    typeof(TemporalMappingEntity).GetProperties(),
+                    null,
+                    null
+                ]);
+
+                Assert.IsNotNull(properties);
+
+                var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+                var expectedDateTime = TimeZoneInfo.ConvertTime(new DateTimeOffset(source.OccurredAtUtc, TimeSpan.Zero), systemTimeZone)
+                    .ToString("O", CultureInfo.InvariantCulture);
+                var expectedUnspecifiedDateTime = new DateTimeOffset(source.OccurredAtOffset, systemTimeZone.GetUtcOffset(source.OccurredAtOffset))
+                    .ToString("O", CultureInfo.InvariantCulture);
+                Assert.AreEqual(expectedDateTime, properties["OccurredAtUtc"]);
+                Assert.AreEqual(expectedUnspecifiedDateTime, properties["OccurredAtOffset"]);
+                Assert.AreEqual(source.RecordedAtOffset.ToString("O", CultureInfo.InvariantCulture), properties["RecordedAtOffset"]);
+                Assert.AreEqual(source.PublishedOn, properties["PublishedOn"]);
+                Assert.AreEqual(source.PublishedAt, properties["PublishedAt"]);
+
+                var serializedProperties = JsonSerializer.Serialize(properties);
+                StringAssert.Contains(serializedProperties, "\"PublishedOn\":\"2024-01-10\"");
+                StringAssert.Contains(serializedProperties, "\"PublishedAt\":\"23:59:58.3210000\"");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, originalEnvironmentValue);
+                ChillSharpInitOptions.Initialize();
+            }
+        }
+
         private sealed class NullableDateEntity
         {
             [ChillProperty]
             public DateOnly? PublishedOn { get; set; }
+        }
+
+        private sealed class TemporalMappingEntity
+        {
+            [ChillProperty]
+            public DateTime OccurredAtUtc { get; set; }
+
+            [ChillProperty]
+            public DateTime OccurredAtOffset { get; set; }
+
+            [ChillProperty]
+            public DateTimeOffset RecordedAtOffset { get; set; }
+
+            [ChillProperty]
+            public DateOnly PublishedOn { get; set; }
+
+            [ChillProperty]
+            public TimeOnly PublishedAt { get; set; }
         }
 
         private sealed class InflateOnlyEntity
@@ -744,6 +1086,27 @@ namespace ChillSharp.Tests
                 {
                     ComputedTitle = propertyName;
                 }
+            }
+        }
+
+        private sealed class AutoPostQuery : ChillQuery, IChillQuery<Post>
+        {
+            IQueryable<Post> IChillQuery<Post>.OnQuery(IChillContext Context)
+            {
+                return OnQuery(Context).Cast<Post>();
+            }
+
+            IQueryable<Post> IChillQuery<Post>.OnSort(IChillContext Context, IQueryable<Post> Query)
+            {
+                return Query.OrderBy(x => x.Guid);
+            }
+
+            IQueryable<Post> IChillQuery<Post>.OnPaginate(IChillContext Context, IQueryable<Post> Query)
+            {
+                if (Pagination == null)
+                    return Query;
+
+                return Query.Skip((Pagination.Page - 1) * Pagination.PageResults).Take(Pagination.PageResults);
             }
         }
     }

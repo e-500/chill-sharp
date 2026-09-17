@@ -12,6 +12,10 @@ Build one container image that can be reused across environments by changing onl
 
 ASP.NET Core already maps environment variables into `builder.Configuration`. Use that instead of hardcoding the SQLite path or root-user credentials.
 
+For the DTO date/time mapper, ChillSharp also reads `CHILL_SHARP_SYSTEM_TIMEZONE` directly from the process environment. It should be an IANA id such as `Europe/Rome`.
+
+This setting is used for ChillSharp `DateTime` handling and for UTC-to-local normalization of some `DateTimeOffset` inputs. `DateOnly` and `TimeOnly` keep normal .NET string output.
+
 ```csharp
 using ChillSharp.Api;
 using ChillSharp.Auth;
@@ -99,6 +103,7 @@ COPY --from=build /app/out ./
 
 ENV ASPNETCORE_URLS=http://+:8080
 ENV CHILLSHARP_DB_PATH=/data/blogging.db
+ENV CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome
 
 VOLUME ["/data"]
 EXPOSE 8080
@@ -120,6 +125,7 @@ This example starts the API, persists SQLite data in a local Docker volume, and 
 docker run --rm -p 8080:8080 \
   -v myblogapp-data:/data \
   -e CHILLSHARP_DB_PATH=/data/blogging.db \
+  -e CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome \
   -e CHILLSHARP_AUTH_ROOT_USERNAME=root \
   -e CHILLSHARP_AUTH_ROOT_PASSWORD=Pass123$ \
   -e CHILLSHARP_AUTH_ROOT_EMAIL=root@example.com \
@@ -146,6 +152,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       CHILLSHARP_DB_PATH: /data/blogging.db
+      CHILL_SHARP_SYSTEM_TIMEZONE: Europe/Rome
       CHILLSHARP_AUTH_ROOT_USERNAME: root
       CHILLSHARP_AUTH_ROOT_PASSWORD: Pass123$
       CHILLSHARP_AUTH_ROOT_EMAIL: root@example.com

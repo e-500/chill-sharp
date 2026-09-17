@@ -24,8 +24,9 @@ namespace ChillSharp.EF
     /// Implementing this interface allows automatic handling of entity lifecycle events.
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -44,13 +45,14 @@ namespace ChillSharp.EF
         string FullTextContent { get; set; }
         long Checksum { get; set; }
         string? LastUpdateUser { get; set; }
-        DateTime? LastUpdateUtc { get; set; }
+        DateTime? LastUpdate { get; set; }
+        int LastUpdateUtcOffset { get; set; }
 
         #region CREATE
         /// <summary>
         /// Initializes default fields or calculated values when the entity is created.
         /// Called automatically by the <c>CREATE()</c> method.
-        /// <para>Example: <c>CreatedAt = DateTime.UtcNow;</c></para>
+        /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
         void OnCreate(IChillContext Context);

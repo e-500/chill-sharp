@@ -38,6 +38,11 @@ public interface IChillSchemaDbContext
     DbSet<ChillEntityOptionsEntry> EntityOptionsEntries { get; }
 
     /// <summary>
+    /// Gets the persisted menu-item rows.
+    /// </summary>
+    DbSet<ChillMenuItemEntry> MenuItems { get; }
+
+    /// <summary>
     /// Persists changes to the underlying store.
     /// </summary>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

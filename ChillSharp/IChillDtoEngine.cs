@@ -20,6 +20,7 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ChillSharp
 {
@@ -34,8 +35,9 @@ namespace ChillSharp
     /// </para>
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or redistribution must comply with the GPLv3 license terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// © 2025 Andrea Piovesan
     /// </para>
@@ -65,6 +67,14 @@ namespace ChillSharp
         /// The same <see cref="ChillDtoQuery"/> with its <c>Results</c> property filled with matching entities.
         /// </returns>
         ChillDtoQuery Query(ChillDtoQuery DtoQuery);
+
+        /// <summary>
+        /// Executes a generic full-text lookup represented by a <see cref="ChillDtoQuery"/> whose
+        /// <c>ChillType</c> targets an entity type instead of a query type.
+        /// </summary>
+        /// <param name="DtoQuery">The lookup DTO containing the target entity type and search parameters.</param>
+        /// <returns>The same DTO with its <c>Results</c> property filled with matching entities.</returns>
+        ChillDtoQuery Lookup(ChillDtoQuery DtoQuery);
 
         /// <summary>
         /// Finds an existing entity in the database based on the provided DTO.
@@ -122,38 +132,5 @@ namespace ChillSharp
         /// <param name="DtoQuery">The query DTO to validate.</param>
         /// <returns>The validation errors returned by the underlying query.</returns>
         IEnumerable<ChillValidationError> Validate(ChillDtoQuery DtoQuery);
-
-        /// <summary>
-        /// Retrieves the schema definition for a specified chill type and view code.
-        /// </summary>
-        /// <param name="ChillType">The identifier representing the chill type for which the schema is requested. Cannot be null or empty.</param>
-        /// <param name="ChillViewCode">The code representing the specific view of the chill type. Cannot be null or empty.</param>
-        /// <param name="CultureName">Optional explicit culture used to localize schema labels.</param>
-        /// <returns>A ChillDtoSchema object containing the schema definition for the specified chill type and view code. Returns
-        /// null if no matching schema is found.</returns>
-        ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode, string? CultureName = null);
-
-        /// <summary>
-        /// Sets the schema definition used for DTO operations and returns the previous schema.
-        /// </summary>
-        /// <remarks>Use this method to change the schema used for DTO serialization or validation. Changing the
-        /// schema may affect subsequent DTO processing.</remarks>
-        /// <param name="Schema">The schema to be applied for DTO operations. Cannot be null.</param>
-        /// <returns>The previous schema definition before the update. Returns null if no schema was previously set.</returns>
-        ChillDtoSchema SetSchema(ChillDtoSchema Schema);
-
-        /// <summary>
-        /// Retrieves the runtime entity options for a specified Chill entity type.
-        /// </summary>
-        /// <param name="ChillType">The identifier representing the Chill entity type.</param>
-        /// <returns>The entity options for the requested type.</returns>
-        ChillDtoEntityOptions GetEntityOptions(string ChillType);
-
-        /// <summary>
-        /// Persists runtime entity options for a specified Chill entity type.
-        /// </summary>
-        /// <param name="EntityOptions">The entity options to persist.</param>
-        /// <returns>The persisted entity options.</returns>
-        ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions);
     }
 }

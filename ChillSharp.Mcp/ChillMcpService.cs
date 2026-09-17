@@ -1,6 +1,8 @@
 using ChillSharp.Dto;
 using ChillSharp.EF;
 using ChillSharp.Mcp.Contracts;
+using ChillSharp.Schema;
+using ChillSharp.Schema.Contracts;
 
 namespace ChillSharp.Mcp;
 

@@ -29,8 +29,9 @@ namespace ChillSharp.Dto
     /// and is intended for serialization or transmission via web APIs.
     /// 
     /// <para>Licensing:
-    /// This code is part of the ChillSharp library, released under the GNU GENERAL PUBLIC LICENSE v3 (GPLv3).<br/>
-    /// Any modification or removal must comply with GPLv3 licensing terms.<br/>
+    /// This code is part of the ChillSharp library, released under the terms of the 
+    /// GNU Affero General Public License as published by the Free Software Foundation, 
+    /// either version 3 of the License, or (at your option) any later version.<br/>
     /// For commercial or LGPL licensing options, please contact the author.<br/>
     /// ©️2025 Andrea Piovesan</para>
     /// </summary>
@@ -162,7 +163,7 @@ namespace ChillSharp.Dto
 
             var ef_props = Entity.GetType().GetProperties()
                 .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
-                .Where(x => Properties.Keys.Contains(x.Name));
+                .Where(x => Properties.Keys.Any(key => string.Equals(key, x.Name, StringComparison.OrdinalIgnoreCase)));
             ChillDtoObjectMapper.ApplyProperties(
                 Context,
                 Entity,

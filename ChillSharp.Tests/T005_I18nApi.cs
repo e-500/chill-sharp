@@ -18,7 +18,7 @@
  */
 
 using Microsoft.EntityFrameworkCore;
-using ChillSharp.EF.ServiceModel.I18n;
+using ChillSharp.I18n.Model;
 using ChillSharp.I18n.Contracts;
 using System.Net;
 using System.Net.Http;
@@ -42,13 +42,13 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step001_SetTextAndGetTextUsesCacheUntilInvalidatedBySetText()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         var labelGuid = Guid.NewGuid();
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var setResponse = await client.PutAsJsonAsync("api/chill-i18n/set-text", new SetTextRequest
@@ -116,7 +116,7 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step002_MissingTranslationReturnsNotFound()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
@@ -134,11 +134,11 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step003_GetTextSeedsConfiguredPrimaryAndSecondaryCulturesWhenMissing()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var labelGuid = Guid.NewGuid();
@@ -173,7 +173,7 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step004_GetTextIgnoresSeedDefaultsWhenCulturesDoNotMatchServerConfig()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
@@ -239,11 +239,11 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step006_GetMultipleTextProcessesArrayOfRequests()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var existingLabelGuid = Guid.NewGuid();
@@ -282,7 +282,7 @@ public sealed class I18nApi
 
         var payload = await response.Content.ReadFromJsonAsync<List<GetTextResponse?>>();
         Assert.IsNotNull(payload);
-        Assert.AreEqual(3, payload.Count);
+        Assert.HasCount(3, payload);
         Assert.IsNotNull(payload[0]);
         Assert.AreEqual("Esistente", payload[0]!.Value);
         Assert.IsNotNull(payload[1]);
@@ -293,9 +293,9 @@ public sealed class I18nApi
     [TestMethod]
     public void Step007_ClientLibrarySupportsI18nSingleAndBulkRequests()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
-        var client = new ChillSharpClient("http://localhost:5000/api/chill", CultureName: "it-IT");
+        var client = new ChillSharpClient("http://localhost:6002/api/chill", CultureName: "it-IT");
         var labelGuid = Guid.NewGuid();
 
         var stored = client.SetText(new SetTextRequest
@@ -341,7 +341,7 @@ public sealed class I18nApi
             }
         });
 
-        Assert.AreEqual(3, bulk.Count);
+        Assert.HasCount(3, bulk);
         Assert.IsNotNull(bulk[0]);
         Assert.AreEqual("Client text", bulk[0]!.Value);
         Assert.IsNotNull(bulk[1]);
@@ -352,11 +352,11 @@ public sealed class I18nApi
     [TestMethod]
     public async Task Step008_SetTextRejectsEmptyLabelGuid()
     {
-        TestApiHost.EnsureStarted();
+        TestApiHost.EnsureStarted(6002);
 
         using var client = new HttpClient
         {
-            BaseAddress = new Uri("http://localhost:5000/")
+            BaseAddress = new Uri("http://localhost:6002/")
         };
 
         var response = await client.PutAsJsonAsync("api/chill-i18n/set-text", new SetTextRequest

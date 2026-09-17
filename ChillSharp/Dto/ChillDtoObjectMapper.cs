@@ -19,6 +19,8 @@
 
 using ChillSharp.Annotations;
 using ChillSharp.EF;
+using ChillSharp.Schema;
+using ChillSharp.Schema.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections;
@@ -30,6 +32,15 @@ namespace ChillSharp.Dto
 {
     internal static class ChillDtoObjectMapper
     {
+        private static readonly JsonSerializerOptions IncomingJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        /// <summary>
+        /// Builds a DTO-friendly property bag from the selected CLR properties, resolving entity navigations
+        /// into <see cref="ChillDtoEntity"/> wrappers and converting scalar values using the Chill schema type.
+        /// </summary>
         public static Dictionary<string, object?> BuildProperties(
             IChillContext context,
             object source,
@@ -87,10 +98,14 @@ namespace ChillSharp.Dto
 
                     var value = property.GetValue(source);
                     var propertyType = ResolvePropertyType(defaultSchema, propertyName, property.PropertyType);
-                    return ConvertFromClrValue(value, propertyType);
+                    return ConvertFromClrValue(value, property.PropertyType, propertyType);
                 });
         }
 
+        /// <summary>
+        /// Applies incoming DTO values onto the target CLR object, inflating entity references from DTO payloads
+        /// and converting scalar values back to the property type defined by the Chill schema.
+        /// </summary>
         public static void ApplyProperties(
             IChillContext context,
             object target,
@@ -108,7 +123,9 @@ namespace ChillSharp.Dto
             {
                 var attr = property.GetCustomAttribute<ChillPropertyAttribute>()!;
                 var propertyName = property.Name;
-                var value = sourceValues[propertyName];
+
+                if (!TryGetSourceValue(sourceValues, propertyName, out var value))
+                    continue;
 
                 if (attr.CallOnInflate)
                 {
@@ -144,7 +161,7 @@ namespace ChillSharp.Dto
             PropertyInfo property,
             string propertyName,
             object? value,
-            ChillDtoSchema? defaultSchema,
+            IChillDtoSchema? defaultSchema,
             bool loadTrackedCollections)
         {
             if (value == null)
@@ -159,13 +176,13 @@ namespace ChillSharp.Dto
 
                 if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                 {
-                    var incomingEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText());
+                    var incomingEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return incomingEntity == null ? null : dbx.Find(targetType, incomingEntity.Guid);
                 }
 
                 if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
                 {
-                    var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText());
+                    var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText(), IncomingJsonOptions);
                     return ConvertEntityCollection(dbx, target, property, propertyName, incomingCollection, loadTrackedCollections);
                 }
 
@@ -231,16 +248,11 @@ namespace ChillSharp.Dto
             throw new ChillException($"Unable to resolve collection element type for '{collectionType.FullName ?? collectionType.Name}'.");
         }
 
-        private static ChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
+        private static IChillDtoSchema? ResolveDefaultSchema(IChillContext context, string chillType)
         {
-            if (context is not DbContext dbContext)
-                return null;
-
             try
             {
-                var serviceProvider = ((IInfrastructure<IServiceProvider>)dbContext).Instance;
-                var schemaService = serviceProvider.GetService(typeof(IChillSchemaService)) as IChillSchemaService;
-                return schemaService?.GetSchemaAsync(chillType, "default").GetAwaiter().GetResult();
+                return context.GetSchemaService().ResolveSchema(chillType, "default", context.GetDefaultUserCultureName());
             }
             catch
             {
@@ -248,7 +260,7 @@ namespace ChillSharp.Dto
             }
         }
 
-        private static ChillDtoPropertyType ResolvePropertyType(ChillDtoSchema? schema, string propertyName, Type clrType)
+        private static ChillDtoPropertyType ResolvePropertyType(IChillDtoSchema? schema, string propertyName, Type clrType)
         {
             var schemaPropertyType = schema?.Properties
                 .FirstOrDefault(x => string.Equals(x.Name, propertyName, StringComparison.Ordinal))
@@ -257,10 +269,16 @@ namespace ChillSharp.Dto
             return schemaPropertyType ?? ChillDtoPropertyMapper.Map(clrType);
         }
 
-        private static object? ConvertFromClrValue(object? value, ChillDtoPropertyType propertyType)
+        private static object? ConvertFromClrValue(object? value, Type clrType, ChillDtoPropertyType propertyType)
         {
             if (value == null)
                 return null;
+
+            var targetType = Nullable.GetUnderlyingType(clrType) ?? clrType;
+            if (TryConvertTemporalToIsoString(value, targetType, out var temporalValue))
+            {
+                return temporalValue;
+            }
 
             switch (propertyType)
             {
@@ -297,7 +315,6 @@ namespace ChillSharp.Dto
                 case ChillDtoPropertyType.Date:
                     return value switch
                     {
-                        DateOnly dateOnlyValue => dateOnlyValue.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                         DateTime dateTimeValue => DateOnly.FromDateTime(dateTimeValue).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                         _ => value
                     };
@@ -305,7 +322,6 @@ namespace ChillSharp.Dto
                 case ChillDtoPropertyType.Time:
                     return value switch
                     {
-                        TimeOnly timeOnlyValue => timeOnlyValue.ToString("HH':'mm':'ss'.'FFFFFFF", CultureInfo.InvariantCulture),
                         DateTime dateTimeValue => TimeOnly.FromDateTime(dateTimeValue).ToString("HH':'mm':'ss'.'FFFFFFF", CultureInfo.InvariantCulture),
                         _ => value
                     };
@@ -332,6 +348,7 @@ namespace ChillSharp.Dto
 
                 case ChillDtoPropertyType.String:
                 case ChillDtoPropertyType.Text:
+                case ChillDtoPropertyType.Json:
                     return value switch
                     {
                         char charValue => charValue.ToString(),
@@ -357,7 +374,7 @@ namespace ChillSharp.Dto
                     ChillDtoPropertyType.DateTime => ConvertDateTime(jsonElement, targetType),
                     ChillDtoPropertyType.Duration => ConvertDuration(jsonElement, targetType),
                     ChillDtoPropertyType.Boolean => jsonElement.GetBoolean(),
-                    ChillDtoPropertyType.String or ChillDtoPropertyType.Text => ConvertString(jsonElement.GetString(), targetType),
+                    ChillDtoPropertyType.String or ChillDtoPropertyType.Text or ChillDtoPropertyType.Json => ConvertString(jsonElement.GetString(), targetType),
                     _ => JsonSerializer.Deserialize(jsonElement.GetRawText(), targetType)
                 };
             }
@@ -375,7 +392,7 @@ namespace ChillSharp.Dto
                 ChillDtoPropertyType.DateTime => ConvertDateTime(value, targetType),
                 ChillDtoPropertyType.Duration => ConvertDuration(value, targetType),
                 ChillDtoPropertyType.Boolean => Convert.ToBoolean(value, CultureInfo.InvariantCulture),
-                ChillDtoPropertyType.String or ChillDtoPropertyType.Text => ConvertString(value.ToString(), targetType),
+                ChillDtoPropertyType.String or ChillDtoPropertyType.Text or ChillDtoPropertyType.Json => ConvertString(value.ToString(), targetType),
                 _ => Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture)
             };
         }
@@ -432,14 +449,10 @@ namespace ChillSharp.Dto
                 return targetType == typeof(DateOnly) ? default(DateOnly) : default(DateTime);
             }
 
-            // Normalize: if has format "2024-01-01T00:00:00.000Z" remove "T00:00:00.000Z" to keep "2024-01-01"
-            if (text.Contains("T"))
-                text = text.Split("T", StringSplitOptions.None)[0];
-
             if (targetType == typeof(DateOnly))
-                return DateOnly.Parse(text, CultureInfo.InvariantCulture);
+                return ParseDateOnly(text);
 
-            var date = DateOnly.Parse(text, CultureInfo.InvariantCulture);
+            var date = ParseDateOnly(text);
             return date.ToDateTime(TimeOnly.MinValue);
         }
 
@@ -450,9 +463,9 @@ namespace ChillSharp.Dto
                 return targetType == typeof(TimeOnly) ? default(TimeOnly) : default(DateTime);
 
             if (targetType == typeof(TimeOnly))
-                return TimeOnly.Parse(text, CultureInfo.InvariantCulture);
+                return ParseTimeOnly(text);
 
-            var time = TimeOnly.Parse(text, CultureInfo.InvariantCulture);
+            var time = ParseTimeOnly(text);
             return DateOnly.MinValue.ToDateTime(time);
         }
 
@@ -462,10 +475,41 @@ namespace ChillSharp.Dto
             if (string.IsNullOrWhiteSpace(text))
                 return targetType == typeof(DateTimeOffset) ? default(DateTimeOffset) : default(DateTime);
 
-            if (targetType == typeof(DateTimeOffset))
-                return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+            var hasUtcDesignator = HasUtcDesignator(text);
+            var hasExplicitOffset = HasExplicitOffset(text);
 
-            return DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            if (targetType == typeof(DateTimeOffset))
+            {
+                if (hasUtcDesignator)
+                {
+                    return ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
+                }
+
+                if (hasExplicitOffset)
+                {
+                    return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+                }
+
+                var unspecifiedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+                var localDateTime = DateTime.SpecifyKind(unspecifiedDateTime, DateTimeKind.Unspecified);
+                return new DateTimeOffset(localDateTime, systemTimeZone.GetUtcOffset(localDateTime));
+            }
+
+            if (hasUtcDesignator || hasExplicitOffset)
+            {
+                var converted = ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
+                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
+            }
+
+            var parsedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            if (parsedDateTime.Kind == DateTimeKind.Utc)
+            {
+                var converted = ConvertToSystemTimeZone(new DateTimeOffset(parsedDateTime, TimeSpan.Zero), systemTimeZone);
+                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
+            }
+
+            return parsedDateTime;
         }
 
         private static object ConvertDuration(object value, Type targetType)
@@ -485,6 +529,115 @@ namespace ChillSharp.Dto
                 return string.IsNullOrEmpty(value) ? default(char) : value[0];
 
             return value ?? string.Empty;
+        }
+
+        private static bool TryGetSourceValue(IReadOnlyDictionary<string, object?> sourceValues, string propertyName, out object? value)
+        {
+            if (sourceValues.TryGetValue(propertyName, out value))
+                return true;
+
+            foreach (var entry in sourceValues)
+            {
+                if (string.Equals(entry.Key, propertyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = entry.Value;
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
+        }
+
+        private static bool TryConvertTemporalToIsoString(object value, Type targetType, out string? serializedValue)
+        {
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+
+            if (targetType == typeof(DateTimeOffset) && value is DateTimeOffset dateTimeOffsetValue)
+            {
+                serializedValue = dateTimeOffsetValue.ToString("O", CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            if (targetType == typeof(DateTime) && value is DateTime dateTimeValue)
+            {
+                serializedValue = ConvertDateTimeToSystemOffset(dateTimeValue, systemTimeZone)
+                    .ToString("O", CultureInfo.InvariantCulture);
+                return true;
+            }
+
+            serializedValue = null;
+            return false;
+        }
+
+        private static DateOnly ParseDateOnly(string text)
+        {
+            if (DateOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dateOnlyValue))
+            {
+                return dateOnlyValue;
+            }
+
+            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeOffsetValue))
+            {
+                return new DateOnly(dateTimeOffsetValue.Year, dateTimeOffsetValue.Month, dateTimeOffsetValue.Day);
+            }
+
+            var dateTimeValue = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            return new DateOnly(dateTimeValue.Year, dateTimeValue.Month, dateTimeValue.Day);
+        }
+
+        private static TimeOnly ParseTimeOnly(string text)
+        {
+            if (TimeOnly.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var timeOnlyValue))
+            {
+                return timeOnlyValue;
+            }
+
+            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dateTimeOffsetValue))
+            {
+                return TimeOnly.FromDateTime(dateTimeOffsetValue.DateTime);
+            }
+
+            var dateTimeValue = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            return TimeOnly.FromDateTime(dateTimeValue);
+        }
+
+        private static bool HasUtcDesignator(string text)
+        {
+            return text.EndsWith("Z", StringComparison.OrdinalIgnoreCase) ||
+                   text.EndsWith("+00:00", StringComparison.OrdinalIgnoreCase) ||
+                   text.EndsWith("-00:00", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool HasExplicitOffset(string text)
+        {
+            var timeSeparatorIndex = text.IndexOf('T');
+            if (timeSeparatorIndex < 0)
+            {
+                return false;
+            }
+
+            var timePart = text[(timeSeparatorIndex + 1)..];
+            return timePart.EndsWith("Z", StringComparison.OrdinalIgnoreCase) ||
+                   timePart.Contains('+') ||
+                   timePart.LastIndexOf('-') > 1;
+        }
+
+        private static DateTimeOffset ConvertDateTimeToSystemOffset(DateTime value, TimeZoneInfo systemTimeZone)
+        {
+            return value.Kind switch
+            {
+                DateTimeKind.Utc => ConvertToSystemTimeZone(new DateTimeOffset(value, TimeSpan.Zero), systemTimeZone),
+                DateTimeKind.Local => ConvertToSystemTimeZone(new DateTimeOffset(value), systemTimeZone),
+                _ => new DateTimeOffset(
+                    DateTime.SpecifyKind(value, DateTimeKind.Unspecified),
+                    systemTimeZone.GetUtcOffset(DateTime.SpecifyKind(value, DateTimeKind.Unspecified)))
+            };
+        }
+
+        private static DateTimeOffset ConvertToSystemTimeZone(DateTimeOffset value, TimeZoneInfo systemTimeZone)
+        {
+            return TimeZoneInfo.ConvertTime(value, systemTimeZone);
         }
     }
 }

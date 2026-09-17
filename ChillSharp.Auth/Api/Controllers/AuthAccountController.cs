@@ -28,11 +28,14 @@ namespace ChillSharp.Auth.Api.Controllers;
 /// Exposes account-oriented endpoints that integrate ASP.NET Core Identity with ChillSharp.Auth token issuance.
 /// </summary>
 [ApiController]
-[Route("api/chill-auth/account")]
+[Route("api/chill-auth")]
 public class AuthAccountController : ControllerBase
 {
+    #region Fields
     private readonly IChillAuthIdentityService _service;
+    #endregion
 
+    #region Construction
     /// <summary>
     /// Initializes the controller with the Identity-backed auth-account service.
     /// </summary>
@@ -41,7 +44,9 @@ public class AuthAccountController : ControllerBase
     {
         _service = service;
     }
+    #endregion
 
+    #region Account Lifecycle
     /// <summary>
     /// Registers a new Identity account and returns the first access-token pair.
     /// </summary>
@@ -94,6 +99,19 @@ public class AuthAccountController : ControllerBase
     }
 
     /// <summary>
+    /// Revokes the current authenticated session.
+    /// </summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        await _service.LogoutAsync(User, cancellationToken);
+        return NoContent();
+    }
+    #endregion
+
+    #region Password Management
+    /// <summary>
     /// Changes the password of the authenticated user.
     /// </summary>
     [Authorize]
@@ -140,4 +158,5 @@ public class AuthAccountController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+    #endregion
 }

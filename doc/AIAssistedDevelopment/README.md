@@ -50,6 +50,7 @@ This usually produces smaller and safer edits.
 ChillSharp exposes a standard API surface through `app.MapChillApi()`, with stable operations such as:
 
 - `POST /api/chill/query`
+- `POST /api/chill/lookup`
 - `POST /api/chill/find`
 - `POST /api/chill/create`
 - `POST /api/chill/update`

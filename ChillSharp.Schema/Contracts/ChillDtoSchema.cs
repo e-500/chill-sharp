@@ -18,6 +18,7 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Dto;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -25,14 +26,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace ChillSharp.Dto
+namespace ChillSharp.Schema.Contracts
 {
     /// <summary>
     /// Schema representation of a Chill entity or query type.
     /// Maps property names to frontend-friendly ChillDtoPropertyType values
     /// as provided by <see cref="ChillDtoPropertyMapper"/>.
     /// </summary>
-    public class ChillDtoSchema
+    public class ChillDtoSchema : IChillDtoSchema
     {
         /// <summary>
         /// Short Chill type identifier exposed to clients.
@@ -74,6 +75,10 @@ namespace ChillSharp.Dto
         /// Property schemas exposed for the type.
         /// </summary>
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
+
+        IReadOnlyDictionary<string, string> IChillDtoSchema.Metadata => Metadata;
+
+        IReadOnlyList<IChillDtoPropertySchema> IChillDtoSchema.Properties => Properties;
 
         /// <summary>
         /// Builds schema metadata from an entity instance.
