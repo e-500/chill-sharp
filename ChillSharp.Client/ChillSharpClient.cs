@@ -98,10 +98,10 @@ namespace ChillSharp.Client
         /// <summary>
         /// Executes a FIND operation on the given entity.
         /// </summary>
-        //public ChillDtoEntity? Find(ChillDtoEntity Entity)
-        //{
-        //    return Action("FIND", Entity);
-        //}
+        public ChillDtoEntity? Find(ChillDtoEntity Entity)
+        {
+            return Action("FIND", Entity);
+        }
 
         /// <summary>
         /// Executes a CREATE operation on the given entity.
