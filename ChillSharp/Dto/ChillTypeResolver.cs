@@ -41,8 +41,8 @@ namespace ChillSharp.Dto
         public static Type ResolveType(Assembly assembly, string chillType, string chillTypePrefix)
         {
             var normalizedInput = NormalizeLookupKey(chillType, chillTypePrefix);
-            var matches = assembly
-                .GetTypes()
+            var matches = ChillAssemblyDiscovery.GetCandidateAssemblies(assembly)
+                .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
                 .Select(type => new
                 {
                     Type = type,
@@ -61,10 +61,13 @@ namespace ChillSharp.Dto
                 return matches[0];
             }
 
-            var exactFullName = assembly.GetType(PrepareFullChillType(chillType, chillTypePrefix));
-            if (exactFullName != null)
+            foreach (var candidateAssembly in ChillAssemblyDiscovery.GetCandidateAssemblies(assembly))
             {
-                return exactFullName;
+                var exactFullName = candidateAssembly.GetType(PrepareFullChillType(chillType, chillTypePrefix));
+                if (exactFullName != null)
+                {
+                    return exactFullName;
+                }
             }
 
             throw new ChillException($"Unable to resolve ChillType '{chillType}' in assembly '{assembly.GetName().Name}'.");

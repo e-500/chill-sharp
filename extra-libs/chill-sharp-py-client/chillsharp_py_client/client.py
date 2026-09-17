@@ -31,7 +31,10 @@ from .exceptions import ChillSharpClientError
 
 
 CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
+API_BASE_PATH = "api/"
 JsonDict = dict[str, Any]
+ATTACHMENT_ENTITY_CHILL_TYPE = "ChillSharp.Attachment.Model.Attachment"
+ATTACHMENT_QUERY_CHILL_TYPE = "ChillSharp.Attachment.Query.AttachmentQuery"
 
 
 class PermissionEffect(IntEnum):
@@ -80,11 +83,12 @@ class ChillSharpClient:
         username: str | None = None,
         password: str | None = None,
         culture_name: str | None = None,
+        api_base_path: str = API_BASE_PATH,
         timeout: float = 30.0,
         session: requests.Session | None = None,
     ) -> None:
         """Initialize the client with endpoint, auth, and session settings."""
-        self._base_url = self._normalize_required_value(base_url, "base_url").rstrip("/")
+        self._base_url = self._normalize_base_url(base_url, api_base_path)
         self._username = username.strip() if username else None
         self._password = password.strip() if password else None
         self._culture_name = culture_name.strip() if culture_name else None
@@ -129,13 +133,106 @@ class ChillSharpClient:
         """Submit a batch of operations in one request."""
         return self._send_json("POST", self._build_chill_url("chunk"), operations)
 
+    def upload_attachment(
+        self,
+        target_entity: JsonDict,
+        file: JsonDict,
+        title: str | None = None,
+        description: str | None = None,
+        is_public: bool = False,
+    ) -> list[JsonDict]:
+        """Upload one attachment payload for a Chill entity."""
+        return self.upload_attachments(target_entity, [file], title=title, description=description, is_public=is_public)
+
+    def upload_attachments(
+        self,
+        target_entity: JsonDict,
+        files: list[JsonDict],
+        title: str | None = None,
+        description: str | None = None,
+        is_public: bool = False,
+    ) -> list[JsonDict]:
+        """Upload one or more attachment payloads for a Chill entity."""
+        target = self._get_attachment_target_info(target_entity)
+        if not isinstance(files, list) or len(files) == 0:
+            raise ValueError("files is required.")
+
+        data = {
+            "attachToChillType": target["chillType"],
+            "attachToGuid": target["guid"],
+            "public": "true" if is_public else "false",
+        }
+        if title and title.strip():
+            data["title"] = title.strip()
+        if description and description.strip():
+            data["description"] = description.strip()
+
+        multipart_files: list[tuple[str, tuple[str, bytes, str]]] = []
+        for file in files:
+            file_name = self._normalize_required_value(
+                self._coerce_string(self._get_payload_value(file, "fileName")),
+                "file.fileName",
+            )
+            content = self._coerce_attachment_content(self._get_payload_value(file, "content"))
+            content_type = self._normalize_optional_value(self._coerce_string(self._get_payload_value(file, "contentType"))) or "application/octet-stream"
+            multipart_files.append(("file", (file_name, content, content_type)))
+
+        response = self._send_multipart_request(
+            "POST",
+            self._build_attachment_url("attachment/upload"),
+            data=data,
+            files=multipart_files,
+            allow_retry=False,
+        )
+        try:
+            parsed = response.json()
+        except ValueError as exc:
+            raise ChillSharpClientError(
+                f"Invalid JSON response from POST {self._build_attachment_url('attachment/upload')}",
+                status_code=response.status_code,
+                response_text=response.text,
+            ) from exc
+
+        return parsed if isinstance(parsed, list) else []
+
+    def get_attachments(self, target_entity: JsonDict) -> list[JsonDict]:
+        """Load attachment entities linked to one Chill entity."""
+        target = self._get_attachment_target_info(target_entity)
+        response = self.query(
+            {
+                "chillType": ATTACHMENT_QUERY_CHILL_TYPE,
+                "properties": {
+                    "attachToChillType": target["chillType"],
+                    "attachToGuid": target["guid"],
+                },
+            }
+        )
+        results = self._get_payload_value(response, "results")
+        return results if isinstance(results, list) else []
+
+    def download_attachment(self, attachment_or_guid: JsonDict | str) -> bytes:
+        """Download attachment content by guid or attachment entity."""
+        attachment_guid = (
+            self._normalize_required_value(attachment_or_guid, "attachment_guid")
+            if isinstance(attachment_or_guid, str)
+            else self._get_attachment_guid(attachment_or_guid)
+        )
+
+        response = self._send_request(
+            "GET",
+            self._build_attachment_url(f"attachment/download?guid={quote(attachment_guid)}"),
+            None,
+            allow_anonymous=not self._can_use_authentication(),
+        )
+        return response.content
+
     def version(self) -> str:
         """Return the Python client library version."""
         return CHILL_SHARP_PY_CLIENT_VERSION
 
     def test(self) -> str:
         """Call the Chill test endpoint and return the raw response text."""
-        return self._send_text("GET", self._build_chill_url("test"), allow_anonymous=True)
+        return self._send_text("GET", self._build_api_url("test"), allow_anonymous=True)
 
     def get_schema(self, chill_type: str, chill_view_code: str, culture_name: str | None = None) -> JsonDict | None:
         """Retrieve schema metadata for a type and view."""
@@ -528,6 +625,51 @@ class ChillSharpClient:
         )
         return response.text
 
+    def _send_multipart_request(
+        self,
+        method: str,
+        url: str,
+        data: dict[str, str],
+        files: list[tuple[str, tuple[str, bytes, str]]],
+        allow_anonymous: bool = False,
+        allow_retry: bool = True,
+    ) -> requests.Response:
+        """Send a multipart/form-data request and normalize auth and retry behavior."""
+        if not allow_anonymous and self._can_use_authentication():
+            self._get_auth_token_if_necessary()
+
+        headers: JsonDict = {}
+        if not allow_anonymous and self._token_state.access_token:
+            headers["Authorization"] = f"Bearer {self._token_state.access_token}"
+
+        response = self.session.request(
+            method=method,
+            url=url,
+            data=data,
+            files=files,
+            headers=headers,
+            timeout=self._timeout,
+        )
+
+        if response.status_code in (401, 403) and not allow_anonymous and allow_retry and self._try_refresh_authentication():
+            return self._send_multipart_request(
+                method,
+                url,
+                data,
+                files,
+                allow_anonymous=allow_anonymous,
+                allow_retry=False,
+            )
+
+        if not response.ok:
+            raise ChillSharpClientError(
+                f"HTTP {response.status_code} calling {method} {url}",
+                status_code=response.status_code,
+                response_text=response.text,
+            )
+
+        return response
+
     def _send_request(
         self,
         method: str,
@@ -791,6 +933,10 @@ class ChillSharpClient:
         """Build an absolute URL for the core Chill service."""
         return f"{self._base_url}/{relative_url.lstrip('/')}"
 
+    def _build_api_url(self, relative_url: str) -> str:
+        """Build an absolute URL for the configured ChillSharp API base path."""
+        return f"{self._get_api_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
+
     def _build_auth_url(self, relative_url: str) -> str:
         """Build an absolute URL for the auth service."""
         return f"{self._get_auth_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
@@ -802,6 +948,10 @@ class ChillSharpClient:
     def _build_i18n_url(self, relative_url: str) -> str:
         """Build an absolute URL for the i18n service."""
         return f"{self._get_i18n_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
+
+    def _build_attachment_url(self, relative_url: str) -> str:
+        """Build an absolute URL for the attachment service."""
+        return f"{self._get_attachment_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
 
     def _get_auth_base_url(self) -> str:
         """Resolve the auth service base URL from the Chill base URL."""
@@ -823,6 +973,56 @@ class ChillSharpClient:
         if self._base_url.lower().endswith(suffix):
             return self._base_url[: -len(suffix)] + "/chill-i18n"
         return self._base_url.rstrip("/") + "-i18n"
+
+    def _get_attachment_base_url(self) -> str:
+        """Resolve the attachment service base URL from the Chill base URL."""
+        suffix = "/chill"
+        if self._base_url.lower().endswith(suffix):
+            return self._base_url[: -len(suffix)] + "/chill-attachment"
+        return self._base_url.rstrip("/") + "-attachment"
+
+    def _get_api_base_url(self) -> str:
+        """Resolve the configured API base URL from the Chill base URL."""
+        suffix = "/chill"
+        if self._base_url.lower().endswith(suffix):
+            return self._base_url[: -len(suffix)]
+        return self._base_url.rstrip("/")
+
+    @classmethod
+    def _normalize_base_url(cls, base_url: str, api_base_path: str | None) -> str:
+        """Normalize a server root, API base URL, or specific ChillSharp endpoint URL."""
+        normalized = cls._normalize_required_value(base_url, "base_url").rstrip("/")
+        if cls._is_known_chillsharp_endpoint_base(normalized):
+            return normalized
+
+        normalized_api_base_path = cls._normalize_api_base_path(api_base_path)
+        if not normalized_api_base_path:
+            return f"{normalized}/chill"
+
+        if cls._ends_with_path_segment(normalized, normalized_api_base_path):
+            return f"{normalized}/chill"
+
+        return f"{normalized}/{normalized_api_base_path}/chill"
+
+    @staticmethod
+    def _normalize_api_base_path(api_base_path: str | None) -> str:
+        normalized = api_base_path.strip() if api_base_path else API_BASE_PATH
+        return normalized.strip("/")
+
+    @staticmethod
+    def _is_known_chillsharp_endpoint_base(base_url: str) -> bool:
+        lower_base_url = base_url.lower()
+        return (
+            lower_base_url.endswith("/chill")
+            or lower_base_url.endswith("/chill-auth")
+            or lower_base_url.endswith("/chill-schema")
+            or lower_base_url.endswith("/chill-i18n")
+            or lower_base_url.endswith("/chill-attachment")
+        )
+
+    @staticmethod
+    def _ends_with_path_segment(value: str, segment: str) -> bool:
+        return value.lower().endswith(f"/{segment.lower()}")
 
     @staticmethod
     def _normalize_required_value(value: str, argument_name: str) -> str:
@@ -870,6 +1070,52 @@ class ChillSharpClient:
         if not isinstance(value, list):
             return []
         return [item for item in value if isinstance(item, dict)]
+
+    def _get_attachment_target_info(self, target_entity: JsonDict) -> JsonDict:
+        """Extract the guid and ChillType required by attachment helpers."""
+        guid = self._normalize_required_value(
+            self._coerce_string(self._get_payload_value(target_entity, "guid")),
+            "target_entity.guid",
+        )
+        chill_type = self._normalize_required_value(
+            self._coerce_string(self._get_payload_value(target_entity, "chillType")),
+            "target_entity.chillType",
+        )
+        return {
+            "guid": guid,
+            "chillType": chill_type,
+        }
+
+    def _get_attachment_guid(self, attachment_entity: JsonDict) -> str:
+        """Extract and validate the guid of an attachment DTO."""
+        guid = self._normalize_required_value(
+            self._coerce_string(self._get_payload_value(attachment_entity, "guid")),
+            "attachment_entity.guid",
+        )
+        chill_type = self._normalize_optional_value(self._coerce_string(self._get_payload_value(attachment_entity, "chillType")))
+        if chill_type:
+            normalized_chill_type = chill_type.split(".")[-1]
+            normalized_attachment_type = ATTACHMENT_ENTITY_CHILL_TYPE.split(".")[-1]
+            if normalized_chill_type != normalized_attachment_type:
+                raise ValueError("attachment_entity must point to an attachment.")
+        return guid
+
+    @staticmethod
+    def _coerce_attachment_content(value: Any) -> bytes:
+        """Normalize attachment content into bytes for multipart uploads."""
+        if isinstance(value, bytes):
+            return value
+        if isinstance(value, bytearray):
+            return bytes(value)
+        if isinstance(value, str):
+            return value.encode("utf-8")
+        if hasattr(value, "read"):
+            content = value.read()
+            if isinstance(content, bytes):
+                return content
+            if isinstance(content, str):
+                return content.encode("utf-8")
+        raise ValueError("file.content must be bytes, bytearray, str, or a readable stream.")
 
     @staticmethod
     def _parse_datetime(value: Any) -> datetime | None:

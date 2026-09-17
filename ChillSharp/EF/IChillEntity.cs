@@ -40,6 +40,7 @@ namespace ChillSharp.EF
         /// </para>
         /// </summary>
         Guid Guid { get; set; }
+        int Position { get; set; }
         string Label { get; set; }
         string ShortLabel { get; set; }
         string FullTextContent { get; set; }

@@ -141,6 +141,7 @@ export default defineComponent({
 
 ```ts
 const { data, isLoading, error, reload } = useSchema("Model.Post", "default");
+const handleAttachments = computed(() => data.value?.handleAttachments ?? false);
 ```
 
 You can override the plugin culture for one call:
@@ -148,6 +149,8 @@ You can override the plugin culture for one call:
 ```ts
 const englishSchema = useSchema("Model.Post", "default", "en-GB");
 ```
+
+The schema and entity-option payloads re-exported by this package include `handleAttachments`. Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
 
 `useSchema()` also accepts refs:
 
@@ -216,12 +219,18 @@ const { execute, data, isLoading } = useQueryMutation();
 
 async function runQuery() {
   await execute({
-    ChillType: "Query.PostQuery",
-    Properties: { Title: "Hello" },
-    ResultProperties: [{ Name: "Guid" }, { Name: "Title" }]
+    chillType: "Query.PostQuery",
+    properties: { title: "Hello" },
+    ordering: {
+      propertyName: "Position",
+      direction: "ASC"
+    },
+    resultProperties: [{ name: "Guid" }, { name: "Title" }]
   });
 }
 ```
+
+If `ordering.propertyName` points to a Chill entity reference, the backend orders by that referenced entity `Label`.
 
 ### `useLookupMutation()`
 
@@ -229,11 +238,15 @@ async function runQuery() {
 const lookupPosts = useLookupMutation();
 
 await lookupPosts.execute({
-  ChillType: "Model.Post",
-  Properties: {
-    FullTextSearch: "Ada Lovelace"
+  chillType: "Model.Post",
+  properties: {
+    fullTextSearch: "Ada Lovelace"
   },
-  ResultProperties: [{ Name: "Guid" }, { Name: "Title" }]
+  ordering: {
+    propertyName: "Blog",
+    direction: "ASC"
+  },
+  resultProperties: [{ name: "Guid" }, { name: "Title" }]
 });
 ```
 
@@ -279,12 +292,43 @@ Example:
 
 ```ts
 await createPost.execute({
-  ChillType: "Model.Post",
-  Guid: crypto.randomUUID(),
-  Properties: {
-    Title: "New title",
-    Author: "Grace Hopper"
+  chillType: "Model.Post",
+  guid: crypto.randomUUID(),
+  position: 10,
+  properties: {
+    title: "New title",
+    author: "Grace Hopper"
   }
+});
+```
+
+## Attachments
+
+Use the raw client from `useChillSharpClient()` for attachment helpers:
+
+```ts
+const client = useChillSharpClient();
+
+await client.uploadAttachment(
+  {
+    ChillType: "Model.Post",
+    Guid: postGuid
+  },
+  {
+    fileName: "contract.txt",
+    content: new Blob(["hello attachment"], { type: "text/plain" }),
+    contentType: "text/plain"
+  },
+  {
+    title: "Contract",
+    description: "Signed draft",
+    isPublic: false
+  }
+);
+
+const attachments = await client.getAttachments({
+  ChillType: "Model.Post",
+  Guid: postGuid
 });
 ```
 
@@ -334,6 +378,8 @@ Because the Vue package reuses the TypeScript client, it inherits the same auth 
 - pass `username` and `password` when the client should log in and refresh automatically
 - pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()`, `setEntityOptions()`, `getMenu()`, `setMenu()`, and `deleteMenu()`
+- schema and entity option payloads re-exported by this package include the `handleAttachments` flag from `chill-sharp-ts-client`
+- query payloads re-exported by this package include `ordering`, and entity payloads include `position`
 
 Auth user list/detail payloads exposed through the raw client include:
 

@@ -8,6 +8,7 @@ public interface IChillDtoSchema
     string ChillType { get; }
     string ChillViewCode { get; }
     string DisplayName { get; }
+    bool HandleAttachments { get; }
     bool EnableMCP { get; }
     string MCPDescription { get; }
     IReadOnlyDictionary<string, string> Metadata { get; }

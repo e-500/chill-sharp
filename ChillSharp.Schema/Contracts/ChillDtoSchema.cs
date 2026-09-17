@@ -51,6 +51,11 @@ namespace ChillSharp.Schema.Contracts
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Enables client-side attachment handling for the entity schema.
+        /// </summary>
+        public bool HandleAttachments { get; set; }
+
+        /// <summary>
         /// Enables publication of the schema as an MCP resource.
         /// </summary>
         public bool EnableMCP { get; set; }

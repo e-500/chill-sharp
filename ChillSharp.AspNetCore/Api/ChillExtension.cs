@@ -18,17 +18,24 @@
  */
 
 using ChillSharp.Api.Controllers;
+using ChillSharp.Attachment;
+using ChillSharp.Attachment.Api;
 using ChillSharp.Auth;
 using ChillSharp.Auth.Api;
+using ChillSharp.Auth.Services;
 using ChillSharp.I18n;
 using ChillSharp.I18n.Api;
+using ChillSharp.Mcp;
 using ChillSharp.Mcp.Api;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Api;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol.AspNetCore;
+using System.Collections;
 using System.Reflection;
 
 namespace ChillSharp.Api
@@ -45,6 +52,8 @@ namespace ChillSharp.Api
         public static IServiceCollection AddChillApi<TContext>(this IServiceCollection services, Action<ChillApiOptions>? configureOptions = null)
             where TContext : DbContext, IChillContext
         {
+            PrintChillSharpEnvironmentVariables();
+
             var options = new ChillApiOptions();
             configureOptions?.Invoke(options);
 
@@ -56,6 +65,7 @@ namespace ChillSharp.Api
 
             services.AddControllers()
                 .AddApplicationPart(typeof(ChillController).Assembly)
+                .AddMvcOptions(mvcOptions => mvcOptions.Conventions.Add(new ChillApiRouteBasePathConvention(options.ApiBasePath)))
                 .AddControllersAsServices();
 
             services.AddScoped<IChillContext>(provider =>
@@ -103,6 +113,11 @@ namespace ChillSharp.Api
                 InvokeModuleRegistration<TContext>(services, typeof(ChillMcpServiceCollectionExtensions), nameof(ChillMcpServiceCollectionExtensions.AddChillMcpApi));
             }
 
+            if (options.EnableAttachmentApi)
+            {
+                InvokeModuleRegistration<TContext>(services, typeof(ChillAttachmentApiExtensions), nameof(ChillAttachmentApiExtensions.AddChillAttachmentApi));
+            }
+
             return services;
         }
 
@@ -119,10 +134,12 @@ namespace ChillSharp.Api
             services.AddChillApi<TContext>(apiOptions =>
             {
                 apiOptions.ProtectedApi = options.ProtectedApi;
+                apiOptions.ApiBasePath = options.ApiBasePath;
                 apiOptions.EnableAuthApi = false;
                 apiOptions.EnableI18nApi = options.EnableI18nApi;
                 apiOptions.EnableSchemaApi = options.EnableSchemaApi;
                 apiOptions.EnableMcpApi = options.EnableMcpApi;
+                apiOptions.EnableAttachmentApi = options.EnableAttachmentApi;
             });
 
             services.AddChillAuthIdentityApi<TContext, TUser>(identityOptions =>
@@ -156,18 +173,54 @@ namespace ChillSharp.Api
             return services;
         }
 
+        private static void PrintChillSharpEnvironmentVariables()
+        {
+            var variables = Environment.GetEnvironmentVariables()
+                .Cast<DictionaryEntry>()
+                .Select(entry => new
+                {
+                    Name = entry.Key?.ToString() ?? string.Empty,
+                    Value = entry.Value?.ToString() ?? string.Empty
+                })
+                .Where(entry => IsChillSharpEnvironmentVariable(entry.Name))
+                .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            Console.WriteLine("ChillSharp environment variables:");
+            if (variables.Count == 0)
+            {
+                Console.WriteLine("  (none)");
+                return;
+            }
+
+            foreach (var variable in variables)
+            {
+                Console.WriteLine($"  {variable.Name}={MaskEnvironmentValue(variable.Name, variable.Value)}");
+            }
+        }
+
+        private static bool IsChillSharpEnvironmentVariable(string variableName)
+        {
+            return variableName.StartsWith("CHILLSHARP_", StringComparison.OrdinalIgnoreCase) ||
+                variableName.StartsWith("CHILL_SHARP_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string MaskEnvironmentValue(string variableName, string value)
+        {
+            return variableName.Contains("PASSWORD", StringComparison.OrdinalIgnoreCase)
+                ? "********"
+                : value;
+        }
+
         /// <summary>
         /// Maps ChillApi controllers to endpoints.
         /// </summary>
-        public static IEndpointRouteBuilder MapChillApi(this IEndpointRouteBuilder endpoints, string ApiUrlBasePath = "api/chill")
+        public static IEndpointRouteBuilder MapChillApi(this IEndpointRouteBuilder endpoints, string? ApiUrlBasePath = null)
         {
-            if (ApiUrlBasePath.EndsWith("/"))
-                ApiUrlBasePath = ApiUrlBasePath.Substring(0, ApiUrlBasePath.Length - 1);
-            if (ApiUrlBasePath.StartsWith("/"))
-                ApiUrlBasePath = ApiUrlBasePath.Substring(1, ApiUrlBasePath.Length);
-
-            var chillControllers = endpoints.MapControllers().WithGroupName(ApiUrlBasePath);
             var options = endpoints.ServiceProvider.GetRequiredService<ChillApiOptions>();
+            var apiUrlBasePath = NormalizeRouteSegment(ApiUrlBasePath ?? options.ApiBasePath);
+
+            var chillControllers = endpoints.MapControllers().WithGroupName(apiUrlBasePath);
             if (options.ProtectedApi)
             {
                 chillControllers.RequireAuthorization();
@@ -181,15 +234,85 @@ namespace ChillSharp.Api
 
             string body = $"{{ \"authors\":\"{authors}\", \"year\":\"{year}\", \"disclaimer\":\"{disclaimer}\", \"website\":\"{website}\", \"repository\":\"{repository}\" }}";
 
-            endpoints.MapGet($"/{ApiUrlBasePath}/test", () => "ChillSharp is up and running!");
-            endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
-            var chillEntityChangeHub = endpoints.MapHub<ChillEntityChangeHub>($"/{ApiUrlBasePath}/{ChillEntityChangeHub.HubRouteSuffix}");
+            var apiRootPath = BuildEndpointPath(apiUrlBasePath, string.Empty);
+            endpoints.MapGet(apiRootPath, () => "ChillSharp is up and running!");
+            if (apiRootPath.Length > 1)
+            {
+                endpoints.MapGet($"{apiRootPath}/", () => "ChillSharp is up and running!");
+            }
+
+            endpoints.MapGet(BuildEndpointPath(apiUrlBasePath, "test"), () => "ChillSharp is up and running!");
+            endpoints.MapGet(BuildEndpointPath(apiUrlBasePath, "license"), () => body);
+            var chillEntityChangeHub = endpoints.MapHub<ChillEntityChangeHub>(BuildEndpointPath(apiUrlBasePath, ChillEntityChangeHub.HubRouteSuffix));
             if (options.ProtectedApi)
             {
                 chillEntityChangeHub.RequireAuthorization();
             }
 
+            var mcpOptions = endpoints.ServiceProvider.GetService<ChillMcpOptions>();
+            if (options.EnableMcpApi && mcpOptions?.Enabled == true)
+            {
+                var routePattern = NormalizeRoutePattern(mcpOptions.RoutePattern, apiUrlBasePath);
+                var mcpEndpoint = endpoints.MapMcp(routePattern);
+                if (options.ProtectedApi)
+                {
+                    mcpEndpoint.RequireAuthorization();
+                }
+            }
+
             return endpoints;
+        }
+
+        private static string NormalizeRoutePattern(string routePattern, string apiUrlBasePath)
+        {
+            var normalized = routePattern?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                normalized = "chill-mcp";
+            }
+            else if (normalized.Equals("/api/chill-mcp", StringComparison.OrdinalIgnoreCase))
+            {
+                normalized = "chill-mcp";
+            }
+
+            if (!normalized.StartsWith("/"))
+            {
+                normalized = $"{apiUrlBasePath}/{normalized}";
+            }
+
+            if (!normalized.StartsWith("/"))
+            {
+                normalized = "/" + normalized;
+            }
+
+            return normalized.Length > 1
+                ? normalized.TrimEnd('/')
+                : normalized;
+        }
+
+        private static string NormalizeRouteSegment(string routeSegment)
+        {
+            var normalized = routeSegment?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                normalized = ChillSharpInitOptions.DefaultApiBasePath;
+            }
+
+            normalized = normalized.Trim('/');
+            return string.IsNullOrWhiteSpace(normalized) ? string.Empty : normalized;
+        }
+
+        private static string BuildEndpointPath(string apiUrlBasePath, string endpointName)
+        {
+            var normalizedEndpointName = endpointName.Trim('/');
+            if (string.IsNullOrWhiteSpace(normalizedEndpointName))
+            {
+                return string.IsNullOrWhiteSpace(apiUrlBasePath) ? "/" : $"/{apiUrlBasePath}";
+            }
+
+            return string.IsNullOrWhiteSpace(apiUrlBasePath)
+                ? $"/{normalizedEndpointName}"
+                : $"/{apiUrlBasePath}/{normalizedEndpointName}";
         }
 
         private static void ValidateEnabledModules<TContext>(ChillApiOptions options)
@@ -215,6 +338,12 @@ namespace ChillSharp.Api
                 throw new InvalidOperationException(
                     $"{optionName} requires {contextType.Name} to implement {nameof(IChillSchemaDbContext)}.");
             }
+
+            if (options.EnableAttachmentApi && !typeof(IChillAttachmentDbContext).IsAssignableFrom(contextType))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(ChillApiOptions.EnableAttachmentApi)} requires {contextType.Name} to implement {nameof(IChillAttachmentDbContext)}.");
+            }
         }
 
         private static void InvokeModuleRegistration<TContext>(IServiceCollection services, Type extensionType, string methodName)
@@ -226,15 +355,80 @@ namespace ChillSharp.Api
                     m.Name == methodName &&
                     m.IsGenericMethodDefinition &&
                     m.GetGenericArguments().Length == 1 &&
-                    m.GetParameters().Length == 1 &&
-                    m.GetParameters()[0].ParameterType == typeof(IServiceCollection));
+                    IsModuleRegistrationMethod(m));
 
             if (method == null)
             {
                 throw new InvalidOperationException($"Unable to locate {extensionType.FullName}.{methodName}(IServiceCollection).");
             }
 
-            method.MakeGenericMethod(typeof(TContext)).Invoke(null, [services]);
+            var parameters = method.GetParameters();
+            var arguments = new object?[parameters.Length];
+            arguments[0] = services;
+
+            for (var index = 1; index < parameters.Length; index++)
+            {
+                arguments[index] = parameters[index].DefaultValue;
+            }
+
+            method.MakeGenericMethod(typeof(TContext)).Invoke(null, arguments);
+        }
+
+        private static bool IsModuleRegistrationMethod(MethodInfo method)
+        {
+            var parameters = method.GetParameters();
+            return parameters.Length > 0 &&
+                parameters[0].ParameterType == typeof(IServiceCollection) &&
+                parameters.Skip(1).All(parameter => parameter.IsOptional);
+        }
+
+        private sealed class ChillApiRouteBasePathConvention(string apiBasePath) : IControllerModelConvention
+        {
+            private readonly string _apiBasePath = NormalizeRouteSegment(apiBasePath);
+
+            public void Apply(ControllerModel controller)
+            {
+                if (!IsChillSharpController(controller))
+                {
+                    return;
+                }
+
+                foreach (var selector in controller.Selectors)
+                {
+                    var attributeRouteModel = selector.AttributeRouteModel;
+                    if (attributeRouteModel?.Template == null)
+                    {
+                        continue;
+                    }
+
+                    attributeRouteModel.Template = RewriteTemplate(attributeRouteModel.Template);
+                }
+            }
+
+            private string RewriteTemplate(string template)
+            {
+                var normalizedTemplate = template.TrimStart('/');
+                if (normalizedTemplate.Equals("api", StringComparison.OrdinalIgnoreCase))
+                {
+                    return _apiBasePath;
+                }
+
+                const string defaultApiPrefix = "api/";
+                if (!normalizedTemplate.StartsWith(defaultApiPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return template;
+                }
+
+                var suffix = normalizedTemplate[defaultApiPrefix.Length..];
+                return string.IsNullOrWhiteSpace(_apiBasePath)
+                    ? suffix
+                    : $"{_apiBasePath}/{suffix}";
+            }
+
+            private static bool IsChillSharpController(ControllerModel controller)
+            {
+                return controller.ControllerType.Namespace?.StartsWith("ChillSharp.", StringComparison.Ordinal) == true;
+            }
         }
     }
 
@@ -244,6 +438,11 @@ namespace ChillSharp.Api
         /// If true, Chill API endpoints will require authentication.
         /// </summary>
         public bool ProtectedApi { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets the base URL path used by ChillSharp API endpoints. Defaults to <c>/api</c>.
+        /// </summary>
+        public string ApiBasePath { get; set; } = ChillSharpInitOptions.Current.ApiBasePath;
 
         /// <summary>
         /// Enables the embedded ChillSharp auth API module.
@@ -264,6 +463,11 @@ namespace ChillSharp.Api
         /// Enables the embedded ChillSharp MCP API module.
         /// </summary>
         public bool EnableMcpApi { get; set; } = true;
+
+        /// <summary>
+        /// Enables the embedded ChillSharp attachment API module.
+        /// </summary>
+        public bool EnableAttachmentApi { get; set; } = true;
     }
 
     /// <summary>
@@ -272,14 +476,22 @@ namespace ChillSharp.Api
     public class ChillIdentityApiOptions : ChillApiOptions
     {
         /// <summary>
-        /// Gets or sets the lifetime of issued access tokens.
+        /// Gets or sets the lifetime of issued access tokens. Defaults to
+        /// <c>CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES</c> when present, otherwise 20 minutes.
         /// </summary>
-        public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(20);
+        public TimeSpan AccessTokenLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+            ChillAuthIdentityApiOptions.AccessTokenLifetimeMinutesEnvironmentVariable,
+            value => TimeSpan.FromMinutes(value),
+            TimeSpan.FromMinutes(20));
 
         /// <summary>
-        /// Gets or sets the lifetime of issued refresh tokens.
+        /// Gets or sets the lifetime of issued refresh tokens. Defaults to
+        /// <c>CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS</c> when present, otherwise 14 days.
         /// </summary>
-        public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+        public TimeSpan RefreshTokenLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+            ChillAuthIdentityApiOptions.RefreshTokenLifetimeDaysEnvironmentVariable,
+            value => TimeSpan.FromDays(value),
+            TimeSpan.FromDays(14));
 
         /// <summary>
         /// Gets or sets whether register should also create the matching ChillSharp auth user.
@@ -390,5 +602,16 @@ namespace ChillSharp.Api
         /// Gets or sets the environment-variable name used to resolve the optional root display name.
         /// </summary>
         public string RootDisplayNameEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_DISPLAY_NAME";
+
+        private static TimeSpan ReadPositiveEnvironmentTimeSpan(string variableName, Func<int, TimeSpan> convert, TimeSpan fallback)
+        {
+            var rawValue = Environment.GetEnvironmentVariable(variableName);
+            if (int.TryParse(rawValue, out var value) && value > 0)
+            {
+                return convert(value);
+            }
+
+            return fallback;
+        }
     }
 }

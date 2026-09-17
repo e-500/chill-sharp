@@ -41,7 +41,7 @@ Each menu item contains:
   Optional JSON string with component configuration.
 
 - `MenuHierarchy`
-  Required hierarchy prefix used for menu filtering.
+  Optional hierarchy prefix, or comma-separated list of prefixes, used for menu filtering. Empty menu hierarchy means the menu item is public to any logged user who has at least one effective menu hierarchy.
 
 ## Tree Structure
 
@@ -128,7 +128,7 @@ Example:
 
 `MenuHierarchy` is the string used to decide whether a menu item is visible to the current user.
 
-The filtering rule is prefix-based.
+The value can be a single code or a comma-separated list of codes. The filtering rule is prefix-based.
 
 Examples:
 
@@ -143,6 +143,9 @@ If a user or one of the user roles has:
 
 - `SECTION-A`
   access to menu items whose `MenuHierarchy` starts with `SECTION-A`
+
+- `SECTION-A, SECTION-B.REPORTS`
+  access to menu items whose `MenuHierarchy` starts with either `SECTION-A` or `SECTION-B.REPORTS`
 
 - `SECTION-A.POSTS`
   access limited to menu items whose `MenuHierarchy` starts with `SECTION-A.POSTS`
@@ -159,11 +162,12 @@ This means:
 When `get-menu` is called by an authenticated user:
 
 - the server reads `MenuHierarchy` from the current `AuthUser`
-- if the current user `MenuHierarchy` is null, empty, or whitespace, the full menu is returned
 - the server also reads `MenuHierarchy` from all active roles assigned to that user
-- all allowed prefixes are combined
+- user and role values are split by comma and merged into one effective prefix set
 - if any prefix is `*`, the full menu is returned
-- otherwise only items whose `MenuHierarchy` starts with one allowed prefix are returned
+- if the merged prefix set is empty, no menu items are returned
+- otherwise, menu items with an empty `MenuHierarchy` are returned
+- menu items with one or more `MenuHierarchy` values are returned when at least one item value starts with one effective user or role prefix
 
 ## Recommended Convention
 

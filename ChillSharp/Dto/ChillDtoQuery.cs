@@ -75,6 +75,11 @@ namespace ChillSharp.Dto
         /// </summary>
         public EF.ChillPagination? Pagination { get; set; } = null;
 
+        /// <summary>
+        /// Optional ordering settings for the query results.
+        /// </summary>
+        public EF.ChillOrdering? Ordering { get; set; } = new();
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.
@@ -92,14 +97,7 @@ namespace ChillSharp.Dto
         /// <exception cref="ChillException">Thrown if the query type name is invalid or improperly prefixed.</exception>
         private string _TestEntityAndGetChillType(IChillContext Context, IChillQuery<IChillEntity> Query)
         {
-            var chillType = Query.GetType().FullName;
-            var chillTypePrefix = Context.GetChillTypePrefix();
-            if (string.IsNullOrEmpty(chillType))
-                throw new ChillException($"Entity type full name ({chillType}) is invalid");
-            if (!chillType.StartsWith(chillTypePrefix))
-                throw new ChillException($"Entity type full name ({chillType}) doesn't start with {chillTypePrefix}");
-
-            return chillType.Substring(chillTypePrefix.Length + 1);
+            return ChillTypeResolver.NormalizeChillType(Query.GetType(), Context.GetChillTypePrefix());
         }
 
 		/// <summary>
@@ -133,6 +131,19 @@ namespace ChillSharp.Dto
             else
             {
                 Pagination = null;
+            }
+
+            if (Query.Ordering != null)
+            {
+                Ordering = new EF.ChillOrdering
+                {
+                    PropertyName = Query.Ordering.PropertyName,
+                    Direction = Query.Ordering.Direction
+                };
+            }
+            else
+            {
+                Ordering = null;
             }
 		}
 
@@ -173,6 +184,19 @@ namespace ChillSharp.Dto
             else
             {
                 Query.Pagination = null;
+            }
+
+            if (Ordering != null)
+            {
+                Query.Ordering = new EF.ChillOrdering
+                {
+                    PropertyName = Ordering.PropertyName,
+                    Direction = Ordering.Direction
+                };
+            }
+            else
+            {
+                Query.Ordering = null;
             }
         }
         #endregion

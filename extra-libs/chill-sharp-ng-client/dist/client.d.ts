@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthPermissionRule, ChangePasswordRequest, ChangePasswordResponse, CreateAuthPermissionRuleRequest, CreateAuthRoleRequest, CreateAuthUserRequest, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoMenuItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, LoginAuthIdentityRequest, PasswordResetTokenResponse, RequestPasswordResetRequest, ResetPasswordRequest, ResetPasswordResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest, UpdateAuthPermissionRuleRequest, UpdateAuthRoleRequest, UpdateAuthUserRequest } from "chill-sharp-ts-client";
+import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthTokenResponse, AuthPermissionRule, ChangePasswordRequest, ChangePasswordResponse, CreateAuthPermissionRuleRequest, CreateAuthRoleRequest, CreateAuthUserRequest, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoMenuItem, ChillDtoSchema, ChillDtoSchemaListItem, ChillAttachmentUploadFile, ChillAttachmentUploadOptions, ChillValidationError, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, LoginAuthIdentityRequest, PasswordResetTokenResponse, RequestPasswordResetRequest, ResetPasswordRequest, ResetPasswordResponse, RegisterAuthIdentityRequest, JsonObject, SetAuthRoleRequest, SetAuthUserRequest, UpdateAuthPermissionRuleRequest, UpdateAuthRoleRequest, UpdateAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -13,6 +13,10 @@ export declare class ChillSharpNgClient {
     autocomplete(dto: JsonObject): Observable<JsonObject>;
     validate(dto: JsonObject): Observable<ChillValidationError[]>;
     chunk(operations: JsonObject[]): Observable<JsonObject[]>;
+    uploadAttachment(targetEntity: JsonObject, file: ChillAttachmentUploadFile, options?: ChillAttachmentUploadOptions): Observable<JsonObject[]>;
+    uploadAttachments(targetEntity: JsonObject, files: ChillAttachmentUploadFile[], options?: ChillAttachmentUploadOptions): Observable<JsonObject[]>;
+    getAttachments(targetEntity: JsonObject): Observable<JsonObject[]>;
+    downloadAttachment(attachmentOrGuid: JsonObject | string): Observable<Blob>;
     version(): string;
     test(): Observable<string>;
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<ChillDtoSchema | null>;

@@ -32,7 +32,7 @@ ChillSharp uses a configurable system time zone only for `DateTime` and some `Da
 Environment variable:
 
 ```text
-CHILL_SHARP_SYSTEM_TIMEZONE
+CHILLSHARP_SYSTEM_TIMEZONE
 ```
 
 Default:
@@ -76,7 +76,7 @@ ChillSharp writes `DateTime` as an ISO 8601 date-time in the configured ChillSha
 
 If the source value is UTC, ChillSharp converts it into the configured system time zone before writing.
 
-Example with `CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome`:
+Example with `CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome`:
 
 ```csharp
 new DateTime(2026, 4, 11, 12, 30, 0, DateTimeKind.Utc)
@@ -291,7 +291,7 @@ This is useful when clients send a full timestamp but the target field conceptua
 Assume:
 
 ```text
-CHILL_SHARP_SYSTEM_TIMEZONE=Europe/Rome
+CHILLSHARP_SYSTEM_TIMEZONE=Europe/Rome
 ```
 
 ### Example 1: `DateTimeOffset`

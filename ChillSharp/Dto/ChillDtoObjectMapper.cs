@@ -37,6 +37,14 @@ namespace ChillSharp.Dto
             PropertyNameCaseInsensitive = true
         };
 
+        private static readonly HashSet<string> ServerManagedEntityProperties = new(StringComparer.Ordinal)
+        {
+            nameof(IChillEntity.Checksum),
+            nameof(IChillEntity.LastUpdateUser),
+            nameof(IChillEntity.LastUpdate),
+            nameof(IChillEntity.LastUpdateUtcOffset)
+        };
+
         /// <summary>
         /// Builds a DTO-friendly property bag from the selected CLR properties, resolving entity navigations
         /// into <see cref="ChillDtoEntity"/> wrappers and converting scalar values using the Chill schema type.
@@ -51,6 +59,8 @@ namespace ChillSharp.Dto
         {
             var defaultSchema = ResolveDefaultSchema(context, chillType);
             var dbx = (DbContext)context;
+            var sourceEntityType = dbx.Model.FindEntityType(source.GetType());
+            var sourceIsMappedEntity = sourceEntityType != null;
 
             return properties.ToDictionary(
                 property => property.Name,
@@ -66,7 +76,7 @@ namespace ChillSharp.Dto
 
                     if (typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
                     {
-                        if (dbx.Entry(source).Reference(propertyName).Exist(true))
+                        if (!sourceIsMappedEntity || dbx.Entry(source).Reference(propertyName).Exist(true))
                         {
                             var entity = (IChillEntity?)property.GetValue(source);
                             if (entity == null)
@@ -81,12 +91,21 @@ namespace ChillSharp.Dto
                     if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType))
                     {
                         // Check if property is mapped in EF model
-                        var entityType = dbx.Model.FindEntityType(source.GetType());
-                        var navigation = entityType?.FindNavigation(propertyName);
+                        var navigation = sourceEntityType?.FindNavigation(propertyName);
 
                         if (navigation != null)
                         {
+                            // Load and serialize any kind of collection
                             dbx.Entry(source).Collection(propertyName).Load();
+
+                            //if (dbx.Entry(source).Collection(propertyName).IsImplicitManyToMany())
+                            //{
+                            //    dbx.Entry(source).Collection(propertyName).Load();
+                            //}
+                            //else 
+                            //{
+                            //    return null; // Not loaded and not an implicit many-to-many, return null to avoid unintended loading
+                            //}
                         }
 
                         var collection = (IEnumerable<IChillEntity>?)property.GetValue(source);
@@ -118,6 +137,7 @@ namespace ChillSharp.Dto
         {
             var dbx = (DbContext)context;
             var defaultSchema = ResolveDefaultSchema(context, chillType);
+            var targetIsMappedEntity = dbx.Model.FindEntityType(target.GetType()) != null;
 
             foreach (var property in properties)
             {
@@ -127,9 +147,21 @@ namespace ChillSharp.Dto
                 if (!TryGetSourceValue(sourceValues, propertyName, out var value))
                     continue;
 
+                if (target is IChillEntity && ServerManagedEntityProperties.Contains(propertyName))
+                    continue;
+
                 if (attr.CallOnInflate)
                 {
                     onInflate?.Invoke(propertyName);
+                    continue;
+                }
+
+                // Can handle only implicit many-to-many relations, skip other type of collections.
+                // Them should be managed separately
+                if (targetIsMappedEntity &&
+                    typeof(IEnumerable<IChillEntity>).IsAssignableFrom(property.PropertyType) &&
+                    !dbx.Entry(target).Collection(propertyName).IsImplicitManyToMany())
+                {
                     continue;
                 }
 
@@ -146,6 +178,14 @@ namespace ChillSharp.Dto
                         loadTrackedCollections);
 
                     property.SetValue(target, parsedValue);
+
+                    // Additional: To ensure to write null even if reference is not loaded
+                    if (targetIsMappedEntity &&
+                        value == null &&
+                        typeof(IChillEntity).IsAssignableFrom(property.PropertyType))
+                    {
+                        dbx.Entry(target).Reference(propertyName).ClearForeignKey(); 
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -481,35 +521,21 @@ namespace ChillSharp.Dto
 
             if (targetType == typeof(DateTimeOffset))
             {
-                if (hasUtcDesignator)
-                {
-                    return ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
-                }
-
-                if (hasExplicitOffset)
-                {
+                if (hasUtcDesignator || hasExplicitOffset)
                     return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-                }
 
-                var unspecifiedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-                var localDateTime = DateTime.SpecifyKind(unspecifiedDateTime, DateTimeKind.Unspecified);
+                var localDateTime = ParseUnspecifiedDateTime(text);
                 return new DateTimeOffset(localDateTime, systemTimeZone.GetUtcOffset(localDateTime));
             }
 
             if (hasUtcDesignator || hasExplicitOffset)
-            {
-                var converted = ConvertToSystemTimeZone(DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), systemTimeZone);
-                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
-            }
+                return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).UtcDateTime;
 
-            var parsedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-            if (parsedDateTime.Kind == DateTimeKind.Utc)
-            {
-                var converted = ConvertToSystemTimeZone(new DateTimeOffset(parsedDateTime, TimeSpan.Zero), systemTimeZone);
-                return DateTime.SpecifyKind(converted.DateTime, DateTimeKind.Unspecified);
-            }
-
-            return parsedDateTime;
+            var unspecifiedDateTime = ParseUnspecifiedDateTime(text);
+            return new DateTimeOffset(
+                unspecifiedDateTime,
+                systemTimeZone.GetUtcOffset(unspecifiedDateTime))
+                .UtcDateTime;
         }
 
         private static object ConvertDuration(object value, Type targetType)
@@ -600,6 +626,12 @@ namespace ChillSharp.Dto
 
             var dateTimeValue = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
             return TimeOnly.FromDateTime(dateTimeValue);
+        }
+
+        private static DateTime ParseUnspecifiedDateTime(string text)
+        {
+            var parsedDateTime = DateTime.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+            return DateTime.SpecifyKind(parsedDateTime, DateTimeKind.Unspecified);
         }
 
         private static bool HasUtcDesignator(string text)

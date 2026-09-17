@@ -27,12 +27,22 @@ public sealed class ChillSharpInitOptions
     /// <summary>
     /// Environment variable used to override the system time zone used by DTO date/time conversions.
     /// </summary>
-    public const string SystemTimeZoneEnvironmentVariableName = "CHILL_SHARP_SYSTEM_TIMEZONE";
+    public const string SystemTimeZoneEnvironmentVariableName = "CHILLSHARP_SYSTEM_TIMEZONE";
+
+    /// <summary>
+    /// Environment variable used to override the base URL path used by ChillSharp API endpoints.
+    /// </summary>
+    public const string ApiBasePathEnvironmentVariableName = "CHILLSHARP_API_BASE_PATH";
 
     /// <summary>
     /// Default IANA time-zone identifier used when no override is configured.
     /// </summary>
     public const string DefaultSystemTimeZoneId = "Europe/Rome";
+
+    /// <summary>
+    /// Default base URL path used by ChillSharp API endpoints.
+    /// </summary>
+    public const string DefaultApiBasePath = "/api";
 
     /// <summary>
     /// Gets the current process-wide ChillSharp initialization settings.
@@ -43,6 +53,11 @@ public sealed class ChillSharpInitOptions
     /// Gets the IANA time-zone identifier used by ChillSharp for DTO date/time conversions.
     /// </summary>
     public string SystemTimeZoneId { get; init; } = DefaultSystemTimeZoneId;
+
+    /// <summary>
+    /// Gets the base URL path used by ChillSharp API endpoints.
+    /// </summary>
+    public string ApiBasePath { get; init; } = DefaultApiBasePath;
 
     /// <summary>
     /// Replaces the current settings or reloads them from environment variables when no explicit value is provided.
@@ -66,12 +81,33 @@ public sealed class ChillSharpInitOptions
     public static ChillSharpInitOptions FromEnvironment()
     {
         var configuredTimeZoneId = Environment.GetEnvironmentVariable(SystemTimeZoneEnvironmentVariableName)?.Trim();
+        var configuredApiBasePath = Environment.GetEnvironmentVariable(ApiBasePathEnvironmentVariableName)?.Trim();
+
         return new ChillSharpInitOptions
         {
             SystemTimeZoneId = string.IsNullOrWhiteSpace(configuredTimeZoneId)
                 ? DefaultSystemTimeZoneId
-                : configuredTimeZoneId
+                : configuredTimeZoneId,
+            ApiBasePath = NormalizeApiBasePath(configuredApiBasePath)
         };
+    }
+
+    private static string NormalizeApiBasePath(string? apiBasePath)
+    {
+        var normalized = apiBasePath?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return DefaultApiBasePath;
+        }
+
+        if (!normalized.StartsWith("/"))
+        {
+            normalized = "/" + normalized;
+        }
+
+        return normalized.Length > 1
+            ? normalized.TrimEnd('/')
+            : normalized;
     }
 
     private static TimeZoneInfo ResolveTimeZone(string? timeZoneId)

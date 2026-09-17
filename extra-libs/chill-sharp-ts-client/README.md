@@ -104,23 +104,36 @@ If the service supports ChillSharp auth endpoints, the client can log in and ref
 
 ## Core ChillSharp Operations
 
+Query payloads can now include:
+
+- `ordering.propertyName`
+- `ordering.direction`
+
+If you omit `ordering`, the backend defaults to `Position`. Entity payloads also include `position`, which defaults to `0`.
+
 ### Query
 
 Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
 
 ```ts
 const result = await client.query({
-  ChillType: "Query.PostQuery",
-  Properties: {
-    Title: "Hello"
+  chillType: "Query.PostQuery",
+  properties: {
+    title: "Hello"
   },
-  ResultProperties: [
-    { Name: "Guid" },
-    { Name: "Title" },
-    { Name: "Author" }
+  ordering: {
+    propertyName: "Position",
+    direction: "ASC"
+  },
+  resultProperties: [
+    { name: "Guid" },
+    { name: "Title" },
+    { name: "Author" }
   ]
 });
 ```
+
+When `ordering.propertyName` points to a Chill entity reference such as `Blog`, the backend orders by `Blog.Label`.
 
 ### Lookup
 
@@ -128,14 +141,18 @@ Use `lookup()` when `ChillType` points to an entity type and you only need gener
 
 ```ts
 const result = await client.lookup({
-  ChillType: "Model.Post",
-  Properties: {
-    FullTextSearch: "Ada Lovelace"
+  chillType: "Model.Post",
+  properties: {
+    fullTextSearch: "Ada Lovelace"
   },
-  ResultProperties: [
-    { Name: "Guid" },
-    { Name: "Title" },
-    { Name: "Author" }
+  ordering: {
+    propertyName: "Blog",
+    direction: "ASC"
+  },
+  resultProperties: [
+    { name: "Guid" },
+    { name: "Title" },
+    { name: "Author" }
   ]
 });
 ```
@@ -153,11 +170,12 @@ const entity = await client.find({
 
 ```ts
 const entity = await client.create({
-  ChillType: "Model.Post",
-  Guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
-  Properties: {
-    Title: "New title",
-    Author: "Grace Hopper"
+  chillType: "Model.Post",
+  guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+  position: 10,
+  properties: {
+    title: "New title",
+    author: "Grace Hopper"
   }
 });
 ```
@@ -166,10 +184,11 @@ const entity = await client.create({
 
 ```ts
 const updated = await client.update({
-  ChillType: "Model.Post",
-  Guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
-  Properties: {
-    Title: "Updated title"
+  chillType: "Model.Post",
+  guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11",
+  position: 20,
+  properties: {
+    title: "Updated title"
   }
 });
 ```
@@ -181,6 +200,30 @@ await client.delete({
   ChillType: "Model.Post",
   Guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11"
 });
+```
+
+### Attachments
+
+Use the attachment helpers when the host enables `ChillSharp.Attachment`.
+
+```ts
+const post = {
+  ChillType: "Model.Post",
+  Guid: "f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11"
+};
+
+const uploaded = await client.uploadAttachment(post, {
+  fileName: "contract.txt",
+  content: new Blob(["hello attachment"], { type: "text/plain" }),
+  contentType: "text/plain"
+}, {
+  title: "Contract",
+  description: "Signed draft",
+  isPublic: false
+});
+
+const attachments = await client.getAttachments(post);
+const fileBlob = await client.downloadAttachment(uploaded[0]);
 ```
 
 ### Chunk
@@ -326,6 +369,7 @@ The notification callback receives arrays shaped like:
 
 ```ts
 const schema = await client.getSchema("Model.Post", "default");
+console.log(schema.handleAttachments);
 
 // Override the constructor default for one call
 const englishSchema = await client.getSchema("Model.Post", "default", "en-GB");
@@ -358,6 +402,7 @@ await client.setSchema({
 
 ```ts
 const options = await client.getEntityOptions("Model.Post");
+console.log(options.handleAttachments);
 ```
 
 ### Set entity options
@@ -366,6 +411,7 @@ const options = await client.getEntityOptions("Model.Post");
 const options = await client.setEntityOptions({
   ChillType: "Model.Post",
   ChecksumEnabled: true,
+  HandleAttachments: true,
   LabelFormatString: "{Title}",
   ShortLabelFormatString: "{Title}",
   FullTextContentFormatString: "{Title} {Author}",

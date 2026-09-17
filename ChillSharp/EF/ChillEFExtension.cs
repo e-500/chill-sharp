@@ -96,29 +96,77 @@ namespace ChillSharp.EF
         /// - the FK value itself for a single FK
         /// - a dictionary with property names/values for composite keys
         /// </summary>
-        public static object? ForeignKey<TEntity, TProperty>(
-            this ReferenceEntry<TEntity, TProperty> reference)
-            where TEntity : class
-            where TProperty : class
+        //public static object? ForeignKey<TEntity, TProperty>(
+        //    this ReferenceEntry<TEntity, TProperty> reference)
+        //    where TEntity : class
+        //    where TProperty : class
+        //{
+        //    var entry = reference.EntityEntry;
+
+        //    var navigationMetadata = reference.Metadata as INavigation
+        //        ?? throw new InvalidOperationException($"Navigation '{reference.Metadata.Name}' is not a reference navigation.");
+
+        //    var fkProps = navigationMetadata.ForeignKey.Properties;
+
+        //    // If all FKs are null, return null
+        //    if (fkProps.All(p => entry.Property(p.Name).CurrentValue == null))
+        //        return null;
+
+        //    // If single-column FK, return scalar
+        //    if (fkProps.Count == 1)
+        //        return entry.Property(fkProps[0].Name).CurrentValue;
+
+        //    // If composite FK, return dictionary
+        //    var values = fkProps.ToDictionary(p => p.Name, p => entry.Property(p.Name).CurrentValue);
+        //    return values;
+        //}
+
+        //public static object? ForeignKey(this ReferenceEntry reference)
+        //{
+        //    var entry = reference.EntityEntry;
+
+        //    var navigationMetadata = reference.Metadata as INavigation
+        //        ?? throw new InvalidOperationException(
+        //            $"Navigation '{reference.Metadata.Name}' is not a reference navigation.");
+
+        //    var fkProps = navigationMetadata.ForeignKey.Properties;
+
+        //    if (fkProps.All(p => entry.Property(p.Name).CurrentValue == null))
+        //        return null;
+
+        //    if (fkProps.Count == 1)
+        //        return entry.Property(fkProps[0].Name).CurrentValue;
+
+        //    return fkProps.ToDictionary(
+        //        p => p.Name,
+        //        p => entry.Property(p.Name).CurrentValue);
+        //}
+
+        public static void ClearForeignKey(this ReferenceEntry reference)
         {
             var entry = reference.EntityEntry;
 
             var navigationMetadata = reference.Metadata as INavigation
-                ?? throw new InvalidOperationException($"Navigation '{reference.Metadata.Name}' is not a reference navigation.");
+                ?? throw new InvalidOperationException(
+                    $"Navigation '{reference.Metadata.Name}' is not a reference navigation.");
 
             var fkProps = navigationMetadata.ForeignKey.Properties;
 
-            // If all FKs are null, return null
-            if (fkProps.All(p => entry.Property(p.Name).CurrentValue == null))
-                return null;
+            foreach (var fkProp in fkProps)
+            {
+                entry.Property(fkProp.Name).CurrentValue = null;
+            }
+        }
 
-            // If single-column FK, return scalar
-            if (fkProps.Count == 1)
-                return entry.Property(fkProps[0].Name).CurrentValue;
-
-            // If composite FK, return dictionary
-            var values = fkProps.ToDictionary(p => p.Name, p => entry.Property(p.Name).CurrentValue);
-            return values;
+        /// <summary>
+        /// Checks if the collection navigation represents an implicit many-to-many relationship.
+        /// </summary>
+        /// <param name="collection"></param>
+        /// <returns></returns>
+        public static bool IsImplicitManyToMany(this CollectionEntry collection)
+        {
+            return collection.Metadata is ISkipNavigation skipNav
+                && skipNav.JoinEntityType.HasSharedClrType;
         }
 
         public static IQueryable<Dictionary<string, object?>> SelectRequiredProperties<TEntity>(

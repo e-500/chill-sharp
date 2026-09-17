@@ -17,8 +17,14 @@ This folder contains the reference documentation for ChillSharp.
 - [Configuration/README.md](./Configuration/README.md)
   Quick reference for the example host configuration options and their environment variables.
 
+- [AttachmentModel/README.md](./AttachmentModel/README.md)
+  Attachment entity model, archive layout, configuration, and upload/download endpoint behavior.
+
 - [DateTimeSerialization.md](./DateTimeSerialization.md)
   How ChillSharp serializes and parses `DateTimeOffset`, `DateTime`, `DateOnly`, and `TimeOnly`, including comparisons with default ASP.NET Core behavior.
+
+- [DateTimePolicy/README.md](./DateTimePolicy/README.md)
+  Current DTO policy for `DateTime` and `DateTimeOffset`, including configured timezone handling, UTC normalization, and server-managed audit fields.
 
 - [AuthenticationModel/README.md](./AuthenticationModel/README.md)
   Identity-backed account flows, auth-management endpoints, bootstrap strategies, and protected API setup.
@@ -35,8 +41,14 @@ This folder contains the reference documentation for ChillSharp.
 - [AIAssistedDevelopment/README.md](./AIAssistedDevelopment/README.md)
   How ChillSharp supports AI-assisted development by reducing repetitive CRUD code, stabilizing the API surface, and keeping model growth more uniform.
 
+- [Mcp/README.md](./Mcp/README.md)
+  Model Context Protocol module, MCP tool behavior, registration, `EnableMCP`, and guidance for preparing an AI-friendly `DbContext`.
+
 - [ClientGeneration/README.md](./ClientGeneration/README.md)
   Generate client libraries from a ChillSharp host for TypeScript and Python using an OpenAPI document exposed by the host application.
+
+- [ChillSharpClient.md](./ChillSharpClient.md)
+  Use the .NET `ChillSharp.Client` library for core entity operations, auth, schema/menu, i18n, and attachments.
 
 - [../ext/chill-sharp-ts-client/README.md](../ext/chill-sharp-ts-client/README.md)
   Generic TypeScript client for ChillSharp services.
@@ -61,6 +73,9 @@ This folder contains the reference documentation for ChillSharp.
 - `ChillSharp.Schema`
   Schema generation, persistence, and schema cache.
 
+- `ChillSharp.Attachment`
+  Attachment entity model, archive storage, and upload/download endpoints.
+
 - `ChillSharp.Auth`
   Authorization model, permission rules, role/user management, and optional ASP.NET Core Identity integration.
 
@@ -69,6 +84,9 @@ This folder contains the reference documentation for ChillSharp.
 
 - `ChillSharp.Client`
   .NET client for ChillSharp and ChillSharp.Auth endpoints.
+
+- `ChillSharp.Mcp`
+  MCP server module built on the official C# SDK, exposing ChillSharp schema discovery and query tools for AI clients.
 
 - `ext/chill-sharp-ts-client`
   Generic TypeScript client package.
@@ -102,6 +120,7 @@ Different contexts can coexist with different values. ChillSharp does not assume
 `ChillEntity` is the recommended base class for model types exposed through ChillSharp. It already provides:
 
 - `Guid`
+- `Position`
 - `Label`, `ShortLabel`, `FullTextContent`
 - `Checksum`, `LastUpdateUser`, `LastUpdate`, `LastUpdateUtcOffset`
 - default lifecycle behavior
@@ -142,6 +161,17 @@ After updates, ChillSharp automatically stores:
 
 The audit logic is enforced through the `IChillEntity` interface path used by `ChillEngine`, so a derived class can override `OnAfterUpdate()` without bypassing the base audit update.
 
+### Query Ordering
+
+`ChillDtoQuery` includes an `Ordering` object that mirrors `Pagination`:
+
+- `PropertyName`
+- `Direction`
+
+If the client does not send an explicit ordering, ChillSharp applies `Position` by default. `Position` is part of both `ChillEntity` and `ChillDtoEntity`, and defaults to `0`.
+
+When `PropertyName` points to a referenced Chill entity, ordering is applied using the referenced entity `Label`. This keeps generic list screens readable without requiring clients to know the foreign-key internals.
+
 ## API Surface
 
 The core mapped API is exposed by:
@@ -158,6 +188,7 @@ This maps the Chill API controllers and also includes:
 Depending on which modules are registered, the same host can also expose:
 
 - schema services through `ChillSharp.Schema`
+- attachment upload/download services through `ChillSharp.Attachment`
 - auth/account and permission-management services through `ChillSharp.Auth`
 - i18n text endpoints through `ChillSharp.I18n`
 

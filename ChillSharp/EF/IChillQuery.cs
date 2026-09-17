@@ -62,6 +62,11 @@ namespace ChillSharp.EF
         ChillPagination? Pagination { get; set; }
 
         /// <summary>
+        /// Ordering settings applied before pagination.
+        /// </summary>
+        ChillOrdering? Ordering { get; set; }
+
+        /// <summary>
         /// Applies additional filtering logic to the query based on the current object's properties.
         /// <para>
         /// By default, implementations may filter by <see cref="Guid"/> if it is set.
@@ -85,15 +90,12 @@ namespace ChillSharp.EF
         }
 
         /// <summary>
-        /// Applies sorting logic to the query results.
-        /// <para>
-        /// By default, this may sort by <see cref="Guid"/> or other standard fields. Override for custom sorting.
-        /// </para>
+        /// Applies ordering logic to the query results.
         /// </summary>
         /// <param name="context">The active Chill database context.</param>
-        /// <param name="query">The query to sort.</param>
-        /// <returns>The sorted <see cref="IQueryable{T}"/>.</returns>
-        IQueryable<T> OnSort(IChillContext Context, IQueryable<T> Query);
+        /// <param name="query">The query to order.</param>
+        /// <returns>The ordered <see cref="IQueryable{T}"/>.</returns>
+        IQueryable<T> OnOrderingBy(IChillContext Context, IQueryable<T> Query);
 
         /// <summary>
         /// Applies pagination to the query results if <see cref="Pagination"/> is set.

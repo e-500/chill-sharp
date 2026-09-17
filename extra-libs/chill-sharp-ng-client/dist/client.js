@@ -61,6 +61,18 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     chunk(operations) {
         return from(this.client.chunk(operations));
     }
+    uploadAttachment(targetEntity, file, options) {
+        return from(this.client.uploadAttachment(targetEntity, file, options));
+    }
+    uploadAttachments(targetEntity, files, options) {
+        return from(this.client.uploadAttachments(targetEntity, files, options));
+    }
+    getAttachments(targetEntity) {
+        return from(this.client.getAttachments(targetEntity));
+    }
+    downloadAttachment(attachmentOrGuid) {
+        return from(this.client.downloadAttachment(attachmentOrGuid));
+    }
     version() {
         return CHILL_SHARP_NG_CLIENT_VERSION;
     }

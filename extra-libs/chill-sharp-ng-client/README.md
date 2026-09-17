@@ -128,6 +128,10 @@ providers: [
 - `create()`
 - `update()`
 - `delete()`
+- `uploadAttachment()`
+- `uploadAttachments()`
+- `getAttachments()`
+- `downloadAttachment()`
 - `chunk()`
 - `test()`
 - `getSchema()`
@@ -144,6 +148,9 @@ providers: [
 - auth helpers like `loginAuthAccount()` and `refreshAuthAccount()`
 - auth management helpers like `getAuthPermissions()`, `getAuthUserList()`, `setAuthUser()`, `getAuthRoleList()`, and `setAuthRole()`
 
+Schema and entity option payloads re-exported by this package include the `handleAttachments` flag exposed by the schema APIs.
+Query payloads also include `ordering`, and entity payloads include `position` with backend default `0`.
+
 The auth user payloads include:
 
 - `displayCultureName`
@@ -153,19 +160,29 @@ The auth user payloads include:
 
 ## Examples
 
-### Query`r`n`r`nUse `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.`r`n`r`n```ts
+### Query
+
+Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.
+
+```ts
 readonly posts$ = this.chill.query({
-  ChillType: "Query.PostQuery",
-  Properties: {
-    Title: "Hello"
+  chillType: "Query.PostQuery",
+  properties: {
+    title: "Hello"
   },
-  ResultProperties: [
-    { Name: "Guid" },
-    { Name: "Title" },
-    { Name: "Author" }
+  ordering: {
+    propertyName: "Position",
+    direction: "ASC"
+  },
+  resultProperties: [
+    { name: "Guid" },
+    { name: "Title" },
+    { name: "Author" }
   ]
 });
 ```
+
+If `ordering.propertyName` points to a Chill entity reference, the backend orders by that referenced entity `Label`.
 
 ### Lookup
 
@@ -173,14 +190,18 @@ Use `lookup()` when `ChillType` points to an entity type and you only need gener
 
 ```ts
 readonly postsLookup$ = this.chill.lookup({
-  ChillType: "Model.Post",
-  Properties: {
-    FullTextSearch: "Ada Lovelace"
+  chillType: "Model.Post",
+  properties: {
+    fullTextSearch: "Ada Lovelace"
   },
-  ResultProperties: [
-    { Name: "Guid" },
-    { Name: "Title" },
-    { Name: "Author" }
+  ordering: {
+    propertyName: "Blog",
+    direction: "ASC"
+  },
+  resultProperties: [
+    { name: "Guid" },
+    { name: "Title" },
+    { name: "Author" }
   ]
 });
 ```
@@ -189,13 +210,40 @@ readonly postsLookup$ = this.chill.lookup({
 
 ```ts
 this.chill.create({
-  ChillType: "Model.Post",
-  Guid: crypto.randomUUID(),
-  Properties: {
-    Title: "New title",
-    Author: "Grace Hopper"
+  chillType: "Model.Post",
+  guid: crypto.randomUUID(),
+  position: 10,
+  properties: {
+    title: "New title",
+    author: "Grace Hopper"
   }
 }).subscribe();
+```
+
+### Attachments
+
+```ts
+readonly uploaded$ = this.chill.uploadAttachment(
+  {
+    ChillType: "Model.Post",
+    Guid: this.postGuid
+  },
+  {
+    fileName: "contract.txt",
+    content: new Blob(["hello attachment"], { type: "text/plain" }),
+    contentType: "text/plain"
+  },
+  {
+    title: "Contract",
+    description: "Signed draft",
+    isPublic: false
+  }
+);
+
+readonly attachments$ = this.chill.getAttachments({
+  ChillType: "Model.Post",
+  Guid: this.postGuid
+});
 ```
 
 ### Test endpoint

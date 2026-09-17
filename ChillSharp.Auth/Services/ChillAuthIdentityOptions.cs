@@ -24,15 +24,27 @@ namespace ChillSharp.Auth.Services;
 /// </summary>
 public class ChillAuthIdentityApiOptions
 {
-    /// <summary>
-    /// Gets or sets the lifetime of issued access tokens.
-    /// </summary>
-    public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromMinutes(20);
+    public const string AccessTokenLifetimeMinutesEnvironmentVariable = "CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES";
+
+    public const string RefreshTokenLifetimeDaysEnvironmentVariable = "CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS";
 
     /// <summary>
-    /// Gets or sets the lifetime of issued refresh tokens.
+    /// Gets or sets the lifetime of issued access tokens. Defaults to
+    /// <c>CHILLSHARP_AUTH_ACCESS_TOKEN_MINUTES</c> when present, otherwise 20 minutes.
     /// </summary>
-    public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+    public TimeSpan AccessTokenLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+        AccessTokenLifetimeMinutesEnvironmentVariable,
+        value => TimeSpan.FromMinutes(value),
+        TimeSpan.FromMinutes(20));
+
+    /// <summary>
+    /// Gets or sets the lifetime of issued refresh tokens. Defaults to
+    /// <c>CHILLSHARP_AUTH_REFRESH_TOKEN_DAYS</c> when present, otherwise 14 days.
+    /// </summary>
+    public TimeSpan RefreshTokenLifetime { get; set; } = ReadPositiveEnvironmentTimeSpan(
+        RefreshTokenLifetimeDaysEnvironmentVariable,
+        value => TimeSpan.FromDays(value),
+        TimeSpan.FromDays(14));
 
     /// <summary>
     /// Gets or sets whether register should also create the matching ChillSharp auth user.
@@ -143,4 +155,15 @@ public class ChillAuthIdentityApiOptions
     /// Gets or sets the environment-variable name used to resolve the optional root display name.
     /// </summary>
     public string RootDisplayNameEnvironmentVariable { get; set; } = "CHILLSHARP_AUTH_ROOT_DISPLAY_NAME";
+
+    private static TimeSpan ReadPositiveEnvironmentTimeSpan(string variableName, Func<int, TimeSpan> convert, TimeSpan fallback)
+    {
+        var rawValue = Environment.GetEnvironmentVariable(variableName);
+        if (int.TryParse(rawValue, out var value) && value > 0)
+        {
+            return convert(value);
+        }
+
+        return fallback;
+    }
 }

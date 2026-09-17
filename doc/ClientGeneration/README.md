@@ -129,6 +129,8 @@ For TypeScript and Python, the recommended workflow is:
 
 If the consumer is .NET, prefer `ChillSharp.Client`.
 
+For usage examples, see [../ChillSharpClient.md](../ChillSharpClient.md).
+
 Use generated TypeScript or Python clients when:
 
 - the frontend is browser-based and not .NET

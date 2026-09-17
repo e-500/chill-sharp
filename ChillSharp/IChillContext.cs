@@ -220,15 +220,17 @@ namespace ChillSharp
 
         private static MetadataCatalog GetMetadataCatalog(IChillContext context)
         {
+            var assemblies = ChillAssemblyDiscovery.GetCandidateAssemblies(context.GetType().Assembly);
+            var assemblyKey = string.Join("|", assemblies.Select(x => x.FullName ?? x.GetName().Name ?? x.ToString()));
             return ChillContextMetadataCache.MetadataCache.GetOrAdd(
-                (context.GetType().Assembly, context.GetChillTypePrefix().Trim().TrimEnd('.')),
-                static key => BuildMetadataCatalog(key.Assembly, key.Item2));
+                (assemblyKey, context.GetChillTypePrefix().Trim().TrimEnd('.')),
+                _ => BuildMetadataCatalog(context.GetType().Assembly, context.GetChillTypePrefix().Trim().TrimEnd('.')));
         }
 
         private static MetadataCatalog BuildMetadataCatalog(System.Reflection.Assembly assembly, string chillTypePrefix)
         {
-            var resources = assembly
-                .GetTypes()
+            var resources = ChillAssemblyDiscovery.GetCandidateAssemblies(assembly)
+                .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
                 .Where(type => type.IsClass && !type.IsAbstract)
                 .ToList();
 
@@ -343,7 +345,7 @@ namespace ChillSharp
 
     internal static class ChillContextMetadataCache
     {
-        internal static readonly ConcurrentDictionary<(System.Reflection.Assembly Assembly, string Prefix), MetadataCatalog> MetadataCache = new();
+        internal static readonly ConcurrentDictionary<(string AssemblyKey, string Prefix), MetadataCatalog> MetadataCache = new();
     }
 
     internal static class ChillContextSchemaServiceCache

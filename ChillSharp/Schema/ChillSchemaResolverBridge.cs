@@ -42,6 +42,7 @@ public static class ChillSchemaResolverBridge
         {
             ChillType = normalizedType,
             ChecksumEnabled = true,
+            HandleAttachments = false,
             LabelFormatString = defaults.LabelFormatString,
             ShortLabelFormatString = defaults.ShortLabelFormatString,
             FullTextContentFormatString = defaults.FullTextContentFormatString,
@@ -89,6 +90,7 @@ public static class ChillSchemaResolverBridge
     {
         public string ChillType { get; init; } = string.Empty;
         public bool ChecksumEnabled { get; init; }
+        public bool HandleAttachments { get; init; }
         public string? LabelFormatString { get; init; }
         public string? ShortLabelFormatString { get; init; }
         public string? FullTextContentFormatString { get; init; }

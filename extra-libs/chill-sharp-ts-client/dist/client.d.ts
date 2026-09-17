@@ -1,3 +1,4 @@
+export declare const API_BASE_PATH = "api/";
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
 export interface JsonObject {
@@ -46,6 +47,7 @@ export interface ChillDtoSchema extends JsonObject {
     chillType: string;
     chillViewCode: string;
     displayName: string;
+    handleAttachments: boolean;
     metadata: Record<string, string>;
     queryRelatedChillType: string | null;
     properties: ChillDtoPropertySchema[];
@@ -59,10 +61,38 @@ export interface ChillDtoSchemaListItem extends JsonObject {
 export interface ChillDtoEntityOptions extends JsonObject {
     chillType: string;
     checksumEnabled: boolean;
+    handleAttachments: boolean;
     labelFormatString: string | null;
     shortLabelFormatString: string | null;
     fullTextContentFormatString: string | null;
     changeLogEnabled: boolean;
+}
+export interface ChillOrdering extends JsonObject {
+    propertyName: string;
+    direction: string;
+}
+export interface ChillPagination extends JsonObject {
+    pageSize: number;
+    pageNumber: number;
+}
+export interface ChillDtoProperty extends JsonObject {
+    name: string;
+}
+export interface ChillDtoEntity extends JsonObject {
+    guid: string;
+    position: number;
+    chillType: string;
+    label: string | null;
+    shortLabel: string | null;
+    properties: Record<string, JsonValue>;
+}
+export interface ChillDtoQuery extends JsonObject {
+    chillType: string;
+    properties: Record<string, JsonValue>;
+    resultProperties: ChillDtoProperty[] | null;
+    pagination: ChillPagination | null;
+    ordering: ChillOrdering | null;
+    results: ChillDtoEntity[];
 }
 export interface ChillDtoMenuItem extends JsonObject {
     guid: string;
@@ -287,8 +317,19 @@ export interface ChillSharpClientOptions {
     username?: string;
     password?: string;
     cultureName?: string;
+    apiBasePath?: string;
     fetchImpl?: typeof fetch;
     signalRWithCredentials?: boolean;
+}
+export interface ChillAttachmentUploadFile {
+    fileName: string;
+    content: Blob | ArrayBuffer | Uint8Array | string;
+    contentType?: string;
+}
+export interface ChillAttachmentUploadOptions {
+    title?: string | null;
+    description?: string | null;
+    isPublic?: boolean;
 }
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
 export interface ChillEntityChangeNotification extends JsonObject {
@@ -303,6 +344,9 @@ export interface ChillEntityChangeSubscription {
     unsubscribe(): Promise<void>;
 }
 export declare class ChillSharpClient {
+    static readonly API_BASE_PATH = "api/";
+    private static readonly attachmentEntityChillType;
+    private static readonly attachmentQueryChillType;
     private readonly baseUrl;
     private readonly fetchImpl;
     private readonly cultureName;
@@ -325,6 +369,10 @@ export declare class ChillSharpClient {
     autocomplete(dto: JsonObject): Promise<JsonObject>;
     validate(dto: JsonObject): Promise<ChillValidationError[]>;
     chunk(operations: JsonObject[]): Promise<JsonObject[]>;
+    uploadAttachment(targetEntity: JsonObject, file: ChillAttachmentUploadFile, options?: ChillAttachmentUploadOptions): Promise<JsonObject[]>;
+    uploadAttachments(targetEntity: JsonObject, files: ChillAttachmentUploadFile[], options?: ChillAttachmentUploadOptions): Promise<JsonObject[]>;
+    getAttachments(targetEntity: JsonObject): Promise<JsonObject[]>;
+    downloadAttachment(attachmentOrGuid: JsonObject | string): Promise<Blob>;
     version(): string;
     test(): Promise<string>;
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Promise<ChillDtoSchema | null>;
@@ -379,6 +427,7 @@ export declare class ChillSharpClient {
     private sendAuthJson;
     private sendJson;
     private sendText;
+    private sendBlob;
     private sendRequest;
     private getAuthTokenIfNecessary;
     private getAuthTokenIfNecessaryCore;
@@ -391,18 +440,30 @@ export declare class ChillSharpClient {
     private createCurrentTokenResponse;
     private buildChillUrl;
     private buildNotifyUrl;
+    private buildApiUrl;
     private buildAuthUrl;
     private buildSchemaUrl;
     private buildI18nUrl;
+    private buildAttachmentUrl;
     private getAuthBaseUrl;
     private getSchemaBaseUrl;
     private getI18nBaseUrl;
+    private getAttachmentBaseUrl;
+    private getApiBaseUrl;
+    private normalizeBaseUrl;
+    private normalizeApiBasePath;
+    private isKnownChillSharpEndpointBase;
+    private endsWithPathSegment;
     private normalizeRequiredValue;
     private normalizeOptionalValue;
     private normalizeQueryValue;
     private readString;
     private readDate;
     private readValue;
+    private getAttachmentTargetInfo;
+    private getAttachmentGuid;
+    private toAttachmentBlob;
+    private isFormDataPayload;
     private parseDate;
     private formatDate;
     private ensureNotificationConnection;

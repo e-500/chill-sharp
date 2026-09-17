@@ -82,8 +82,8 @@ namespace ChillSharp.Client
 
         private string GetI18nBaseUrl()
         {
-            const string chillSuffix = "/api/chill";
-            const string i18nSuffix = "/api/chill-i18n";
+            const string chillSuffix = "/chill";
+            const string i18nSuffix = "/chill-i18n";
 
             if (_BaseUrl.EndsWith(i18nSuffix, StringComparison.OrdinalIgnoreCase))
             {

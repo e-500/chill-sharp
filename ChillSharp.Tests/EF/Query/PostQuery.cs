@@ -19,6 +19,7 @@
 
 ﻿using ChillSharp.Annotations;
 using ChillSharp.EF;
+using ChillSharp.Tests.EF.Model;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -40,6 +41,12 @@ namespace ChillSharp.Tests.EF.Query
             SecondaryLanguageLabel: "Titolo")]
         public string Title { get; set; } = string.Empty;
 
+        [ChillProperty(
+            UniquePropertyKeyString: "34B64688-F1BB-444D-94D8-2E9670346F29",
+            PrimaryLanguageLabel: "Blog",
+            SecondaryLanguageLabel: "Blog")]
+        public Blog? Blog { get; set; }
+
         /// <summary>
         /// <inheritdoc/>
         /// </summary>
@@ -49,6 +56,8 @@ namespace ChillSharp.Tests.EF.Query
             var q = ctx.Post.AsQueryable();
             if (Guid.HasValue)
                 q = q.Where(x => x.Guid == Guid.Value);
+            if (Blog != null)
+                q = q.Where(x => x.Blog == Blog);
             return q;
         }
     }

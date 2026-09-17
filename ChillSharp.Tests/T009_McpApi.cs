@@ -1,8 +1,10 @@
+using ChillSharp;
 using ChillSharp.Dto;
 using ChillSharp.Mcp;
-using ChillSharp.Mcp.Contracts;
+using ChillSharp.Schema.Contracts;
+using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Http.Json;
+using ModelContextProtocol.Server;
 
 namespace ChillSharp.Tests;
 
@@ -10,29 +12,42 @@ namespace ChillSharp.Tests;
 public sealed class McpApi
 {
     [TestMethod]
-    public async Task Step001_GetResourceListReturnsOnlyMcpEnabledResources()
+    public void Step001_ToolsDescribeSchemaDiscoveryQueriesAndAuthentication()
     {
-        TestApiHost.EnsureStarted(6002);
+        var toolTypeAttribute = typeof(ChillMcpTools).GetCustomAttributes(typeof(McpServerToolTypeAttribute), inherit: false).SingleOrDefault();
+        Assert.IsNotNull(toolTypeAttribute);
 
-        using var client = new HttpClient
-        {
-            BaseAddress = new Uri(TestApiHost.HttpBaseUrl)
-        };
+        var getSchemaList = GetToolMethod(nameof(ChillMcpTools.GetSchemaList));
+        var getSchema = GetToolMethod(nameof(ChillMcpTools.GetSchemaAsync));
+        var query = GetToolMethod(nameof(ChillMcpTools.Query));
+        var lookup = GetToolMethod(nameof(ChillMcpTools.Lookup));
+        var find = GetToolMethod(nameof(ChillMcpTools.Find));
+        var create = GetToolMethod(nameof(ChillMcpTools.Create));
+        var update = GetToolMethod(nameof(ChillMcpTools.Update));
+        var delete = GetToolMethod(nameof(ChillMcpTools.Delete));
+        var autocompleteEntity = GetToolMethod(nameof(ChillMcpTools.AutocompleteEntity));
+        var autocompleteQuery = GetToolMethod(nameof(ChillMcpTools.AutocompleteQuery));
+        var validateEntity = GetToolMethod(nameof(ChillMcpTools.ValidateEntity));
+        var validateQuery = GetToolMethod(nameof(ChillMcpTools.ValidateQuery));
+        var chunk = GetToolMethod(nameof(ChillMcpTools.Chunk));
 
-        var resources = await client.GetFromJsonAsync<List<ChillMcpResource>>("api/chill-mcp/get-resource-list?cultureName=it-IT");
-
-        Assert.IsNotNull(resources);
-        Assert.IsTrue(resources.Any(x => x.ChillType == "Model.Blog"));
-        Assert.IsFalse(resources.Any(x => x.ChillType == "Model.Post"));
-
-        var blog = resources.Single(x => x.ChillType == "Model.Blog");
-        Assert.AreEqual("entity", blog.ResourceType);
-        Assert.AreEqual("Blog resource exposed to MCP clients.", blog.Description);
-        Assert.IsTrue(blog.Properties.Any(x => x.Name == "Title" && x.Description == "Blog title used to identify the resource."));
+        AssertToolMetadata(getSchemaList, "ChillSharp get-schema-list", "MCP-enabled", "bearer token");
+        AssertToolMetadata(getSchema, "ChillSharp get-schema", "MCP-enabled", "properties");
+        AssertToolMetadata(query, "ChillSharp query", "MCP-enabled", "ChillDtoQuery");
+        AssertToolMetadata(lookup, "ChillSharp lookup", "MCP-enabled", "full-text");
+        AssertToolMetadata(find, "ChillSharp find", "MCP-enabled", "Guid");
+        AssertToolMetadata(create, "ChillSharp create", "MCP-enabled", "ChillDtoEntity");
+        AssertToolMetadata(update, "ChillSharp update", "MCP-enabled", "Guid");
+        AssertToolMetadata(delete, "ChillSharp delete", "MCP-enabled", "mutating");
+        AssertToolMetadata(autocompleteEntity, "ChillSharp autocomplete-entity", "MCP-enabled", "entity DTO");
+        AssertToolMetadata(autocompleteQuery, "ChillSharp autocomplete-query", "MCP-enabled", "query DTO");
+        AssertToolMetadata(validateEntity, "ChillSharp validate-entity", "MCP-enabled", "validation errors");
+        AssertToolMetadata(validateQuery, "ChillSharp validate-query", "MCP-enabled", "validation errors");
+        AssertToolMetadata(chunk, "ChillSharp chunk", "MCP-enabled", "ChillOperation");
     }
 
     [TestMethod]
-    public async Task Step002_RuntimeEntityOptionsCanExposeAdditionalMcpResources()
+    public async Task Step002_SchemaDiscoveryReturnsOnlyMcpEnabledSchemas()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<EF.DummyContext>()
@@ -42,27 +57,292 @@ public sealed class McpApi
         await using var context = new EF.DummyContext(options);
         await context.Database.EnsureCreatedAsync();
 
-        var schemaCache = new ChillSharp.Schema.ChillSchemaCache();
-            var schemaService = new ChillSharp.Schema.ChillSchemaService(
-                context,
-                new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
-                schemaCache);
-        var mcpService = new ChillMcpService(context, schemaService);
+        var schemaService = CreateSchemaService(context);
+        var discoveryService = new ChillMcpSchemaDiscoveryService(context, schemaService);
 
-        Assert.IsNull(await mcpService.GetResourceAsync("Model.Post"));
+        var schemaList = await discoveryService.GetSchemaListAsync("it-IT");
+        Assert.IsTrue(schemaList.Any(x => x.ChillType == "Model.Blog"));
+        Assert.IsFalse(schemaList.Any(x => x.ChillType == "Model.Post"));
+        Assert.IsFalse(schemaList.Any(x => x.ChillType == "Query.PostQuery"));
+
+        var blogSchema = await discoveryService.GetSchemaAsync("Model.Blog", cancellationToken: CancellationToken.None);
+        Assert.IsNotNull(blogSchema);
+        Assert.AreEqual("Model.Blog", blogSchema.ChillType);
+
+        var postQuerySchema = await discoveryService.GetSchemaAsync("Query.PostQuery", cancellationToken: CancellationToken.None);
+        Assert.IsNull(postQuerySchema);
+    }
+
+    [TestMethod]
+    public async Task Step003_RuntimeEntityOptionsCanEnableMcpSchemasAndQueryExecution()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-query-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var blog = new Blog
+        {
+            Guid = Guid.NewGuid(),
+            Title = "Engineering",
+            Url = "https://example.test/engineering"
+        };
+
+        var post = new Post
+        {
+            Guid = Guid.NewGuid(),
+            Title = "Hello MCP",
+            Author = "Ada",
+            Blog = blog
+        };
+
+        context.Blog.Add(blog);
+        context.Post.Add(post);
+        await context.SaveChangesAsync();
+
+        var schemaService = CreateSchemaService(context);
+        ((IChillContext)context).RegisterSchemaService(schemaService);
+
+        var tools = new ChillMcpTools(
+            new ChillMcpSchemaDiscoveryService(context, schemaService),
+            new ChillDtoEngine(context));
+
+        try
+        {
+            await tools.Query(new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery"
+            });
+            Assert.Fail("Expected non MCP-enabled query execution to throw.");
+        }
+        catch (InvalidOperationException)
+        {
+        }
 
         await schemaService.SetEntityOptionsAsync(new ChillSharp.Schema.Contracts.ChillDtoEntityOptions
         {
-            ChillType = "Model.Post",
-            EnableMCP = true,
-            MCPDescription = "Post resource enabled at runtime."
+            ChillType = "Query.PostQuery",
+            EnableMCP = true
         });
 
-        var postResource = await mcpService.GetResourceAsync("Model.Post");
+        var schema = await tools.GetSchemaAsync("Query.PostQuery");
+        Assert.IsNotNull(schema);
+        Assert.AreEqual("Model.Post", schema.QueryRelatedChillType);
 
-        Assert.IsNotNull(postResource);
-        Assert.AreEqual("Post resource enabled at runtime.", postResource.Description);
-        Assert.AreEqual("chill://entity/Model.Post", postResource.Uri);
-        Assert.IsTrue(postResource.Properties.Any(x => x.Name == "Author" && x.Description == "Author of the post."));
+        var result = await tools.Query(new ChillDtoQuery
+        {
+            ChillType = "Query.PostQuery",
+            ResultProperties =
+            [
+                new ChillDtoProperty("Title"),
+                new ChillDtoProperty("Author")
+            ]
+        });
+
+        Assert.IsNotNull(result);
+        Assert.HasCount(1, result.Results);
+        Assert.AreEqual("Hello MCP", result.Results[0].Properties["Title"]?.ToString());
+        Assert.AreEqual("Ada", result.Results[0].Properties["Author"]?.ToString());
+    }
+
+    [TestMethod]
+    public async Task Step004_McpCrudAndChunkOperateOnlyOnEnabledSchemas()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-mcp-crud-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        var schemaService = CreateSchemaService(context);
+        ((IChillContext)context).RegisterSchemaService(schemaService);
+
+        var tools = new ChillMcpTools(
+            new ChillMcpSchemaDiscoveryService(context, schemaService),
+            new ChillDtoEngine(context));
+
+        var created = await tools.Create(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "MCP CRUD",
+                [nameof(Blog.Url)] = "https://example.test/mcp-crud"
+            }
+        });
+
+        Assert.AreNotEqual(Guid.Empty, created.Guid);
+        Assert.AreEqual("MCP CRUD", created.Properties[nameof(Blog.Title)]?.ToString());
+
+        var found = await tools.Find(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        Assert.IsNotNull(found);
+        Assert.AreEqual("https://example.test/mcp-crud", found.Properties[nameof(Blog.Url)]?.ToString());
+
+        var updated = await tools.Update(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid,
+            Properties =
+            {
+                [nameof(Blog.Title)] = "MCP CRUD Updated"
+            }
+        });
+
+        Assert.AreEqual("MCP CRUD Updated", updated.Properties[nameof(Blog.Title)]?.ToString());
+
+        var autocomplete = await tools.AutocompleteEntity(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "Needs Url"
+            }
+        });
+
+        Assert.AreEqual("https://autocomplete.local/needs-url", autocomplete.Properties[nameof(Blog.Url)]?.ToString());
+
+        var validationErrors = await tools.ValidateEntity(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Properties =
+            {
+                [nameof(Blog.Title)] = "invalid"
+            }
+        });
+
+        Assert.IsTrue(validationErrors.Any(x => x.FieldName == nameof(Blog.Title)));
+
+        context.ChangeTracker.Clear();
+
+        var chunk = await tools.Chunk(
+        [
+            new ChillOperation
+            {
+                Index = 0,
+                Verb = ChillOperationVerb.CREATE,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Properties =
+                    {
+                        [nameof(Blog.Title)] = "Chunk Blog",
+                        [nameof(Blog.Url)] = "https://example.test/chunk"
+                    }
+                }
+            },
+            new ChillOperation
+            {
+                Index = 1,
+                Verb = ChillOperationVerb.FIND,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Blog",
+                    Guid = created.Guid
+                }
+            }
+        ]);
+
+        Assert.AreEqual("Chunk Blog", chunk[0].Entity?.Properties[nameof(Blog.Title)]?.ToString());
+        Assert.AreEqual("MCP CRUD Updated", chunk[1].Entity?.Properties[nameof(Blog.Title)]?.ToString());
+
+        await tools.Delete(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        var deleted = await tools.Find(new ChillDtoEntity
+        {
+            ChillType = "Model.Blog",
+            Guid = created.Guid
+        });
+
+        Assert.IsNull(deleted);
+
+        await AssertInvalidOperationAsync(() => tools.Create(new ChillDtoEntity
+        {
+            ChillType = "Model.Post",
+            Properties =
+            {
+                [nameof(Post.Title)] = "Hidden",
+                [nameof(Post.Author)] = "Ada"
+            }
+        }));
+
+        await AssertInvalidOperationAsync(() => tools.Chunk(
+        [
+            new ChillOperation
+            {
+                Index = 0,
+                Verb = ChillOperationVerb.CREATE,
+                Entity = new ChillDtoEntity
+                {
+                    ChillType = "Model.Post",
+                    Properties =
+                    {
+                        [nameof(Post.Title)] = "Hidden",
+                        [nameof(Post.Author)] = "Ada"
+                    }
+                }
+            }
+        ]));
+    }
+
+    private static ChillSharp.Schema.ChillSchemaService CreateSchemaService(EF.DummyContext context)
+    {
+        return new ChillSharp.Schema.ChillSchemaService(
+            context,
+            new ChillSharp.Schema.ChillContextSchemaRuntimeContext(context),
+            new ChillSharp.Schema.ChillSchemaCache());
+    }
+
+    private static System.Reflection.MethodInfo GetToolMethod(string methodName)
+    {
+        return typeof(ChillMcpTools).GetMethod(methodName) ?? throw new AssertFailedException($"Method {methodName} was not found.");
+    }
+
+    private static async Task AssertInvalidOperationAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        Assert.Fail("Expected InvalidOperationException.");
+    }
+
+    private static void AssertToolMetadata(System.Reflection.MethodInfo method, string expectedName, params string[] expectedDescriptionSnippets)
+    {
+        var toolAttribute = method.GetCustomAttributes(typeof(McpServerToolAttribute), inherit: false)
+            .Cast<McpServerToolAttribute>()
+            .SingleOrDefault();
+        Assert.IsNotNull(toolAttribute);
+        Assert.AreEqual(expectedName, toolAttribute.Name);
+
+        var descriptionAttribute = method.GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), inherit: false)
+            .Cast<System.ComponentModel.DescriptionAttribute>()
+            .SingleOrDefault();
+        Assert.IsNotNull(descriptionAttribute);
+
+        foreach (var snippet in expectedDescriptionSnippets)
+        {
+            Assert.IsTrue(
+                descriptionAttribute.Description.Contains(snippet, StringComparison.OrdinalIgnoreCase),
+                $"Description for {method.Name} does not contain '{snippet}'.");
+        }
     }
 }

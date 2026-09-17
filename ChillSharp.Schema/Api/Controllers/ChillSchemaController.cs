@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp;
 using ChillSharp.Auth.Api;
 using ChillSharp.Auth.Services;
 using ChillSharp.EF;
@@ -114,16 +115,16 @@ public sealed class ChillSchemaController : ControllerBase
     }
     private List<ChillDtoSchemaListItem> BuildSchemaList(string? cultureName)
     {
-        var assembly = _context.GetType().Assembly;
+        var assemblies = ChillAssemblyDiscovery.GetCandidateAssemblies(_context.GetType().Assembly);
         var shrinkTypePrefix = _context.GetChillTypePrefix();
 
-        var entityItems = assembly
-            .GetTypes()
+        var entityItems = assemblies
+            .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
             .Where(IsRegisteredEntityType)
             .Select(type => ChillDtoSchemaListItem.FromEntityType(type, shrinkTypePrefix, _context, cultureName));
 
-        var queryItems = assembly
-            .GetTypes()
+        var queryItems = assemblies
+            .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
             .Where(IsRegisteredQueryType)
             .Select(type => ChillDtoSchemaListItem.CreateFromQueryType(type, shrinkTypePrefix, _context, cultureName));
 
@@ -164,16 +165,16 @@ public sealed class ChillSchemaController : ControllerBase
         if (user == null || !user.IsActive)
             return [];
 
-        if (string.IsNullOrWhiteSpace(user.MenuHierarchy))
-            return menuItems;
+        var roles = (await _authService.GetUserRolesAsync(user.Guid, cancellationToken))
+            .Where(x => x.IsActive)
+            .ToList();
 
         var hierarchies = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        AddMenuHierarchy(hierarchies, user.MenuHierarchy);
+        AddMenuHierarchies(hierarchies, user.MenuHierarchy);
 
-        var roles = await _authService.GetUserRolesAsync(user.Guid, cancellationToken);
-        foreach (var role in roles.Where(x => x.IsActive))
+        foreach (var role in roles)
         {
-            AddMenuHierarchy(hierarchies, role.MenuHierarchy);
+            AddMenuHierarchies(hierarchies, role.MenuHierarchy);
         }
 
         if (hierarchies.Contains("*"))
@@ -187,18 +188,33 @@ public sealed class ChillSchemaController : ControllerBase
             .ToList();
     }
 
-    private static void AddMenuHierarchy(HashSet<string> hierarchies, string? value)
+    private static void AddMenuHierarchies(HashSet<string> hierarchies, string? value)
     {
-        if (!string.IsNullOrWhiteSpace(value))
-            hierarchies.Add(value.Trim());
+        foreach (var hierarchy in SplitMenuHierarchies(value))
+        {
+            hierarchies.Add(hierarchy);
+        }
     }
 
     private static bool IsMenuAllowed(string? menuHierarchy, IReadOnlyCollection<string> allowedHierarchies)
     {
-        var normalizedHierarchy = menuHierarchy?.Trim();
-        if (string.IsNullOrWhiteSpace(normalizedHierarchy))
-            return false;
+        var menuHierarchies = SplitMenuHierarchies(menuHierarchy).ToList();
+        if (menuHierarchies.Count == 0)
+            return true;
 
-        return allowedHierarchies.Any(prefix => normalizedHierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+        return menuHierarchies.Any(hierarchy =>
+            allowedHierarchies.Any(prefix => hierarchy.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    private static IEnumerable<string> SplitMenuHierarchies(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            yield break;
+
+        foreach (var hierarchy in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!string.IsNullOrWhiteSpace(hierarchy))
+                yield return hierarchy;
+        }
     }
 }

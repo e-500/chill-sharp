@@ -56,6 +56,7 @@ namespace ChillSharp.EF
         /// </summary>
         [ChillProperty]
         public virtual Guid Guid { get; set; }
+        public int Position { get; set; }
         public string Label { get; set; } = string.Empty;
         public string ShortLabel { get; set; } = string.Empty;
         public string FullTextContent { get; set; } = string.Empty;
@@ -151,7 +152,7 @@ namespace ChillSharp.EF
         {
             var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
             var serverNow = TimeZoneInfo.ConvertTime(DateTimeOffset.UtcNow, systemTimeZone);
-            LastUpdate = serverNow.DateTime;
+            LastUpdate = serverNow.UtcDateTime;
             LastUpdateUtcOffset = (int)serverNow.Offset.TotalMinutes;
             LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
             var chillType = ChillTypeResolver.NormalizeChillType(GetType(), Context.GetChillTypePrefix());
@@ -289,6 +290,7 @@ namespace ChillSharp.EF
             var snapshot = new ChillDtoEntity
             {
                 Guid = Guid,
+                Position = Position,
                 ChillType = chillType,
                 Label = Label,
                 ShortLabel = ShortLabel,
@@ -404,6 +406,7 @@ namespace ChillSharp.EF
             return new ChillDtoEntity
             {
                 Guid = entity.Guid,
+                Position = entity.Position,
                 ChillType = ChillTypeResolver.NormalizeChillType(entity.GetType(), context.GetChillTypePrefix()),
                 Label = label,
                 ShortLabel = shortLabel,

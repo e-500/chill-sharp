@@ -19,6 +19,7 @@
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
+export const API_BASE_PATH = "api/";
 export const ChillDtoPropertyType = {
     Unknown: 0,
     Guid: 1,
@@ -55,6 +56,9 @@ export const PermissionScope = {
     Property: 3
 };
 export class ChillSharpClient {
+    static API_BASE_PATH = API_BASE_PATH;
+    static attachmentEntityChillType = "ChillSharp.Attachment.Model.Attachment";
+    static attachmentQueryChillType = "ChillSharp.Attachment.Query.AttachmentQuery";
     baseUrl;
     fetchImpl;
     cultureName;
@@ -68,7 +72,7 @@ export class ChillSharpClient {
     entityChangeRegistrationCounts = new Map();
     entityChangeSubscriptionSequence = 0;
     constructor(baseUrl, options = {}) {
-        this.baseUrl = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/$/, "");
+        this.baseUrl = this.normalizeBaseUrl(baseUrl, options.apiBasePath);
         this.fetchImpl = options.fetchImpl ?? fetch;
         this.username = this.normalizeOptionalValue(options.username);
         this.password = this.normalizeOptionalValue(options.password);
@@ -109,11 +113,56 @@ export class ChillSharpClient {
     chunk(operations) {
         return this.sendJson("POST", this.buildChillUrl("chunk"), operations);
     }
+    uploadAttachment(targetEntity, file, options = {}) {
+        return this.uploadAttachments(targetEntity, [file], options);
+    }
+    async uploadAttachments(targetEntity, files, options = {}) {
+        const target = this.getAttachmentTargetInfo(targetEntity);
+        if (!Array.isArray(files) || files.length === 0) {
+            throw new Error("files is required.");
+        }
+        const form = new FormData();
+        form.append("attachToChillType", target.chillType);
+        form.append("attachToGuid", target.guid);
+        const normalizedTitle = this.normalizeOptionalValue(options.title ?? undefined);
+        if (normalizedTitle) {
+            form.append("title", normalizedTitle);
+        }
+        const normalizedDescription = this.normalizeOptionalValue(options.description ?? undefined);
+        if (normalizedDescription) {
+            form.append("description", normalizedDescription);
+        }
+        form.append("public", options.isPublic ? "true" : "false");
+        for (const file of files) {
+            form.append("file", this.toAttachmentBlob(file), this.normalizeRequiredValue(file.fileName, "file.fileName"));
+        }
+        return this.sendJson("POST", this.buildAttachmentUrl("attachment/upload"), form, true, false, false);
+    }
+    async getAttachments(targetEntity) {
+        const target = this.getAttachmentTargetInfo(targetEntity);
+        const response = await this.query({
+            chillType: ChillSharpClient.attachmentQueryChillType,
+            properties: {
+                attachToChillType: target.chillType,
+                attachToGuid: target.guid
+            }
+        });
+        const results = this.readValue(response, "results");
+        return Array.isArray(results)
+            ? results.filter((item) => !!item && typeof item === "object" && !Array.isArray(item))
+            : [];
+    }
+    downloadAttachment(attachmentOrGuid) {
+        const attachmentGuid = typeof attachmentOrGuid === "string"
+            ? this.normalizeRequiredValue(attachmentOrGuid, "attachmentGuid")
+            : this.getAttachmentGuid(attachmentOrGuid);
+        return this.sendBlob("GET", this.buildAttachmentUrl(`attachment/download?guid=${encodeURIComponent(attachmentGuid)}`), this.canUseAuthentication() ? false : true);
+    }
     version() {
         return CHILL_SHARP_TS_CLIENT_VERSION;
     }
     test() {
-        return this.sendText("GET", this.buildChillUrl("test"), true);
+        return this.sendText("GET", this.buildApiUrl("test"), true);
     }
     getSchema(chillType, chillViewCode, cultureName) {
         const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
@@ -438,6 +487,10 @@ export class ChillSharpClient {
         const response = await this.sendRequest(method, url, undefined, allowAnonymous, allowRetry);
         return await response.text();
     }
+    async sendBlob(method, url, allowAnonymous = false, allowRetry = true) {
+        const response = await this.sendRequest(method, url, undefined, allowAnonymous, allowRetry);
+        return await response.blob();
+    }
     async sendRequest(method, url, payload, allowAnonymous = false, allowRetry = true) {
         try {
             if (!allowAnonymous && this.canUseAuthentication()) {
@@ -447,13 +500,17 @@ export class ChillSharpClient {
             if (!allowAnonymous && this.tokenState.accessToken) {
                 headers.set("Authorization", `Bearer ${this.tokenState.accessToken}`);
             }
-            if (payload !== undefined) {
+            if (payload !== undefined && !this.isFormDataPayload(payload)) {
                 headers.set("Content-Type", "application/json");
             }
             const response = await this.fetchImpl(url, {
                 method,
                 headers,
-                body: payload === undefined ? undefined : JSON.stringify(payload)
+                body: payload === undefined
+                    ? undefined
+                    : this.isFormDataPayload(payload)
+                        ? payload
+                        : JSON.stringify(payload)
             });
             if ((response.status === 401 || response.status === 403) && !allowAnonymous && allowRetry && await this.tryRefreshAuthentication()) {
                 return this.sendRequest(method, url, payload, allowAnonymous, false);
@@ -588,7 +645,10 @@ export class ChillSharpClient {
         return `${this.baseUrl}/${relativeUrl.replace(/^\/+/, "")}`;
     }
     buildNotifyUrl() {
-        return `${this.baseUrl.replace(/\/$/, "")}/notify`;
+        return `${this.getApiBaseUrl().replace(/\/$/, "")}/notify`;
+    }
+    buildApiUrl(relativeUrl) {
+        return `${this.getApiBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
     buildAuthUrl(relativeUrl) {
         return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
@@ -598,6 +658,9 @@ export class ChillSharpClient {
     }
     buildI18nUrl(relativeUrl) {
         return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+    }
+    buildAttachmentUrl(relativeUrl) {
+        return `${this.getAttachmentBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
     getAuthBaseUrl() {
         const suffix = "/chill";
@@ -619,6 +682,49 @@ export class ChillSharpClient {
             return `${this.baseUrl.slice(0, -suffix.length)}/chill-i18n`;
         }
         return `${this.baseUrl.replace(/\/$/, "")}-i18n`;
+    }
+    getAttachmentBaseUrl() {
+        const suffix = "/chill";
+        if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+            return `${this.baseUrl.slice(0, -suffix.length)}/chill-attachment`;
+        }
+        return `${this.baseUrl.replace(/\/$/, "")}-attachment`;
+    }
+    getApiBaseUrl() {
+        const suffix = "/chill";
+        if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+            return this.baseUrl.slice(0, -suffix.length);
+        }
+        return this.baseUrl.replace(/\/$/, "");
+    }
+    normalizeBaseUrl(baseUrl, apiBasePath) {
+        const normalized = this.normalizeRequiredValue(baseUrl, "baseUrl").replace(/\/+$/, "");
+        if (this.isKnownChillSharpEndpointBase(normalized)) {
+            return normalized;
+        }
+        const normalizedApiBasePath = this.normalizeApiBasePath(apiBasePath);
+        if (!normalizedApiBasePath) {
+            return `${normalized}/chill`;
+        }
+        if (this.endsWithPathSegment(normalized, normalizedApiBasePath)) {
+            return `${normalized}/chill`;
+        }
+        return `${normalized}/${normalizedApiBasePath}/chill`;
+    }
+    normalizeApiBasePath(apiBasePath) {
+        const normalized = this.normalizeOptionalValue(apiBasePath) ?? API_BASE_PATH;
+        return normalized.replace(/^\/+|\/+$/g, "");
+    }
+    isKnownChillSharpEndpointBase(baseUrl) {
+        const lowerBaseUrl = baseUrl.toLowerCase();
+        return lowerBaseUrl.endsWith("/chill") ||
+            lowerBaseUrl.endsWith("/chill-auth") ||
+            lowerBaseUrl.endsWith("/chill-schema") ||
+            lowerBaseUrl.endsWith("/chill-i18n") ||
+            lowerBaseUrl.endsWith("/chill-attachment");
+    }
+    endsWithPathSegment(value, segment) {
+        return value.toLowerCase().endsWith(`/${segment.toLowerCase()}`);
     }
     normalizeRequiredValue(value, argumentName) {
         const normalized = this.normalizeOptionalValue(value);
@@ -653,6 +759,55 @@ export class ChillSharpClient {
         }
         const matchedKey = Object.keys(payload).find((candidate) => candidate.toLowerCase() === key.toLowerCase());
         return matchedKey ? payload[matchedKey] : undefined;
+    }
+    getAttachmentTargetInfo(targetEntity) {
+        const guid = this.readString(targetEntity, "guid");
+        if (!guid) {
+            throw new Error("targetEntity.guid is required.");
+        }
+        const chillType = this.readString(targetEntity, "chillType");
+        if (!chillType) {
+            throw new Error("targetEntity.chillType is required.");
+        }
+        return {
+            guid,
+            chillType
+        };
+    }
+    getAttachmentGuid(attachmentEntity) {
+        const guid = this.readString(attachmentEntity, "guid");
+        if (!guid) {
+            throw new Error("attachmentEntity.guid is required.");
+        }
+        const chillType = this.readString(attachmentEntity, "chillType");
+        if (chillType && chillType !== ChillSharpClient.attachmentEntityChillType) {
+            const normalizedChillType = chillType.split(".").pop() ?? chillType;
+            const normalizedAttachmentType = ChillSharpClient.attachmentEntityChillType.split(".").pop() ?? ChillSharpClient.attachmentEntityChillType;
+            if (normalizedChillType !== normalizedAttachmentType) {
+                throw new Error("attachmentEntity must point to an attachment.");
+            }
+        }
+        return guid;
+    }
+    toAttachmentBlob(file) {
+        if (!file || typeof file !== "object") {
+            throw new Error("file is required.");
+        }
+        const contentType = this.normalizeOptionalValue(file.contentType) ?? "application/octet-stream";
+        if (file.content instanceof Blob) {
+            return file.content;
+        }
+        if (typeof file.content === "string" || file.content instanceof ArrayBuffer) {
+            return new Blob([file.content], { type: contentType });
+        }
+        if (file.content instanceof Uint8Array) {
+            const buffer = file.content.buffer.slice(file.content.byteOffset, file.content.byteOffset + file.content.byteLength);
+            return new Blob([buffer], { type: contentType });
+        }
+        return new Blob([String(file.content)], { type: contentType });
+    }
+    isFormDataPayload(payload) {
+        return typeof FormData !== "undefined" && payload instanceof FormData;
     }
     parseDate(value) {
         if (typeof value !== "string" || !value.trim()) {
