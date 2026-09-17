@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { PermissionsPageComponent } from '../pages/permissions/permissions-page.component';
 import { CrudTaskComponent } from '../tasks/crud-task/crud-task.component';
+import { GoToUrlTaskComponent } from '../tasks/goto-url-task/goto-url-task.component';
 import type {
   WorkspaceFederationContainer,
   WorkspaceRemoteTaskDefinition,
@@ -95,6 +96,18 @@ export class WorkspaceTaskRegistryService {
       showInQuickLaunch: false,
       loadComponent: async () => CrudTaskComponent,
       aliases: ['crud']
+    });
+
+    this.registerDefinition({
+      componentName: 'gotourl',
+      title: 'GoToUrl',
+      description: 'Open a configured URL from a menu item.',
+      kind: 'builtin',
+      componentConfigurationJsonExample: this.serializeComponentConfigurationJsonExample(GoToUrlTaskComponent),
+      usesTaskConfigurationInputs: true,
+      showInQuickLaunch: false,
+      loadComponent: async () => GoToUrlTaskComponent,
+      aliases: ['gotourl', 'goto-url', 'go-to-url']
     });
   }
 
