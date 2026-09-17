@@ -27,5 +27,5 @@ namespace ChillSharp.Attachment;
 /// </summary>
 public interface IChillAttachmentDbContext
 {
-    DbSet<Model.Attachment> Attachments { get; }
+    DbSet<FileMetadata> Attachments { get; }
 }

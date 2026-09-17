@@ -258,7 +258,7 @@ namespace ChillSharp
 
             e = ctx.Entry(e).Entity;
             ctx.Entry(e).State = EntityState.Added;
-
+ 
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Create(e);
             DtoEntity.FromEntity(_Context, e);
@@ -284,7 +284,7 @@ namespace ChillSharp
                 throw new ChillException(
                     $"Entity of type {DtoEntity.ChillType} with Guid {DtoEntity.Guid} was not found"
                 );
-
+            
             DtoEntity.ToEntity(_Context, e);
             e = _Engine.Update(e);
             DtoEntity.FromEntity(_Context, e);

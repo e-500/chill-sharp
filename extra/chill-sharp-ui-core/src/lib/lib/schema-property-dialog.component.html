@@ -135,6 +135,13 @@
         <textarea rows="6" [ngModel]="draft().enumValues" (ngModelChange)="updateText('enumValues', $event)" name="schema-property-enum-values" [placeholder]="enumValuesPlaceholder()"></textarea>
       </label>
     }
+
+    @if (showLookupQueryValues()) {
+      <label class="schema-property-dialog__field schema-property-dialog__field--full">
+        <span>{{ chill.T('56c285f0-2ff0-4584-8f8e-ad1d0fb5fe34', 'Lookup query values', 'Valori query di lookup') }}</span>
+        <textarea rows="6" [ngModel]="draft().lookupQueryValues" (ngModelChange)="updateText('lookupQueryValues', $event)" name="schema-property-lookup-query-values" [placeholder]="lookupQueryValuesPlaceholder()"></textarea>
+      </label>
+    }
   </div>
 
   <div class="schema-property-dialog__metadata">

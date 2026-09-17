@@ -325,8 +325,24 @@ export class ChillService {
         propertyType: (property.propertyType ?? 0) as ChillDtoPropertySchema['propertyType'],
         simplePropertyType: property.simplePropertyType ?? '',
         mcpDescription: property.mcpDescription ?? '',
+        isNullable: property.isNullable === true,
+        isReadOnly: property.isReadOnly === true,
         referenceChillType: property.referenceChillType ?? property.chillType ?? null,
         referenceChillTypeQuery: property.referenceChillTypeQuery ?? null,
+        minLength: property.minLength ?? null,
+        maxLength: property.maxLength ?? null,
+        integerMinValue: property.integerMinValue ?? null,
+        integerMaxValue: property.integerMaxValue ?? null,
+        decimalMinValue: property.decimalMinValue ?? null,
+        decimalMaxValue: property.decimalMaxValue ?? null,
+        decimalPlaces: property.decimalPlaces ?? null,
+        precision: property.precision ?? null,
+        scale: property.scale ?? null,
+        dateFormat: property.dateFormat ?? '',
+        customFormat: property.customFormat ?? '',
+        regexPattern: property.regexPattern ?? '',
+        enumValues: property.enumValues ?? [],
+        lookupQueryValues: property.lookupQueryValues ?? null,
         metadata: this.serializeMetadataRecord(property.metadata)
       }))
     };
@@ -2232,6 +2248,7 @@ export class ChillService {
         chillType: this.readJsonString(property, 'ChillType') ?? property.chillType ?? null,
         referenceChillType: this.readJsonString(property, 'ReferenceChillType') ?? property.referenceChillType ?? null,
         referenceChillTypeQuery: this.readJsonString(property, 'ReferenceChillTypeQuery') ?? property.referenceChillTypeQuery ?? null,
+        lookupQueryValues: this.readJsonString(property, 'LookupQueryValues') ?? property.lookupQueryValues ?? null,
         metadata: this.normalizeMetadataRecord(property['metadata'] ?? property['Metadata'])
       }));
   }

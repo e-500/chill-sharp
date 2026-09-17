@@ -98,6 +98,11 @@ namespace ChillSharp.EF
         /// </summary>
         public bool LightweightRequired { get; set; } = false;
 
+        #region DTO 
+        public virtual void OnBeforeToQuery(IChillContext Context, ChillDtoQuery Query) { }
+        public virtual void OnAfterFromQuery(IChillContext Context, ChillDtoQuery Query) { }
+        #endregion
+
         #region IChillQuery implementation
         /// <summary>
         /// Applies additional filtering to the query.

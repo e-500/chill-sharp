@@ -1,7 +1,7 @@
 using ChillSharp.Auth.Model;
 using ChillSharp.I18n.Model;
 using Microsoft.EntityFrameworkCore;
-using AttachmentEntity = ChillSharp.Attachment.Model.Attachment;
+using ChillSharp.Attachment.Model;
 
 namespace ChillSharp.Template;
 
@@ -13,5 +13,5 @@ public partial class ChillSharpTemplateContext
     public DbSet<AuthPermissionRule> PermissionRules => Set<AuthPermissionRule>();
     public DbSet<AuthRefreshToken> RefreshTokens => Set<AuthRefreshToken>();
     public DbSet<Text> Texts => Set<Text>();
-    public DbSet<AttachmentEntity> Attachments => Set<AttachmentEntity>();
+    public DbSet<FileMetadata> Attachments => Set<FileMetadata>();
 }

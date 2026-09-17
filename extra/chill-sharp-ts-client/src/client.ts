@@ -77,6 +77,22 @@ export interface ChillDtoPropertySchema extends JsonObject {
   referenceChillType: string | null;
   referenceChillTypeQuery: string | null;
   mcpDescription: string;
+  isNullable: boolean | null;
+  isReadOnly: boolean | null;
+  minLength: number | null;
+  maxLength: number | null;
+  integerMinValue: number | null;
+  integerMaxValue: number | null;
+  decimalMinValue: number | null;
+  decimalMaxValue: number | null;
+  decimalPlaces: number | null;
+  precision: number | null;
+  scale: number | null;
+  dateFormat: string;
+  customFormat: string;
+  regexPattern: string;
+  enumValues: string[];
+  lookupQueryValues: string | null;
   metadata: Record<string, string>;
 }
 

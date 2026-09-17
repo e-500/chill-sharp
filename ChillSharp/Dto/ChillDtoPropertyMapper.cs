@@ -175,7 +175,7 @@ namespace ChillSharp.Dto
             return false;
         }
 
-        private static Type UnwrapProxy(Type type)
+        private static Type? UnwrapProxy(Type? type)
         {
             if (type == null)
                 return null;

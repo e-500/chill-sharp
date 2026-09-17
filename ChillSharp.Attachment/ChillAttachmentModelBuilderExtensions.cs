@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+using ChillSharp.Attachment.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Attachment;
@@ -31,7 +32,7 @@ public static class ChillAttachmentModelBuilderExtensions
     /// </summary>
     public static ModelBuilder AddChillAttachmentModel(this ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Model.Attachment>(builder =>
+        modelBuilder.Entity<FileMetadata>(builder =>
         {
             builder.Property(x => x.AttachToChillType).HasMaxLength(512);
             builder.Property(x => x.OriginalFilename).HasMaxLength(512);

@@ -31,7 +31,7 @@ public class ChillAttachmentDbContext : DbContext, IChillAttachmentDbContext, IC
     {
     }
 
-    public DbSet<Model.Attachment> Attachments => Set<Model.Attachment>();
+    public DbSet<FileMetadata> Attachments => Set<FileMetadata>();
 
     public string GetChillTypePrefix()
     {

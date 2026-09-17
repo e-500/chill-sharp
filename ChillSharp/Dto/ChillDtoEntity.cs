@@ -142,6 +142,8 @@ namespace ChillSharp.Dto
                     .FirstOrDefault(x => x.PropertyName == propertyName)?
                     .SubProperties ?? [],
                 propertyName => Entity.OnInflate(Context, propertyName));
+
+            Entity.OnAfterFromEntity(Context, this);
         }
 
         /// <summary>
@@ -153,6 +155,8 @@ namespace ChillSharp.Dto
         /// <exception cref="ChillException">Thrown if type validation or property assignment fails.</exception>
         public void ToEntity(IChillContext Context, IChillEntity Entity)
         {
+            Entity.OnBeforeToEntity(Context, this);
+
             // Test only if Entity is a valid chill entity
             string EntityChillType = _TestEntityAndGetChillType(Context, Entity);
             if (ChillType != EntityChillType)

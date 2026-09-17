@@ -84,6 +84,7 @@ namespace ChillSharp.Schema.Contracts
                 CustomFormat = chillAttr?.CustomFormat ?? ResolveCustomFormat(propInfo),
                 RegexPattern = chillAttr?.RegexPattern ?? ResolveRegexPattern(propInfo),
                 EnumValues = ResolveEnumValues(propertyType, chillAttr),
+                LookupQueryValues = chillAttr?.LookupQueryValues,
                 Metadata = chillAttr?.GetMetadata() ?? new Dictionary<string, string>()
             };
 
@@ -229,6 +230,16 @@ namespace ChillSharp.Schema.Contracts
         /// Ordered values for enum-like properties.
         /// </summary>
         public List<string> EnumValues { get; set; } = new();
+
+        /// <summary>
+        /// Lookup query values, example { "OptionalSearchProperty": "@{OtherField}", "MandatorySearchProperty": "${AlternativeField}" }
+        /// - true for boolean
+        /// - 1 for numbers
+        /// - "hello" for strings
+        /// - "@{FieldName}" optional value
+        /// - "${FieldName}" to get value from the same entity properrties
+        /// </summary>
+        public string? LookupQueryValues { get; set; }
 
         /// <summary>
         /// Additional metadata for custom client renderers.

@@ -27,6 +27,7 @@ public interface IChillDtoPropertySchema
     string ReferenceChillType { get; }
     string ReferenceChillTypeQuery { get; }
     IReadOnlyList<string> EnumValues { get; }
+    string? LookupQueryValues { get; }
     IReadOnlyDictionary<string, string> Metadata { get; }
     string CustomFormat { get; }
     string RegexPattern { get; }

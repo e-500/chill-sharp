@@ -26,9 +26,9 @@ namespace ChillSharp.Attachment.Services;
 /// </summary>
 public interface IChillAttachmentArchive
 {
-    string BuildPath(Model.Attachment attachment);
-    Task SaveAsync(Model.Attachment attachment, Stream content, CancellationToken cancellationToken = default);
-    Stream OpenRead(Model.Attachment attachment);
-    bool Exists(Model.Attachment attachment);
-    void DeleteIfExists(Model.Attachment attachment);
+    string BuildPath(FileMetadata attachment);
+    Task SaveAsync(FileMetadata attachment, Stream content, CancellationToken cancellationToken = default);
+    Stream OpenRead(FileMetadata attachment);
+    bool Exists(FileMetadata attachment);
+    void DeleteIfExists(FileMetadata attachment);
 }

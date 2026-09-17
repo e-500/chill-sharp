@@ -86,6 +86,11 @@ namespace ChillSharp.EF
             SecondaryLanguageLabel: "Offset UTC ultimo aggiornamento")]
         public int LastUpdateUtcOffset { get; set; }
 
+        #region DTO 
+        public virtual void OnBeforeToEntity(IChillContext Context, ChillDtoEntity Entity) { }
+        public virtual void OnAfterFromEntity(IChillContext Context, ChillDtoEntity Entity) { }
+        #endregion
+
         #region IChillEntity implementation
         #region CREATE
         /// <summary>
@@ -94,7 +99,11 @@ namespace ChillSharp.EF
         /// <para>Example: <c>CreatedAt = DateTime.Now;</c></para>
         /// </summary>
         /// <param name="Context">The active database context.</param>
-        public virtual void OnCreate(IChillContext Context) { Guid = Guid.NewGuid(); }
+        public virtual void OnCreate(IChillContext Context) 
+        { 
+            if (Guid == Guid.Empty)
+                Guid = Guid.NewGuid(); 
+        }
         #endregion
 
         #region SELECT

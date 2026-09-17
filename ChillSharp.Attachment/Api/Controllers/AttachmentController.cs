@@ -129,7 +129,7 @@ public sealed class AttachmentController : ControllerBase
         {
             var originalFilename = Path.GetFileName(file.FileName);
             var extension = Path.GetExtension(originalFilename);
-            var attachment = new Model.Attachment
+            var attachment = new FileMetadata
             {
                 Guid = Guid.NewGuid(),
                 CreatedAtUtc = DateTime.UtcNow,
@@ -150,7 +150,7 @@ public sealed class AttachmentController : ControllerBase
                     await _archive.SaveAsync(attachment, fileStream, cancellationToken);
                 }
 
-                var createdAttachment = (Model.Attachment)engine.Create(attachment);
+                var createdAttachment = (FileMetadata)engine.Create(attachment);
                 createdAttachments.Add(new ChillDtoEntity(_context, createdAttachment));
             }
             catch
@@ -170,8 +170,8 @@ public sealed class AttachmentController : ControllerBase
             return null;
         }
 
-        var moduleName = typeof(Model.Attachment).Namespace ?? "ChillSharp.Attachment.Model";
-        var isAllowed = await _entityAclService.AuthorizeAsync(User, moduleName, nameof(Model.Attachment), action, cancellationToken);
+        var moduleName = typeof(FileMetadata).Namespace ?? "ChillSharp.Attachment.Model";
+        var isAllowed = await _entityAclService.AuthorizeAsync(User, moduleName, nameof(FileMetadata), action, cancellationToken);
         return isAllowed ? null : Forbid();
     }
 }

@@ -153,7 +153,7 @@ public sealed class ChillMcpTools
         _dtoEngine = dtoEngine;
     }
 
-    [McpServerTool(Name = "ChillSharp get-schema-list"), Description(
+    [McpServerTool(Name = "ChillSharp.get-schema-list"), Description(
         "Lists all MCP-enabled ChillSharp entity and query schemas available to the authenticated caller. " +
         "Use this first to discover the database structure entry points, then call 'ChillSharp get-schema' for the full shape of a specific entity or query. " +
         "Schema entries describe entities, queries, their properties, and returned types. " +
@@ -166,7 +166,7 @@ public sealed class ChillMcpTools
         return _schemaDiscoveryService.GetSchemaListAsync(cultureName, cancellationToken);
     }
 
-    [McpServerTool(Name = "ChillSharp get-schema"), Description(
+    [McpServerTool(Name = "ChillSharp.get-schema"), Description(
         "Returns the full ChillSharp schema for one MCP-enabled entity or query type. " +
         "Use this tool to understand the structure of the database before querying: schemas describe entities, query types, their properties, descriptions, reference types, and for query schemas the related returned entity type. " +
         "Each property includes propertyType as a stable numeric id and simplePropertyType as an agent-friendly string to use when constructing request payloads. " +
@@ -184,7 +184,7 @@ public sealed class ChillMcpTools
         return _schemaDiscoveryService.GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken);
     }
 
-    [McpServerTool(Name = "ChillSharp get-dto-examples"), Description(
+    [McpServerTool(Name = "ChillSharp.get-dto-examples"), Description(
         "Returns a static serialized JSON object showing example ChillDtoQuery and ChillDtoEntity payload structures. " +
         "Use this tool when constructing MCP requests that need exact DTO property names, including ResultProperties with PropertyName and SubProperties, Pagination with Page and PageResults, and Ordering with PropertyName and Direction.")]
     public string GetDtoExamples()
@@ -192,7 +192,7 @@ public sealed class ChillMcpTools
         return DtoExampleStructure;
     }
 
-    [McpServerTool(Name = "ChillSharp query"), Description(
+    [McpServerTool(Name = "ChillSharp.query"), Description(
         "Executes a ChillSharp query for an MCP-enabled query schema and returns the ChillDtoQuery payload populated with results. " +
         "Before calling this tool, inspect the target query schema with 'ChillSharp get-schema' to understand accepted input properties, available result properties, and the returned entity type. " +
         "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, use Properties.FullTextSearch for generic keyword or quoted phrase search, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
@@ -220,7 +220,7 @@ public sealed class ChillMcpTools
         //return response;
     }
 
-    [McpServerTool(Name = "ChillSharp lookup"), Description(
+    [McpServerTool(Name = "ChillSharp.lookup"), Description(
         "Executes a generic full-text lookup against an MCP-enabled entity schema and returns a ChillDtoQuery payload populated with matching entities. " +
         "Use an entity ChillType such as 'Model.Blog', provide keyword or quoted phrase search text in Properties.FullTextSearch, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering. " +
         RequestPayloadGuidance +
@@ -234,7 +234,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Lookup(query);
     }
 
-    [McpServerTool(Name = "ChillSharp find"), Description(
+    [McpServerTool(Name = "ChillSharp.find"), Description(
         "Finds one MCP-enabled ChillSharp entity by ChillType and Guid and returns the matching ChillDtoEntity, or null when no record exists. " +
         "Use 'ChillSharp get-schema' first to understand the entity shape before reading or mutating it. " +
         AuthenticationAndPermissionsNotice)]
@@ -247,7 +247,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Find(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp create"), Description(
+    [McpServerTool(Name = "ChillSharp.create"), Description(
         "Creates a new MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the persisted DTO. " +
         "Inspect the target entity schema first so required and meaningful Properties are supplied correctly. " +
         RequestPayloadGuidance +
@@ -261,7 +261,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Create(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp update"), Description(
+    [McpServerTool(Name = "ChillSharp.update"), Description(
         "Updates an existing MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the updated DTO. " +
         "Guid must identify an existing record and Properties should contain the fields to update. " +
         RequestPayloadGuidance +
@@ -275,7 +275,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Update(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp delete"), Description(
+    [McpServerTool(Name = "ChillSharp.delete"), Description(
         "Deletes an existing MCP-enabled ChillSharp entity identified by ChillType and Guid. " +
         "This is a mutating operation; inspect schema and confirm the target record with 'ChillSharp find' before deleting. " +
         AuthenticationAndPermissionsNotice)]
@@ -288,7 +288,7 @@ public sealed class ChillMcpTools
         _dtoEngine.Delete(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp autocomplete-entity"), Description(
+    [McpServerTool(Name = "ChillSharp.autocomplete-entity"), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled entity DTO without explicitly choosing create or update. " +
         "Use this before create or update when the model calculates labels, URLs, references, or other derived values. " +
         RequestPayloadGuidance +
@@ -302,7 +302,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Autocomplete(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp autocomplete-query"), Description(
+    [McpServerTool(Name = "ChillSharp.autocomplete-query"), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled query DTO without executing the query. " +
         "Use this when query inputs have dependent or calculated values. " +
         RequestPayloadGuidance +
@@ -316,7 +316,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Autocomplete(query);
     }
 
-    [McpServerTool(Name = "ChillSharp validate-entity"), Description(
+    [McpServerTool(Name = "ChillSharp.validate-entity"), Description(
         "Validates an MCP-enabled entity DTO and returns ChillSharp validation errors without persisting changes. " +
         "Use this before create or update when the host model exposes validation rules. " +
         RequestPayloadGuidance +
@@ -330,7 +330,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Validate(entity);
     }
 
-    [McpServerTool(Name = "ChillSharp validate-query"), Description(
+    [McpServerTool(Name = "ChillSharp.validate-query"), Description(
         "Validates an MCP-enabled query DTO and returns ChillSharp validation errors without executing the query. " +
         "Use this before query execution when the query type exposes validation rules. " +
         RequestPayloadGuidance +
@@ -344,7 +344,7 @@ public sealed class ChillMcpTools
         return _dtoEngine.Validate(query);
     }
 
-    [McpServerTool(Name = "ChillSharp chunk"), Description(
+    [McpServerTool(Name = "ChillSharp.chunk"), Description(
         "Executes a list of ChillOperation items against MCP-enabled ChillSharp schemas and returns the updated operation list. " +
         "Supported verbs are transaction, query, find, create, update, delete, autocomplete, validate, and commit. " +
         "Each operation is checked for MCP visibility before any operation is executed, so unpublished schemas are rejected for the whole chunk. " +

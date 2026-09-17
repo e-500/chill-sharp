@@ -2,6 +2,7 @@ using ChillSharp;
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using ChillSharp.Template.Model;
+using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Template.Query;
 
@@ -27,9 +28,9 @@ public class ExampleQuery : ChillQuery
         MCPDescription = "Contains-match filter for the example title.")]
     public string Title { get; set; } = string.Empty;
 
-    public override IQueryable<IChillEntity> OnQuery(IChillContext context)
+    public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
     {
-        var db = (ChillSharpTemplateContext)context;
+        var db = (ChillSharpTemplateContext)Context;
         var query = db.Examples.AsQueryable();
 
         if (Guid.HasValue)

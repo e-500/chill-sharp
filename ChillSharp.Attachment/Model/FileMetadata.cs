@@ -36,8 +36,8 @@ namespace ChillSharp.Attachment.Model;
     LabelFormatString = "{Title}",
     ShortLabelFormatString = "{OriginalFilename}",
     FullTextContentFormatString = "{Title} {Description} {OriginalFilename}")]
-[Table("attachment")]
-public class Attachment : ChillEntity
+[Table("attachment-file-metadata")]
+public class FileMetadata : ChillEntity
 {
     [Key]
     public override Guid Guid { get; set; }
