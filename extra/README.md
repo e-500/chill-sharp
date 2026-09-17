@@ -13,6 +13,12 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
 - [`chill-sharp-ui-architecture`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-architecture): UI architecture notes and compatibility publish wrapper
 
+## How-To Guides
+
+- [`HOW_TO_CREATE_PRIVATE_REGISTRY.md`](HOW_TO_CREATE_PRIVATE_REGISTRY.md): create a local private npm registry for `@chill-sharp/*`
+- [`HOW_TO_NPM_SHARED_SOURCE_FOLDER.md`](HOW_TO_NPM_SHARED_SOURCE_FOLDER.md): share package archives through a folder instead of a registry
+- [`HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](HOW_TO_CREATE_UI_CORE_PLUGIN_README.md): write a README for a `ui-core` client route or remote workspace task plugin
+
 ## Shared Folder Publishing
 
 Publish the JavaScript packages to the shared npm folder with:
@@ -147,3 +153,4 @@ More information:
 
 - [`extra/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/README.md)
 - [`extra/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template/README.md)
+- [`extra/HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](HOW_TO_CREATE_UI_CORE_PLUGIN_README.md)

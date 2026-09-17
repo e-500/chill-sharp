@@ -161,10 +161,10 @@ foreach ($existingPackage in Get-ChildItem -LiteralPath $localPackageFolder -Fil
 Copy-Item -LiteralPath $latestPackage.File.FullName -Destination $destinationArchivePath -Force
 Set-ChillSharpPackageReferenceVersion -ProjectPath $templateProjectPath -PackageVersion $latestPackage.VersionText
 $removedGlobalCachePath = Remove-ChillSharpGlobalPackageCache -PackageVersion $latestPackage.VersionText
-$removedRestoreStatePaths = Remove-StaleRestoreState -RestoreStateFolderPath $restoreStateFolder
+$removedRestoreStatePaths = @(Remove-StaleRestoreState -RestoreStateFolderPath $restoreStateFolder)
 
 Write-Host "Copied ChillSharp $($latestPackage.VersionText) from '$($latestPackage.File.FullName)' to '$destinationArchivePath'."
-Write-Host "Updated Gdf.csproj to ChillSharp $($latestPackage.VersionText)."
+Write-Host "Updated ChillSharp.Template.csproj to ChillSharp $($latestPackage.VersionText)."
 
 if ($null -ne $removedGlobalCachePath) {
   Write-Host "Removed cached global package '$removedGlobalCachePath' so NuGet will re-extract ChillSharp $($latestPackage.VersionText)."

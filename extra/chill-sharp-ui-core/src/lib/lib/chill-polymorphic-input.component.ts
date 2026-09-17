@@ -427,10 +427,14 @@ export class ChillPolymorphicInputComponent implements OnDestroy {
    * Checks whether the dialog-based lookup picker can be opened for a property.
    */
   canOpenLookupDialog(property: ChillPropertySchema): boolean {
-    return (
-      property.propertyType === CHILL_PROPERTY_TYPE.ChillEntity
-      || property.propertyType === CHILL_PROPERTY_TYPE.ChillEntityCollection
-    ) && !!property.referenceChillType?.trim();
+    if (property.propertyType !== CHILL_PROPERTY_TYPE.ChillEntity
+      && property.propertyType !== CHILL_PROPERTY_TYPE.ChillEntityCollection) 
+      return false;
+    const entityChillType = this.resolveLookupEntityChillType(property);
+    const queryChillType = this.resolveLookupQueryChillType(property, entityChillType);
+    if (entityChillType == queryChillType) 
+      return false;
+    return true;
   }
 
   /**

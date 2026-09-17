@@ -47,17 +47,15 @@
                 [name]="property.name"
                 [placeholder]="placeholder(property) || chill.T('FA7B8E01-658C-4D63-B53F-D476CD697892', 'Search entity', 'Cerca entita')" />
             </div>
-            @if (canOpenLookupDialog(property)) {
-              <button
-                type="button"
-                class="lookup-dialog"
-                (mousedown)="beginLookupDialogSelection(property.name)"
-                (click)="openLookupDialog(property)"
-                [disabled]="isPropertyReadOnly(property.name)"
-                [attr.aria-label]="chill.T('B6D48459-73D4-4234-977E-8D79E510A20D', 'Open entity picker', 'Apri selettore entita')">
-                ...
-              </button>
-            }
+            <button
+              type="button"
+              class="lookup-dialog"
+              (mousedown)="beginLookupDialogSelection(property.name)"
+              (click)="openLookupDialog(property)"
+              [disabled]="isPropertyReadOnly(property.name) || !canOpenLookupDialog(property)"
+              [attr.aria-label]="chill.T('B6D48459-73D4-4234-977E-8D79E510A20D', 'Open entity picker', 'Apri selettore entita')">
+              ...
+            </button>
             <button type="button" class="lookup-clear" (click)="clearLookup(property)" [disabled]="isPropertyReadOnly(property.name)">
               {{ chill.T('34015BA4-E0CA-460E-B82B-A4E2D4D8A184', 'Clear', 'Pulisci') }}
             </button>
@@ -131,17 +129,15 @@
                   [name]="property.name"
                   [placeholder]="placeholder(property) || chill.T('FA7B8E01-658C-4D63-B53F-D476CD697892', 'Search entity', 'Cerca entita')" />
               </div>
-              @if (canOpenLookupDialog(property)) {
-                <button
+              <button
                   type="button"
                   class="lookup-dialog"
                   (mousedown)="beginLookupDialogSelection(property.name)"
                   (click)="openLookupDialog(property)"
-                  [disabled]="isPropertyReadOnly(property.name)"
+                  [disabled]="isPropertyReadOnly(property.name) || !canOpenLookupDialog(property)"
                   [attr.aria-label]="chill.T('B6D48459-73D4-4234-977E-8D79E510A20D', 'Open entity picker', 'Apri selettore entita')">
                   ...
-                </button>
-              }
+              </button>
             </div>
 
             <ng-template

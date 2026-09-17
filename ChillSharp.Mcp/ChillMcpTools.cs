@@ -21,7 +21,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using ChillSharp.Dto;
 using ChillSharp.EF;
-using ChillSharp.Schema.Contracts;
+using ChillSharp.Mcp.Contracts;
 using ModelContextProtocol.Server;
 
 namespace ChillSharp.Mcp;
@@ -44,15 +44,15 @@ public sealed class ChillMcpTools
         WriteIndented = true
     };
 
-    private static readonly string DtoExampleStructure = JsonSerializer.Serialize(new
+    private static readonly string McpExampleStructure = JsonSerializer.Serialize(new
     {
-        ChillDtoQuery = new ChillDtoQuery
+        ChillMcpQuery = new ChillMcpQuery
         {
             ChillType = "Query.PostQuery",
             Properties =
             {
-                ["FullTextSearch"] = "\"la nazione\"",
-                ["Blog"] = new ChillDtoEntity
+                ["FullTextSearch"] = "\"example phrase\"",
+                ["Blog"] = new ChillMcpEntity
                 {
                     ChillType = "Model.Blog",
                     Guid = Guid.Parse("11111111-1111-1111-1111-111111111111")
@@ -60,27 +60,31 @@ public sealed class ChillMcpTools
             },
             ResultProperties =
             [
-                new ChillDtoProperty("Guid"),
-                new ChillDtoProperty("Title"),
-                new ChillDtoProperty("Blog",
-                [
-                    new ChillDtoProperty("Guid"),
-                    new ChillDtoProperty("Title")
-                ])
+                new ChillMcpProperty { PropertyName = "Guid" },
+                new ChillMcpProperty { PropertyName = "Title" },
+                new ChillMcpProperty
+                {
+                    PropertyName = "Blog",
+                    SubProperties =
+                    [
+                        new ChillMcpProperty { PropertyName = "Guid" },
+                        new ChillMcpProperty { PropertyName = "Title" }
+                    ]
+                }
             ],
-            Pagination = new ChillPagination
+            Pagination = new ChillMcpPagination
             {
                 Page = 1,
                 PageResults = 20
             },
-            Ordering = new ChillOrdering
+            Ordering = new ChillMcpOrdering
             {
                 PropertyName = "Title",
                 Direction = ChillOrdering.AscendingDirection
             },
             Results =
             [
-                new ChillDtoEntity
+                new ChillMcpEntity
                 {
                     Guid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
                     Position = 1,
@@ -90,7 +94,7 @@ public sealed class ChillMcpTools
                     Properties =
                     {
                         ["Title"] = "Example post",
-                        ["Blog"] = new ChillDtoEntity
+                        ["Blog"] = new ChillMcpEntity
                         {
                             ChillType = "Model.Blog",
                             Guid = Guid.Parse("11111111-1111-1111-1111-111111111111"),
@@ -100,7 +104,7 @@ public sealed class ChillMcpTools
                 }
             ]
         },
-        ChillDtoEntity = new ChillDtoEntity
+        ChillMcpEntity = new ChillMcpEntity
         {
             Guid = Guid.Parse("22222222-2222-2222-2222-222222222222"),
             Position = 1,
@@ -111,7 +115,7 @@ public sealed class ChillMcpTools
             {
                 ["Title"] = "Example post",
                 ["Author"] = "Ada",
-                ["Blog"] = new ChillDtoEntity
+                ["Blog"] = new ChillMcpEntity
                 {
                     ChillType = "Model.Blog",
                     Guid = Guid.Parse("11111111-1111-1111-1111-111111111111")
@@ -124,25 +128,11 @@ public sealed class ChillMcpTools
         "Authentication with a bearer token is required by the host API. Permissions and other limitations can be applied through the authenticated API-key user, so tool results may be filtered or denied based on that identity.";
 
     private const string FullTextSearchGuidance =
-        "FullTextSearch is generic full-text search against IChillEntity.FullTextContent. " +
-        "Unquoted text without advanced selectors is normalized, split on whitespace, and AND-matched so every token must be present. " +
-        "When the search text contains brackets or standalone AND/OR operators outside quotes, ChillSharp evaluates it as a grouped boolean expression. " +
-        "Search the literal words 'and' or 'or' by wrapping them in matching quotes. " +
-        "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
-        "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
-        "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. ";
+        "FullTextSearch supports plain AND-matched terms, quoted phrases, grouped AND/OR expressions, and leading or trailing wildcards inside quoted phrases.";
 
     private const string RequestPayloadGuidance =
-        "Do not invent request objects or property names. First inspect the target schema with 'ChillSharp get-schema', then build payloads from that schema only. " +
-        "Call the MCP endpoint/tool 'ChillSharp get-dto-examples' to obtain the correct serialized ChillDtoQuery and ChillDtoEntity data structures before building requests. " +
-        "ChillDtoQuery payload properties are ChillType, Properties, ResultProperties, Pagination, Ordering, and Results; " +
-        "ChillDtoQuery payload Pagination contains Page and PageResults and Ordering contains PropertyName and Direction. " +
-        "ChillDtoEntity payload properties are Guid, Position, ChillType, Label, ShortLabel, and Properties. " +
-        "For Properties, use exact schema property names and values matching each property's simplePropertyType: guid, int, decimal, date, time, datetime, duration, bool, string, text, json, chill-entity, chill-entity-collection, or chill-query. " +
-        "For query Properties, read each property's mcpDescription to infer search behavior such as equals, contains, range, lookup, or custom matching; when mcpDescription is missing or does not specify matching behavior, assume exact-match equals. " +
-        "Every Chill query also supports a FullTextSearch property; use Properties.FullTextSearch when the user asks for broad keyword search instead of a specific structured filter. " +
-        FullTextSearchGuidance +
-        "For chill-entity values, send a ChillDtoEntity reference with ChillType and Guid. For ResultProperties, send ChillDtoProperty objects with PropertyName and optional SubProperties using property names from the returned entity schema. ";
+        "Inspect the schema first, use exact schema property names, and match each property's simplePropertyType. " +
+        "Use Properties.FullTextSearch for broad keyword search. " + FullTextSearchGuidance;
 
     private readonly ChillMcpSchemaDiscoveryService _schemaDiscoveryService;
     private readonly IChillDtoEngine _dtoEngine;
@@ -153,12 +143,12 @@ public sealed class ChillMcpTools
         _dtoEngine = dtoEngine;
     }
 
-    [McpServerTool(Name = "ChillSharp.get-schema-list"), Description(
+    [McpServerTool(Name = "ChillSharp.get-schema-list", UseStructuredContent = true), Description(
         "Lists all MCP-enabled ChillSharp entity and query schemas available to the authenticated caller. " +
         "Use this first to discover the database structure entry points, then call 'ChillSharp get-schema' for the full shape of a specific entity or query. " +
         "Schema entries describe entities, queries, their properties, and returned types. " +
         AuthenticationAndPermissionsNotice)]
-    public Task<IReadOnlyList<ChillDtoSchemaListItem>> GetSchemaList(
+    public Task<IReadOnlyList<ChillMcpSchemaListItem>> GetSchemaList(
         [Description("Optional culture name used to localize schema labels, for example 'en-GB' or 'it-IT'.")]
         string? cultureName = null,
         CancellationToken cancellationToken = default)
@@ -166,13 +156,13 @@ public sealed class ChillMcpTools
         return _schemaDiscoveryService.GetSchemaListAsync(cultureName, cancellationToken);
     }
 
-    [McpServerTool(Name = "ChillSharp.get-schema"), Description(
+    [McpServerTool(Name = "ChillSharp.get-schema", UseStructuredContent = true), Description(
         "Returns the full ChillSharp schema for one MCP-enabled entity or query type. " +
         "Use this tool to understand the structure of the database before querying: schemas describe entities, query types, their properties, descriptions, reference types, and for query schemas the related returned entity type. " +
         "Each property includes propertyType as a stable numeric id and simplePropertyType as an agent-friendly string to use when constructing request payloads. " +
         "This is the best tool for learning which fields exist and how a query is expected to behave. " +
         AuthenticationAndPermissionsNotice)]
-    public Task<ChillDtoSchema?> GetSchemaAsync(
+    public Task<ChillMcpSchema?> GetSchemaAsync(
         [Description("The ChillSharp entity or query type, for example 'Model.Blog' or 'Query.PostQuery'.")]
         string chillType,
         [Description("Optional view code. Use 'default' unless the host exposes a custom schema view.")]
@@ -184,35 +174,35 @@ public sealed class ChillMcpTools
         return _schemaDiscoveryService.GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken);
     }
 
-    [McpServerTool(Name = "ChillSharp.get-dto-examples"), Description(
-        "Returns a static serialized JSON object showing example ChillDtoQuery and ChillDtoEntity payload structures. " +
+    [McpServerTool(Name = "ChillSharp.get-dto-examples", UseStructuredContent = true), Description(
+        "Returns a static serialized JSON object showing example MCP query and entity payload structures. " +
         "Use this tool when constructing MCP requests that need exact DTO property names, including ResultProperties with PropertyName and SubProperties, Pagination with Page and PageResults, and Ordering with PropertyName and Direction.")]
     public string GetDtoExamples()
     {
-        return DtoExampleStructure;
+        return McpExampleStructure;
     }
 
-    [McpServerTool(Name = "ChillSharp.query"), Description(
-        "Executes a ChillSharp query for an MCP-enabled query schema and returns the ChillDtoQuery payload populated with results. " +
+    [McpServerTool(Name = "ChillSharp.query", UseStructuredContent = true), Description(
+        "Executes a ChillSharp query for an MCP-enabled query schema and returns the MCP query payload populated with results. " +
         "Before calling this tool, inspect the target query schema with 'ChillSharp get-schema' to understand accepted input properties, available result properties, and the returned entity type. " +
-        "Use a query ChillType such as 'Query.PostQuery', provide input values in Properties, use Properties.FullTextSearch for generic keyword or quoted phrase search, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering on the ChillDtoQuery request. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoQuery> Query(
-        [Description("The full ChillSharp query payload. ChillType should usually be a query type such as 'Query.PostQuery'.")]
-        ChillDtoQuery query,
+    public async Task<ChillMcpQuery> Query(
+        [Description("The query payload. ChillType should usually be a query type such as 'Query.PostQuery'.")]
+        ChillMcpQuery query,
         CancellationToken cancellationToken = default)
     {
         // DEBUG
         //var logId = Guid.NewGuid().ToString("N");
         //LogMcpQueryPayload(logId, "request", query);
 
-        if (!await _schemaDiscoveryService.IsMcpEnabledAsync(query.ChillType, "default", cancellationToken: cancellationToken))
+        var dto = query.ToDto();
+        if (!await _schemaDiscoveryService.IsMcpEnabledAsync(dto.ChillType, "default", cancellationToken: cancellationToken))
         {
-            throw new InvalidOperationException($"ChillSharp query '{query.ChillType}' is not MCP-enabled.");
+            throw new InvalidOperationException($"ChillSharp query '{dto.ChillType}' is not MCP-enabled.");
         }
 
-        return _dtoEngine.Query(query);
+        return ChillMcpQuery.FromDto(_dtoEngine.Query(dto));
 
         // DEBUG
         //var response = _dtoEngine.Query(query);
@@ -220,148 +210,151 @@ public sealed class ChillMcpTools
         //return response;
     }
 
-    [McpServerTool(Name = "ChillSharp.lookup"), Description(
-        "Executes a generic full-text lookup against an MCP-enabled entity schema and returns a ChillDtoQuery payload populated with matching entities. " +
+    [McpServerTool(Name = "ChillSharp.lookup", UseStructuredContent = true), Description(
+        "Executes a generic full-text lookup against an MCP-enabled entity schema and returns an MCP query payload populated with matching entities. " +
         "Use an entity ChillType such as 'Model.Blog', provide keyword or quoted phrase search text in Properties.FullTextSearch, and optionally restrict returned fields through ResultProperties, Pagination, and Ordering. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoQuery> Lookup(
+    public async Task<ChillMcpQuery> Lookup(
         [Description("The lookup payload. ChillType should be an MCP-enabled entity type such as 'Model.Blog'.")]
-        ChillDtoQuery query,
+        ChillMcpQuery query,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(query.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Lookup(query);
+        return ChillMcpQuery.FromDto(_dtoEngine.Lookup(query.ToDto()));
     }
 
-    [McpServerTool(Name = "ChillSharp.find"), Description(
-        "Finds one MCP-enabled ChillSharp entity by ChillType and Guid and returns the matching ChillDtoEntity, or null when no record exists. " +
+    [McpServerTool(Name = "ChillSharp.find", UseStructuredContent = true), Description(
+        "Finds one MCP-enabled ChillSharp entity by ChillType and Guid and returns the matching MCP entity, or null when no record exists. " +
         "Use 'ChillSharp get-schema' first to understand the entity shape before reading or mutating it. " +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoEntity?> Find(
+    public async Task<ChillMcpEntity?> Find(
         [Description("The entity identifier payload. ChillType must be an MCP-enabled entity type and Guid must identify the record to find.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Find(entity);
+        var found = _dtoEngine.Find(entity.ToDto());
+        return found == null ? null : ChillMcpEntity.FromDto(found);
     }
 
-    [McpServerTool(Name = "ChillSharp.create"), Description(
-        "Creates a new MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the persisted DTO. " +
+    [McpServerTool(Name = "ChillSharp.create", UseStructuredContent = true), Description(
+        "Creates a new MCP-enabled ChillSharp entity from an MCP entity payload and returns the persisted entity. " +
         "Inspect the target entity schema first so required and meaningful Properties are supplied correctly. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoEntity> Create(
+    public async Task<ChillMcpEntity> Create(
         [Description("The entity payload to create. ChillType must be an MCP-enabled entity type; Properties contains values for annotated fields.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Create(entity);
+        return ChillMcpEntity.FromDto(_dtoEngine.Create(entity.ToDto()));
     }
 
-    [McpServerTool(Name = "ChillSharp.update"), Description(
-        "Updates an existing MCP-enabled ChillSharp entity from a ChillDtoEntity payload and returns the updated DTO. " +
+    [McpServerTool(Name = "ChillSharp.update", UseStructuredContent = true), Description(
+        "Updates an existing MCP-enabled ChillSharp entity from an MCP entity payload and returns the updated entity. " +
         "Guid must identify an existing record and Properties should contain the fields to update. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoEntity> Update(
+    public async Task<ChillMcpEntity> Update(
         [Description("The entity payload to update. ChillType must be an MCP-enabled entity type and Guid must identify the existing record.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Update(entity);
+        return ChillMcpEntity.FromDto(_dtoEngine.Update(entity.ToDto()));
     }
 
-    [McpServerTool(Name = "ChillSharp.delete"), Description(
+    [McpServerTool(Name = "ChillSharp.delete", UseStructuredContent = true), Description(
         "Deletes an existing MCP-enabled ChillSharp entity identified by ChillType and Guid. " +
         "This is a mutating operation; inspect schema and confirm the target record with 'ChillSharp find' before deleting. " +
         AuthenticationAndPermissionsNotice)]
-    public async Task Delete(
+    public async Task<ChillMcpEmptyResult> Delete(
         [Description("The entity identifier payload. ChillType must be an MCP-enabled entity type and Guid must identify the existing record to delete.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        _dtoEngine.Delete(entity);
+        _dtoEngine.Delete(entity.ToDto());
+        return new ChillMcpEmptyResult();
     }
 
-    [McpServerTool(Name = "ChillSharp.autocomplete-entity"), Description(
+    [McpServerTool(Name = "ChillSharp.autocomplete-entity", UseStructuredContent = true), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled entity DTO without explicitly choosing create or update. " +
         "Use this before create or update when the model calculates labels, URLs, references, or other derived values. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoEntity> AutocompleteEntity(
+    public async Task<ChillMcpEntity> AutocompleteEntity(
         [Description("The entity payload to autocomplete. ChillType must be an MCP-enabled entity type.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Autocomplete(entity);
+        return ChillMcpEntity.FromDto(_dtoEngine.Autocomplete(entity.ToDto()));
     }
 
-    [McpServerTool(Name = "ChillSharp.autocomplete-query"), Description(
+    [McpServerTool(Name = "ChillSharp.autocomplete-query", UseStructuredContent = true), Description(
         "Applies ChillSharp autocomplete logic to an MCP-enabled query DTO without executing the query. " +
         "Use this when query inputs have dependent or calculated values. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<ChillDtoQuery> AutocompleteQuery(
+    public async Task<ChillMcpQuery> AutocompleteQuery(
         [Description("The query payload to autocomplete. ChillType must be an MCP-enabled query type.")]
-        ChillDtoQuery query,
+        ChillMcpQuery query,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(query.ChillType, isQueryType: true, cancellationToken);
-        return _dtoEngine.Autocomplete(query);
+        return ChillMcpQuery.FromDto(_dtoEngine.Autocomplete(query.ToDto()));
     }
 
-    [McpServerTool(Name = "ChillSharp.validate-entity"), Description(
+    [McpServerTool(Name = "ChillSharp.validate-entity", UseStructuredContent = true), Description(
         "Validates an MCP-enabled entity DTO and returns ChillSharp validation errors without persisting changes. " +
         "Use this before create or update when the host model exposes validation rules. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<IEnumerable<ChillValidationError>> ValidateEntity(
+    public async Task<IEnumerable<ChillMcpValidationError>> ValidateEntity(
         [Description("The entity payload to validate. ChillType must be an MCP-enabled entity type.")]
-        ChillDtoEntity entity,
+        ChillMcpEntity entity,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(entity.ChillType, isQueryType: false, cancellationToken);
-        return _dtoEngine.Validate(entity);
+        return _dtoEngine.Validate(entity.ToDto()).Select(ChillMcpValidationError.FromDto);
     }
 
-    [McpServerTool(Name = "ChillSharp.validate-query"), Description(
+    [McpServerTool(Name = "ChillSharp.validate-query", UseStructuredContent = true), Description(
         "Validates an MCP-enabled query DTO and returns ChillSharp validation errors without executing the query. " +
         "Use this before query execution when the query type exposes validation rules. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<IEnumerable<ChillValidationError>> ValidateQuery(
+    public async Task<IEnumerable<ChillMcpValidationError>> ValidateQuery(
         [Description("The query payload to validate. ChillType must be an MCP-enabled query type.")]
-        ChillDtoQuery query,
+        ChillMcpQuery query,
         CancellationToken cancellationToken = default)
     {
         await EnsureMcpEnabledAsync(query.ChillType, isQueryType: true, cancellationToken);
-        return _dtoEngine.Validate(query);
+        return _dtoEngine.Validate(query.ToDto()).Select(ChillMcpValidationError.FromDto);
     }
 
-    [McpServerTool(Name = "ChillSharp.chunk"), Description(
-        "Executes a list of ChillOperation items against MCP-enabled ChillSharp schemas and returns the updated operation list. " +
+    [McpServerTool(Name = "ChillSharp.chunk", UseStructuredContent = true), Description(
+        "Executes a list of MCP operation items against MCP-enabled ChillSharp schemas and returns the updated operation list. " +
         "Supported verbs are transaction, query, find, create, update, delete, autocomplete, validate, and commit. " +
         "Each operation is checked for MCP visibility before any operation is executed, so unpublished schemas are rejected for the whole chunk. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
-    public async Task<List<ChillOperation>> Chunk(
-        [Description("Ordered ChillOperation items. Use Index for client-side ordering and Verb to choose the operation; provide Query or Entity according to the verb.")]
-        List<ChillOperation> chunk,
+    public async Task<List<ChillMcpOperation>> Chunk(
+        [Description("Ordered operation items. Use Index for client-side ordering and Verb to choose the operation; provide Query or Entity according to the verb.")]
+        List<ChillMcpOperation> chunk,
         CancellationToken cancellationToken = default)
     {
-        foreach (var operation in chunk)
+        var dtoChunk = chunk.Select(operation => operation.ToDto()).ToList();
+        foreach (var operation in dtoChunk)
         {
             await EnsureChunkOperationMcpEnabledAsync(operation, cancellationToken);
         }
 
-        chunk.ForEach(operation => operation.Execute(_dtoEngine));
-        return chunk;
+        dtoChunk.ForEach(operation => operation.Execute(_dtoEngine));
+        return dtoChunk.Select(ChillMcpOperation.FromDto).ToList();
     }
 
     private async Task EnsureMcpEnabledAsync(string chillType, bool isQueryType, CancellationToken cancellationToken)
