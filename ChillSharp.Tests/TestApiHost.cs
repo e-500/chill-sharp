@@ -19,6 +19,7 @@
 
 using ChillSharp.Api;
 using ChillSharp.Auth.Api;
+using ChillSharp.I18n.Api;
 using ChillSharp.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +67,7 @@ internal static class TestApiHost
                     options.UseSqlite($"Data Source={DatabasePath}"));
                 builder.Services.AddChillApi<EF.DummyContext>();
                 builder.Services.AddChillAuthApi<EF.DummyContext>();
+                builder.Services.AddChillI18nApi<EF.DummyContext>();
                 builder.Services.AddChillSchema<EF.DummyContext>();
 
                 var app = builder.Build();

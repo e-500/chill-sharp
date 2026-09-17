@@ -40,7 +40,7 @@ namespace ChillSharp.EF.ServiceModel.User
         /// Gets or sets the culture code associated with the user, typically used to specify language or regional
         /// formatting.
         /// </summary>
-        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-US" for U.S. English). This
+        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-GB" for U.S. English). This
         /// property can be used to localize content or control formatting based on cultural preferences.</remarks>
         [ChillProperty(
             UniquePropertyKeyString: "6578FE96-8144-4D82-AE90-C41B825DF514",

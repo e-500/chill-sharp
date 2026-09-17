@@ -1,5 +1,7 @@
 # HOW-TO: Handle a One-to-Many Blog-Posts Relation
 
+Versione italiana: [Italiano](../it/HowTo/04-blog-posts-one-to-many.md)
+
 This example extends the blog model with posts and shows how to load one blog together with its posts in a single `ChillSharpClient.Query(...)` call.
 
 ## Goal
@@ -189,3 +191,4 @@ foreach (var post in loadedBlog.GetCollection("Posts"))
 - DTO-based relation handling without writing a dedicated controller for `Blog` or `Post`
 
 Next: [Back to the documentation index](../README.md)
+

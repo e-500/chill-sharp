@@ -18,6 +18,9 @@
  */
 
 using ChillSharp.Annotations;
+using System.Globalization;
+using System.Reflection;
+using System.Text;
 
 namespace ChillSharp.EF
 {
@@ -45,6 +48,24 @@ namespace ChillSharp.EF
         public string Label { get; set; } = string.Empty;
         public string ShortLabel { get; set; } = string.Empty;
         public string FullTextContent { get; set; } = string.Empty;
+
+        [ChillProperty(
+            UniquePropertyKeyString: "4C9CB824-15A8-4281-AF21-1C46868E4152",
+            PrimaryLanguageLabel: "Checksum",
+            SecondaryLanguageLabel: "Checksum")]
+        public long Checksum { get; set; }
+
+        [ChillProperty(
+            UniquePropertyKeyString: "E6E02296-B840-48F1-85B3-9B7221CF8AB9",
+            PrimaryLanguageLabel: "Last update user",
+            SecondaryLanguageLabel: "Utente ultimo aggiornamento")]
+        public string LastUpdateUser { get; set; } = string.Empty;
+
+        [ChillProperty(
+            UniquePropertyKeyString: "19604008-C926-4A9C-90C4-73D6FB8D37BB",
+            PrimaryLanguageLabel: "Last update timestamp",
+            SecondaryLanguageLabel: "Timestamp ultimo aggiornamento")]
+        public DateTime LastUpdateUtc { get; set; }
 
         #region IChillEntity implementation
         #region CREATE
@@ -91,6 +112,28 @@ namespace ChillSharp.EF
         /// </summary>
         /// <param name="Context">The active database context.</param>
         public virtual void OnAfterUpdate(IChillContext Context) { }
+
+        // ChillEngine invokes OnAfterUpdate through the IChillEntity interface, not through the concrete class.
+        // That means this explicit interface implementation is the real runtime entry point used by the engine.
+        // It can therefore enforce audit-field maintenance first and only then delegate to the user-overridable
+        // public virtual OnAfterUpdate(...) method, so derived classes keep a clean override surface without
+        // being able to accidentally skip the base audit logic.
+        void IChillEntity.OnAfterUpdate(IChillContext Context)
+        {
+            UpdateAuditFields(Context);
+            OnAfterUpdate(Context);
+        }
+
+        /// <summary>
+        /// Recomputes the checksum and audit trail fields from the current Chill property values.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        private void UpdateAuditFields(IChillContext Context)
+        {
+            LastUpdateUtc = DateTime.UtcNow;
+            LastUpdateUser = Context.GetCurrentUserName() ?? string.Empty;
+            Checksum = CalculateChecksum();
+        }
         #endregion
 
         #region DELETE
@@ -143,6 +186,60 @@ namespace ChillSharp.EF
         public virtual string GetFullTextContent(IChillContext Context)
         {
             return GetLabel(Context);
+        }
+
+        /// <summary>
+        /// Calculates the entity checksum by summing the serialized values of all Chill properties.
+        /// </summary>
+        /// <returns>The checksum for the current entity state.</returns>
+        protected virtual long CalculateChecksum()
+        {
+            long checksum = 0;
+            var chillProperties = GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .Where(property => property.IsDefined(typeof(ChillPropertyAttribute), inherit: true));
+
+            foreach (var property in chillProperties)
+            {
+                if (property.Name is nameof(Checksum) or nameof(LastUpdateUser) or nameof(LastUpdateUtc))
+                {
+                    continue;
+                }
+
+                var serializedValue = SerializeChecksumValue(property.GetValue(this));
+                foreach (var b in Encoding.UTF8.GetBytes(serializedValue))
+                {
+                    checksum += b;
+                }
+            }
+
+            return checksum;
+        }
+
+        private static string SerializeChecksumValue(object? value)
+        {
+            if (value is null)
+            {
+                return string.Empty;
+            }
+
+            if (value is IChillEntity chillEntity)
+            {
+                return chillEntity.Guid.ToString("N", CultureInfo.InvariantCulture);
+            }
+
+            if (value is System.Collections.IEnumerable enumerable and not string)
+            {
+                var builder = new StringBuilder();
+                foreach (var item in enumerable)
+                {
+                    builder.Append(SerializeChecksumValue(item));
+                    builder.Append('|');
+                }
+
+                return builder.ToString();
+            }
+
+            return Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
         }
         #endregion
         #endregion

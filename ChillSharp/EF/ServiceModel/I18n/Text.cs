@@ -40,10 +40,19 @@ namespace ChillSharp.EF.ServiceModel.I18n
         public override Guid Guid { get; set; }
 
         /// <summary>
+        /// Gets or sets the stable label identifier shared by all localized values for the same text.
+        /// </summary>
+        [ChillProperty(
+            UniquePropertyKeyString: "F31A6BF9-85D5-4D14-B1D3-9D80DB0BC3B0",
+            PrimaryLanguageLabel: "Label guid",
+            SecondaryLanguageLabel: "Guid etichetta")]
+        public Guid LabelGuid { get; set; }
+
+        /// <summary>
         /// Gets or sets the culture code associated with the item, typically used to specify language or regional
         /// formatting.
         /// </summary>
-        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-US" for U.S. English). This
+        /// <remarks>The culture code should follow standard conventions such as combined language-region codes (e.g., "en-GB" for U.S. English). This
         /// property can be used to localize content or control formatting based on cultural preferences.</remarks>
         [ChillProperty(
             UniquePropertyKeyString: "AF8190BF-57D5-4E5A-AADA-4BA41BDFB322",

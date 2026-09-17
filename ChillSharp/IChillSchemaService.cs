@@ -12,9 +12,10 @@ public interface IChillSchemaService
     /// </summary>
     /// <param name="chillType">The logical Chill type identifier.</param>
     /// <param name="chillViewCode">The logical Chill view code.</param>
+    /// <param name="cultureName">Optional explicit culture used to localize schema labels.</param>
     /// <param name="cancellationToken">Token used to cancel the operation.</param>
     /// <returns>The resolved schema, or <see langword="null"/> when no schema can be resolved.</returns>
-    Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, CancellationToken cancellationToken = default);
+    Task<ChillDtoSchema?> GetSchemaAsync(string chillType, string chillViewCode, string? cultureName = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Persists a schema definition.

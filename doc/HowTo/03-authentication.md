@@ -1,5 +1,7 @@
 # HOW-TO: Use Authentication with ChillSharp
 
+Versione italiana: [Italiano](../it/HowTo/03-authentication.md)
+
 This example shows the smallest useful authentication setup for a ChillSharp API: protect the API, enable the auth module, register an account, log in, and let `ChillSharpClient` reuse and refresh tokens automatically.
 
 ## Goal
@@ -201,3 +203,4 @@ var refreshed = client.RefreshAuthAccount();
 - For production, bootstrap the first administrator deliberately, for example through root-user initialization or a trusted install-time flow.
 
 Next example: [Create a Docker image and configure it with environment variables](04-docker-env-variables.md)
+

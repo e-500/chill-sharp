@@ -1,0 +1,10 @@
+.git
+.github
+.vs
+**/bin
+**/obj
+**/TestResults
+auth.log
+build.log
+build-i18n.log
+TODO.md

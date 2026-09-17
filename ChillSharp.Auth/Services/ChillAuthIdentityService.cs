@@ -24,7 +24,10 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Net;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -213,19 +216,25 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
     private readonly IChillAuthService _authService;
     private readonly IChillAuthTokenService _tokenService;
     private readonly ChillAuthIdentityApiOptions _options;
+    private readonly IChillAuthPasswordResetEmailSender _passwordResetEmailSender;
+    private readonly ILogger<ChillAuthIdentityService<TUser>> _logger;
 
     public ChillAuthIdentityService(
         UserManager<TUser> userManager,
         IUserStore<TUser> userStore,
         IChillAuthService authService,
         IChillAuthTokenService tokenService,
-        IOptions<ChillAuthIdentityApiOptions> options)
+        IOptions<ChillAuthIdentityApiOptions> options,
+        IChillAuthPasswordResetEmailSender passwordResetEmailSender,
+        ILogger<ChillAuthIdentityService<TUser>> logger)
     {
         _userManager = userManager;
         _userStore = userStore;
         _authService = authService;
         _tokenService = tokenService;
         _options = options.Value;
+        _passwordResetEmailSender = passwordResetEmailSender;
+        _logger = logger;
     }
 
     public async Task<AuthTokenResponse> RegisterAsync(RegisterAuthIdentityRequest request, CancellationToken cancellationToken = default)
@@ -313,10 +322,31 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var userId = await _userManager.GetUserIdAsync(user);
+
+        if (_options.SendPasswordResetEmails)
+        {
+            var emailAddress = await GetUserEmailAsync(user);
+            if (!string.IsNullOrWhiteSpace(emailAddress) && !string.IsNullOrWhiteSpace(userId))
+            {
+                var userName = await _userManager.GetUserNameAsync(user) ?? emailAddress;
+                await _passwordResetEmailSender.SendAsync(
+                    emailAddress,
+                    userName,
+                    userId,
+                    token,
+                    cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning("Password-reset email delivery was requested but the target account does not expose a usable email address.");
+            }
+        }
+
         return new PasswordResetTokenResponse
         {
             IsAccepted = true,
-            UserId = _options.ReturnPasswordResetTokensInResponse ? await _userManager.GetUserIdAsync(user) : null,
+            UserId = _options.ReturnPasswordResetTokensInResponse ? userId : null,
             ResetToken = _options.ReturnPasswordResetTokensInResponse ? token : null
         };
     }
@@ -352,6 +382,17 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         return user;
     }
 
+    private async Task<string?> GetUserEmailAsync(TUser user)
+    {
+        if (!_userManager.SupportsUserEmail)
+        {
+            return null;
+        }
+
+        var email = await _userManager.GetEmailAsync(user);
+        return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+    }
+
     private static string FormatIdentityErrors(IdentityResult result)
     {
         return string.Join("; ", result.Errors.Select(x => $"{x.Code}: {x.Description}"));
@@ -363,6 +404,112 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         if (string.IsNullOrWhiteSpace(normalized))
         {
             throw new ArgumentException($"{argumentName} is required.", argumentName);
+        }
+
+        return normalized;
+    }
+}
+
+internal interface IChillAuthPasswordResetEmailSender
+{
+    Task SendAsync(string recipientEmail, string recipientName, string userId, string resetToken, CancellationToken cancellationToken = default);
+}
+
+internal sealed class ChillAuthPasswordResetEmailSender : IChillAuthPasswordResetEmailSender
+{
+    private readonly ChillAuthIdentityApiOptions _options;
+    private readonly ILogger<ChillAuthPasswordResetEmailSender> _logger;
+
+    public ChillAuthPasswordResetEmailSender(
+        IOptions<ChillAuthIdentityApiOptions> options,
+        ILogger<ChillAuthPasswordResetEmailSender> logger)
+    {
+        _options = options.Value;
+        _logger = logger;
+    }
+
+    public async Task SendAsync(string recipientEmail, string recipientName, string userId, string resetToken, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!_options.SendPasswordResetEmails)
+        {
+            return;
+        }
+
+        var smtpHost = RequireValue(_options.SmtpHost, nameof(_options.SmtpHost));
+        var fromEmail = RequireValue(_options.PasswordResetFromEmail, nameof(_options.PasswordResetFromEmail));
+
+        using var message = new MailMessage
+        {
+            From = new MailAddress(fromEmail, _options.PasswordResetFromDisplayName),
+            Subject = _options.PasswordResetEmailSubject,
+            Body = BuildMessageBody(recipientName, userId, resetToken),
+            IsBodyHtml = false
+        };
+        message.To.Add(new MailAddress(recipientEmail, recipientName));
+
+        using var smtpClient = new SmtpClient(smtpHost, _options.SmtpPort)
+        {
+            EnableSsl = _options.SmtpEnableSsl
+        };
+
+        if (!string.IsNullOrWhiteSpace(_options.SmtpUserName))
+        {
+            smtpClient.Credentials = new NetworkCredential(
+                _options.SmtpUserName,
+                _options.SmtpPassword ?? string.Empty);
+        }
+
+        await smtpClient.SendMailAsync(message, cancellationToken);
+        _logger.LogInformation("Sent ChillSharp password-reset email to '{RecipientEmail}'.", recipientEmail);
+    }
+
+    private string BuildMessageBody(string recipientName, string userId, string resetToken)
+    {
+        var lines = new List<string>
+        {
+            $"Hello {recipientName},",
+            string.Empty,
+            "A password reset was requested for your account."
+        };
+
+        var resetLink = BuildResetLink(userId, resetToken);
+        if (!string.IsNullOrWhiteSpace(resetLink))
+        {
+            lines.Add(string.Empty);
+            lines.Add("Open this link to continue:");
+            lines.Add(resetLink);
+        }
+
+        lines.Add(string.Empty);
+        lines.Add("If your client needs the raw values, use:");
+        lines.Add($"UserId: {userId}");
+        lines.Add($"ResetToken: {resetToken}");
+        lines.Add(string.Empty);
+        lines.Add("If you did not request this change, you can ignore this message.");
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private string? BuildResetLink(string userId, string resetToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.PasswordResetUrlBase))
+        {
+            return null;
+        }
+
+        var baseUri = _options.PasswordResetUrlBase.Trim();
+        var separator = baseUri.Contains('?') ? '&' : '?';
+        return $"{baseUri}{separator}userId={Uri.EscapeDataString(userId)}&resetToken={Uri.EscapeDataString(resetToken)}";
+    }
+
+    private static string RequireValue(string? value, string optionName)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            throw new InvalidOperationException($"{optionName} must be configured when password-reset email delivery is enabled.");
         }
 
         return normalized;

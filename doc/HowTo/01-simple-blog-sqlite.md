@@ -1,5 +1,7 @@
 # HOW-TO: Simple Blog API on SQLite
 
+Versione italiana: [Italiano](../it/HowTo/01-simple-blog-sqlite.md)
+
 This example shows the smallest useful ChillSharp setup: one `Blog` entity, one EF Core SQLite context, and a ChillSharp API with no schema label texts in `ChillEntity` or `ChillProperty` attributes.
 
 ## Goal
@@ -148,3 +150,4 @@ Console.WriteLine($"{loadedBlog.GetString("Name")} -> {loadedBlog.GetString("Url
 - With parameterless attributes, schema metadata falls back to the CLR type and property names.
 
 Next example: [Add schema labels and read them through ChillSharp](02-blog-schema-labels.md)
+

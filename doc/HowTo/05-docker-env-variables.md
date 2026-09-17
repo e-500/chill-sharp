@@ -1,5 +1,7 @@
 # HOW-TO: Create a Docker Image and Configure It with Environment Variables
 
+Versione italiana: [Italiano](../it/HowTo/05-docker-env-variables.md)
+
 This example shows how to package a ChillSharp API into a Docker image and configure it at runtime through environment variables instead of hardcoded values.
 
 ## Goal
@@ -162,3 +164,4 @@ volumes:
 - For production, inject secrets through your container platform or secret manager instead of hardcoding them in `docker run` history or `compose` files.
 
 Next example: [Handle a one-to-many Blog-Posts relation and fetch it in one client call](05-blog-posts-one-to-many.md)
+

@@ -45,6 +45,56 @@ public class ChillAuthIdentityApiOptions
     public bool ReturnPasswordResetTokensInResponse { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets whether password-reset requests should send an email when the target account exposes an email address.
+    /// </summary>
+    public bool SendPasswordResetEmails { get; set; }
+
+    /// <summary>
+    /// Gets or sets the SMTP host used to send password-reset emails.
+    /// </summary>
+    public string? SmtpHost { get; set; }
+
+    /// <summary>
+    /// Gets or sets the SMTP port used to send password-reset emails.
+    /// </summary>
+    public int SmtpPort { get; set; } = 587;
+
+    /// <summary>
+    /// Gets or sets whether the SMTP client should use SSL/TLS.
+    /// </summary>
+    public bool SmtpEnableSsl { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the optional SMTP user name used for authenticated delivery.
+    /// </summary>
+    public string? SmtpUserName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional SMTP password used for authenticated delivery.
+    /// </summary>
+    public string? SmtpPassword { get; set; }
+
+    /// <summary>
+    /// Gets or sets the sender email address used for password-reset messages.
+    /// </summary>
+    public string? PasswordResetFromEmail { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional sender display name used for password-reset messages.
+    /// </summary>
+    public string? PasswordResetFromDisplayName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the subject line used for password-reset emails.
+    /// </summary>
+    public string PasswordResetEmailSubject { get; set; } = "Reset your password";
+
+    /// <summary>
+    /// Gets or sets the optional base URL used to build a clickable password-reset link.
+    /// </summary>
+    public string? PasswordResetUrlBase { get; set; }
+
+    /// <summary>
     /// Gets or sets whether the startup initializer should create a root Identity account when credentials are configured.
     /// </summary>
     public bool InitializeRootUserOnStartup { get; set; } = true;

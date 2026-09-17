@@ -1,4 +1,3 @@
-using ChillSharp.Dto;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -16,7 +15,7 @@ public static class ChillSchemaServiceCollectionExtensions
     public static IServiceCollection AddChillSchema<TContext>(this IServiceCollection services)
         where TContext : DbContext, IChillSchemaDbContext
     {
-        services.TryAddSingleton<IChillDtoSchemaCache, ChillDtoSchemaCache>();
+        services.TryAddSingleton<IChillSchemaCache, ChillSchemaCache>();
 
         services.AddScoped<IChillSchemaDbContext>(provider =>
         {

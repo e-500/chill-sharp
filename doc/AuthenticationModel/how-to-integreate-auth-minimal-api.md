@@ -1,3 +1,5 @@
+Versione italiana: [Italiano](../it/AuthenticationModel/how-to-integreate-auth-minimal-api.md)
+
 Sure. Here’s the updated, correct, modern version of the setup using **Microsoft.IdentityModel.JsonWebTokens**, because Microsoft decided the old JWT library needed to be “legacy” for fun.
 
 This is the clean way to do:
@@ -288,3 +290,4 @@ The moment you want:
 Then authentication becomes a *real* system, not a demo.
 
 Still, this setup is the clean foundation Microsoft should’ve shipped by default.
+

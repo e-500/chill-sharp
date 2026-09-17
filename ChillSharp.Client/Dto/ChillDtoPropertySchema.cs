@@ -58,7 +58,32 @@ namespace ChillSharp.Client.Dto
         /// <summary>
         /// Maximum length for string-like properties (where applicable).
         /// </summary>
+        public int? MinLength { get; set; }
+
+        /// <summary>
+        /// Maximum length for string-like properties (where applicable).
+        /// </summary>
         public int? MaxLength { get; set; }
+
+        /// <summary>
+        /// Minimum allowed value for integer-like properties.
+        /// </summary>
+        public long? IntegerMinValue { get; set; }
+
+        /// <summary>
+        /// Maximum allowed value for integer-like properties.
+        /// </summary>
+        public long? IntegerMaxValue { get; set; }
+
+        /// <summary>
+        /// Minimum allowed value for decimal-like properties.
+        /// </summary>
+        public decimal? DecimalMinValue { get; set; }
+
+        /// <summary>
+        /// Maximum allowed value for decimal-like properties.
+        /// </summary>
+        public decimal? DecimalMaxValue { get; set; }
 
         /// <summary>
         /// Number of decimal places to display for decimal numbers.
@@ -104,5 +129,10 @@ namespace ChillSharp.Client.Dto
         /// Generic custom format string for display (when more specific fields are not enough).
         /// </summary>
         public string CustomFormat { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Regular-expression hint for string validation.
+        /// </summary>
+        public string RegexPattern { get; set; } = string.Empty;
     }
 }
