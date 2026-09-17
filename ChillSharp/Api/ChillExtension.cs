@@ -85,8 +85,8 @@ namespace ChillSharp.Api
             services.AddScoped<IChillDtoEngine>(provider =>
             {
                 var chillContext = provider.GetRequiredService<IChillContext>();
-                var schemaCache = provider.GetRequiredService<IChillDtoSchemaCache>();
-                return new ChillDtoEngine(chillContext, schemaCache);
+                var schemaService = provider.GetService<IChillSchemaService>();
+                return new ChillDtoEngine(chillContext, schemaService);
             });
 
             return services;

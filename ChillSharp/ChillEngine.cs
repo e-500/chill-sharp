@@ -23,8 +23,6 @@ using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using System.Reflection;
-using System.Text;
-using System.Text.Json;
 
 namespace ChillSharp
 {
@@ -51,15 +49,16 @@ namespace ChillSharp
         /// Initializes a new instance of the <see cref="ChillEngine"/> with the given Chill context.
         /// </summary>
         /// <param name="Contex">The Chill database context implementing <see cref="IChillContext"/>.</param>
-        public ChillEngine(IChillContext Contex, IChillDtoSchemaCache SchemaCache) 
+        /// <param name="SchemaCache">Shared schema cache object across multiple contexts</param>
+        public ChillEngine(IChillContext Contex) 
         {
             _Context = Contex;
-            _SchemaCache = SchemaCache;
         }
 
         internal IChillContext _Context;
-        private IChillDtoSchemaCache _SchemaCache;
         private IDbContextTransaction? _CurrentTransaction;
+
+        #region TRANSACTION MANAGEMENT
 
         /// <summary>
         /// Starts a transaction
@@ -96,169 +95,9 @@ namespace ChillSharp
             _CurrentTransaction = null;
         }
 
-        private Assembly _GetContextAssembly()
-        {
-            return _Context.GetType().Assembly;
-        }
+        #endregion
 
-        private string _PrepareFullChillType(string ChillType)
-        {
-            var chillTypePrefixWithDot = _Context.GetChillTypePrefix();
-            if (!string.IsNullOrEmpty(chillTypePrefixWithDot) && !chillTypePrefixWithDot.EndsWith("."))
-                chillTypePrefixWithDot += ".";
-            if (string.IsNullOrEmpty(ChillType))
-                throw new ChillException($"Entity type full name ({ChillType}) is invalid");
-            if (ChillType.StartsWith("."))
-                ChillType = ChillType.Substring(1);
-            if (ChillType.EndsWith("."))
-                ChillType = ChillType.Substring(ChillType.Length - 1);
-
-            if (!ChillType.StartsWith(chillTypePrefixWithDot))
-                ChillType = $"{chillTypePrefixWithDot}{ChillType}";
-            return ChillType;
-        }
-
-        private object _GetDbSet(DbContext ctx, string ChillType)
-        {
-            var entityType = ActivateChillEntity(ChillType).GetType();
-            // Call DbContext.Set<TEntity>() dynamically
-            var method = typeof(DbContext)
-                .GetMethod("Set", Type.EmptyTypes)?
-                .MakeGenericMethod(entityType);
-            if (method == null)
-                throw new ChillException("DbContext.Set(Type.EmptyTypes) method is not available");
-            var dbSet = method.Invoke(ctx, null);
-            if (dbSet == null)
-                throw new ChillException($"DbSet for {ChillType} not found");
-
-            return dbSet;
-        }
-
-        /// <summary>
-        /// Creates a new, detached instance of a Chill entity based on the provided
-        /// Chill type identifier.
-        /// </summary>
-        /// <param name="ChillType">
-        /// The short Chill type name used to resolve the fully qualified entity type
-        /// within the current context assembly.
-        /// </param>
-        /// <returns>
-        /// A newly instantiated <see cref="IChillEntity"/> that is not attached to
-        /// the current <see cref="DbContext"/> and has no tracking state.
-        /// </returns>
-        /// <exception cref="ChillException">
-        /// Thrown when the Chill type cannot be resolved or instantiated using
-        /// the current context assembly.
-        /// </exception>
-        public IChillEntity ActivateDetachedChillEntity(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-
-            return (IChillEntity)res;
-        }
-
-        /// <summary>
-        /// Instantiates a Chill entity of the specified type using the current
-        /// context assembly.
-        /// </summary>
-        /// <param name="ChillType">
-        /// The short Chill type identifier used to resolve the fully qualified
-        /// entity type name.
-        /// </param>
-        /// <returns>
-        /// A newly created instance of <see cref="IChillEntity"/>.
-        /// </returns>
-        /// <exception cref="ChillException">
-        /// Thrown when the Chill entity type cannot be resolved or instantiated
-        /// using the current context assembly.
-        /// </exception>
-        /// <remarks>
-        /// This method performs runtime type activation only. It does not attach
-        /// the created entity to a <see cref="DbContext"/> or apply any tracking
-        /// or initialization logic beyond construction.
-        /// </remarks>
-        public IChillEntity ActivateChillEntity(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-
-            return (IChillEntity)res;
-        }
-
-        /// <summary>
-        /// Instantiates a <see cref="IChillQuery{IChillEntity}"/> implementation based on the
-        /// provided Chill type identifier.
-        /// </summary>
-        /// <param name="ChillType">
-        /// The short Chill type name used to resolve the fully qualified query type
-        /// within the current context assembly.
-        /// </param>
-        /// <returns>
-        /// A newly created instance of a type implementing
-        /// <see cref="IChillQuery{IChillEntity}"/>.
-        /// </returns>
-        /// <exception cref="ChillException">
-        /// Thrown when the Chill type cannot be resolved or instantiated using
-        /// the current context assembly.
-        /// </exception>
-        public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-
-            return (IChillQuery<IChillEntity>)res;
-        }
-
-       /// <summary>
-       /// Creates and returns an instance of the specified chill type using the current context assembly.
-       /// </summary>
-       /// <remarks>The returned instance is created dynamically based on the provided chill type name.
-       /// Ensure that the chill type exists and is accessible in the context assembly before calling this
-       /// method.</remarks>
-       /// <param name="ChillType">The name of the chill type to activate. Must be a valid type name recognized by the context assembly.</param>
-       /// <returns>An object instance of the specified chill type. The returned object will be of the type corresponding to the
-       /// provided chill type name.</returns>
-       /// <exception cref="ChillException">Thrown if the specified chill type cannot be instantiated using the current context assembly.</exception>
-        private object ActivateGenericChillType(string ChillType)
-        {
-            string fullChillType = _PrepareFullChillType(ChillType);
-            var res = _GetContextAssembly().CreateInstance(fullChillType);
-            if (res == null)
-                throw new ChillException(
-                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
-            return res;
-        }
-
-        private IChillEntity? _Find(object DbSet, Guid Guid)
-        {
-            // Try to get Find method
-            var findMethod = DbSet.GetType().GetMethod("Find");
-
-            if (findMethod == null)
-                throw new ChillException($"Unable to locate Find() method on DbSet");
-
-            // Invoke Find(Guid)
-            var result = findMethod.Invoke(DbSet, new object[] { new object[] { Guid } });
-
-            if (result == null)
-                return null;
-
-            // Check entity implements IChillEntity
-            if (result is not IChillEntity entity)
-                throw new ChillException($"Loaded entity is not an IChillEntity (actual type: {result.GetType().FullName})");
-
-            return (IChillEntity)result;
-        }
+        #region CRUD OPERATIONS
 
         /// <summary>
         /// Executes a query represented by an <see cref="IChillQuery{IChillEntity}"/> against the database.
@@ -447,146 +286,171 @@ namespace ChillSharp
             }
         }
 
-        /// <summary>
-        /// Returns the file path where schemas are stored (AppData\ChillSharp\Schema).
-        /// </summary>
-        private string GetSchemaDirectory()
-        {
-            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            return Path.Combine(appData, "ChillSharp", "Schema");
-        }
+        #endregion
+
+        #region PUBLIC ENTITY HELPERS
 
         /// <summary>
-        /// Makes a safe file name by replacing invalid chars with underscore and falling back to 'default'.
+        /// Creates a new, detached instance of a Chill entity based on the provided
+        /// Chill type identifier.
         /// </summary>
-        private static string SafeFileName(string? s)
+        /// <param name="ChillType">
+        /// The short Chill type name used to resolve the fully qualified entity type
+        /// within the current context assembly.
+        /// </param>
+        /// <returns>
+        /// A newly instantiated <see cref="IChillEntity"/> that is not attached to
+        /// the current <see cref="DbContext"/> and has no tracking state.
+        /// </returns>
+        /// <exception cref="ChillException">
+        /// Thrown when the Chill type cannot be resolved or instantiated using
+        /// the current context assembly.
+        /// </exception>
+        public IChillEntity ActivateDetachedChillEntity(string ChillType)
         {
-            if (string.IsNullOrWhiteSpace(s))
-                return "default";
-            var invalid = Path.GetInvalidFileNameChars();
-            var sb = new StringBuilder(s.Length);
-            foreach (var c in s)
-            {
-                sb.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
-            }
-            return sb.ToString();
-        }
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
 
-        /// <summary>
-        /// Builds and ensures the schema file path for given chillType and chillViewCode.
-        /// </summary>
-        private string GetSchemaFilePath(string chillType, string chillViewCode)
-        {
-            var dir = GetSchemaDirectory();
-            Directory.CreateDirectory(dir);
-            var safeType = SafeFileName(chillType);
-            var safeView = SafeFileName(chillViewCode);
-            var fileName = $"{safeType}-{safeView}.json";
-            return Path.Combine(dir, fileName);
+            return (IChillEntity)res;
         }
 
         /// <summary>
-        /// Build a ChillDtoSchema by activating a detached entity and a query for the provided chillType.
-        /// Uses reflection to extract public properties from the activated entity / query and attempts
-        /// to populate common schema properties via JSON-driven assignment to match target types.
-        /// This method is best-effort and will not throw on mismatches.
+        /// Instantiates a <see cref="IChillQuery{IChillEntity}"/> implementation based on the
+        /// provided Chill type identifier.
         /// </summary>
-        private ChillDtoSchema BuildSchemaFromActivations(string chillType, string chillViewCode)
+        /// <param name="ChillType">
+        /// The short Chill type name used to resolve the fully qualified query type
+        /// within the current context assembly.
+        /// </param>
+        /// <returns>
+        /// A newly created instance of a type implementing
+        /// <see cref="IChillQuery{IChillEntity}"/>.
+        /// </returns>
+        /// <exception cref="ChillException">
+        /// Thrown when the Chill type cannot be resolved or instantiated using
+        /// the current context assembly.
+        /// </exception>
+        public IChillQuery<IChillEntity> ActivateChillQuery(string ChillType)
         {
-            var schema = new ChillDtoSchema();
-            schema.ChillType = chillType;
-            schema.ChillViewCode = chillViewCode;
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
 
-            // Activate detached entity and query using engine
-            object? e = null;
-            try
-            {
-                e = ActivateGenericChillType(chillType);
-            }
-            catch
-            {
-                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
-            }
-            if (e == null)
-                throw new ChillException($"Unable to activate entity for ChillType '{chillType}'");
-
-            // All chill properties matching the list
-            // or all chill properties if list is null
-            // No fields if list is empty.
-            var ef_props = e.GetType().GetProperties().Where(prop =>
-                prop.IsDefined(typeof(ChillPropertyAttribute), false));
-
-            schema.Properties = ef_props.Select(p => ChillDtoPropertySchema.FromPropertyInfo(p, _Context.GetChillTypePrefix())).ToList();
-
-            return schema;
+            return (IChillQuery<IChillEntity>)res;
         }
 
-        public ChillDtoSchema? GetSchema(string ChillType, string ChillViewCode)
+        /// <summary>
+        /// Creates and returns an instance of the specified chill type using the current context assembly.
+        /// </summary>
+        /// <remarks>The returned instance is created dynamically based on the provided chill type name.
+        /// Ensure that the chill type exists and is accessible in the context assembly before calling this
+        /// method.</remarks>
+        /// <param name="ChillType">The name of the chill type to activate. Must be a valid type name recognized by the context assembly.</param>
+        /// <returns>An object instance of the specified chill type. The returned object will be of the type corresponding to the
+        /// provided chill type name.</returns>
+        /// <exception cref="ChillException">Thrown if the specified chill type cannot be instantiated using the current context assembly.</exception>
+        private object ActivateGenericChillType(string ChillType)
         {
-            if (_SchemaCache.TryGet(ChillType, ChillViewCode, out ChillDtoSchema? cachedSchema))
-                return cachedSchema;
-
-            var path = GetSchemaFilePath(ChillType, ChillViewCode);
-            ChillDtoSchema? schema = null;
-            if (!File.Exists(path))
-            {
-                // Build a best-effort schema by activating entity and query and reflecting their properties.
-                try
-                {
-                    schema = BuildSchemaFromActivations(ChillType, ChillViewCode);
-                }
-                catch
-                {
-                    // If ChillDtoSchema doesn't expose those properties, ignore.
-                }
-            }
-            else
-            {
-                var json = File.ReadAllText(path);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    WriteIndented = true
-                };
-                schema = JsonSerializer.Deserialize<ChillDtoSchema>(json, options);
-            }
-            if (schema != null)
-                _SchemaCache.SetSchema(schema);
-            return schema;
+            string fullChillType = _PrepareFullChillType(ChillType);
+            var res = _GetContextAssembly().CreateInstance(fullChillType);
+            if (res == null)
+                throw new ChillException(
+                    $"Activator was unable to instantiate type '{fullChillType}' using the current context assembly.");
+            return res;
         }
 
-        public ChillDtoSchema SetSchema(ChillDtoSchema Schema)
+        #endregion
+
+        #region CLASS INTERNAL HELPERS
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private Assembly _GetContextAssembly()
         {
-            if (Schema == null)
-                throw new ArgumentNullException(nameof(Schema));
-
-            string chillType = null!;
-            string chillViewCode = null!;
-            try
-            {
-                chillType = Schema.ChillType;
-                chillViewCode = Schema.ChillViewCode;
-            }
-            catch
-            {
-                // If properties are not present on the type, fall back to defaults.
-                chillType = "default";
-                chillViewCode = "default";
-            }
-
-            var path = GetSchemaFilePath(chillType, chillViewCode);
-
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-
-            var json = JsonSerializer.Serialize(Schema, options);
-            File.WriteAllText(path, json);
-
-            _SchemaCache.SetSchema(Schema);
-
-            return Schema;
+            return _Context.GetType().Assembly;
         }
+
+        /// <summary>
+        /// Builds the full ChillType name by applying the context's ChillType prefix if not already present, and ensuring it does not start or end with a dot.
+        /// </summary>
+        /// <param name="ChillType"></param>
+        /// <returns></returns>
+        /// <exception cref="ChillException"></exception>
+        private string _PrepareFullChillType(string ChillType)
+        {
+            var chillTypePrefixWithDot = _Context.GetChillTypePrefix();
+            if (!string.IsNullOrEmpty(chillTypePrefixWithDot) && !chillTypePrefixWithDot.EndsWith("."))
+                chillTypePrefixWithDot += ".";
+            if (string.IsNullOrEmpty(ChillType))
+                throw new ChillException($"Entity type full name ({ChillType}) is invalid");
+            if (ChillType.StartsWith("."))
+                ChillType = ChillType.Substring(1);
+            if (ChillType.EndsWith("."))
+                ChillType = ChillType.Substring(ChillType.Length - 1);
+
+            if (!ChillType.StartsWith(chillTypePrefixWithDot))
+                ChillType = $"{chillTypePrefixWithDot}{ChillType}";
+            return ChillType;
+        }
+
+        /// <summary>
+        /// Return the DbSet for the given ChillType by activating a detached entity to determine the type, then calling DbContext.Set<TEntity>() via reflection.
+        /// </summary>
+        /// <param name="ctx"></param>
+        /// <param name="ChillType">ChillEntity type</param>
+        /// <returns></returns>
+        /// <exception cref="ChillException"></exception>
+        private object _GetDbSet(DbContext ctx, string ChillType)
+        {
+            var entityType = ActivateDetachedChillEntity(ChillType).GetType();
+            // Call DbContext.Set<TEntity>() dynamically
+            var method = typeof(DbContext)
+                .GetMethod("Set", Type.EmptyTypes)?
+                .MakeGenericMethod(entityType);
+            if (method == null)
+                throw new ChillException("DbContext.Set(Type.EmptyTypes) method is not available");
+            var dbSet = method.Invoke(ctx, null);
+            if (dbSet == null)
+                throw new ChillException($"DbSet for {ChillType} not found");
+
+            return dbSet;
+        }
+
+        /// <summary>
+        /// Find a chill entity by Guid by calling DbSet.Find(Guid) via reflection, then checking if the result implements IChillEntity and returning it.
+        /// </summary>
+        /// <param name="DbSet">DbSet where to look for</param>
+        /// <param name="Guid">Primary key of the chill entity</param>
+        /// <returns></returns>
+        /// <exception cref="ChillException"></exception>
+        private IChillEntity? _Find(object DbSet, Guid Guid)
+        {
+            // Try to get Find method
+            var findMethod = DbSet.GetType().GetMethod("Find");
+
+            if (findMethod == null)
+                throw new ChillException($"Unable to locate Find() method on DbSet");
+
+            // Invoke Find(Guid)
+            var result = findMethod.Invoke(DbSet, new object[] { new object[] { Guid } });
+
+            if (result == null)
+                return null;
+
+            // Check entity implements IChillEntity
+            if (result is not IChillEntity entity)
+                throw new ChillException($"Loaded entity is not an IChillEntity (actual type: {result.GetType().FullName})");
+
+            return (IChillEntity)result;
+        }
+
+        #endregion
     }
 }

@@ -34,11 +34,18 @@ namespace ChillSharp.Dto
         public ChillDtoPropertySchema() { }
 
         /// <summary>
-        /// 
+        /// Creates a new instance of <see cref="ChillDtoPropertySchema"/> based on the metadata of the specified
+        /// property.
         /// </summary>
-        /// <param name="propInfo"></param>
-        /// <param name="shrinkTypePrefix"></param>
-        /// <returns></returns>
+        /// <remarks>If the property represents a Chill entity, query, or entity collection, the <paramref
+        /// name="shrinkTypePrefix"/> is used to remove a prefix from the reference type name. The display name is set
+        /// from the <see cref="ChillPropertyAttribute.PrimaryLanguageLabel"/> if available; otherwise, it defaults to
+        /// the property name.</remarks>
+        /// <param name="propInfo">The <see cref="PropertyInfo"/> object representing the property to map. Must not be <see langword="null"/>.</param>
+        /// <param name="shrinkTypePrefix">An optional type prefix to remove from the property's type name when setting reference type information. If
+        /// not specified, no prefix is removed.</param>
+        /// <returns>A <see cref="ChillDtoPropertySchema"/> populated with information derived from the provided property
+        /// metadata.</returns>
         public static ChillDtoPropertySchema FromPropertyInfo(PropertyInfo propInfo, string shrinkTypePrefix = "")
         {
             var s = new ChillDtoPropertySchema();

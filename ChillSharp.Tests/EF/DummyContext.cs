@@ -1,14 +1,11 @@
 ﻿using ChillSharp.Tests.EF.Model;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ChillSharp.Tests.EF
 {
-    public partial class DummyContext : DbContext, IChillContext
+    public partial class DummyContext : IdentityDbContext<IdentityUser>, IChillContext
     {
         public string DbPath { get; }
 
@@ -37,8 +34,10 @@ namespace ChillSharp.Tests.EF
         // special "local" folder for your platform.
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            //SetInitializer(new MigrateDatabaseToLatestVersion<MyContext, MigrateDBConfiguration>());
-            options.UseSqlite($"Data Source={DbPath}");
+            if (!options.IsConfigured)
+            {
+                options.UseSqlite($"Data Source={DbPath}");
+            }
         }
 
         public string GetChillTypePrefix()

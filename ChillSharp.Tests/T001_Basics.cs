@@ -1,45 +1,43 @@
-﻿using ChillSharp.Api;
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ChillSharp.Tests
 {
     [TestClass]
     public sealed class Basics
     {
-        private void StartApiService()
-        {
-            var apiServer = Task.Run(() =>
-            {
-                var ctx = new EF.DummyContext();
-                ctx.Database.Migrate();
-                var builder = WebApplication.CreateBuilder(new string[0]);
-                builder.Services.AddDbContext<EF.DummyContext>(options =>
-                        options.UseSqlite($"Data Source={ctx.DbPath}"));
-                builder.Services.AddChillApi<EF.DummyContext>();
-                var app = builder.Build();
-                app.MapChillApi();
-                app.Run();
-            });
-            apiServer.Wait(5000);
-            _ApiServiceUpAndRunning = true;
-        }
-
-        private bool _ApiServiceUpAndRunning = false;
-
+        /// <summary>
+        /// Creates a post through the Chill API and verifies that it can be queried back.
+        /// </summary>
         [TestMethod]
         public void Step001_AddEntity()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            // Start the shared API host only once for the whole test run.
+            TestApiHost.EnsureStarted();
 
-            // Init client
+            // Use the HTTP client wrapper against the Chill endpoints.
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Create a new entity
+            // Create a new Post entity.
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = Guid.NewGuid();
@@ -51,7 +49,7 @@ namespace ChillSharp.Tests
             Assert.AreEqual("New Title", cRes.GetString("Title"));
             Assert.AreEqual("William Shakespeare", cRes.GetString("Author"));
 
-            // Check if newly created entity has been created
+            // Query the created entity to verify persistence.
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", cRes.Guid);
@@ -66,36 +64,36 @@ namespace ChillSharp.Tests
             Assert.AreEqual("New Title", qEntity.GetString("Title"));
             Assert.AreEqual("William Shakespeare", cRes.GetString("Author"));
 
-            // Save data for the upcoming tests
+            // Persist the Guid for the following step-based tests.
             PostGuid = qEntity.Guid;
         }
 
         private Guid? PostGuid = null;
 
+        /// <summary>
+        /// Updates the previously created post and verifies that unchanged fields are preserved.
+        /// </summary>
         [TestMethod]
         public void Step002_UpdateEntity()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            TestApiHost.EnsureStarted();
 
+            // Ensure a seed entity exists for this step.
             if (!PostGuid.HasValue)
                 Step001_AddEntity();
 
-            // Test initial state for the test
             Assert.IsNotNull(PostGuid);
 
-            // Init client
+            // Update only the Title field.
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Create an empty mock with a Guid of the entity to delete
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = PostGuid.Value;
             e.Properties.Add("Title", "Title changed");
-            // Update entity
             cli.Update(e);
 
-            // Check if entity has been updated and "Author" fields remained unchanged
+            // Query again and verify partial update behavior.
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", PostGuid.Value);
@@ -112,29 +110,28 @@ namespace ChillSharp.Tests
             Assert.AreEqual("William Shakespeare", qEntity.GetString("Author"));
         }
 
+        /// <summary>
+        /// Deletes the previously created post and verifies that it is no longer returned by queries.
+        /// </summary>
         [TestMethod]
         public void Step003_DeleteEntity()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            TestApiHost.EnsureStarted();
 
+            // Ensure the entity exists before attempting deletion.
             if (!PostGuid.HasValue)
                 Step002_UpdateEntity();
 
-            // Test initial state for the test
             Assert.IsNotNull(PostGuid);
 
-            // Init client
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
-            
-            // Create an empty mock with a Guid of the entity to delete
+
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = PostGuid.Value;
-            // Delete entity
             cli.Delete(e);
 
-            // Check if entity has been deleted
+            // Query the deleted entity and verify that nothing is returned.
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", PostGuid.Value);
@@ -144,26 +141,27 @@ namespace ChillSharp.Tests
             Assert.AreEqual(0, qRes.Results.Count);
         }
 
+        /// <summary>
+        /// Finds the previously created post by Guid using the direct find endpoint.
+        /// </summary>
         [TestMethod]
         public void Step004_FindEntity()
         {
-            if (!_ApiServiceUpAndRunning)
-                StartApiService();
+            TestApiHost.EnsureStarted();
 
+            // Ensure the entity exists before trying to find it.
             if (!PostGuid.HasValue)
                 Step002_UpdateEntity();
 
-            // Test initial state for the test
             Assert.IsNotNull(PostGuid);
 
-            // Init client
             var cli = new ChillSharpClient("http://localhost:5000/api/chill");
 
-            // Create an empty mock with a Guid of the entity to find
             var e = new ChillDtoEntity();
             e.ChillType = "Model.Post";
             e.Guid = PostGuid.Value;
-            // find entity
+
+            // Call the find endpoint and verify that the entity is returned.
             var entity = cli.Find(e);
             Assert.IsNotNull(entity);
         }

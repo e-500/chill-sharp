@@ -19,6 +19,7 @@
 
 using ChillSharp.Dto;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ChillSharp.Api.Controllers
 {
@@ -60,12 +61,18 @@ namespace ChillSharp.Api.Controllers
         /// Initializes a new instance of the <see cref="ChillController"/> class.
         /// </summary>
         /// <param name="ChillEngine">The Chill DTO engine instance used to perform data operations.</param>
-        public ChillController(IChillDtoEngine ChillEngine)
-        { 
-            _ce = ChillEngine; 
+        /// <param name="chillContext">The Chill context used to resolve entity metadata.</param>
+        /// <param name="entityAclService">Optional entity ACL service used for authorization checks.</param>
+        public ChillController(IChillDtoEngine ChillEngine, IChillContext chillContext, IChillEntityAclService? entityAclService = null)
+        {
+            _ce = ChillEngine;
+            _context = chillContext;
+            _entityAclService = entityAclService;
         }
 
         private readonly IChillDtoEngine _ce;
+        private readonly IChillContext _context;
+        private readonly IChillEntityAclService? _entityAclService;
 
         /// <summary>
         /// Executes a dynamic query using the Chill DTO engine and returns the result set.
@@ -76,8 +83,11 @@ namespace ChillSharp.Api.Controllers
         /// </returns>
         [HttpPost]
         [Route("query")]
-        public IActionResult Query(ChillDtoQuery DtoQuery)
+        public async Task<IActionResult> Query(ChillDtoQuery DtoQuery, CancellationToken cancellationToken)
         {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
             return Ok(_ce.Query(DtoQuery));
         }
 
@@ -90,8 +100,11 @@ namespace ChillSharp.Api.Controllers
         /// </returns>
         [HttpPost]
         [Route("find")]
-        public IActionResult Find(ChillDtoEntity DtoEntity)
+        public async Task<IActionResult> Find(ChillDtoEntity DtoEntity, CancellationToken cancellationToken)
         {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
             return Ok(_ce.Find(DtoEntity));
         }
 
@@ -107,8 +120,11 @@ namespace ChillSharp.Api.Controllers
         /// </exception>
         [HttpPost]
         [Route("create")]
-        public IActionResult Create(ChillDtoEntity DtoEntity)
+        public async Task<IActionResult> Create(ChillDtoEntity DtoEntity, CancellationToken cancellationToken)
         {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Create, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
             return Ok(_ce.Create(DtoEntity));
         }
 
@@ -124,8 +140,11 @@ namespace ChillSharp.Api.Controllers
         /// </exception>
         [HttpPost]
         [Route("update")]
-        public IActionResult Update(ChillDtoEntity DtoEntity)
+        public async Task<IActionResult> Update(ChillDtoEntity DtoEntity, CancellationToken cancellationToken)
         {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
             return Ok(_ce.Update(DtoEntity));
         }
 
@@ -141,8 +160,11 @@ namespace ChillSharp.Api.Controllers
         /// </exception>
         [HttpPost]
         [Route("delete")]
-        public IActionResult Delete(ChillDtoEntity DtoEntity)
+        public async Task<IActionResult> Delete(ChillDtoEntity DtoEntity, CancellationToken cancellationToken)
         {
+            var authorizationResult = await EnsureEntityAccessAsync(DtoEntity.ChillType, ChillEntityAclAction.Delete, isQueryType: false, cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
             _ce.Delete(DtoEntity);
             return Ok();
         }
@@ -159,8 +181,15 @@ namespace ChillSharp.Api.Controllers
         /// </exception>
         [HttpPost]
         [Route("chunk")]
-        public IActionResult Chunk(List<ChillOperation> Chunk)
+        public async Task<IActionResult> Chunk(List<ChillOperation> Chunk, CancellationToken cancellationToken)
         {
+            foreach (var operation in Chunk)
+            {
+                var authorizationResult = await EnsureChunkOperationAccessAsync(operation, cancellationToken);
+                if (authorizationResult != null)
+                    return authorizationResult;
+            }
+
             Chunk.ForEach(operation => operation.Execute(_ce));
             return Ok(Chunk);
         }
@@ -202,6 +231,128 @@ namespace ChillSharp.Api.Controllers
         public IActionResult SetSchema(ChillDtoSchema Schema)
         {
             return Ok(_ce.SetSchema(Schema));
+        }
+
+        /// <summary>
+        /// Evaluates entity-level ACL requirements for every operation in a chunk before executing the batch.
+        /// </summary>
+        /// <param name="operation">The operation currently being validated.</param>
+        /// <param name="cancellationToken">Token used to cancel the authorization check.</param>
+        /// <returns>
+        /// An <see cref="IActionResult"/> representing a failed authorization result, or <see langword="null"/> when
+        /// the operation is allowed.
+        /// </returns>
+        private async Task<IActionResult?> EnsureChunkOperationAccessAsync(ChillOperation operation, CancellationToken cancellationToken)
+        {
+            switch (operation.Verb?.ToLowerInvariant())
+            {
+                case ChillOperationVerb.QUERY when operation.Query != null:
+                    return await EnsureEntityAccessAsync(operation.Query.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                case ChillOperationVerb.FIND when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
+                case ChillOperationVerb.CREATE when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Create, isQueryType: false, cancellationToken);
+                case ChillOperationVerb.UPDATE when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Update, isQueryType: false, cancellationToken);
+                case ChillOperationVerb.DELETE when operation.Entity != null:
+                    return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Delete, isQueryType: false, cancellationToken);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Resolves the logical resource targeted by the request and performs an entity-level ACL check when available.
+        /// </summary>
+        /// <param name="chillType">The incoming Chill type or Chill query type.</param>
+        /// <param name="action">The entity-level action to authorize.</param>
+        /// <param name="isQueryType">
+        /// Indicates whether <paramref name="chillType"/> represents a query type that must first be mapped back to
+        /// its target entity type.
+        /// </param>
+        /// <param name="cancellationToken">Token used to cancel the authorization check.</param>
+        /// <returns>
+        /// An <see cref="IActionResult"/> representing a failed authorization result, or <see langword="null"/> when
+        /// authorization succeeds or no ACL service is configured.
+        /// </returns>
+        private async Task<IActionResult?> EnsureEntityAccessAsync(string chillType, ChillEntityAclAction action, bool isQueryType, CancellationToken cancellationToken)
+        {
+            if (_entityAclService == null || User.Identity?.IsAuthenticated != true)
+            {
+                return null;
+            }
+
+            var resource = isQueryType ? ResolveQueryResource(chillType) : ResolveEntityResource(chillType);
+            var isAllowed = await _entityAclService.AuthorizeAsync(User, resource.Module, resource.EntityName, action, cancellationToken);
+            return isAllowed ? null : Forbid();
+        }
+
+        /// <summary>
+        /// Converts an entity Chill type into the logical ACL resource pair composed of module and entity name.
+        /// </summary>
+        /// <param name="chillType">The Chill entity type received from the API payload.</param>
+        /// <returns>The logical module and entity name used by ChillSharp.Auth permission rules.</returns>
+        private (string Module, string EntityName) ResolveEntityResource(string chillType)
+        {
+            var fullType = PrepareFullChillType(chillType);
+            var prefix = _context.GetChillTypePrefix().TrimEnd('.');
+            var shortType = fullType.StartsWith(prefix + ".", StringComparison.Ordinal) ? fullType.Substring(prefix.Length + 1) : fullType;
+            var lastDot = shortType.LastIndexOf('.');
+            if (lastDot < 0)
+            {
+                return ("General", shortType);
+            }
+
+            return (shortType.Substring(0, lastDot), shortType.Substring(lastDot + 1));
+        }
+
+        /// <summary>
+        /// Resolves the entity targeted by a Chill query type so ACL checks can run against the entity resource.
+        /// </summary>
+        /// <param name="chillType">The Chill query type received from the API payload.</param>
+        /// <returns>The logical module and entity name inferred from the query generic argument.</returns>
+        private (string Module, string EntityName) ResolveQueryResource(string chillType)
+        {
+            var fullType = PrepareFullChillType(chillType);
+            var queryType = _context.GetType().Assembly.GetType(fullType)
+                ?? throw new ChillException($"Query type '{fullType}' could not be resolved for ACL evaluation.");
+
+            var queryInterface = queryType.GetInterfaces()
+                .FirstOrDefault(x => x.IsGenericType && x.GetGenericTypeDefinition() == typeof(EF.IChillQuery<>));
+
+            if (queryInterface == null)
+            {
+                return ResolveEntityResource(chillType);
+            }
+
+            var entityType = queryInterface.GetGenericArguments()[0];
+            var prefix = _context.GetChillTypePrefix().TrimEnd('.');
+            var entityFullName = entityType.FullName ?? entityType.Name;
+            var shortType = entityFullName.StartsWith(prefix + ".", StringComparison.Ordinal) ? entityFullName.Substring(prefix.Length + 1) : entityFullName;
+            var lastDot = shortType.LastIndexOf('.');
+            if (lastDot < 0)
+            {
+                return ("General", shortType);
+            }
+
+            return (shortType.Substring(0, lastDot), shortType.Substring(lastDot + 1));
+        }
+
+        /// <summary>
+        /// Normalizes a Chill type name and expands it to the full type name expected by the current Chill context.
+        /// </summary>
+        /// <param name="chillType">The incoming short or fully qualified Chill type string.</param>
+        /// <returns>The normalized fully qualified type name.</returns>
+        private string PrepareFullChillType(string chillType)
+        {
+            var prefix = _context.GetChillTypePrefix().TrimEnd('.');
+            var normalized = chillType.Trim().Trim('.');
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                throw new ChillException("ChillType is required for ACL evaluation.");
+            }
+
+            return normalized.StartsWith(prefix + ".", StringComparison.Ordinal) ? normalized : $"{prefix}.{normalized}";
         }
     }
 }
