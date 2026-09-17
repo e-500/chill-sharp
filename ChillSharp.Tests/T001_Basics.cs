@@ -19,7 +19,12 @@
 
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
+using ChillSharp.EF;
+using ChillSharp.Schema;
+using ChillSharp.Schema.Model;
+using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ChillSharp.Tests
 {
@@ -213,6 +218,238 @@ namespace ChillSharp.Tests
             Assert.AreEqual("dummy-user", updatedPost.LastUpdateUser);
             Assert.IsTrue(updatedPost.LastUpdateUtc > initialLastUpdateUtc);
             Assert.AreNotEqual(initialChecksum, updatedPost.Checksum);
+        }
+
+        [TestMethod]
+        public void Step006_ChecksumCalculationCanBeDisabledAndReEnabledPerEntityType()
+        {
+            var chillType = "Model.Post";
+            using (var disabledContext = new EF.DummyContext())
+            {
+                disabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = chillType,
+                    ChecksumEnabled = false
+                });
+
+                var disabledEntity = new Post
+                {
+                    Title = "Checksum disabled",
+                    Author = "Tester"
+                };
+
+                ((IChillEntity)disabledEntity).OnAfterUpdate(disabledContext);
+
+                Assert.AreEqual("dummy-user", disabledEntity.LastUpdateUser);
+                Assert.AreEqual(0L, disabledEntity.Checksum);
+            }
+
+            using (var enabledContext = new EF.DummyContext())
+            {
+                ChillEntityOptionsRuntimeCache.Invalidate(enabledContext, chillType);
+                enabledContext.EntityOptionsEntries.Add(new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = chillType,
+                    ChecksumEnabled = true
+                });
+
+                var enabledEntity = new Post
+                {
+                    Title = "Checksum enabled",
+                    Author = "Tester"
+                };
+
+                ((IChillEntity)enabledEntity).OnAfterUpdate(enabledContext);
+
+                Assert.AreEqual("dummy-user", enabledEntity.LastUpdateUser);
+                Assert.IsTrue(enabledEntity.Checksum > 0);
+            }
+        }
+
+        [TestMethod]
+        public async Task Step007_LabelAndShortLabelCanUseConfiguredFormatStrings()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-entity-options-{Guid.NewGuid():N}.db");
+
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+            var cache = new ChillSharp.Schema.ChillSchemaCache();
+            var schemaService = new ChillSharp.Schema.ChillSchemaService(context, context, cache);
+            var chillType = "Model.Post";
+
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            {
+                ChillType = chillType,
+                LabelFormatString = "{Title} - {Author} - {FullTextContent}",
+                ShortLabelFormatString = "{Author}.{Title}",
+                FullTextContentFormatString = "{Author}::{Title}::{Checksum}"
+            });
+
+            var post = new Post
+            {
+                Title = "Configured title",
+                Author = "Configured author"
+            };
+
+            Assert.AreEqual("Configured title - Configured author - ", post.GetLabel(context));
+            Assert.AreEqual("Configured author.Configured title", post.GetShortLabel(context));
+            Assert.AreEqual("Configured author::Configured title::0", post.GetFullTextContent(context));
+
+            await schemaService.SetEntityOptionsAsync(new ChillSharp.Dto.ChillDtoEntityOptions
+            {
+                ChillType = chillType,
+                LabelFormatString = "{Author}",
+                ShortLabelFormatString = "{Title}",
+                FullTextContentFormatString = "{Title}|{LastUpdateUser}|{FullTextContent}"
+            });
+
+            Assert.AreEqual("Configured author", post.GetLabel(context));
+            Assert.AreEqual("Configured title", post.GetShortLabel(context));
+            Assert.AreEqual("Configured title||", post.GetFullTextContent(context));
+        }
+
+        [TestMethod]
+        public async Task Step008_ChangeLogStoresSnapshotHistoryAndMocksLinkedEntities()
+        {
+            var databasePath = Path.Combine(Path.GetTempPath(), $"chillsharp-changelog-{Guid.NewGuid():N}.db");
+            var options = new DbContextOptionsBuilder<EF.DummyContext>()
+                .UseSqlite($"Data Source={databasePath}")
+                .Options;
+
+            await using var context = new EF.DummyContext(options);
+            await context.Database.EnsureCreatedAsync();
+
+            context.EntityOptionsEntries.AddRange(
+                new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = "Model.Post",
+                    ChangeLogEnabled = true
+                },
+                new ChillEntityOptionsEntry
+                {
+                    Guid = Guid.NewGuid(),
+                    ChillType = "Model.Blog",
+                    ChangeLogEnabled = true
+                });
+            await context.SaveChangesAsync();
+
+            var engine = new ChillEngine(context);
+
+            var blog = (Blog)engine.Create(new Blog
+            {
+                Title = "Tracked blog",
+                Url = "https://tracked.example"
+            });
+
+            var post = (Post)engine.Create(new Post
+            {
+                Title = "Tracked post",
+                Author = "Andrea",
+                Blog = blog
+            });
+
+            post.Title = "Tracked post updated";
+            engine.Update(post);
+
+            await context.Entry(blog).Collection(x => x.Posts!).LoadAsync();
+            blog.Url = "https://tracked.example/v2";
+            engine.Update(blog);
+
+            var postLog = JsonDocument.Parse(post.ChangeLog);
+            var postSnapshots = postLog.RootElement;
+            Assert.AreEqual(2, postSnapshots.GetArrayLength());
+
+            var latestPost = postSnapshots[1];
+            Assert.AreEqual("Tracked post updated", latestPost.GetProperty("Properties").GetProperty("Title").GetString());
+            var blogMock = latestPost.GetProperty("Properties").GetProperty("Blog");
+            Assert.AreEqual(blog.Guid, blogMock.GetProperty("Guid").GetGuid());
+            Assert.AreEqual(blog.Label, blogMock.GetProperty("Label").GetString());
+            Assert.AreEqual(blog.ShortLabel, blogMock.GetProperty("ShortLabel").GetString());
+            Assert.IsFalse(blogMock.TryGetProperty("Properties", out _));
+
+            var blogLog = JsonDocument.Parse(blog.ChangeLog);
+            var blogSnapshots = blogLog.RootElement;
+            Assert.AreEqual(2, blogSnapshots.GetArrayLength());
+
+            var latestBlog = blogSnapshots[1];
+            Assert.AreEqual("https://tracked.example/v2", latestBlog.GetProperty("Properties").GetProperty("Url").GetString());
+            var postsMock = latestBlog.GetProperty("Properties").GetProperty("Posts");
+            Assert.AreEqual(1, postsMock.GetArrayLength());
+            Assert.AreEqual(post.Guid, postsMock[0].GetProperty("Guid").GetGuid());
+            Assert.AreEqual(post.Label, postsMock[0].GetProperty("Label").GetString());
+            Assert.AreEqual(post.ShortLabel, postsMock[0].GetProperty("ShortLabel").GetString());
+            Assert.IsFalse(postsMock[0].TryGetProperty("Properties", out _));
+        }
+
+        [TestMethod]
+        public void Step009_QueryFullTextSearchSplitsTokensAndUsesAndLogic()
+        {
+            TestApiHost.EnsureStarted();
+
+            var client = new ChillSharpClient("http://localhost:5000/api/chill");
+            var tokenA = $"alpha-{Guid.NewGuid():N}";
+            var tokenB = $"beta-{Guid.NewGuid():N}";
+
+            client.SetEntityOptions(new ChillDtoEntityOptions
+            {
+                ChillType = "Model.Post",
+                FullTextContentFormatString = "{Title} {Author}"
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = tokenB
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = tokenA,
+                    ["Author"] = "single-token"
+                }
+            });
+
+            client.Create(new ChillDtoEntity
+            {
+                ChillType = "Model.Post",
+                Guid = Guid.NewGuid(),
+                Properties = new Dictionary<string, object?>
+                {
+                    ["Title"] = "other-token",
+                    ["Author"] = tokenB
+                }
+            });
+
+            var query = new ChillDtoQuery
+            {
+                ChillType = "Query.PostQuery",
+                ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"])
+            };
+            query.Properties.Add("FullTextSearch", $"{tokenA} {tokenB}");
+
+            var result = client.Query(query);
+
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Results);
+            Assert.AreEqual(1, result.Results.Count);
+            Assert.AreEqual(tokenA, result.Results[0].GetString("Title"));
+            Assert.AreEqual(tokenB, result.Results[0].GetString("Author"));
         }
     }
 }

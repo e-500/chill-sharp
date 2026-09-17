@@ -1,7 +1,27 @@
+"""
+ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core
+and turns an existing data model into a fully working REST API with almost no setup.
+Copyright (C) 2025 Andrea Piovesan
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import Any
 from urllib.parse import quote
 
@@ -12,6 +32,33 @@ from .exceptions import ChillSharpClientError
 
 CHILL_SHARP_PY_CLIENT_VERSION = "0.1.0"
 JsonDict = dict[str, Any]
+
+
+class PermissionEffect(IntEnum):
+    """Effect applied by a permission rule."""
+
+    ALLOW = 1
+    DENY = 2
+
+
+class PermissionAction(IntEnum):
+    """Action controlled by a permission rule."""
+
+    FULL_CONTROL = 0
+    QUERY = 1
+    CREATE = 2
+    UPDATE = 3
+    DELETE = 4
+    SEE = 5
+    MODIFY = 6
+
+
+class PermissionScope(IntEnum):
+    """Hierarchy level targeted by a permission rule."""
+
+    MODULE = 1
+    ENTITY = 2
+    PROPERTY = 3
 
 
 @dataclass
@@ -82,36 +129,58 @@ class ChillSharpClient:
         encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
         encoded_view = quote(self._normalize_required_value(chill_view_code, "chill_view_code"))
         effective_culture_name = culture_name.strip() if culture_name else self._culture_name
-        url = self._build_chill_url(f"get-schema?chillType={encoded_type}&chillViewCode={encoded_view}")
+        url = self._build_schema_url(f"get-schema?chillType={encoded_type}&chillViewCode={encoded_view}")
         if effective_culture_name:
             url += f"&cultureName={quote(effective_culture_name)}"
         return self._send_json("GET", url)
 
     def set_schema(self, schema: JsonDict) -> JsonDict:
         """Persist schema metadata through the Chill endpoint."""
-        return self._send_json("POST", self._build_chill_url("set-schema"), schema)
+        return self._send_json("POST", self._build_schema_url("set-schema"), schema)
 
     def get_schema_list(self, culture_name: str | None = None) -> list[JsonDict]:
         """Retrieve the list of registered entities and queries."""
         effective_culture_name = culture_name.strip() if culture_name else self._culture_name
-        url = self._build_chill_url("get-schema-list")
+        url = self._build_schema_url("get-schema-list")
         if effective_culture_name:
             url += f"?cultureName={quote(effective_culture_name)}"
         response = self._send_json("GET", url)
         return response if isinstance(response, list) else []
 
+    def get_entity_options(self, chill_type: str) -> JsonDict:
+        """Retrieve runtime entity options for a Chill type."""
+        encoded_type = quote(self._normalize_required_value(chill_type, "chill_type"))
+        return self._send_json("GET", self._build_schema_url(f"get-entity-options?chillType={encoded_type}"))
+
+    def set_entity_options(self, entity_options: JsonDict) -> JsonDict:
+        """Persist runtime entity options for a Chill type."""
+        return self._send_json("POST", self._build_schema_url("set-entity-options"), entity_options)
+
     def get_text(self, request: JsonDict) -> JsonDict | None:
         """Retrieve an i18n text entry using a request payload."""
         return self._send_json(
             "POST",
-            self._build_i18n_url("text/get"),
+            self._build_i18n_url("get-text"),
             self._prepare_get_text_request(request),
             allow_anonymous=True,
         )
 
+    def get_texts(self, requests: list[JsonDict]) -> list[JsonDict | None]:
+        """Retrieve multiple i18n text entries in a single request."""
+        if not isinstance(requests, list):
+            raise ValueError("requests is required.")
+
+        response = self._send_json(
+            "POST",
+            self._build_i18n_url("get-multiple-text"),
+            [self._prepare_get_text_request(request) for request in requests],
+            allow_anonymous=True,
+        )
+        return response if isinstance(response, list) else []
+
     def set_text(self, payload: JsonDict) -> JsonDict:
         """Persist an i18n text payload."""
-        return self._send_json("PUT", self._build_i18n_url("text"), payload)
+        return self._send_json("PUT", self._build_i18n_url("set-text"), payload)
 
     def register_auth_account(self, payload: JsonDict) -> JsonDict:
         """Register an auth account and store returned tokens."""
@@ -140,6 +209,67 @@ class ChillSharpClient:
     def reset_auth_password(self, payload: JsonDict) -> JsonDict:
         """Complete the password reset flow with a reset payload."""
         return self._send_auth_json("POST", "account/reset-password", payload, allow_anonymous=True)
+
+    def get_auth_permissions(self) -> JsonDict:
+        """Return the current user permissions together with role permissions."""
+        return self._send_auth_json("GET", "get-permissions")
+
+    def get_auth_user_list(self) -> list[JsonDict]:
+        """Return the full auth user list."""
+        response = self._send_auth_json("GET", "get-user-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_user(self, user_guid: str) -> JsonDict:
+        """Return one auth user with assigned roles and direct permissions."""
+        normalized_user_guid = self._normalize_required_value(user_guid, "user_guid")
+        return self._send_auth_json("GET", f"get-user?userGuid={quote(normalized_user_guid)}")
+
+    def set_auth_user(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth user with the full role and permission list."""
+        return self._send_auth_json("POST", "set-user", payload)
+
+    def get_auth_role_list(self) -> list[JsonDict]:
+        """Return the full auth role list."""
+        response = self._send_auth_json("GET", "get-role-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_list(self) -> list[str]:
+        """Return the distinct auth module list."""
+        response = self._send_auth_json("GET", "get-module-list")
+        return response if isinstance(response, list) else []
+
+    def get_auth_entity_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct entity list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-entity-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_query_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct query list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-query-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_module_entity_list(self, module: str | None = None) -> list[str]:
+        """Compatibility alias for get_auth_entity_list."""
+        return self.get_auth_entity_list(module)
+
+    def get_auth_property_list(self, chill_type: str) -> list[str]:
+        """Return the distinct property list for a Chill type."""
+        normalized_chill_type = self._normalize_required_value(chill_type, "chill_type")
+        response = self._send_auth_json("GET", f"get-property-list?chillType={quote(normalized_chill_type)}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_role(self, role_guid: str) -> JsonDict:
+        """Return one auth role with assigned users and direct permissions."""
+        normalized_role_guid = self._normalize_required_value(role_guid, "role_guid")
+        return self._send_auth_json("GET", f"get-role?roleGuid={quote(normalized_role_guid)}")
+
+    def set_auth_role(self, payload: JsonDict) -> JsonDict:
+        """Create or update an auth role with the full user and permission list."""
+        return self._send_auth_json("POST", "set-role", payload)
 
     def _prepare_get_text_request(self, request: JsonDict) -> JsonDict:
         """Normalize a get-text request and apply the client default culture when needed."""
@@ -387,6 +517,10 @@ class ChillSharpClient:
         """Build an absolute URL for the auth service."""
         return f"{self._get_auth_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
 
+    def _build_schema_url(self, relative_url: str) -> str:
+        """Build an absolute URL for the schema service."""
+        return f"{self._get_schema_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
+
     def _build_i18n_url(self, relative_url: str) -> str:
         """Build an absolute URL for the i18n service."""
         return f"{self._get_i18n_base_url().rstrip('/')}/{relative_url.lstrip('/')}"
@@ -397,6 +531,13 @@ class ChillSharpClient:
         if self._base_url.lower().endswith(suffix):
             return self._base_url[: -len(suffix)] + "/chill-auth"
         return self._base_url.rstrip("/") + "-auth"
+
+    def _get_schema_base_url(self) -> str:
+        """Resolve the schema service base URL from the Chill base URL."""
+        suffix = "/chill"
+        if self._base_url.lower().endswith(suffix):
+            return self._base_url[: -len(suffix)] + "/chill-schema"
+        return self._base_url.rstrip("/") + "-schema"
 
     def _get_i18n_base_url(self) -> str:
         """Resolve the i18n service base URL from the Chill base URL."""
@@ -412,6 +553,13 @@ class ChillSharpClient:
         if not normalized:
             raise ValueError(f"{argument_name} is required.")
         return normalized
+
+    @staticmethod
+    def _normalize_optional_value(value: str | None) -> str | None:
+        """Normalize an optional string argument while preserving empty strings."""
+        if value is None:
+            return None
+        return value.strip()
 
     @staticmethod
     def _coerce_string(value: Any) -> str:

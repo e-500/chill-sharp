@@ -1,6 +1,6 @@
 import { Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
-import type { ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { AuthRoleDetailsResponse, AuthRoleListItem, AuthUserDetailsResponse, AuthUserListItem, ChillDtoEntityOptions, ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeNotification, GetAuthPermissionsResponse, GetTextRequest, GetTextResponse, JsonObject, SetAuthRoleRequest, SetAuthUserRequest } from "chill-sharp-ts-client";
 export declare class ChillSharpNgClient {
     private readonly client;
     constructor(client: ChillSharpClient);
@@ -15,6 +15,8 @@ export declare class ChillSharpNgClient {
     getSchema(chillType: string, chillViewCode: string, cultureName?: string): Observable<ChillDtoSchema | null>;
     getSchemaList(cultureName?: string): Observable<ChillDtoSchemaListItem[]>;
     setSchema(schema: ChillDtoSchema): Observable<ChillDtoSchema | null>;
+    getEntityOptions(chillType: string): Observable<ChillDtoEntityOptions>;
+    setEntityOptions(entityOptions: ChillDtoEntityOptions): Observable<ChillDtoEntityOptions>;
     getText(request: GetTextRequest): Observable<GetTextResponse | null>;
     getTexts(requests: GetTextRequest[]): Observable<Array<GetTextResponse | null>>;
     setText(payload: JsonObject): Observable<GetTextResponse>;
@@ -26,5 +28,17 @@ export declare class ChillSharpNgClient {
     changeAuthPassword(payload: JsonObject): Observable<JsonObject>;
     requestAuthPasswordReset(payload: JsonObject): Observable<JsonObject>;
     resetAuthPassword(payload: JsonObject): Observable<JsonObject>;
+    getAuthPermissions(): Observable<GetAuthPermissionsResponse>;
+    getAuthUserList(): Observable<AuthUserListItem[]>;
+    getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse>;
+    setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse>;
+    getAuthRoleList(): Observable<AuthRoleListItem[]>;
+    getAuthModuleList(): Observable<string[]>;
+    getAuthEntityList(module?: string | null): Observable<string[]>;
+    getAuthQueryList(module?: string | null): Observable<string[]>;
+    getAuthModuleEntityList(module?: string | null): Observable<string[]>;
+    getAuthPropertyList(chillType: string): Observable<string[]>;
+    getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse>;
+    setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse>;
     getRawClient(): ChillSharpClient;
 }

@@ -1,14 +1,41 @@
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { Inject, Injectable } from "@angular/core";
 import { from, Observable } from "rxjs";
 import { ChillSharpClient } from "chill-sharp-ts-client";
 import type {
+  AuthRoleDetailsResponse,
+  AuthRoleListItem,
+  AuthUserDetailsResponse,
+  AuthUserListItem,
+  ChillDtoEntityOptions,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
   ChillEntityChangeNotification,
   ChillEntityChangeSubscription,
+  GetAuthPermissionsResponse,
   GetTextRequest,
   GetTextResponse,
-  JsonObject
+  JsonObject,
+  SetAuthRoleRequest,
+  SetAuthUserRequest
 } from "chill-sharp-ts-client";
 import { CHILL_SHARP_CLIENT } from "./tokens.js";
 import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
@@ -61,6 +88,14 @@ export class ChillSharpNgClient {
 
   setSchema(schema: ChillDtoSchema): Observable<ChillDtoSchema | null> {
     return from(this.client.setSchema(schema));
+  }
+
+  getEntityOptions(chillType: string): Observable<ChillDtoEntityOptions> {
+    return from(this.client.getEntityOptions(chillType));
+  }
+
+  setEntityOptions(entityOptions: ChillDtoEntityOptions): Observable<ChillDtoEntityOptions> {
+    return from(this.client.setEntityOptions(entityOptions));
   }
 
   getText(request: GetTextRequest): Observable<GetTextResponse | null> {
@@ -135,7 +170,55 @@ export class ChillSharpNgClient {
     return from(this.client.resetAuthPassword(payload));
   }
 
+  getAuthPermissions(): Observable<GetAuthPermissionsResponse> {
+    return from(this.client.getAuthPermissions());
+  }
+
+  getAuthUserList(): Observable<AuthUserListItem[]> {
+    return from(this.client.getAuthUserList());
+  }
+
+  getAuthUser(userGuid: string): Observable<AuthUserDetailsResponse> {
+    return from(this.client.getAuthUser(userGuid));
+  }
+
+  setAuthUser(payload: SetAuthUserRequest): Observable<AuthUserDetailsResponse> {
+    return from(this.client.setAuthUser(payload));
+  }
+
+  getAuthRoleList(): Observable<AuthRoleListItem[]> {
+    return from(this.client.getAuthRoleList());
+  }
+
+  getAuthModuleList(): Observable<string[]> {
+    return from(this.client.getAuthModuleList());
+  }
+
+  getAuthEntityList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthEntityList(module));
+  }
+
+  getAuthQueryList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthQueryList(module));
+  }
+
+  getAuthModuleEntityList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthModuleEntityList(module));
+  }
+
+  getAuthPropertyList(chillType: string): Observable<string[]> {
+    return from(this.client.getAuthPropertyList(chillType));
+  }
+  getAuthRole(roleGuid: string): Observable<AuthRoleDetailsResponse> {
+    return from(this.client.getAuthRole(roleGuid));
+  }
+  setAuthRole(payload: SetAuthRoleRequest): Observable<AuthRoleDetailsResponse> {
+    return from(this.client.setAuthRole(payload));
+  }
+
   getRawClient(): ChillSharpClient {
     return this.client;
   }
 }
+
+

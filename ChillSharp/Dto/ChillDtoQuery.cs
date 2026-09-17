@@ -20,8 +20,6 @@
 using ChillSharp.Annotations;
 using ChillSharp.EF;
 using Microsoft.EntityFrameworkCore;
-using System.Collections;
-using System.Text.Json;
 
 namespace ChillSharp.Dto
 {
@@ -71,6 +69,11 @@ namespace ChillSharp.Dto
         /// </summary>
         public List<ChillDtoProperty>? ResultProperties { get; set; } = null;
 
+        /// <summary>
+        /// Optional pagination settings for the query results.
+        /// </summary>
+        public EF.ChillPagination? Pagination { get; set; } = null;
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.
@@ -112,62 +115,24 @@ namespace ChillSharp.Dto
 			var ef_props = Query.GetType().GetProperties().Where(prop => 
                 prop.IsDefined(typeof(ChillPropertyAttribute), false));
 
-            var dbx = (DbContext)Context;
+            Properties = ChillDtoObjectMapper.BuildProperties(
+                Context,
+                Query,
+                ChillType,
+                ef_props);
 
-            Properties = ef_props.ToDictionary(
-				ef_prop => ef_prop.Name,
-				ef_prop => {
-					var attr = (ChillPropertyAttribute)ef_prop.GetCustomAttributes(typeof(ChillPropertyAttribute), false).First();
-                    var propertyName = ef_prop.Name; // TODO consent to override internal name using a custom property on ChillPropertyAttribute
-
-                    // CHILL-ENTITY
-                    if (typeof(IChillEntity).IsAssignableFrom(ef_prop.PropertyType))
-                    {
-                        // if is a reference load it and convert to ChillDtoEntity
-                        if (dbx.Entry(Query).Reference(propertyName).Exist(true))
-                        {
-                            var ef_obj = (IChillEntity?)ef_prop.GetValue(Query);
-                            // NULL
-                            if (ef_obj == null)
-                                return null;
-
-                            //ChillDtoProperty? reqProp = null;
-                            //if (RequiredProperties != null)
-                            //    reqProp = RequiredProperties.Where(x => x.PropertyName == propertyName).FirstOrDefault();
-                            return new ChillDtoEntity(Context, ef_obj, null); // (reqProp?.SubProperties ?? new List<ChillDtoProperty>()));
-                        }
-                        return null;
-                    }
-                    // CHILL-ENTITIES-COLLECTIONS
-                    else if (typeof(IEnumerable<IChillEntity>).IsAssignableFrom(ef_prop.PropertyType))
-                    {
-                        // Try to load collection 
-                        dbx.Entry(Query).Collection(propertyName)?.Load();
-
-                        var entity = (IEnumerable<IChillEntity>?)ef_prop.GetValue(Query);
-                        if (entity != null)
-                        {
-                            var ef_obj_coll = (IEnumerable<IChillEntity>?)ef_prop.GetValue(Query);
-                            // NULL
-                            if (ef_obj_coll == null)
-                                return null;
-
-                            return ef_obj_coll.Select(ef_obj => {
-                            //ChillDtoProperty? reqProp = null;
-                            //if (RequiredProperties != null)
-                            //    reqProp = RequiredProperties.Where(x => x.PropertyName == propertyName).FirstOrDefault();
-                            return new ChillDtoEntity(Context, ef_obj, null); // (reqProp?.SubProperties ?? new List<ChillDtoProperty>()));
-                            });
-                        }
-                        else
-                            return null;
-                    }
-                    // OTHER PROPERTY TYPES
-                    else
-                    {
-                        return (object?)ef_prop.GetValue(Query);
-                    }
-                });
+            if (Query.Pagination != null)
+            {
+                Pagination = new EF.ChillPagination
+                {
+                    Page = Query.Pagination.Page,
+                    PageResults = Query.Pagination.PageResults
+                };
+            }
+            else
+            {
+                Pagination = null;
+            }
 		}
 
         /// <summary>
@@ -184,93 +149,29 @@ namespace ChillSharp.Dto
             if (ChillType != QueryChillType)
                 throw new ChillException($"Entity ChillType ({QueryChillType}) differs from Dto ChillType ({ChillType})");
 
-            var dbx = (DbContext)Context;
-            if (dbx == null)
-                throw new ChillException("Can't cast to IChillContext to DbContext");
-
             var ef_props = Query.GetType().GetProperties()
                 .Where(prop => prop.IsDefined(typeof(ChillPropertyAttribute), false))
                 .Where(x => Properties.Keys.Contains(x.Name));
-            foreach (var ef_prop in ef_props)
+            ChillDtoObjectMapper.ApplyProperties(
+                Context,
+                Query,
+                ChillType,
+                Properties,
+                ef_props,
+                "query",
+                loadTrackedCollections: false);
+
+            if (Pagination != null)
             {
-                var attr = (ChillPropertyAttribute)ef_prop.GetCustomAttributes(typeof(ChillPropertyAttribute), false).First();
-                var propertyName = ef_prop.Name; // TODO consent to override internal name using a custom property on ChillPropertyAttribute
-				var value = Properties[ef_prop.Name];
-				try
+                Query.Pagination = new EF.ChillPagination
                 {
-					object? parsedValue = value;
-					if (value is JsonElement jsonElement)
-					{
-						var targetType = ef_prop.PropertyType;
-						// Handle nullable types
-						if (Nullable.GetUnderlyingType(targetType) is Type underlyingType)
-							targetType = underlyingType;
-
-                        // NULL
-                        if (jsonElement.ValueKind == JsonValueKind.Null)
-                        {
-                            parsedValue = null;
-                            // Finalize
-                            ef_prop.SetValue(Query, parsedValue);
-                        }
-                        // CHILL-ENTITY
-                        else if (typeof(IChillEntity).IsAssignableFrom(ef_prop.PropertyType))
-                        {
-                            // Get the incoming object
-                            var incomingChillEntity = JsonSerializer.Deserialize<ChillDtoEntity>(jsonElement.GetRawText());
-                            if (incomingChillEntity != null)
-                                parsedValue = dbx.Find(targetType, incomingChillEntity.Guid);
-                            else
-                                parsedValue = null;
-                            // Finalize
-                            ef_prop.SetValue(Query, parsedValue);
-                        }
-                        // CHILL-ENTITIES-COLLECTIONS
-                        else if (false && typeof(IEnumerable<IChillEntity>).IsAssignableFrom(ef_prop.PropertyType))
-                        {
-                            parsedValue = null;
-                            var incomingCollection = JsonSerializer.Deserialize<IEnumerable<ChillDtoEntity>>(jsonElement.GetRawText());
-
-                            if (incomingCollection != null)
-                            {
-                                // In a query object nothing to load
-                                //dbx.Entry(Entity).Collection(propertyName).Load();
-
-                                Type collectionElementType = ef_prop.PropertyType
-                                    .GetInterfaces()
-                                    .Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-                                    .First()
-                                    .GetGenericArguments()[0];
-
-                                // Create List<TTarget>
-                                var listType = typeof(List<>).MakeGenericType(collectionElementType);
-                                var targetList = (IList?)Activator.CreateInstance(listType);
-                                foreach (var item in incomingCollection)
-                                {
-                                    targetList!.Add(dbx.Find(collectionElementType, item.Guid));
-                                }
-                                parsedValue = targetList;
-                            }
-                            // Finalize
-                            ef_prop.SetValue(Query, parsedValue);
-                        }
-                        else
-                        {
-                            parsedValue = JsonSerializer.Deserialize(jsonElement.GetRawText(), targetType);
-                            // Finalize
-                            ef_prop.SetValue(Query, parsedValue);
-                        }
-                    }
-                    else
-                    {
-                        // OTHER PROPERTY TYPES
-                        ef_prop.SetValue(Query, parsedValue);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new ChillException($"Error setting value to field {propertyName} on chillable query", ex); 
-                }
+                    Page = Pagination.Page,
+                    PageResults = Pagination.PageResults
+                };
+            }
+            else
+            {
+                Query.Pagination = null;
             }
         }
         #endregion

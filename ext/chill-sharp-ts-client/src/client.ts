@@ -1,3 +1,22 @@
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import {
   HubConnection,
   HubConnectionBuilder,
@@ -32,12 +51,14 @@ export interface ChillDtoPropertySchema extends JsonObject {
   displayName: string;
   propertyType: number;
   chillType: string | null;
+  metadata: Record<string, string>;
 }
 
 export interface ChillDtoSchema extends JsonObject {
   chillType: string;
   chillViewCode: string;
   displayName: string;
+  metadata: Record<string, string>;
   queryRelatedChillType: string | null;
   properties: ChillDtoPropertySchema[];
 }
@@ -47,6 +68,125 @@ export interface ChillDtoSchemaListItem extends JsonObject {
   chillType: string;
   type: string;
   relatedChillType: string | null;
+}
+
+export interface ChillDtoEntityOptions extends JsonObject {
+  chillType: string;
+  checksumEnabled: boolean;
+  labelFormatString: string | null;
+  shortLabelFormatString: string | null;
+  fullTextContentFormatString: string | null;
+  changeLogEnabled: boolean;
+}
+
+export interface AuthUserListItem extends JsonObject {
+  guid: string;
+  externalId: string;
+  userName: string;
+  displayName: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+  canManageSchema: boolean;
+}
+
+export interface AuthRoleListItem extends JsonObject {
+  guid: string;
+  name: string;
+  description: string;
+  isActive: boolean;
+}
+
+export const PermissionEffect = {
+  Allow: 1,
+  Deny: 2
+} as const;
+
+export type PermissionEffect = (typeof PermissionEffect)[keyof typeof PermissionEffect];
+
+export const PermissionAction = {
+  FullControl: 0,
+  Query: 1,
+  Create: 2,
+  Update: 3,
+  Delete: 4,
+  See: 5,
+  Modify: 6
+} as const;
+
+export type PermissionAction = (typeof PermissionAction)[keyof typeof PermissionAction];
+
+export const PermissionScope = {
+  Module: 1,
+  Entity: 2,
+  Property: 3
+} as const;
+
+export type PermissionScope = (typeof PermissionScope)[keyof typeof PermissionScope];
+
+export interface AuthPermissionRule extends JsonObject {
+  guid: string;
+  effect: PermissionEffect;
+  action: PermissionAction;
+  scope: PermissionScope;
+  module: string;
+  entityName: string | null;
+  propertyName: string | null;
+  appliesToAllProperties: boolean;
+  description: string;
+  createdUtc: string;
+}
+
+export interface AuthRolePermissions extends AuthRoleListItem {
+  permissions: AuthPermissionRule[];
+}
+
+export interface GetAuthPermissionsResponse extends JsonObject {
+  user: AuthUserListItem | null;
+  permissions: AuthPermissionRule[];
+  roles: AuthRolePermissions[];
+}
+
+export interface AuthUserDetailsResponse extends AuthUserListItem {
+  roles: AuthRoleListItem[];
+  permissions: AuthPermissionRule[];
+}
+
+export interface AuthRoleDetailsResponse extends AuthRoleListItem {
+  users: AuthUserListItem[];
+  permissions: AuthPermissionRule[];
+}
+
+export interface AuthPermissionRuleItem extends JsonObject {
+  guid: string | null;
+  effect: PermissionEffect;
+  action: PermissionAction;
+  scope: PermissionScope;
+  module: string;
+  entityName: string | null;
+  propertyName: string | null;
+  appliesToAllProperties: boolean;
+  description: string;
+}
+
+export interface SetAuthUserRequest extends JsonObject {
+  guid: string | null;
+  externalId: string;
+  userName: string;
+  displayName: string;
+  isActive: boolean;
+  canManagePermissions: boolean;
+  canManageSchema: boolean;
+  roleGuids: string[];
+  permissions: AuthPermissionRuleItem[];
+}
+
+export interface SetAuthRoleRequest extends JsonObject {
+  guid: string | null;
+  name: string;
+  description: string;
+  isActive: boolean;
+  userGuids: string[];
+  permissions: AuthPermissionRuleItem[];
 }
 
 export interface ChillSharpClientOptions {
@@ -161,7 +301,7 @@ export class ChillSharpClient {
       relativeUrl += `&cultureName=${encodeURIComponent(effectiveCultureName)}`;
     }
 
-    return this.sendJson<ChillDtoSchema | null>("GET", this.buildChillUrl(relativeUrl));
+    return this.sendJson<ChillDtoSchema | null>("GET", this.buildSchemaUrl(relativeUrl));
   }
 
   getSchemaList(cultureName?: string): Promise<ChillDtoSchemaListItem[]> {
@@ -171,15 +311,24 @@ export class ChillSharpClient {
       relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
     }
 
-    return this.sendJson<ChillDtoSchemaListItem[]>("GET", this.buildChillUrl(relativeUrl));
+    return this.sendJson<ChillDtoSchemaListItem[]>("GET", this.buildSchemaUrl(relativeUrl));
   }
 
   setSchema(schema: ChillDtoSchema): Promise<ChillDtoSchema | null> {
-    return this.sendJson<ChillDtoSchema | null>("POST", this.buildChillUrl("set-schema"), schema);
+    return this.sendJson<ChillDtoSchema | null>("POST", this.buildSchemaUrl("set-schema"), schema);
+  }
+
+  getEntityOptions(chillType: string): Promise<ChillDtoEntityOptions> {
+    const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
+    return this.sendJson<ChillDtoEntityOptions>("GET", this.buildSchemaUrl(`get-entity-options?chillType=${encodedType}`));
+  }
+
+  setEntityOptions(entityOptions: ChillDtoEntityOptions): Promise<ChillDtoEntityOptions> {
+    return this.sendJson<ChillDtoEntityOptions>("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
   }
 
   getText(request: GetTextRequest): Promise<GetTextResponse | null> {
-    return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
+    return this.sendJson<GetTextResponse | null>("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
   }
 
   getTexts(requests: GetTextRequest[]): Promise<Array<GetTextResponse | null>> {
@@ -189,13 +338,13 @@ export class ChillSharpClient {
 
     return this.sendJson<Array<GetTextResponse | null>>(
       "POST",
-      this.buildI18nUrl("text/get-multiple"),
+      this.buildI18nUrl("get-multiple-text"),
       requests.map((request) => this.prepareGetTextRequest(request))
     );
   }
 
   setText(payload: JsonObject): Promise<GetTextResponse> {
-    return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("text"), payload);
+    return this.sendJson<GetTextResponse>("PUT", this.buildI18nUrl("set-text"), payload);
   }
 
   async subscribeToEntityChanges(
@@ -274,6 +423,68 @@ export class ChillSharpClient {
 
   resetAuthPassword(payload: JsonObject): Promise<JsonObject> {
     return this.sendAuthJson<JsonObject>("POST", "account/reset-password", payload, true, true);
+  }
+
+  getAuthPermissions(): Promise<GetAuthPermissionsResponse> {
+    return this.sendAuthJson<GetAuthPermissionsResponse>("GET", "get-permissions");
+  }
+
+  getAuthUserList(): Promise<AuthUserListItem[]> {
+    return this.sendAuthJson<AuthUserListItem[]>("GET", "get-user-list");
+  }
+
+  getAuthUser(userGuid: string): Promise<AuthUserDetailsResponse> {
+    const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+    return this.sendAuthJson<AuthUserDetailsResponse>(
+      "GET",
+      `get-user?userGuid=${encodeURIComponent(normalizedUserGuid)}`
+    );
+  }
+
+  setAuthUser(payload: SetAuthUserRequest): Promise<AuthUserDetailsResponse> {
+    return this.sendAuthJson<AuthUserDetailsResponse>("POST", "set-user", payload);
+  }
+
+  getAuthRoleList(): Promise<AuthRoleListItem[]> {
+    return this.sendAuthJson<AuthRoleListItem[]>("GET", "get-role-list");
+  }
+
+  getAuthModuleList(): Promise<string[]> {
+    return this.sendAuthJson<string[]>("GET", "get-module-list");
+  }
+
+  getAuthEntityList(module?: string | null): Promise<string[]> {
+    const normalizedModule = this.normalizeQueryValue(module);
+    const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+    return this.sendAuthJson<string[]>("GET", `get-entity-list${suffix}`);
+  }
+
+  getAuthQueryList(module?: string | null): Promise<string[]> {
+    const normalizedModule = this.normalizeQueryValue(module);
+    const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+    return this.sendAuthJson<string[]>("GET", `get-query-list${suffix}`);
+  }
+
+  getAuthModuleEntityList(module?: string | null): Promise<string[]> {
+    return this.getAuthEntityList(module);
+  }
+
+
+  getAuthPropertyList(chillType: string): Promise<string[]> {
+    const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+    return this.sendAuthJson<string[]>("GET", `get-property-list?chillType=${encodeURIComponent(normalizedChillType)}`);
+  }
+
+  getAuthRole(roleGuid: string): Promise<AuthRoleDetailsResponse> {
+    const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+    return this.sendAuthJson<AuthRoleDetailsResponse>(
+      "GET",
+      `get-role?roleGuid=${encodeURIComponent(normalizedRoleGuid)}`
+    );
+  }
+
+  setAuthRole(payload: SetAuthRoleRequest): Promise<AuthRoleDetailsResponse> {
+    return this.sendAuthJson<AuthRoleDetailsResponse>("POST", "set-role", payload);
   }
 
   private prepareGetTextRequest(request: GetTextRequest): GetTextRequest {
@@ -537,6 +748,10 @@ export class ChillSharpClient {
     return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
 
+  private buildSchemaUrl(relativeUrl: string): string {
+    return `${this.getSchemaBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+  }
+
   private buildI18nUrl(relativeUrl: string): string {
     return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
   }
@@ -548,6 +763,15 @@ export class ChillSharpClient {
     }
 
     return `${this.baseUrl.replace(/\/$/, "")}-auth`;
+  }
+
+  private getSchemaBaseUrl(): string {
+    const suffix = "/chill";
+    if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+      return `${this.baseUrl.slice(0, -suffix.length)}/chill-schema`;
+    }
+
+    return `${this.baseUrl.replace(/\/$/, "")}-schema`;
   }
 
   private getI18nBaseUrl(): string {
@@ -571,6 +795,10 @@ export class ChillSharpClient {
   private normalizeOptionalValue(value?: string | null): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  private normalizeQueryValue(value?: string | null): string | null {
+    return value == null ? null : value.trim();
   }
 
   private readString(payload: JsonObject, key: string): string | null {
@@ -735,3 +963,6 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
+
+

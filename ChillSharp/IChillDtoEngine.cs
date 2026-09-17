@@ -113,5 +113,19 @@ namespace ChillSharp
         /// <param name="Schema">The schema to be applied for DTO operations. Cannot be null.</param>
         /// <returns>The previous schema definition before the update. Returns null if no schema was previously set.</returns>
         ChillDtoSchema SetSchema(ChillDtoSchema Schema);
+
+        /// <summary>
+        /// Retrieves the runtime entity options for a specified Chill entity type.
+        /// </summary>
+        /// <param name="ChillType">The identifier representing the Chill entity type.</param>
+        /// <returns>The entity options for the requested type.</returns>
+        ChillDtoEntityOptions GetEntityOptions(string ChillType);
+
+        /// <summary>
+        /// Persists runtime entity options for a specified Chill entity type.
+        /// </summary>
+        /// <param name="EntityOptions">The entity options to persist.</param>
+        /// <returns>The persisted entity options.</returns>
+        ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions EntityOptions);
     }
 }

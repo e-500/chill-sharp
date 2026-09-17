@@ -142,6 +142,7 @@ namespace ChillSharp
             try
             {
                 var q = Query.OnQuery(_Context);
+                q = Query.OnSearch(_Context, q);
                 q = Query.OnSort(_Context, q);
                 q = Query.OnPaginate(_Context, q);
                 var res = q.ToList();
@@ -186,9 +187,11 @@ namespace ChillSharp
                 entry.Entity.OnUpdate(_Context);
                 db.SaveChanges();
                 entry.Entity.OnAfterUpdate(_Context);
-                entry.Entity.Label = entry.Entity.GetLabel(_Context);
-                entry.Entity.ShortLabel = entry.Entity.GetShortLabel(_Context);
-                entry.Entity.FullTextContent = entry.Entity.GetFullTextContent(_Context);
+                entry.Entity.Label = ChillEntityLabelFormatter.ResolveLabel(entry.Entity, _Context);
+                entry.Entity.ShortLabel = ChillEntityLabelFormatter.ResolveShortLabel(entry.Entity, _Context);
+                entry.Entity.FullTextContent = ChillEntityLabelFormatter.ResolveFullTextContent(entry.Entity, _Context);
+                if (entry.Entity is ChillEntity chillEntity)
+                    chillEntity.AppendChangeLogSnapshot(_Context);
                 db.SaveChanges();
                 if (opTrans)
                     db.Database.CommitTransaction();
@@ -229,15 +232,17 @@ namespace ChillSharp
                 entry.Entity.OnAfterUpdate(_Context);
                 
                 // Update only if values change
-                string tmp = entry.Entity.GetLabel(_Context);
+                string tmp = ChillEntityLabelFormatter.ResolveLabel(entry.Entity, _Context);
                 if (tmp != entry.Entity.Label)
                     entry.Entity.Label = tmp;
-                tmp = entry.Entity.GetShortLabel(_Context);
+                tmp = ChillEntityLabelFormatter.ResolveShortLabel(entry.Entity, _Context);
                 if (tmp != entry.Entity.ShortLabel)
                     entry.Entity.ShortLabel = tmp;
-                tmp = entry.Entity.GetFullTextContent(_Context);
+                tmp = ChillEntityLabelFormatter.ResolveFullTextContent(entry.Entity, _Context);
                 if (tmp != entry.Entity.FullTextContent)
                     entry.Entity.FullTextContent = tmp;
+                if (entry.Entity is ChillEntity chillEntity)
+                    chillEntity.AppendChangeLogSnapshot(_Context);
 
                 db.SaveChanges();
                 if (opTrans)

@@ -70,5 +70,40 @@ namespace ChillSharp.Annotations
         /// Secondary language label text (Software house / Developer language)
         /// </summary>
         public string? SecondaryLanguageLabel { get ; }
+
+        /// <summary>
+        /// Optional metadata entries serialized as <c>key=value</c> pairs.
+        /// </summary>
+        public string[]? MetadataEntries { get; set; }
+
+        /// <summary>
+        /// Converts <see cref="MetadataEntries"/> into a dictionary suitable for DTO schema emission.
+        /// </summary>
+        public Dictionary<string, string> GetMetadata()
+        {
+            var metadata = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            if (MetadataEntries == null)
+                return metadata;
+
+            foreach (var entry in MetadataEntries)
+            {
+                if (string.IsNullOrWhiteSpace(entry))
+                    continue;
+
+                var separatorIndex = entry.IndexOf('=');
+                if (separatorIndex <= 0 || separatorIndex == entry.Length - 1)
+                    continue;
+
+                var key = entry[..separatorIndex].Trim();
+                var value = entry[(separatorIndex + 1)..].Trim();
+                if (string.IsNullOrWhiteSpace(key))
+                    continue;
+
+                metadata[key] = value;
+            }
+
+            return metadata;
+        }
     }
 }

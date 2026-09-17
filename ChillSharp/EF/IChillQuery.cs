@@ -51,6 +51,11 @@ namespace ChillSharp.EF
         Guid? Guid { get; set; }
 
         /// <summary>
+        /// Search string to perform aquick full-text search
+        /// </summary>
+        string FullTextSearch { get; set; }
+
+        /// <summary>
         /// Pagination settings to limit and offset query results.
         /// </summary>
         ChillPagination? Pagination { get; set; }
@@ -66,6 +71,17 @@ namespace ChillSharp.EF
         /// <param name="query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{T}"/>.</returns>
         IQueryable<T> OnQuery(IChillContext Context);
+
+        /// <summary>
+        /// Applies full-text or keyword search logic to the query results.
+        /// </summary>
+        /// <param name="context">The active Chill database context.</param>
+        /// <param name="query">The query to filter.</param>
+        /// <returns>The filtered <see cref="IQueryable{T}"/>.</returns>
+        IQueryable<T> OnSearch(IChillContext Context, IQueryable<T> Query)
+        {
+            return Query;
+        }
 
         /// <summary>
         /// Applies sorting logic to the query results.
@@ -85,5 +101,16 @@ namespace ChillSharp.EF
         /// <param name="query">The query to paginate.</param>
         /// <returns>The paginated <see cref="IQueryable{T}"/>.</returns>
         IQueryable<T> OnPaginate(IChillContext Context, IQueryable<T> Query);
+
+        /// <summary>
+        /// Returns optional localized validation message definitions that can be referenced
+        /// by placing a GUID string inside a DataAnnotations <c>ErrorMessage</c>.
+        /// </summary>
+        /// <param name="Context">The active database context.</param>
+        /// <returns>The validation message definitions available for the query.</returns>
+        IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context)
+        {
+            return [];
+        }
     }
 }

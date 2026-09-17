@@ -44,6 +44,11 @@ namespace ChillSharp.Client.Dto
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Additional metadata for custom client renderers.
+        /// </summary>
+        public Dictionary<string, string> Metadata { get; set; } = new();
+
+        /// <summary>
         /// Chill type of the entity targeted by a query schema.
         /// Empty for entity schemas.
         /// </summary>
@@ -55,3 +60,4 @@ namespace ChillSharp.Client.Dto
         public List<ChillDtoPropertySchema> Properties { get; set; } = new();
     }
 }
+

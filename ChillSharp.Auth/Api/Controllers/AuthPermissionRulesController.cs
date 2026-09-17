@@ -24,7 +24,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ChillSharp.Auth.Api.Controllers;
 
 /// <summary>
-/// Exposes endpoints for managing permission rules and evaluating effective access.
+/// Exposes legacy endpoints for managing raw permission rules.
 /// </summary>
 [ApiController]
 [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
@@ -90,30 +90,4 @@ public class AuthPermissionRulesController : ControllerBase
         return await _service.DeletePermissionRuleAsync(ruleGuid, cancellationToken) ? NoContent() : NotFound();
     }
 
-    /// <summary>
-    /// Evaluates an entity-level permission for a user.
-    /// </summary>
-    [HttpPost("evaluate/entity")]
-    public async Task<IActionResult> EvaluateEntity([FromBody] EvaluateEntityPermissionRequest request, CancellationToken cancellationToken)
-    {
-        return Ok(await _service.EvaluateEntityPermissionAsync(request, cancellationToken));
-    }
-
-    /// <summary>
-    /// Evaluates a property-level permission for a user.
-    /// </summary>
-    [HttpPost("evaluate/property")]
-    public async Task<IActionResult> EvaluateProperty([FromBody] EvaluatePropertyPermissionRequest request, CancellationToken cancellationToken)
-    {
-        return Ok(await _service.EvaluatePropertyPermissionAsync(request, cancellationToken));
-    }
-
-    /// <summary>
-    /// Evaluates a property-level permission across multiple properties for a user.
-    /// </summary>
-    [HttpPost("evaluate/property-set")]
-    public async Task<IActionResult> EvaluatePropertySet([FromBody] EvaluatePropertySetPermissionRequest request, CancellationToken cancellationToken)
-    {
-        return Ok(await _service.EvaluatePropertySetPermissionAsync(request, cancellationToken));
-    }
 }

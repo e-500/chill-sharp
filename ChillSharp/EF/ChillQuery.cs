@@ -51,6 +51,12 @@ namespace ChillSharp.EF
         public virtual Guid? Guid { get; set; }
 
         /// <summary>
+        /// Optional free-text search string applied against entity full-text content.
+        /// </summary>
+        [ChillProperty]
+        public virtual string FullTextSearch { get; set; } = string.Empty;
+
+        /// <summary>
         /// Optional pagination settings for the query results.
         /// </summary>
         public ChillPagination? Pagination { get; set; } = null;
@@ -67,6 +73,33 @@ namespace ChillSharp.EF
         /// <param name="Query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
         public abstract IQueryable<IChillEntity> OnQuery(IChillContext Context);
+
+        /// <summary>
+        /// Applies tokenized full-text filtering against <see cref="IChillEntity.FullTextContent"/>.
+        /// Each token must be present for the entity to match.
+        /// </summary>
+        /// <param name="Context">The active Chill database context.</param>
+        /// <param name="Query">The query to filter.</param>
+        /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
+        public virtual IQueryable<IChillEntity> OnSearch(IChillContext Context, IQueryable<IChillEntity> Query)
+        {
+            if (string.IsNullOrWhiteSpace(FullTextSearch))
+                return Query;
+
+            var tokens = FullTextSearch
+                .Split([' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            foreach (var token in tokens)
+            {
+                var currentToken = token;
+                Query = Query.Where(x => !string.IsNullOrEmpty(x.FullTextContent) && x.FullTextContent.Contains(currentToken));
+            }
+
+            return Query;
+        }
         
         /// <summary>
         /// Applies default sorting to the query.
@@ -120,6 +153,25 @@ namespace ChillSharp.EF
         /// <param name="Context">The active Chill database context.</param>
         /// <returns>A collection of <see cref="ChillValidationError"/> representing validation issues.</returns>
         public virtual IEnumerable<ChillValidationError> OnValidation(IChillContext Context) { return new List<ChillValidationError>(); }
+
+        /// <summary>
+        /// Returns optional validation message definitions that can translate GUID-based
+        /// DataAnnotations error messages using ChillSharp primary/secondary texts.
+        /// </summary>
+        /// <param name="Context">The active Chill database context.</param>
+        /// <returns>The validation message definitions available for the query.</returns>
+        public virtual IEnumerable<ChillValidationMessageDefinition> GetValidationMessageDefinitions(IChillContext Context) { return new List<ChillValidationMessageDefinition>(); }
+
+        // ChillSharp invokes validation through the IChillValidable interface, not through the concrete query.
+        // This keeps DataAnnotations validation for Chill properties always enabled while preserving the simple
+        // user override surface on the public virtual OnValidation(...) method.
+        IEnumerable<ChillValidationError> IChillValidable.OnValidation(IChillContext Context)
+        {
+            var errors = new List<ChillValidationError>();
+            errors.AddRange(ChillDataAnnotationsValidator.ValidateChillProperties(this, Context, GetValidationMessageDefinitions(Context)));
+            errors.AddRange(OnValidation(Context));
+            return errors;
+        }
         #endregion
     }
 }

@@ -37,6 +37,7 @@ namespace ChillSharp.Client
         {
             PropertyNameCaseInsensitive = true
         };
+        private readonly Func<HttpClient>? _httpClientFactory;
 
         private string _BaseUrl = string.Empty;
         private string? _UserName;
@@ -57,6 +58,19 @@ namespace ChillSharp.Client
         {
             _BaseUrl = NormalizeBaseUrl(BaseUrl);
             _CultureName = NormalizeOptionalValue(CultureName);
+        }
+
+        /// <summary>
+        /// Initializes the client with a custom HttpClient factory.
+        /// Useful for tests that need custom handlers such as relaxed certificate validation.
+        /// </summary>
+        /// <param name="BaseUrl">Base endpoint of the ChillSharp server.</param>
+        /// <param name="httpClientFactory">Factory invoked for each request.</param>
+        /// <param name="CultureName">Optional default culture sent to culture-aware endpoints.</param>
+        public ChillSharpClient(string BaseUrl, Func<HttpClient> httpClientFactory, string? CultureName = null)
+            : this(BaseUrl, CultureName)
+        {
+            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         }
 
         /// <summary>
@@ -181,7 +195,7 @@ namespace ChillSharp.Client
                 relativeUrl += $"&cultureName={Uri.EscapeDataString(effectiveCultureName)}";
             }
 
-            return SendJson<ChillDtoSchema>(HttpMethod.Get, BuildChillUrl(relativeUrl), payload: null);
+            return SendJson<ChillDtoSchema>(HttpMethod.Get, BuildSchemaUrl(relativeUrl), payload: null);
         }
 
         /// <summary>
@@ -198,7 +212,7 @@ namespace ChillSharp.Client
                 relativeUrl += $"?cultureName={Uri.EscapeDataString(effectiveCultureName)}";
             }
 
-            return SendJson<List<ChillDtoSchemaListItem>>(HttpMethod.Get, BuildChillUrl(relativeUrl), payload: null)
+            return SendJson<List<ChillDtoSchemaListItem>>(HttpMethod.Get, BuildSchemaUrl(relativeUrl), payload: null)
                 ?? new List<ChillDtoSchemaListItem>();
         }
 
@@ -217,7 +231,37 @@ namespace ChillSharp.Client
             if (schema == null)
                 throw new ArgumentNullException(nameof(schema));
 
-            SendJson<object>(HttpMethod.Post, BuildChillUrl("set-schema"), schema, expectResponseBody: false);
+            SendJson<object>(HttpMethod.Post, BuildSchemaUrl("set-schema"), schema, expectResponseBody: false);
+        }
+
+        /// <summary>
+        /// Retrieves the runtime entity options for a specified Chill type from the remote service.
+        /// </summary>
+        /// <param name="chillType">The identifier of the Chill entity type.</param>
+        /// <returns>The entity options for the requested type.</returns>
+        public ChillDtoEntityOptions GetEntityOptions(string chillType)
+        {
+            var encodedType = Uri.EscapeDataString(chillType);
+            var result = SendJson<ChillDtoEntityOptions>(HttpMethod.Get, BuildSchemaUrl($"get-entity-options?chillType={encodedType}"), payload: null);
+            if (result == null)
+                throw new ChillClientException("Unexpected null entity options result");
+            return result;
+        }
+
+        /// <summary>
+        /// Sends runtime entity options to the remote service.
+        /// </summary>
+        /// <param name="entityOptions">The entity options to persist.</param>
+        /// <returns>The persisted entity options returned by the server.</returns>
+        public ChillDtoEntityOptions SetEntityOptions(ChillDtoEntityOptions entityOptions)
+        {
+            if (entityOptions == null)
+                throw new ArgumentNullException(nameof(entityOptions));
+
+            var result = SendJson<ChillDtoEntityOptions>(HttpMethod.Post, BuildSchemaUrl("set-entity-options"), entityOptions);
+            if (result == null)
+                throw new ChillClientException("Unexpected null entity options result");
+            return result;
         }
 
         internal T? SendAuthJson<T>(HttpMethod method, string relativeUrl, object? payload = null, bool expectResponseBody = true, bool allowAnonymous = false)
@@ -328,7 +372,7 @@ namespace ChillSharp.Client
                     GetAuthTokenWithPasswordIfNecessary();
                 }
 
-                using var client = new HttpClient();
+                using var client = _httpClientFactory?.Invoke() ?? new HttpClient();
                 using var request = new HttpRequestMessage(method, url);
 
                 if (!allowAnonymous && !string.IsNullOrWhiteSpace(_AccessToken))
@@ -390,6 +434,22 @@ namespace ChillSharp.Client
         private string BuildAuthUrl(string relativeUrl)
         {
             return $"{GetAuthBaseUrl().TrimEnd('/')}/{relativeUrl.TrimStart('/')}";
+        }
+
+        private string BuildSchemaUrl(string relativeUrl)
+        {
+            return $"{GetSchemaBaseUrl().TrimEnd('/')}/{relativeUrl.TrimStart('/')}";
+        }
+
+        internal string GetSchemaBaseUrl()
+        {
+            const string chillSuffix = "/chill";
+            if (_BaseUrl.EndsWith(chillSuffix, StringComparison.OrdinalIgnoreCase))
+            {
+                return _BaseUrl.Substring(0, _BaseUrl.Length - chillSuffix.Length) + "/chill-schema";
+            }
+
+            return _BaseUrl.TrimEnd('/') + "-schema";
         }
 
         private bool CanUseAuthentication()

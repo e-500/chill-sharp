@@ -164,15 +164,100 @@ Allow Update Module=Blog Entity=Post
 Deny Modify Module=Blog Entity=Post Property=InternalNotes
 ```
 
-## Why This Matters For Clients
+## Auth Management API
 
-Clients can use permission-evaluation endpoints to:
+`ChillSharp.Auth` now exposes a management-oriented API that separates:
+
+- client-side capability evaluation
+- server-side management of users, roles, and permission rules
+
+### `GET chill-auth/get-permissions`
+
+Returns the current logged-in user's authorization data as a structured payload:
+
+- the current auth user
+- the user's direct permissions
+- the user's assigned roles
+- for each assigned role, that role's permissions
+
+Clients should use this payload to evaluate capabilities locally and:
 
 - disable UI actions
 - hide fields
-- decide which property editors to render
+- decide which editors or actions to render
 
-But the server remains the source of truth. Client filtering is convenience, not security.
+The old public `evaluate/*` endpoints are removed. Evaluation is now expected to happen in the client libraries or UI layer by applying the same precedence rules described in this document.
+
+### Management Endpoints Requiring `CanManagePermissions`
+
+The following endpoints are reserved for privileged users only:
+
+- `GET chill-auth/get-user-list`
+- `GET chill-auth/get-user`
+- `POST chill-auth/set-user`
+- `GET chill-auth/get-role-list`
+- `GET chill-auth/get-role`
+- `POST chill-auth/set-role`
+
+### `GET chill-auth/get-user-list`
+
+Returns the full user list in a lightweight form suitable for dropdowns and selectors.
+
+### `GET chill-auth/get-user`
+
+Returns a single user as one structured object containing:
+
+- user data
+- assigned roles
+- user-specific permissions
+
+Role permissions are not expanded here because the UI can load them from the related role payload when needed.
+
+### `POST chill-auth/set-user`
+
+Creates or updates a user with:
+
+- the full assigned role list
+- the full list of user-specific permissions
+
+The server synchronizes changes incrementally:
+
+- adds missing roles and removes deleted roles
+- adds missing permissions and removes deleted permissions
+
+It does not clear and recreate the full set blindly.
+
+### `GET chill-auth/get-role-list`
+
+Returns the full role list in a lightweight form suitable for dropdowns and selectors.
+
+### `GET chill-auth/get-role`
+
+Returns a single role as one structured object containing:
+
+- role data
+- role-specific permissions
+- users assigned to the role
+
+### `POST chill-auth/set-role`
+
+Creates or updates a role with:
+
+- the full list of role permissions
+- the full list of users assigned to the role
+
+The server synchronizes changes incrementally:
+
+- adds missing permissions and removes deleted permissions
+- adds missing user-role assignments and removes deleted assignments
+
+It does not clear and recreate the full set blindly.
+
+## Server Enforcement
+
+Clients may evaluate capabilities locally for UX purposes, but the server remains the source of truth.
+
+Entity-level server authorization continues to be enforced through the existing ChillSharp ACL integration. Management endpoints additionally require `CanManagePermissions` when the caller is authenticated.
 
 ## Related Runtime Pieces
 

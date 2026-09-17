@@ -19,6 +19,7 @@
 
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
+using ChillSharp;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChillSharp.Auth.Services;
@@ -28,17 +29,280 @@ namespace ChillSharp.Auth.Services;
 /// </summary>
 public class ChillAuthService : IChillAuthService
 {
+    #region Fields
     private readonly IChillAuthDbContext _context;
+    private readonly IChillContext _chillContext;
+    private readonly IChillAuthManagementAccessCache _managementAccessCache;
+    #endregion
 
+    #region Construction
     /// <summary>
     /// Initializes the service with the auth persistence abstraction.
     /// </summary>
     /// <param name="context">The auth store used for reads and writes.</param>
-    public ChillAuthService(IChillAuthDbContext context)
+    public ChillAuthService(IChillAuthDbContext context, IChillContext chillContext, IChillAuthManagementAccessCache managementAccessCache)
     {
         _context = context;
+        _chillContext = chillContext;
+        _managementAccessCache = managementAccessCache;
+    }
+    #endregion
+
+    #region Current User
+    /// <inheritdoc />
+    public async Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default)
+    {
+        var user = await GetUserByExternalIdAsync(externalId, cancellationToken);
+        if (user is null)
+        {
+            return new GetAuthPermissionsResponse();
+        }
+
+        var roleAssignments = await _context.UserRoles
+            .AsNoTracking()
+            .Where(x => x.UserGuid == user.Guid)
+            .Select(x => x.Role)
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+
+        var roleGuids = roleAssignments.Select(x => x.Guid).ToList();
+        var rules = await _context.PermissionRules
+            .AsNoTracking()
+            .Where(x => x.UserGuid == user.Guid || (x.RoleGuid.HasValue && roleGuids.Contains(x.RoleGuid.Value)))
+            .OrderBy(x => x.Scope)
+            .ThenBy(x => x.Module)
+            .ThenBy(x => x.EntityName)
+            .ThenBy(x => x.PropertyName)
+            .ToListAsync(cancellationToken);
+
+        return new GetAuthPermissionsResponse
+        {
+            User = ToUserListItem(user),
+            Permissions = rules
+                .Where(x => x.UserGuid == user.Guid)
+                .Select(ToPermissionRuleResponse)
+                .ToList(),
+            Roles = roleAssignments
+                .Select(role => new AuthRolePermissionsResponse
+                {
+                    Guid = role.Guid,
+                    Name = role.Name,
+                    Description = role.Description,
+                    IsActive = role.IsActive,
+                    Permissions = rules
+                        .Where(x => x.RoleGuid == role.Guid)
+                        .Select(ToPermissionRuleResponse)
+                        .ToList()
+                })
+                .ToList()
+        };
+    }
+    #endregion
+
+    #region Management UI
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuthUserListItemResponse>> GetUserListAsync(CancellationToken cancellationToken = default)
+    {
+        var users = await _context.Users
+            .AsNoTracking()
+            .OrderBy(x => x.UserName)
+            .ToListAsync(cancellationToken);
+        return users.Select(ToUserListItem).ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<AuthUserDetailsResponse?> GetManagedUserAsync(Guid userGuid, CancellationToken cancellationToken = default)
+    {
+        var user = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Guid == userGuid, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var roles = await _context.UserRoles
+            .AsNoTracking()
+            .Where(x => x.UserGuid == userGuid)
+            .Select(x => x.Role)
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+
+        var permissions = await _context.PermissionRules
+            .AsNoTracking()
+            .Where(x => x.UserGuid == userGuid)
+            .OrderBy(x => x.Scope)
+            .ThenBy(x => x.Module)
+            .ThenBy(x => x.EntityName)
+            .ThenBy(x => x.PropertyName)
+            .ToListAsync(cancellationToken);
+
+        return ToUserDetailsResponse(user, roles, permissions);
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthUserDetailsResponse> SetUserAsync(SetAuthUserRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateUser(request.ExternalId, request.UserName);
+
+        var roleGuids = request.RoleGuids
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (roleGuids.Count > 0)
+        {
+            var existingRoleCount = await _context.Roles.CountAsync(x => roleGuids.Contains(x.Guid), cancellationToken);
+            if (existingRoleCount != roleGuids.Count)
+            {
+                throw new ArgumentException("One or more referenced roles do not exist.");
+            }
+        }
+
+        AuthUser user;
+        if (request.Guid.HasValue && request.Guid.Value != Guid.Empty)
+        {
+            user = await _context.Users.FirstOrDefaultAsync(x => x.Guid == request.Guid.Value, cancellationToken)
+                ?? throw new ArgumentException("The referenced user does not exist.");
+        }
+        else
+        {
+            user = new AuthUser
+            {
+                Guid = Guid.NewGuid()
+            };
+            _context.Users.Add(user);
+        }
+
+        user.ExternalId = request.ExternalId.Trim();
+        user.UserName = request.UserName.Trim();
+        user.DisplayName = request.DisplayName.Trim();
+        user.IsActive = request.IsActive;
+        user.CanManagePermissions = request.CanManagePermissions;
+        user.CanManageSchema = request.CanManageSchema;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await SyncUserRolesAsync(user.Guid, roleGuids, cancellationToken);
+        await SyncPermissionRulesAsync(user.Guid, null, request.Permissions, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
+
+        return (await GetManagedUserAsync(user.Guid, cancellationToken))!;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuthRoleListItemResponse>> GetRoleListAsync(CancellationToken cancellationToken = default)
+    {
+        var roles = await _context.Roles
+            .AsNoTracking()
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+        return roles.Select(ToRoleListItem).ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetModuleListAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetModuleList());
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetEntities(module));
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetQueries(module));
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetPropertyListAsync(string chillType, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetProperties(chillType));
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthRoleDetailsResponse?> GetManagedRoleAsync(Guid roleGuid, CancellationToken cancellationToken = default)
+    {
+        var role = await _context.Roles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Guid == roleGuid, cancellationToken);
+        if (role is null)
+        {
+            return null;
+        }
+
+        var users = await _context.UserRoles
+            .AsNoTracking()
+            .Where(x => x.RoleGuid == roleGuid)
+            .Select(x => x.User)
+            .OrderBy(x => x.UserName)
+            .ToListAsync(cancellationToken);
+
+        var permissions = await _context.PermissionRules
+            .AsNoTracking()
+            .Where(x => x.RoleGuid == roleGuid)
+            .OrderBy(x => x.Scope)
+            .ThenBy(x => x.Module)
+            .ThenBy(x => x.EntityName)
+            .ThenBy(x => x.PropertyName)
+            .ToListAsync(cancellationToken);
+
+        return ToRoleDetailsResponse(role, users, permissions);
+    }
+
+    /// <inheritdoc />
+    public async Task<AuthRoleDetailsResponse> SetRoleAsync(SetAuthRoleRequest request, CancellationToken cancellationToken = default)
+    {
+        ValidateRole(request.Name);
+
+        var userGuids = request.UserGuids
+            .Where(x => x != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        if (userGuids.Count > 0)
+        {
+            var existingUserCount = await _context.Users.CountAsync(x => userGuids.Contains(x.Guid), cancellationToken);
+            if (existingUserCount != userGuids.Count)
+            {
+                throw new ArgumentException("One or more referenced users do not exist.");
+            }
+        }
+
+        AuthRole role;
+        if (request.Guid.HasValue && request.Guid.Value != Guid.Empty)
+        {
+            role = await _context.Roles.FirstOrDefaultAsync(x => x.Guid == request.Guid.Value, cancellationToken)
+                ?? throw new ArgumentException("The referenced role does not exist.");
+        }
+        else
+        {
+            role = new AuthRole
+            {
+                Guid = Guid.NewGuid()
+            };
+            _context.Roles.Add(role);
+        }
+
+        role.Name = request.Name.Trim();
+        role.Description = request.Description.Trim();
+        role.IsActive = request.IsActive;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await SyncRoleUsersAsync(role.Guid, userGuids, cancellationToken);
+        await SyncPermissionRulesAsync(null, role.Guid, request.Permissions, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
+
+        return (await GetManagedRoleAsync(role.Guid, cancellationToken))!;
+    }
+    #endregion
+
+    #region Users
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -82,11 +346,13 @@ public class ChillAuthService : IChillAuthService
             UserName = request.UserName.Trim(),
             DisplayName = request.DisplayName.Trim(),
             IsActive = request.IsActive,
-            CanManagePermissions = request.CanManagePermissions
+            CanManagePermissions = request.CanManagePermissions,
+            CanManageSchema = request.CanManageSchema
         };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
         return user;
     }
 
@@ -106,8 +372,10 @@ public class ChillAuthService : IChillAuthService
         user.DisplayName = request.DisplayName.Trim();
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
+        user.CanManageSchema = request.CanManageSchema;
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess(user.ExternalId);
         return user;
     }
 
@@ -120,11 +388,14 @@ public class ChillAuthService : IChillAuthService
             return false;
         }
 
+        InvalidateManagementAccess(user.ExternalId);
         _context.Users.Remove(user);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+    #endregion
 
+    #region Roles
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
@@ -157,6 +428,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.Roles.Add(role);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return role;
     }
 
@@ -176,6 +448,7 @@ public class ChillAuthService : IChillAuthService
         role.IsActive = request.IsActive;
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return role;
     }
 
@@ -190,9 +463,12 @@ public class ChillAuthService : IChillAuthService
 
         _context.Roles.Remove(role);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Role Assignments
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthRole>> GetUserRolesAsync(Guid userGuid, CancellationToken cancellationToken = default)
     {
@@ -228,6 +504,7 @@ public class ChillAuthService : IChillAuthService
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
 
@@ -242,9 +519,12 @@ public class ChillAuthService : IChillAuthService
 
         _context.UserRoles.Remove(membership);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Permission Rules
     /// <inheritdoc />
     public async Task<IReadOnlyList<AuthPermissionRule>> GetPermissionRulesAsync(Guid? userGuid = null, Guid? roleGuid = null, CancellationToken cancellationToken = default)
     {
@@ -300,6 +580,7 @@ public class ChillAuthService : IChillAuthService
 
         _context.PermissionRules.Add(rule);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return rule;
     }
 
@@ -326,6 +607,7 @@ public class ChillAuthService : IChillAuthService
         rule.Description = request.Description.Trim();
 
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return rule;
     }
 
@@ -340,9 +622,12 @@ public class ChillAuthService : IChillAuthService
 
         _context.PermissionRules.Remove(rule);
         await _context.SaveChangesAsync(cancellationToken);
+        InvalidateManagementAccess();
         return true;
     }
+    #endregion
 
+    #region Permission Evaluation
     /// <inheritdoc />
     public async Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default)
     {
@@ -415,7 +700,126 @@ public class ChillAuthService : IChillAuthService
             Properties = results
         };
     }
+    #endregion
 
+    #region Cache
+    public void InvalidateManagementAccess(string? externalId = null)
+    {
+        if (string.IsNullOrWhiteSpace(externalId))
+            _managementAccessCache.InvalidateAll();
+        else
+            _managementAccessCache.Invalidate(externalId);
+    }
+    #endregion
+
+    #region Synchronization Helpers
+    private async Task SyncUserRolesAsync(Guid userGuid, IReadOnlyList<Guid> requestedRoleGuids, CancellationToken cancellationToken)
+    {
+        var existingMemberships = await _context.UserRoles
+            .Where(x => x.UserGuid == userGuid)
+            .ToListAsync(cancellationToken);
+
+        var requestedSet = requestedRoleGuids.ToHashSet();
+        foreach (var membership in existingMemberships.Where(x => !requestedSet.Contains(x.RoleGuid)))
+        {
+            _context.UserRoles.Remove(membership);
+        }
+
+        var existingSet = existingMemberships.Select(x => x.RoleGuid).ToHashSet();
+        foreach (var roleGuid in requestedRoleGuids.Where(x => !existingSet.Contains(x)))
+        {
+            _context.UserRoles.Add(new AuthUserRole
+            {
+                UserGuid = userGuid,
+                RoleGuid = roleGuid,
+                AssignedUtc = DateTime.UtcNow
+            });
+        }
+    }
+
+    private async Task SyncRoleUsersAsync(Guid roleGuid, IReadOnlyList<Guid> requestedUserGuids, CancellationToken cancellationToken)
+    {
+        var existingMemberships = await _context.UserRoles
+            .Where(x => x.RoleGuid == roleGuid)
+            .ToListAsync(cancellationToken);
+
+        var requestedSet = requestedUserGuids.ToHashSet();
+        foreach (var membership in existingMemberships.Where(x => !requestedSet.Contains(x.UserGuid)))
+        {
+            _context.UserRoles.Remove(membership);
+        }
+
+        var existingSet = existingMemberships.Select(x => x.UserGuid).ToHashSet();
+        foreach (var userGuid in requestedUserGuids.Where(x => !existingSet.Contains(x)))
+        {
+            _context.UserRoles.Add(new AuthUserRole
+            {
+                UserGuid = userGuid,
+                RoleGuid = roleGuid,
+                AssignedUtc = DateTime.UtcNow
+            });
+        }
+    }
+
+    private async Task SyncPermissionRulesAsync(Guid? userGuid, Guid? roleGuid, IReadOnlyList<AuthPermissionRuleItem> requestedRules, CancellationToken cancellationToken)
+    {
+        if (userGuid.HasValue == roleGuid.HasValue)
+        {
+            throw new ArgumentException("Permission synchronization requires either a user or a role target.");
+        }
+
+        foreach (var rule in requestedRules)
+        {
+            await ValidatePermissionRuleAsync(userGuid, roleGuid, rule.Scope, rule.Module, rule.EntityName, rule.PropertyName, rule.AppliesToAllProperties, cancellationToken);
+        }
+
+        var existingRules = await _context.PermissionRules
+            .Where(x => x.UserGuid == userGuid && x.RoleGuid == roleGuid)
+            .ToListAsync(cancellationToken);
+
+        var unmatchedExisting = existingRules.ToDictionary(x => x.Guid);
+        var matchedExistingGuids = new HashSet<Guid>();
+
+        foreach (var requestRule in requestedRules)
+        {
+            AuthPermissionRule? target = null;
+            if (requestRule.Guid.HasValue && requestRule.Guid.Value != Guid.Empty)
+            {
+                unmatchedExisting.TryGetValue(requestRule.Guid.Value, out target);
+            }
+
+            if (target is null)
+            {
+                target = existingRules
+                    .Where(x => !matchedExistingGuids.Contains(x.Guid))
+                    .FirstOrDefault(x => PermissionRuleSemanticKey.FromEntity(x) == PermissionRuleSemanticKey.FromRequest(requestRule));
+            }
+
+            if (target is null)
+            {
+                target = new AuthPermissionRule
+                {
+                    Guid = requestRule.Guid is { } requestGuid && requestGuid != Guid.Empty ? requestGuid : Guid.NewGuid(),
+                    UserGuid = userGuid,
+                    RoleGuid = roleGuid,
+                    CreatedUtc = DateTime.UtcNow
+                };
+                _context.PermissionRules.Add(target);
+            }
+
+            ApplyPermissionRule(target, userGuid, roleGuid, requestRule);
+            matchedExistingGuids.Add(target.Guid);
+            unmatchedExisting.Remove(target.Guid);
+        }
+
+        foreach (var obsoleteRule in existingRules.Where(x => !matchedExistingGuids.Contains(x.Guid)))
+        {
+            _context.PermissionRules.Remove(obsoleteRule);
+        }
+    }
+    #endregion
+
+    #region Resolution Helpers
     private async Task<ResolvedRule?> ResolveRuleAsync(Guid userGuid, PermissionAction action, string module, string entityName, string? propertyName, CancellationToken cancellationToken)
     {
         var roleGuids = await _context.UserRoles
@@ -426,19 +830,19 @@ public class ChillAuthService : IChillAuthService
 
         var candidates = await _context.PermissionRules
             .AsNoTracking()
-            .Where(x => x.Action == action)
+            .Where(x => x.Action == action || x.Action == PermissionAction.FullControl)
             .Where(x => x.UserGuid == userGuid || (x.RoleGuid.HasValue && roleGuids.Contains(x.RoleGuid.Value)))
             .ToListAsync(cancellationToken);
 
         return candidates
-            .Select(x => BuildResolvedRule(x, module, entityName, propertyName))
+            .Select(x => BuildResolvedRule(x, action, module, entityName, propertyName))
             .Where(x => x is not null)
             .Select(x => x!)
             .OrderBy(x => x.Order)
             .FirstOrDefault();
     }
 
-    private static ResolvedRule? BuildResolvedRule(AuthPermissionRule rule, string module, string entityName, string? propertyName)
+    private static ResolvedRule? BuildResolvedRule(AuthPermissionRule rule, PermissionAction requestedAction, string module, string entityName, string? propertyName)
     {
         var scopeSpecificity = GetScopeSpecificity(rule, propertyName);
         if (scopeSpecificity == 0)
@@ -478,9 +882,10 @@ public class ChillAuthService : IChillAuthService
         }
 
         var subjectRank = rule.UserGuid.HasValue ? 0 : 1;
+        var actionRank = rule.Action == requestedAction ? 0 : 1;
         var effectRank = rule.Effect == PermissionEffect.Deny ? 0 : 1;
 
-        return new ResolvedRule(rule, (subjectRank, scopeSpecificity * -1, effectRank));
+        return new ResolvedRule(rule, (subjectRank, scopeSpecificity * -1, actionRank, effectRank));
     }
 
     private static int GetScopeSpecificity(AuthPermissionRule rule, string? propertyName)
@@ -493,7 +898,9 @@ public class ChillAuthService : IChillAuthService
             _ => 0
         };
     }
+    #endregion
 
+    #region Validation Helpers
     private async Task ValidatePermissionRuleAsync(Guid? userGuid, Guid? roleGuid, PermissionScope scope, string module, string? entityName, string? propertyName, bool appliesToAllProperties, CancellationToken cancellationToken)
     {
         if (userGuid.HasValue == roleGuid.HasValue)
@@ -560,7 +967,9 @@ public class ChillAuthService : IChillAuthService
             throw new ArgumentException("Role name is required.");
         }
     }
+    #endregion
 
+    #region Normalization Helpers
     private static void ValidateEntityEvaluation(PermissionAction action, string module, string entityName)
     {
         if (action is PermissionAction.See or PermissionAction.Modify)
@@ -661,7 +1070,9 @@ public class ChillAuthService : IChillAuthService
     {
         return NormalizeProperty(propertyName, false) ?? throw new ArgumentException("PropertyName is required.");
     }
+    #endregion
 
+    #region Mapping Helpers
     private static PermissionEvaluationResult DefaultDeny(string reason)
     {
         return new PermissionEvaluationResult
@@ -671,7 +1082,128 @@ public class ChillAuthService : IChillAuthService
         };
     }
 
-    private sealed record ResolvedRule(AuthPermissionRule Rule, (int SubjectRank, int SpecificityRank, int EffectRank) Order)
+    private static void ApplyPermissionRule(AuthPermissionRule target, Guid? userGuid, Guid? roleGuid, AuthPermissionRuleItem source)
+    {
+        target.UserGuid = userGuid;
+        target.RoleGuid = roleGuid;
+        target.Effect = source.Effect;
+        target.Action = source.Action;
+        target.Scope = source.Scope;
+        target.Module = NormalizeModule(source.Module);
+        target.EntityName = NormalizeEntity(source.EntityName);
+        target.PropertyName = NormalizeProperty(source.PropertyName, source.AppliesToAllProperties);
+        target.AppliesToAllProperties = source.AppliesToAllProperties;
+        target.Description = source.Description.Trim();
+    }
+
+    private static AuthUserListItemResponse ToUserListItem(AuthUser user)
+    {
+        return new AuthUserListItemResponse
+        {
+            Guid = user.Guid,
+            ExternalId = user.ExternalId,
+            UserName = user.UserName,
+            DisplayName = user.DisplayName,
+            IsActive = user.IsActive,
+            CanManagePermissions = user.CanManagePermissions,
+            CanManageSchema = user.CanManageSchema
+        };
+    }
+
+    private static AuthRoleListItemResponse ToRoleListItem(AuthRole role)
+    {
+        return new AuthRoleListItemResponse
+        {
+            Guid = role.Guid,
+            Name = role.Name,
+            Description = role.Description,
+            IsActive = role.IsActive
+        };
+    }
+
+    private static AuthPermissionRuleResponse ToPermissionRuleResponse(AuthPermissionRule rule)
+    {
+        return new AuthPermissionRuleResponse
+        {
+            Guid = rule.Guid,
+            Effect = rule.Effect,
+            Action = rule.Action,
+            Scope = rule.Scope,
+            Module = rule.Module,
+            EntityName = rule.EntityName,
+            PropertyName = rule.PropertyName,
+            AppliesToAllProperties = rule.AppliesToAllProperties,
+            Description = rule.Description,
+            CreatedUtc = rule.CreatedUtc
+        };
+    }
+
+    private static AuthUserDetailsResponse ToUserDetailsResponse(AuthUser user, IReadOnlyList<AuthRole> roles, IReadOnlyList<AuthPermissionRule> permissions)
+    {
+        return new AuthUserDetailsResponse
+        {
+            Guid = user.Guid,
+            ExternalId = user.ExternalId,
+            UserName = user.UserName,
+            DisplayName = user.DisplayName,
+            IsActive = user.IsActive,
+            CanManagePermissions = user.CanManagePermissions,
+            CanManageSchema = user.CanManageSchema,
+            Roles = roles.Select(ToRoleListItem).ToList(),
+            Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
+        };
+    }
+
+    private static AuthRoleDetailsResponse ToRoleDetailsResponse(AuthRole role, IReadOnlyList<AuthUser> users, IReadOnlyList<AuthPermissionRule> permissions)
+    {
+        return new AuthRoleDetailsResponse
+        {
+            Guid = role.Guid,
+            Name = role.Name,
+            Description = role.Description,
+            IsActive = role.IsActive,
+            Users = users.Select(ToUserListItem).ToList(),
+            Permissions = permissions.Select(ToPermissionRuleResponse).ToList()
+        };
+    }
+    #endregion
+
+    #region Private Records
+    private sealed record PermissionRuleSemanticKey(
+        PermissionEffect Effect,
+        PermissionAction Action,
+        PermissionScope Scope,
+        string Module,
+        string? EntityName,
+        string? PropertyName,
+        bool AppliesToAllProperties)
+    {
+        public static PermissionRuleSemanticKey FromEntity(AuthPermissionRule rule)
+        {
+            return new PermissionRuleSemanticKey(
+                rule.Effect,
+                rule.Action,
+                rule.Scope,
+                NormalizeModule(rule.Module),
+                NormalizeEntity(rule.EntityName),
+                NormalizeProperty(rule.PropertyName, rule.AppliesToAllProperties),
+                rule.AppliesToAllProperties);
+        }
+
+        public static PermissionRuleSemanticKey FromRequest(AuthPermissionRuleItem rule)
+        {
+            return new PermissionRuleSemanticKey(
+                rule.Effect,
+                rule.Action,
+                rule.Scope,
+                NormalizeModule(rule.Module),
+                NormalizeEntity(rule.EntityName),
+                NormalizeProperty(rule.PropertyName, rule.AppliesToAllProperties),
+                rule.AppliesToAllProperties);
+        }
+    }
+
+    private sealed record ResolvedRule(AuthPermissionRule Rule, (int SubjectRank, int SpecificityRank, int ActionRank, int EffectRank) Order)
     {
         public PermissionEvaluationResult ToResult()
         {
@@ -699,4 +1231,5 @@ public class ChillAuthService : IChillAuthService
             return $"{subject} {Rule.Scope} rule matched on {resource}.";
         }
     }
+    #endregion
 }

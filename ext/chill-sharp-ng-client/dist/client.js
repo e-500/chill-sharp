@@ -1,3 +1,21 @@
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
     var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
     if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
@@ -48,6 +66,12 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     }
     setSchema(schema) {
         return from(this.client.setSchema(schema));
+    }
+    getEntityOptions(chillType) {
+        return from(this.client.getEntityOptions(chillType));
+    }
+    setEntityOptions(entityOptions) {
+        return from(this.client.setEntityOptions(entityOptions));
     }
     getText(request) {
         return from(this.client.getText(request));
@@ -103,6 +127,42 @@ let ChillSharpNgClient = class ChillSharpNgClient {
     }
     resetAuthPassword(payload) {
         return from(this.client.resetAuthPassword(payload));
+    }
+    getAuthPermissions() {
+        return from(this.client.getAuthPermissions());
+    }
+    getAuthUserList() {
+        return from(this.client.getAuthUserList());
+    }
+    getAuthUser(userGuid) {
+        return from(this.client.getAuthUser(userGuid));
+    }
+    setAuthUser(payload) {
+        return from(this.client.setAuthUser(payload));
+    }
+    getAuthRoleList() {
+        return from(this.client.getAuthRoleList());
+    }
+    getAuthModuleList() {
+        return from(this.client.getAuthModuleList());
+    }
+    getAuthEntityList(module) {
+        return from(this.client.getAuthEntityList(module));
+    }
+    getAuthQueryList(module) {
+        return from(this.client.getAuthQueryList(module));
+    }
+    getAuthModuleEntityList(module) {
+        return from(this.client.getAuthModuleEntityList(module));
+    }
+    getAuthPropertyList(chillType) {
+        return from(this.client.getAuthPropertyList(chillType));
+    }
+    getAuthRole(roleGuid) {
+        return from(this.client.getAuthRole(roleGuid));
+    }
+    setAuthRole(payload) {
+        return from(this.client.setAuthRole(payload));
     }
     getRawClient() {
         return this.client;

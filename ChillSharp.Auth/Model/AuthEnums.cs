@@ -41,6 +41,11 @@ public enum PermissionEffect
 public enum PermissionAction
 {
     /// <summary>
+    /// Allows all actions, but with lower precedence than an exact action rule.
+    /// </summary>
+    FullControl = 0,
+
+    /// <summary>
     /// Allows querying entity data.
     /// </summary>
     Query = 1,

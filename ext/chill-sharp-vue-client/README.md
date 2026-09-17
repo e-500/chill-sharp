@@ -250,7 +250,7 @@ Because the Vue package reuses the TypeScript client, it inherits the same auth 
 
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
-- call `useChillSharpClient()` when you need direct access to `loginAuthAccount()`, `refreshAuthAccount()`, or password-reset flows
+- call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()` and `setEntityOptions()`
 
 ## Error Handling
 
@@ -290,4 +290,5 @@ That is intentional:
 - model-specific Vue composables are better generated from OpenAPI for each host application
 
 If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
 

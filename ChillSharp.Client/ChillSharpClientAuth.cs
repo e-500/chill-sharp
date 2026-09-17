@@ -1,3 +1,22 @@
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core 
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 using ChillSharp.Auth.Contracts;
 using ChillSharp.Auth.Model;
 using System.Net.Http;
@@ -68,6 +87,126 @@ namespace ChillSharp.Client
         {
             var result = SendAuthJson<ResetPasswordResponse>(HttpMethod.Post, "account/reset-password", request, allowAnonymous: true);
             if (result == null) throw new ChillClientException("Unexpected null reset-password result");
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the current authenticated user's direct permissions and role permissions.
+        /// </summary>
+        public GetAuthPermissionsResponse GetAuthPermissions()
+        {
+            var result = SendAuthJson<GetAuthPermissionsResponse>(HttpMethod.Get, "get-permissions");
+            if (result == null) throw new ChillClientException("Unexpected null get-permissions result");
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the simplified auth user list used by management UIs.
+        /// </summary>
+        public List<AuthUserListItemResponse> GetAuthUserList()
+        {
+            return SendAuthJson<List<AuthUserListItemResponse>>(HttpMethod.Get, "get-user-list") ?? new List<AuthUserListItemResponse>();
+        }
+
+        /// <summary>
+        /// Returns the full managed user payload.
+        /// </summary>
+        public AuthUserDetailsResponse? GetAuthManagedUser(Guid userGuid)
+        {
+            return SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Get, $"get-user?userGuid={Uri.EscapeDataString(userGuid.ToString())}");
+        }
+
+        /// <summary>
+        /// Creates or updates a user together with roles and direct permissions.
+        /// </summary>
+        public AuthUserDetailsResponse SetAuthUser(SetAuthUserRequest request)
+        {
+            var result = SendAuthJson<AuthUserDetailsResponse>(HttpMethod.Post, "set-user", request);
+            if (result == null) throw new ChillClientException("Unexpected null set-user result");
+            return result;
+        }
+
+        /// <summary>
+        /// Returns the simplified auth role list used by management UIs.
+        /// </summary>
+        public List<AuthRoleListItemResponse> GetAuthRoleList()
+        {
+            return SendAuthJson<List<AuthRoleListItemResponse>>(HttpMethod.Get, "get-role-list") ?? new List<AuthRoleListItemResponse>();
+        }
+
+        /// <summary>
+        /// Returns the distinct logical modules available from the current Chill context.
+        /// </summary>
+        public List<string> GetAuthModuleList()
+        {
+            return SendAuthJson<List<string>>(HttpMethod.Get, "get-module-list") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct entities available for the specified logical module.
+        /// </summary>
+        public List<string> GetAuthEntityList(string? module = null)
+        {
+            var suffix = module == null ? string.Empty : $"?module={Uri.EscapeDataString(module)}";
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-entity-list{suffix}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Returns the distinct queries available for the specified logical module.
+        /// </summary>
+        public List<string> GetAuthQueryList(string? module = null)
+        {
+            var suffix = module == null ? string.Empty : $"?module={Uri.EscapeDataString(module)}";
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-query-list{suffix}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the previous pluralized method name.
+        /// </summary>
+        public List<string> GetAuthEntities(string? module = null)
+        {
+            return GetAuthEntityList(module);
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the previous pluralized method name.
+        /// </summary>
+        public List<string> GetAuthQueries(string? module = null)
+        {
+            return GetAuthQueryList(module);
+        }
+
+        /// <summary>
+        /// Returns the distinct properties available for the specified Chill type.
+        /// </summary>
+        public List<string> GetAuthPropertyList(string chillType)
+        {
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-property-list?chillType={Uri.EscapeDataString(chillType)}") ?? new List<string>();
+        }
+
+        /// <summary>
+        /// Backward-compatible alias for the legacy module-entity list client call.
+        /// </summary>
+        public List<string> GetAuthModuleEntityList(string? module)
+        {
+            return GetAuthEntityList(module);
+        }
+
+        /// <summary>
+        /// Returns the full managed role payload.
+        /// </summary>
+        public AuthRoleDetailsResponse? GetAuthManagedRole(Guid roleGuid)
+        {
+            return SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Get, $"get-role?roleGuid={Uri.EscapeDataString(roleGuid.ToString())}");
+        }
+
+        /// <summary>
+        /// Creates or updates a role together with users and direct permissions.
+        /// </summary>
+        public AuthRoleDetailsResponse SetAuthRole(SetAuthRoleRequest request)
+        {
+            var result = SendAuthJson<AuthRoleDetailsResponse>(HttpMethod.Post, "set-role", request);
+            if (result == null) throw new ChillClientException("Unexpected null set-role result");
             return result;
         }
 

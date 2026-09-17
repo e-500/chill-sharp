@@ -5,6 +5,7 @@ TypeScript client for a generic ChillSharp service.
 This package targets the standard ChillSharp HTTP surface:
 
 - core Chill API at `/api/chill`
+- schema API at `/api/chill-schema`
 - auth API at `/api/chill-auth`
 - i18n API at `/api/chill-i18n`
 - entity-change notifications at `/api/chill/notify`
@@ -274,6 +275,25 @@ await client.setSchema({
 });
 ```
 
+### Get entity options
+
+```ts
+const options = await client.getEntityOptions("Model.Post");
+```
+
+### Set entity options
+
+```ts
+const options = await client.setEntityOptions({
+  ChillType: "Model.Post",
+  ChecksumEnabled: true,
+  LabelFormatString: "{Title}",
+  ShortLabelFormatString: "{Title}",
+  FullTextContentFormatString: "{Title} {Author}",
+  ChangeLogEnabled: true
+});
+```
+
 ## I18n Operations
 
 ### Get text
@@ -380,6 +400,69 @@ const result = await client.resetAuthPassword({
 });
 ```
 
+## Auth Management Operations
+
+Use these endpoints when the host exposes ChillSharp auth management APIs.
+
+### Get current permissions
+
+```ts
+const permissions = await client.getAuthPermissions();
+```
+
+### Get user list
+
+```ts
+const users = await client.getAuthUserList();
+```
+
+### Get managed user
+
+```ts
+const user = await client.getAuthUser("f2d5d5e3-0a1f-4d15-9396-2ab5f6c4ff11");
+```
+
+### Set managed user
+
+```ts
+const user = await client.setAuthUser({
+  guid: null,
+  externalId: "identity-user-001",
+  userName: "identity.user",
+  displayName: "Identity User",
+  isActive: true,
+  canManagePermissions: false,
+  canManageSchema: true,
+  roleGuids: [],
+  permissions: []
+});
+```
+
+### Get role list
+
+```ts
+const roles = await client.getAuthRoleList();
+```
+
+### Get managed role
+
+```ts
+const role = await client.getAuthRole("e2f0d8d5-0a1f-4d15-9396-2ab5f6c4ff22");
+```
+
+### Set managed role
+
+```ts
+const role = await client.setAuthRole({
+  guid: null,
+  name: "Editors",
+  description: "Can edit posts",
+  isActive: true,
+  userGuids: [],
+  permissions: []
+});
+```
+
 ## Error Handling
 
 All request failures raise `ChillSharpClientError`.
@@ -422,3 +505,4 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed TypeScript clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+

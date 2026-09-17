@@ -1,6 +1,42 @@
+/*
+ * ChillSharp is a lightweight .NET library that sits on top of Entity Framework Core
+ * and turns an existing data model into a fully working REST API with almost no setup.
+ * Copyright (C) 2025 Andrea Piovesan
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 import { HubConnectionBuilder, HubConnectionState } from "@microsoft/signalr";
 import { ChillSharpClientError } from "./errors.js";
 import { CHILL_SHARP_TS_CLIENT_VERSION } from "./version.js";
+export const PermissionEffect = {
+    Allow: 1,
+    Deny: 2
+};
+export const PermissionAction = {
+    FullControl: 0,
+    Query: 1,
+    Create: 2,
+    Update: 3,
+    Delete: 4,
+    See: 5,
+    Modify: 6
+};
+export const PermissionScope = {
+    Module: 1,
+    Entity: 2,
+    Property: 3
+};
 export class ChillSharpClient {
     baseUrl;
     fetchImpl;
@@ -59,7 +95,7 @@ export class ChillSharpClient {
         if (effectiveCultureName) {
             relativeUrl += `&cultureName=${encodeURIComponent(effectiveCultureName)}`;
         }
-        return this.sendJson("GET", this.buildChillUrl(relativeUrl));
+        return this.sendJson("GET", this.buildSchemaUrl(relativeUrl));
     }
     getSchemaList(cultureName) {
         const effectiveCultureName = this.normalizeOptionalValue(cultureName) ?? this.cultureName;
@@ -67,22 +103,29 @@ export class ChillSharpClient {
         if (effectiveCultureName) {
             relativeUrl += `?cultureName=${encodeURIComponent(effectiveCultureName)}`;
         }
-        return this.sendJson("GET", this.buildChillUrl(relativeUrl));
+        return this.sendJson("GET", this.buildSchemaUrl(relativeUrl));
     }
     setSchema(schema) {
-        return this.sendJson("POST", this.buildChillUrl("set-schema"), schema);
+        return this.sendJson("POST", this.buildSchemaUrl("set-schema"), schema);
+    }
+    getEntityOptions(chillType) {
+        const encodedType = encodeURIComponent(this.normalizeRequiredValue(chillType, "chillType"));
+        return this.sendJson("GET", this.buildSchemaUrl(`get-entity-options?chillType=${encodedType}`));
+    }
+    setEntityOptions(entityOptions) {
+        return this.sendJson("POST", this.buildSchemaUrl("set-entity-options"), entityOptions);
     }
     getText(request) {
-        return this.sendJson("POST", this.buildI18nUrl("text/get"), this.prepareGetTextRequest(request), true, true);
+        return this.sendJson("POST", this.buildI18nUrl("get-text"), this.prepareGetTextRequest(request), true, true);
     }
     getTexts(requests) {
         if (!Array.isArray(requests)) {
             throw new Error("requests is required.");
         }
-        return this.sendJson("POST", this.buildI18nUrl("text/get-multiple"), requests.map((request) => this.prepareGetTextRequest(request)));
+        return this.sendJson("POST", this.buildI18nUrl("get-multiple-text"), requests.map((request) => this.prepareGetTextRequest(request)));
     }
     setText(payload) {
-        return this.sendJson("PUT", this.buildI18nUrl("text"), payload);
+        return this.sendJson("PUT", this.buildI18nUrl("set-text"), payload);
     }
     async subscribeToEntityChanges(chillType, callback, guid) {
         if (typeof callback !== "function") {
@@ -143,6 +186,49 @@ export class ChillSharpClient {
     }
     resetAuthPassword(payload) {
         return this.sendAuthJson("POST", "account/reset-password", payload, true, true);
+    }
+    getAuthPermissions() {
+        return this.sendAuthJson("GET", "get-permissions");
+    }
+    getAuthUserList() {
+        return this.sendAuthJson("GET", "get-user-list");
+    }
+    getAuthUser(userGuid) {
+        const normalizedUserGuid = this.normalizeRequiredValue(userGuid, "userGuid");
+        return this.sendAuthJson("GET", `get-user?userGuid=${encodeURIComponent(normalizedUserGuid)}`);
+    }
+    setAuthUser(payload) {
+        return this.sendAuthJson("POST", "set-user", payload);
+    }
+    getAuthRoleList() {
+        return this.sendAuthJson("GET", "get-role-list");
+    }
+    getAuthModuleList() {
+        return this.sendAuthJson("GET", "get-module-list");
+    }
+    getAuthEntityList(module) {
+        const normalizedModule = this.normalizeQueryValue(module);
+        const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+        return this.sendAuthJson("GET", `get-entity-list${suffix}`);
+    }
+    getAuthQueryList(module) {
+        const normalizedModule = this.normalizeQueryValue(module);
+        const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+        return this.sendAuthJson("GET", `get-query-list${suffix}`);
+    }
+    getAuthModuleEntityList(module) {
+        return this.getAuthEntityList(module);
+    }
+    getAuthPropertyList(chillType) {
+        const normalizedChillType = this.normalizeRequiredValue(chillType, "chillType");
+        return this.sendAuthJson("GET", `get-property-list?chillType=${encodeURIComponent(normalizedChillType)}`);
+    }
+    getAuthRole(roleGuid) {
+        const normalizedRoleGuid = this.normalizeRequiredValue(roleGuid, "roleGuid");
+        return this.sendAuthJson("GET", `get-role?roleGuid=${encodeURIComponent(normalizedRoleGuid)}`);
+    }
+    setAuthRole(payload) {
+        return this.sendAuthJson("POST", "set-role", payload);
     }
     prepareGetTextRequest(request) {
         if (!request || typeof request !== "object") {
@@ -326,6 +412,9 @@ export class ChillSharpClient {
     buildAuthUrl(relativeUrl) {
         return `${this.getAuthBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
+    buildSchemaUrl(relativeUrl) {
+        return `${this.getSchemaBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
+    }
     buildI18nUrl(relativeUrl) {
         return `${this.getI18nBaseUrl().replace(/\/$/, "")}/${relativeUrl.replace(/^\/+/, "")}`;
     }
@@ -335,6 +424,13 @@ export class ChillSharpClient {
             return `${this.baseUrl.slice(0, -suffix.length)}/chill-auth`;
         }
         return `${this.baseUrl.replace(/\/$/, "")}-auth`;
+    }
+    getSchemaBaseUrl() {
+        const suffix = "/chill";
+        if (this.baseUrl.toLowerCase().endsWith(suffix)) {
+            return `${this.baseUrl.slice(0, -suffix.length)}/chill-schema`;
+        }
+        return `${this.baseUrl.replace(/\/$/, "")}-schema`;
     }
     getI18nBaseUrl() {
         const suffix = "/chill";
@@ -353,6 +449,9 @@ export class ChillSharpClient {
     normalizeOptionalValue(value) {
         const normalized = value?.trim();
         return normalized ? normalized : null;
+    }
+    normalizeQueryValue(value) {
+        return value == null ? null : value.trim();
     }
     readString(payload, key) {
         const value = this.readValue(payload, key);

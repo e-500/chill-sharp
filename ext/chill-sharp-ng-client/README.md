@@ -132,10 +132,13 @@ providers: [
 - `getSchema()`
 - `getSchemaList()`
 - `setSchema()`
+- `getEntityOptions()`
+- `setEntityOptions()`
 - `getText()`
 - `getTexts()`
 - `setText()`
 - auth helpers like `loginAuthAccount()` and `refreshAuthAccount()`
+- auth management helpers like `getAuthPermissions()`, `getAuthUserList()`, `setAuthUser()`, `getAuthRoleList()`, and `setAuthRole()`
 
 ## Examples
 
@@ -248,7 +251,7 @@ Because the Angular package reuses the TypeScript client, it inherits the same a
 
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
-- use `loginAuthAccount()`, `refreshAuthAccount()`, and password-reset methods from `ChillSharpNgClient`
+- use `loginAuthAccount()`, `refreshAuthAccount()`, password-reset methods, auth-management methods, and schema-management methods from `ChillSharpNgClient`
 
 ## Error Handling
 
@@ -290,4 +293,5 @@ That is intentional:
 - model-specific Angular APIs are better generated from OpenAPI for each host application
 
 If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
 
