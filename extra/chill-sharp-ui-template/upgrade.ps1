@@ -125,12 +125,12 @@ foreach ($definition in $packageDefinitions) {
 $packageJson | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $packageJsonPath
 
 if (Test-CommandAvailable -CommandName 'npm') {
-  Write-Host 'Refreshing package-lock.json with npm install --package-lock-only --ignore-scripts...'
+  Write-Host 'Refreshing package-lock.json and local file dependencies with npm install --ignore-scripts...'
   Push-Location $scriptDirectory
   try {
-    & npm install --package-lock-only --ignore-scripts
+    & npm install --ignore-scripts
     if ($LASTEXITCODE -ne 0) {
-      Write-Warning 'npm install --package-lock-only --ignore-scripts did not complete successfully. Local archives were copied, but package-lock.json may still need a manual refresh.'
+      Write-Warning 'npm install --ignore-scripts did not complete successfully. Local archives were copied, but package-lock.json and node_modules may still need a manual refresh.'
     }
   }
   finally {

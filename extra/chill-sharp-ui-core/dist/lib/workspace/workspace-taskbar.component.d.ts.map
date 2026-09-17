@@ -1,1 +1,0 @@
-{"version":3,"file":"workspace-taskbar.component.d.ts","sourceRoot":"","sources":["../../../src/lib/workspace/workspace-taskbar.component.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,gBAAgB,EAAE,MAAM,+BAA+B,CAAC;;AAEjE,qBA2Ea,yBAAyB;IACpC,QAAQ,CAAC,SAAS,mBAA4B;IAE9C,YAAY,CAAC,MAAM,EAAE,MAAM,GAAG,IAAI;IAIlC,SAAS,CAAC,MAAM,EAAE,MAAM,GAAG,IAAI;yCAPpB,yBAAyB;2CAAzB,yBAAyB;CAUrC"}

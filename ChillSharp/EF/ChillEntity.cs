@@ -103,7 +103,7 @@ namespace ChillSharp.EF
         /// Called automatically by the <c>SEARCH()</c> method.
         /// </summary>
         /// <param name="Context">The active database context.</param>
-        public virtual void OnSelect(IChillContext Context) { }
+        public virtual void OnSelect(IChillContext Context, bool LightweightRequired = false) { }
 
         /// <summary>
         /// Inflate a required property/reference/collection that can't be loaded automatically with EF

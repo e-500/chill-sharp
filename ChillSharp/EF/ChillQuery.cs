@@ -65,7 +65,9 @@ namespace ChillSharp.EF
             CustomFormat: "full-text-search",
             MCPDescription = "Generic full-text search terms for this query. " +
                 "Use this property when the user asks for broad keyword search instead of a specific structured filter. " +
-                "Unquoted text uses AND matching: it is normalized, split on whitespace, trimmed, de-duplicated case-insensitively, and matched against IChillEntity.FullTextContent so every token must be present. " +
+                "Unquoted text without advanced selectors uses AND matching: it is normalized, split on whitespace, trimmed, de-duplicated case-insensitively, and matched against IChillEntity.FullTextContent so every token must be present. " +
+                "When the search text contains brackets or standalone AND/OR operators outside quotes, ChillSharp evaluates the expression with grouping plus explicit AND/OR logic. " +
+                "Search the literal words 'and' or 'or' by wrapping them in matching quotes. " +
                 "Text enclosed by matching single or double quotes is normalized and searched as one phrase with word boundaries: \"la nazione\" matches 'bla bla la nazione bla bla' but not 'bla bla della nazione bla bla'. " +
                 "A leading or trailing * or % wildcard inside the quotes relaxes that side of the boundary, so \"*la nazione\" or \"%la nazione\" can match 'della nazione', and \"la nazione*\" can match a suffix. " +
                 "If * or % appears in the middle of the quoted phrase, ChillSharp treats it as token separators and applies normal AND token matching. " +
@@ -74,7 +76,7 @@ namespace ChillSharp.EF
             [
                 "payloadPath=Properties.FullTextSearch",
                 "matching=full-text-contains",
-                "matchLogic=AND",
+                "matchLogic=AND_OR_GROUPED",
                 "normalizer=ChillFullTextSearchNormalizer",
                 "emptyBehavior=ignored"
             ])]
@@ -90,6 +92,12 @@ namespace ChillSharp.EF
         /// </summary>
         public ChillOrdering? Ordering { get; set; } = new();
 
+        /// <summary>
+        /// Indicates that the caller prefers a lightweight, speed-oriented execution path.
+        /// Override <see cref="OnQuery(IChillContext, bool)"/> to decide how to use this hint.
+        /// </summary>
+        public bool LightweightRequired { get; set; } = false;
+
         #region IChillQuery implementation
         /// <summary>
         /// Applies additional filtering to the query.
@@ -101,7 +109,7 @@ namespace ChillSharp.EF
         /// <param name="Context">The active Chill database context.</param>
         /// <param name="Query">The query to filter.</param>
         /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
-        public virtual IQueryable<IChillEntity> OnQuery(IChillContext Context)
+        public virtual IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
         {
             var entityType = ChillQueryTypeResolver.ResolveRelatedEntityType(GetType());
             if (entityType == null)
@@ -123,13 +131,7 @@ namespace ChillSharp.EF
         /// <returns>The filtered <see cref="IQueryable{IChillEntity}"/>.</returns>
         public virtual IQueryable<IChillEntity> OnSearch(IChillContext Context, IQueryable<IChillEntity> Query)
         {
-            if (string.IsNullOrWhiteSpace(FullTextSearch))
-                return Query;
-
-            foreach (var term in ChillFullTextSearchNormalizer.NormalizeSearchTerms(FullTextSearch))
-                Query = ChillFullTextSearchNormalizer.ApplySearchTerm(Query, term);
-
-            return Query;
+            return ChillFullTextSearchNormalizer.ApplySearch(Query, FullTextSearch);
         }
         
         /// <summary>

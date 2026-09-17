@@ -50,7 +50,7 @@ namespace ChillSharp.Tests.EF.Query
         /// <summary>
         /// <inheritdoc/>
         /// </summary>
-        public override IQueryable<IChillEntity> OnQuery(IChillContext Context)
+        public override IQueryable<IChillEntity> OnQuery(IChillContext Context, bool LightweightRequired = false)
         {
             var ctx = (DummyContext)Context;
             var q = ctx.Post.AsQueryable();

@@ -109,6 +109,7 @@ export type ChillQuery = JsonObject & {
   resultProperties?: JsonValue[];
   pagination?: ChillPagination | null;
   ordering?: ChillOrdering | null;
+  lightweightRequired?: boolean | null;
   chillState?: ChillEntityState;
 };
 

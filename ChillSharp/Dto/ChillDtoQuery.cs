@@ -78,6 +78,12 @@ namespace ChillSharp.Dto
         /// </summary>
         public EF.ChillOrdering? Ordering { get; set; } = new();
 
+        /// <summary>
+        /// Optional hint that asks the server to favor a lightweight, speed-oriented execution path.
+        /// When null, each endpoint can apply its own default behavior.
+        /// </summary>
+        public bool? LightweightRequired { get; set; } = null;
+
 		/// <summary>
 		/// A list of entities returned as the result of query execution.
 		/// This collection remains empty until the query is executed by the ChillSharp engine.
@@ -140,6 +146,8 @@ namespace ChillSharp.Dto
             {
                 Ordering = null;
             }
+
+            LightweightRequired = Query.LightweightRequired;
 		}
 
         /// <summary>
@@ -193,6 +201,8 @@ namespace ChillSharp.Dto
             {
                 Query.Ordering = null;
             }
+
+            Query.LightweightRequired = LightweightRequired ?? false;
         }
         #endregion
     }

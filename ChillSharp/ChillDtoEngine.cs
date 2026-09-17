@@ -122,9 +122,10 @@ namespace ChillSharp
             // Create the query object from Dto setting query params
             IChillQuery<IChillEntity> chillQuery = q as IChillQuery<IChillEntity>;
             DtoQuery.ToQuery(_Context, chillQuery);
+            chillQuery.LightweightRequired = DtoQuery.LightweightRequired ?? false;
 
             // Get and embed results
-            DtoQuery.Results = _Engine.Query(chillQuery).Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties)).ToList();
+            DtoQuery.Results = _Engine.Query(chillQuery, x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties));
 
             // Return executed query Dto
             return DtoQuery;
@@ -190,6 +191,7 @@ namespace ChillSharp
         {
             var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
             DtoQuery.ToQuery(_Context, q);
+            q.LightweightRequired = DtoQuery.LightweightRequired ?? false;
             q = _Engine.Autocomplete(q);
             DtoQuery.FromQuery(_Context, q);
             return DtoQuery;
@@ -206,7 +208,8 @@ namespace ChillSharp
                     DtoQuery.ChillType,
                     DtoQuery.Properties.GetValueOrDefault(nameof(ChillQuery.FullTextSearch))?.ToString(),
                     DtoQuery.Pagination,
-                    DtoQuery.Ordering)
+                    DtoQuery.Ordering,
+                    DtoQuery.LightweightRequired ?? true)
                 .Select(x => new ChillDtoEntity(_Context, x, DtoQuery.ResultProperties))
                 .ToList();
 
@@ -234,6 +237,7 @@ namespace ChillSharp
         {
             var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
             DtoQuery.ToQuery(_Context, q);
+            q.LightweightRequired = DtoQuery.LightweightRequired ?? false;
             return _Engine.Validate(q);
         }
 
