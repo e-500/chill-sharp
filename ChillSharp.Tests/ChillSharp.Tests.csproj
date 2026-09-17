@@ -25,6 +25,7 @@
     <ProjectReference Include="..\ChillSharp.Client\ChillSharp.Client.csproj" />
     <ProjectReference Include="..\ChillSharp.Auth\ChillSharp.Auth.csproj" />
     <ProjectReference Include="..\ChillSharp.I18n\ChillSharp.I18n.csproj" />
+    <ProjectReference Include="..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" />
     <ProjectReference Include="..\ChillSharp.Schema\ChillSharp.Schema.csproj" />
     <ProjectReference Include="..\ChillSharp\ChillSharp.csproj" />
   </ItemGroup>

@@ -142,10 +142,14 @@ client.delete({
 
 ### Chunk
 
+Use `chunk()` when several operations should be sent in one HTTP request.
+The operations are executed in `Index` order when you provide it. For write-heavy batches, set `Index` explicitly.
+
 ```python
 operations = client.chunk([
     {
-        "Verb": "CREATE",
+        "Index": 0,
+        "Verb": "create",
         "Entity": {
             "ChillType": "Model.Post",
             "Guid": "11111111-1111-1111-1111-111111111111",
@@ -153,15 +157,68 @@ operations = client.chunk([
         },
     },
     {
-        "Verb": "CREATE",
+        "Index": 1,
+        "Verb": "create",
         "Entity": {
             "ChillType": "Model.Post",
             "Guid": "22222222-2222-2222-2222-222222222222",
             "Properties": {"Title": "Second", "Author": "B"},
         },
     },
+    {
+        "Index": 2,
+        "Verb": "update",
+        "Entity": {
+            "ChillType": "Model.Post",
+            "Guid": "11111111-1111-1111-1111-111111111111",
+            "Properties": {"Title": "First updated"},
+        },
+    },
 ])
 ```
+
+### Chunk inside one transaction
+
+Wrap the batch with `transaction` and `commit` when all write operations must succeed or fail together.
+
+```python
+operations = client.chunk([
+    {
+        "Index": 0,
+        "Verb": "transaction",
+    },
+    {
+        "Index": 1,
+        "Verb": "create",
+        "Entity": {
+            "ChillType": "Model.Blog",
+            "Guid": "33333333-3333-3333-3333-333333333333",
+            "Properties": {
+                "Name": "Batch blog",
+                "Url": "https://example.local/batch-blog",
+            },
+        },
+    },
+    {
+        "Index": 2,
+        "Verb": "create",
+        "Entity": {
+            "ChillType": "Model.Post",
+            "Guid": "44444444-4444-4444-4444-444444444444",
+            "Properties": {
+                "Title": "Batch post",
+                "Author": "Grace Hopper",
+            },
+        },
+    },
+    {
+        "Index": 3,
+        "Verb": "commit",
+    },
+])
+```
+
+Use this pattern only for the operations that must share the same database transaction. If one write fails before `commit`, the transaction is not committed.
 
 ## Schema Operations
 
@@ -253,9 +310,12 @@ token = client.register_auth_account({
     "Email": "root@example.com",
     "Password": "Pass123$",
     "DisplayName": "Root",
+    "DisplayCultureName": "it-IT",
     "CreateChillAuthUser": True,
 })
 ```
+
+If `DisplayCultureName` is provided and `CreateChillAuthUser` is `True`, the server presets the linked `AuthUser` with culture-based defaults for `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
 
 ### Login
 
@@ -315,6 +375,8 @@ permissions = client.get_auth_permissions()
 users = client.get_auth_user_list()
 ```
 
+Auth user list/detail payloads include `DisplayCultureName`, `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
+
 ### Get managed user
 
 ```python
@@ -329,6 +391,10 @@ user = client.set_auth_user({
     "ExternalId": "identity-user-001",
     "UserName": "identity.user",
     "DisplayName": "Identity User",
+    "DisplayCultureName": "it-IT",
+    "DisplayTimeZone": "W. Europe Standard Time",
+    "DisplayDateFormat": "DD/MM/YYYY",
+    "DisplayNumberFormat": "1.000,00",
     "IsActive": True,
     "CanManagePermissions": False,
     "CanManageSchema": True,
@@ -397,5 +463,9 @@ That is intentional:
 - a generic client is easier to reuse across many different ChillSharp services
 
 If you need strongly typed Python clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
+
+
 
 

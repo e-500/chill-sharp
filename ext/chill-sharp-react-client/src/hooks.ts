@@ -25,6 +25,7 @@ import type {
   ChillDtoSchemaListItem,
   ChillEntityChangeCallback,
   ChillEntityChangeSubscription,
+  ChillValidationError,
   GetTextRequest,
   GetTextResponse,
   JsonObject
@@ -241,6 +242,78 @@ export function useQueryMutation(): UseChillMutationState<JsonObject> {
 
     try {
       const response = await client.query(payload);
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      setData(null);
+      setError(null);
+      setIsLoading(false);
+    }
+  };
+}
+
+export function useAutocompleteMutation(): UseChillMutationState<JsonObject> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<JsonObject | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const execute = async (...args: unknown[]) => {
+    const payload = args[0] as JsonObject;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.autocomplete(payload);
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      setData(null);
+      setError(null);
+      setIsLoading(false);
+    }
+  };
+}
+
+export function useValidateMutation(): UseChillMutationState<ChillValidationError[]> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<ChillValidationError[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const execute = async (...args: unknown[]) => {
+    const payload = args[0] as JsonObject;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.validate(payload);
       setData(response);
       return response;
     } catch (err) {

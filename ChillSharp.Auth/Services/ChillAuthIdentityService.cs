@@ -32,6 +32,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 
 namespace ChillSharp.Auth.Services;
 
@@ -260,11 +261,16 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         if ((_options.CreateChillAuthUserOnRegister || request.CreateChillAuthUser) &&
             await _authService.GetUserByExternalIdAsync(identityUserId, cancellationToken) == null)
         {
+            var displayPreferences = BuildDisplayPreferences(request.DisplayCultureName);
             await _authService.CreateUserAsync(new CreateAuthUserRequest
             {
                 ExternalId = identityUserId,
                 UserName = userName,
                 DisplayName = string.IsNullOrWhiteSpace(request.DisplayName) ? userName : request.DisplayName.Trim(),
+                DisplayCultureName = displayPreferences.DisplayCultureName,
+                DisplayTimeZone = displayPreferences.DisplayTimeZone,
+                DisplayDateFormat = displayPreferences.DisplayDateFormat,
+                DisplayNumberFormat = displayPreferences.DisplayNumberFormat,
                 IsActive = true
             }, cancellationToken);
         }
@@ -393,6 +399,113 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
     }
 
+    private static DisplayPreferences BuildDisplayPreferences(string? displayCultureName)
+    {
+        var normalizedCultureName = displayCultureName?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCultureName))
+        {
+            return new DisplayPreferences(string.Empty, string.Empty, string.Empty, string.Empty);
+        }
+
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(normalizedCultureName);
+            return new DisplayPreferences(
+                culture.Name,
+                ResolveTimeZone(culture),
+                ResolveDateFormat(culture),
+                ResolveNumberFormat(culture));
+        }
+        catch (CultureNotFoundException)
+        {
+            return new DisplayPreferences(normalizedCultureName, string.Empty, string.Empty, string.Empty);
+        }
+    }
+
+    private static string ResolveTimeZone(CultureInfo culture)
+    {
+        var regionCode = TryGetRegionCode(culture);
+        var preferredId = regionCode switch
+        {
+            "IT" or "FR" or "DE" or "ES" or "NL" or "BE" or "AT" => "W. Europe Standard Time",
+            "GB" or "IE" => "GMT Standard Time",
+            "US" => "Eastern Standard Time",
+            "CA" => "Eastern Standard Time",
+            "AU" => "AUS Eastern Standard Time",
+            "NZ" => "New Zealand Standard Time",
+            "JP" => "Tokyo Standard Time",
+            "CN" => "China Standard Time",
+            "IN" => "India Standard Time",
+            "BR" => "E. South America Standard Time",
+            _ => null
+        };
+
+        if (!string.IsNullOrWhiteSpace(preferredId))
+        {
+            var match = TimeZoneInfo.GetSystemTimeZones()
+                .FirstOrDefault(x => string.Equals(x.Id, preferredId, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                return match.Id;
+            }
+        }
+
+        return TimeZoneInfo.Local.Id;
+    }
+
+    private static string ResolveDateFormat(CultureInfo culture)
+    {
+        var pattern = culture.DateTimeFormat.ShortDatePattern;
+        var builder = new StringBuilder(pattern.Length * 2);
+
+        for (var index = 0; index < pattern.Length;)
+        {
+            var current = pattern[index];
+            if (char.IsLetter(current))
+            {
+                var start = index;
+                while (index < pattern.Length && pattern[index] == current)
+                {
+                    index++;
+                }
+
+                builder.Append(char.ToUpperInvariant(current) switch
+                {
+                    'D' => "DD",
+                    'M' => "MM",
+                    'Y' => "YYYY",
+                    _ => pattern[start..index].ToUpperInvariant()
+                });
+
+                continue;
+            }
+
+            builder.Append(current);
+            index++;
+        }
+
+        return builder.ToString();
+    }
+
+    private static string ResolveNumberFormat(CultureInfo culture)
+    {
+        var groupSeparator = culture.NumberFormat.NumberGroupSeparator;
+        var decimalSeparator = culture.NumberFormat.NumberDecimalSeparator;
+        return $"1{groupSeparator}000{decimalSeparator}00";
+    }
+
+    private static string? TryGetRegionCode(CultureInfo culture)
+    {
+        try
+        {
+            return new RegionInfo(culture.Name).TwoLetterISORegionName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string FormatIdentityErrors(IdentityResult result)
     {
         return string.Join("; ", result.Errors.Select(x => $"{x.Code}: {x.Description}"));
@@ -408,6 +521,12 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
 
         return normalized;
     }
+
+    private sealed record DisplayPreferences(
+        string DisplayCultureName,
+        string DisplayTimeZone,
+        string DisplayDateFormat,
+        string DisplayNumberFormat);
 }
 
 internal interface IChillAuthPasswordResetEmailSender

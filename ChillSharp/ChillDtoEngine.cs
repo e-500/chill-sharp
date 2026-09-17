@@ -149,6 +149,79 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Applies autocomplete logic to an entity DTO without persisting it.
+        /// </summary>
+        /// <param name="DtoEntity">The DTO containing the entity state to autocomplete.</param>
+        /// <returns>The autocompleted entity DTO.</returns>
+        public ChillDtoEntity Autocomplete(ChillDtoEntity DtoEntity)
+        {
+            var ctx = (DbContext)_Context;
+            var detachedEntity = _Engine.ActivateDetachedChillEntity(DtoEntity.ChillType);
+            detachedEntity.Guid = DtoEntity.Guid;
+
+            IChillEntity e = detachedEntity;
+            if (DtoEntity.Guid != Guid.Empty)
+            {
+                var trackedEntity = ctx.Find(detachedEntity.GetType(), DtoEntity.Guid);
+                if (trackedEntity is IChillEntity trackedChillEntity)
+                {
+                    e = trackedChillEntity;
+                }
+                else
+                {
+                    ctx.Entry(detachedEntity).State = EntityState.Added;
+                }
+            }
+            else
+            {
+                ctx.Entry(detachedEntity).State = EntityState.Added;
+            }
+
+            DtoEntity.ToEntity(_Context, e);
+            e = _Engine.Autocomplete(e);
+            DtoEntity.FromEntity(_Context, e);
+            return DtoEntity;
+        }
+
+        /// <summary>
+        /// Applies autocomplete logic to a query DTO without executing it.
+        /// </summary>
+        /// <param name="DtoQuery">The DTO containing the query state to autocomplete.</param>
+        /// <returns>The autocompleted query DTO.</returns>
+        public ChillDtoQuery Autocomplete(ChillDtoQuery DtoQuery)
+        {
+            var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
+            DtoQuery.ToQuery(_Context, q);
+            q = _Engine.Autocomplete(q);
+            DtoQuery.FromQuery(_Context, q);
+            return DtoQuery;
+        }
+
+        /// <summary>
+        /// Validates an entity DTO without persisting changes.
+        /// </summary>
+        /// <param name="DtoEntity">The DTO containing the entity state to validate.</param>
+        /// <returns>The validation errors returned by the entity.</returns>
+        public IEnumerable<ChillValidationError> Validate(ChillDtoEntity DtoEntity)
+        {
+            var e = ResolveEntityForDirtyOperation(DtoEntity);
+            DtoEntity.ToEntity(_Context, e);
+            return _Engine.Validate(e);
+        }
+
+        /// <summary>
+        /// Validates a query DTO without executing it.
+        /// </summary>
+        /// <param name="DtoQuery">The DTO containing the query state to validate.</param>
+        /// <returns>The validation errors returned by the query.</returns>
+        public IEnumerable<ChillValidationError> Validate(ChillDtoQuery DtoQuery)
+        {
+            var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
+            DtoQuery.ToQuery(_Context, q);
+            return _Engine.Validate(q);
+        }
+
+        /// <summary>
         /// Creates a new entity in the database based on the provided DTO and returns the persisted DTO.
         /// </summary>
         /// <param name="DtoEntity">The DTO containing data for the new entity.</param>
@@ -294,6 +367,25 @@ namespace ChillSharp
         {
             var resolvedType = ChillTypeResolver.ResolveType(_Context.GetType().Assembly, chillType, _Context.GetChillTypePrefix());
             return ChillTypeResolver.NormalizeChillType(resolvedType, _Context.GetChillTypePrefix());
+        }
+
+        private IChillEntity ResolveEntityForDirtyOperation(ChillDtoEntity dtoEntity)
+        {
+            var ctx = (DbContext)_Context;
+            var detachedEntity = _Engine.ActivateDetachedChillEntity(dtoEntity.ChillType);
+            detachedEntity.Guid = dtoEntity.Guid;
+
+            if (dtoEntity.Guid != Guid.Empty)
+            {
+                var trackedEntity = ctx.Find(detachedEntity.GetType(), dtoEntity.Guid);
+                if (trackedEntity is IChillEntity trackedChillEntity)
+                {
+                    return trackedChillEntity;
+                }
+            }
+
+            ctx.Entry(detachedEntity).State = EntityState.Added;
+            return detachedEntity;
         }
     }
 }

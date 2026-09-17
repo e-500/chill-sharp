@@ -33,6 +33,21 @@ Route tipiche:
 
 Queste sono le route usate internamente da `ChillSharpClient`.
 
+`RegisterAuthIdentityRequest` supporta anche:
+
+- `DisplayName`
+- `DisplayCultureName`
+- `CreateChillAuthUser`
+
+Quando `CreateChillAuthUser` e abilitato e viene fornito `DisplayCultureName`, il relativo `AuthUser` viene preimpostato automaticamente con:
+
+- `DisplayCultureName`
+- `DisplayTimeZone`
+- `DisplayDateFormat`
+- `DisplayNumberFormat`
+
+Il server ricava questi valori dalla cultura selezionata usando una mappatura best effort del fuso orario piu i separatori di data e numeri della cultura.
+
 ## Endpoint Di Gestione Autorizzazione
 
 Registrati tramite:
@@ -54,6 +69,13 @@ Questi endpoint gestiscono:
 - `AuthUserRole`
 - `AuthPermissionRule`
 - risultati di valutazione dei permessi
+
+`AuthUser` ora include anche preferenze di visualizzazione opzionali per la UI:
+
+- `DisplayCultureName`
+- `DisplayTimeZone`
+- `DisplayDateFormat`
+- `DisplayNumberFormat`
 
 ## Requisiti Del Contesto
 
@@ -123,6 +145,13 @@ Esempi:
 - `CreateAuthRole`
 - `CreateAuthPermissionRule`
 - `EvaluateAuthEntityPermission`
+
+I payload di lista utente e dettaglio utente espongono anche:
+
+- `DisplayCultureName`
+- `DisplayTimeZone`
+- `DisplayDateFormat`
+- `DisplayNumberFormat`
 
 ## Gestione Dei Token
 

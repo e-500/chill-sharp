@@ -221,7 +221,23 @@ public sealed class ChillI18nService : IChillI18nService
     private bool CanPersistMissingTexts()
     {
         var httpContext = _httpContextAccessor.HttpContext;
-        return httpContext is null || httpContext.User?.Identity?.IsAuthenticated == true;
+        if (httpContext is null)
+        {
+            return true;
+        }
+
+        var endpoint = httpContext.GetEndpoint();
+        if (endpoint is null)
+        {
+            return true;
+        }
+
+        return !endpoint.Metadata.Any(static metadata =>
+        {
+            var type = metadata.GetType();
+            return string.Equals(type.FullName, "Microsoft.AspNetCore.Authorization.AuthorizeAttribute", StringComparison.Ordinal)
+                || type.GetInterfaces().Any(x => string.Equals(x.FullName, "Microsoft.AspNetCore.Authorization.IAuthorizeData", StringComparison.Ordinal));
+        });
     }
 
     private static GetTextResponse MapResponse(Guid labelGuid, string cultureName, string value)

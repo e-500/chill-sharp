@@ -47,6 +47,12 @@ public class ChillEntityOptionsEntry
     [Column("full-text-content-format-string")]
     public string? FullTextContentFormatString { get; set; }
 
+    [Column("enable-mcp")]
+    public bool EnableMCP { get; set; }
+
+    [Column("mcp-description")]
+    public string? MCPDescription { get; set; }
+
     [Column("change-log-enabled")]
     public bool ChangeLogEnabled { get; set; }
 

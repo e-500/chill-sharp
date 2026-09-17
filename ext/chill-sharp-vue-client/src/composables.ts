@@ -24,6 +24,7 @@ import type {
   ChillDtoSchemaListItem,
   ChillEntityChangeCallback,
   ChillEntityChangeSubscription,
+  ChillValidationError,
   GetTextRequest,
   JsonObject
 } from "chill-sharp-ts-client";
@@ -266,6 +267,78 @@ export function useQueryMutation(): UseChillMutationState<JsonObject> {
       isLoading.value = false;
     }
   };
+}
+
+export function useAutocompleteMutation(): UseChillMutationState<JsonObject> {
+  const client = useChillSharpClient();
+  const data = ref<JsonObject | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(false);
+
+  const execute = async (...args: unknown[]) => {
+    const payload = args[0] as JsonObject;
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.autocomplete(payload);
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      data.value = null;
+      error.value = null;
+      isLoading.value = false;
+    }
+  };
+}
+
+export function useValidateMutation(): UseChillMutationState<ChillValidationError[]> {
+  const client = useChillSharpClient();
+  const data = ref<ChillValidationError[] | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(false);
+
+  const execute = async (...args: unknown[]) => {
+    const payload = args[0] as JsonObject;
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.validate(payload);
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      data.value = null;
+      error.value = null;
+      isLoading.value = false;
+    }
+  } as UseChillMutationState<ChillValidationError[]>;
 }
 
 export function useEntityMutation(action: "find" | "create" | "update" | "delete"): UseChillMutationState<JsonObject | null> {

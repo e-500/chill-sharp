@@ -48,6 +48,30 @@ public class CreateAuthUserRequest
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the preferred culture name shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayCultureName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred time zone shown in the UI.
+    /// </summary>
+    [MaxLength(128)]
+    public string DisplayTimeZone { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred date format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayDateFormat { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred number format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayNumberFormat { get; set; } = string.Empty;
+
+    /// <summary>
     /// Gets or sets whether the user is active.
     /// </summary>
     public bool IsActive { get; set; } = true;
@@ -87,6 +111,30 @@ public class UpdateAuthUserRequest
     /// </summary>
     [MaxLength(256)]
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred culture name shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayCultureName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred time zone shown in the UI.
+    /// </summary>
+    [MaxLength(128)]
+    public string DisplayTimeZone { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred date format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayDateFormat { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred number format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayNumberFormat { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets whether the user is active.
@@ -288,6 +336,30 @@ public class SetAuthUserRequest
     /// </summary>
     [MaxLength(256)]
     public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred culture name shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayCultureName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred time zone shown in the UI.
+    /// </summary>
+    [MaxLength(128)]
+    public string DisplayTimeZone { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred date format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayDateFormat { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the preferred number format shown in the UI.
+    /// </summary>
+    [MaxLength(64)]
+    public string DisplayNumberFormat { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets whether the user is active.

@@ -46,6 +46,7 @@ public static class ChillSchemaModelBuilderExtensions
             builder.Property(x => x.LabelFormatString).HasMaxLength(2048);
             builder.Property(x => x.ShortLabelFormatString).HasMaxLength(2048);
             builder.Property(x => x.FullTextContentFormatString).HasMaxLength(4096);
+            builder.Property(x => x.MCPDescription).HasMaxLength(4096);
             builder.HasIndex(x => x.ChillType).IsUnique();
         });
 

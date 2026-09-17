@@ -72,6 +72,16 @@ namespace ChillSharp.Annotations
         public string? SecondaryLanguageLabel { get ; }
 
         /// <summary>
+        /// Enables publication of the entity as an MCP resource.
+        /// </summary>
+        public bool EnableMCP { get; set; }
+
+        /// <summary>
+        /// Description exposed to MCP clients for the entity resource.
+        /// </summary>
+        public string? MCPDescription { get; set; }
+
+        /// <summary>
         /// Optional metadata entries serialized as <c>key=value</c> pairs.
         /// </summary>
         public string[]? MetadataEntries { get; set; }

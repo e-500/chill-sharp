@@ -76,6 +76,46 @@ public class AuthUser : ChillEntity
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Preferred culture name shown for the user in the UI.
+    /// </summary>
+    [Column("display-culture-name")]
+    [ChillProperty(
+        "6A440406-6F41-4D8B-970C-8FD81F8850D5",
+        "Display culture name",
+        "Nome cultura visualizzata")]
+    public string DisplayCultureName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Preferred time zone shown for the user in the UI.
+    /// </summary>
+    [Column("display-time-zone")]
+    [ChillProperty(
+        "67134A9C-9D63-4E4F-B6A3-283416B5A396",
+        "Display time zone",
+        "Fuso orario visualizzato")]
+    public string DisplayTimeZone { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Preferred date format shown for the user in the UI.
+    /// </summary>
+    [Column("display-date-format")]
+    [ChillProperty(
+        "8F734213-5F67-453B-90A6-BD95B7567F63",
+        "Display date format",
+        "Formato data visualizzato")]
+    public string DisplayDateFormat { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Preferred number format shown for the user in the UI.
+    /// </summary>
+    [Column("display-number-format")]
+    [ChillProperty(
+        "B73F5C36-DBA1-4C1C-B8FB-3BF75FAFCD9C",
+        "Display number format",
+        "Formato numerico visualizzato")]
+    public string DisplayNumberFormat { get; set; } = string.Empty;
+
+    /// <summary>
     /// Indicates whether the user is active.
     /// </summary>
     [Column("is-active")]

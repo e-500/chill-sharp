@@ -52,19 +52,7 @@ internal sealed class ChillAuthBearerAuthenticationHandler : AuthenticationHandl
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var headerValue))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var authorizationHeader = headerValue.ToString();
-        const string bearerPrefix = "Bearer ";
-        if (!authorizationHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var token = authorizationHeader.Substring(bearerPrefix.Length).Trim();
+        var token = ResolveBearerToken();
         if (string.IsNullOrWhiteSpace(token))
         {
             return AuthenticateResult.NoResult();
@@ -77,6 +65,34 @@ internal sealed class ChillAuthBearerAuthenticationHandler : AuthenticationHandl
         }
 
         return AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name));
+    }
+
+    private string? ResolveBearerToken()
+    {
+        if (Request.Headers.TryGetValue("Authorization", out var headerValue))
+        {
+            var authorizationHeader = headerValue.ToString();
+            const string bearerPrefix = "Bearer ";
+            if (authorizationHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var headerToken = authorizationHeader.Substring(bearerPrefix.Length).Trim();
+                if (!string.IsNullOrWhiteSpace(headerToken))
+                {
+                    return headerToken;
+                }
+            }
+        }
+
+        if (Request.Query.TryGetValue("access_token", out var queryTokenValue))
+        {
+            var queryToken = queryTokenValue.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(queryToken))
+            {
+                return queryToken;
+            }
+        }
+
+        return null;
     }
 }
 

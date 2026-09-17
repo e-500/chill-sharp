@@ -69,13 +69,13 @@ namespace ChillSharp.EF
             UniquePropertyKeyString: "E6E02296-B840-48F1-85B3-9B7221CF8AB9",
             PrimaryLanguageLabel: "Last update user",
             SecondaryLanguageLabel: "Utente ultimo aggiornamento")]
-        public string LastUpdateUser { get; set; } = string.Empty;
+        public string? LastUpdateUser { get; set; }
 
         [ChillProperty(
             UniquePropertyKeyString: "19604008-C926-4A9C-90C4-73D6FB8D37BB",
             PrimaryLanguageLabel: "Last update timestamp",
             SecondaryLanguageLabel: "Timestamp ultimo aggiornamento")]
-        public DateTime LastUpdateUtc { get; set; }
+        public DateTime? LastUpdateUtc { get; set; }
 
         #region IChillEntity implementation
         #region CREATE

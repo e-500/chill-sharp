@@ -17,6 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 export { createChillSharpClient, createChillSharpPlugin, useChillSharpClient } from "./plugin.js";
-export { useEntityChanges, useEntityMutation, useQueryMutation, useSchema, useSchemaList, useTest, useText, useTexts, useVersion } from "./composables.js";
+export { useAutocompleteMutation, useEntityChanges, useEntityMutation, useQueryMutation, useSchema, useSchemaList, useTest, useText, useTexts, useValidateMutation, useVersion } from "./composables.js";
 export { ChillSharpClient, ChillSharpClientError, PermissionAction, PermissionEffect, PermissionScope } from "chill-sharp-ts-client";
 export { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";

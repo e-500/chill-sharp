@@ -195,6 +195,11 @@ namespace ChillSharp.Annotations
         public string? SecondaryLanguageLabel { get ; set; }
 
         /// <summary>
+        /// Description exposed to MCP clients for the property.
+        /// </summary>
+        public string? MCPDescription { get; set; }
+
+        /// <summary>
         /// Explicit nullable flag used by schema generation when provided.
         /// </summary>
         public bool? IsNullable { get; set; }

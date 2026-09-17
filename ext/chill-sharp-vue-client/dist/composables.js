@@ -211,6 +211,74 @@ export function useQueryMutation() {
         }
     };
 }
+export function useAutocompleteMutation() {
+    const client = useChillSharpClient();
+    const data = ref(null);
+    const error = ref(null);
+    const isLoading = ref(false);
+    const execute = async (...args) => {
+        const payload = args[0];
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const response = await client.autocomplete(payload);
+            data.value = response;
+            return response;
+        }
+        catch (err) {
+            error.value = err;
+            throw err;
+        }
+        finally {
+            isLoading.value = false;
+        }
+    };
+    return {
+        data,
+        error,
+        isLoading,
+        execute,
+        reset: () => {
+            data.value = null;
+            error.value = null;
+            isLoading.value = false;
+        }
+    };
+}
+export function useValidateMutation() {
+    const client = useChillSharpClient();
+    const data = ref(null);
+    const error = ref(null);
+    const isLoading = ref(false);
+    const execute = async (...args) => {
+        const payload = args[0];
+        isLoading.value = true;
+        error.value = null;
+        try {
+            const response = await client.validate(payload);
+            data.value = response;
+            return response;
+        }
+        catch (err) {
+            error.value = err;
+            throw err;
+        }
+        finally {
+            isLoading.value = false;
+        }
+    };
+    return {
+        data,
+        error,
+        isLoading,
+        execute,
+        reset: () => {
+            data.value = null;
+            error.value = null;
+            isLoading.value = false;
+        }
+    };
+}
 export function useEntityMutation(action) {
     const client = useChillSharpClient();
     const data = ref(null);

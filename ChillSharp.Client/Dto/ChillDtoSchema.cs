@@ -44,6 +44,16 @@ namespace ChillSharp.Client.Dto
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Enables publication of the schema as an MCP resource.
+        /// </summary>
+        public bool EnableMCP { get; set; }
+
+        /// <summary>
+        /// Description exposed to MCP clients for the schema resource.
+        /// </summary>
+        public string MCPDescription { get; set; } = string.Empty;
+
+        /// <summary>
         /// Additional metadata for custom client renderers.
         /// </summary>
         public Dictionary<string, string> Metadata { get; set; } = new();

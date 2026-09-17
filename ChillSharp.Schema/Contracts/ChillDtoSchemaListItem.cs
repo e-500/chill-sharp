@@ -67,7 +67,7 @@ namespace ChillSharp.Dto
             };
         }
 
-        public static ChillDtoSchemaListItem FromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
+        private static ChillDtoSchemaListItem FromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
         {
             var chillAttr = queryType.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
 
@@ -85,6 +85,12 @@ namespace ChillSharp.Dto
             };
         }
 
+
+        public static ChillDtoSchemaListItem CreateFromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
+        {
+            return FromQueryType(queryType, shrinkTypePrefix, context, cultureName);
+        }        
+        
         internal static string NormalizeChillType(Type type, string shrinkTypePrefix)
         {
             return ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix);

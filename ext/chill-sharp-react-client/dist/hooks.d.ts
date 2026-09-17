@@ -1,4 +1,4 @@
-import type { ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeCallback, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
+import type { ChillDtoSchema, ChillDtoSchemaListItem, ChillEntityChangeCallback, ChillValidationError, GetTextRequest, GetTextResponse, JsonObject } from "chill-sharp-ts-client";
 export interface UseChillAsyncState<TData> {
     data: TData | null;
     error: unknown;
@@ -23,5 +23,7 @@ export declare function useTexts(requests: GetTextRequest[]): UseChillAsyncState
 export declare function useVersion(): string;
 export declare function useTest(): UseChillAsyncState<string>;
 export declare function useQueryMutation(): UseChillMutationState<JsonObject>;
+export declare function useAutocompleteMutation(): UseChillMutationState<JsonObject>;
+export declare function useValidateMutation(): UseChillMutationState<ChillValidationError[]>;
 export declare function useEntityMutation(action: "find" | "create" | "update" | "delete"): UseChillMutationState<JsonObject | null>;
 export declare function useEntityChanges(chillType: string, onChanges: ChillEntityChangeCallback, guid?: string | null): UseChillSubscriptionState;

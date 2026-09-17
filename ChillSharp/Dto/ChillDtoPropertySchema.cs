@@ -63,9 +63,10 @@ namespace ChillSharp.Dto
                     propInfo.Name,
                     context,
                     cultureName),
+                MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
                 PropertyType = ChillDtoPropertyMapper.Map(propertyType),
                 IsNullable = chillAttr?.IsNullable ?? ResolveNullable(propInfo),
-                IsReadOnly = chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo),
+                IsReadOnly = ResolveIsReadOnly(propInfo, chillAttr),
                 MinLength = chillAttr?.MinLength ?? ResolveMinLength(propInfo),
                 MaxLength = chillAttr?.MaxLength ?? ResolveMaxLength(propInfo),
                 IntegerMinValue = chillAttr?.IntegerMinValue,
@@ -139,6 +140,11 @@ namespace ChillSharp.Dto
         /// Human-friendly label chosen from Chill metadata or the property name fallback.
         /// </summary>
         public string DisplayName { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Description exposed to MCP clients for the property.
+        /// </summary>
+        public string MCPDescription { get; set; } = string.Empty;
 
         /// <summary>
         /// Whether the value can be null when known.
@@ -372,6 +378,16 @@ namespace ChillSharp.Dto
             }
 
             return null;
+        }
+
+        private static bool? ResolveIsReadOnly(PropertyInfo propInfo, ChillPropertyAttribute? chillAttr)
+        {
+            if (chillAttr?.CallOnInflate == true)
+            {
+                return true;
+            }
+
+            return chillAttr?.IsReadOnly ?? ResolveReadOnly(propInfo);
         }
 
         private static int? ResolveMinLength(PropertyInfo propInfo)

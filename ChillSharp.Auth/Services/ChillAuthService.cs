@@ -177,6 +177,10 @@ public class ChillAuthService : IChillAuthService
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
+        user.DisplayCultureName = request.DisplayCultureName.Trim();
+        user.DisplayTimeZone = request.DisplayTimeZone.Trim();
+        user.DisplayDateFormat = request.DisplayDateFormat.Trim();
+        user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
         user.CanManageSchema = request.CanManageSchema;
@@ -345,6 +349,10 @@ public class ChillAuthService : IChillAuthService
             ExternalId = request.ExternalId.Trim(),
             UserName = request.UserName.Trim(),
             DisplayName = request.DisplayName.Trim(),
+            DisplayCultureName = request.DisplayCultureName.Trim(),
+            DisplayTimeZone = request.DisplayTimeZone.Trim(),
+            DisplayDateFormat = request.DisplayDateFormat.Trim(),
+            DisplayNumberFormat = request.DisplayNumberFormat.Trim(),
             IsActive = request.IsActive,
             CanManagePermissions = request.CanManagePermissions,
             CanManageSchema = request.CanManageSchema
@@ -370,6 +378,10 @@ public class ChillAuthService : IChillAuthService
         user.ExternalId = request.ExternalId.Trim();
         user.UserName = request.UserName.Trim();
         user.DisplayName = request.DisplayName.Trim();
+        user.DisplayCultureName = request.DisplayCultureName.Trim();
+        user.DisplayTimeZone = request.DisplayTimeZone.Trim();
+        user.DisplayDateFormat = request.DisplayDateFormat.Trim();
+        user.DisplayNumberFormat = request.DisplayNumberFormat.Trim();
         user.IsActive = request.IsActive;
         user.CanManagePermissions = request.CanManagePermissions;
         user.CanManageSchema = request.CanManageSchema;
@@ -1104,6 +1116,10 @@ public class ChillAuthService : IChillAuthService
             ExternalId = user.ExternalId,
             UserName = user.UserName,
             DisplayName = user.DisplayName,
+            DisplayCultureName = user.DisplayCultureName,
+            DisplayTimeZone = user.DisplayTimeZone,
+            DisplayDateFormat = user.DisplayDateFormat,
+            DisplayNumberFormat = user.DisplayNumberFormat,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema
@@ -1146,6 +1162,10 @@ public class ChillAuthService : IChillAuthService
             ExternalId = user.ExternalId,
             UserName = user.UserName,
             DisplayName = user.DisplayName,
+            DisplayCultureName = user.DisplayCultureName,
+            DisplayTimeZone = user.DisplayTimeZone,
+            DisplayDateFormat = user.DisplayDateFormat,
+            DisplayNumberFormat = user.DisplayNumberFormat,
             IsActive = user.IsActive,
             CanManagePermissions = user.CanManagePermissions,
             CanManageSchema = user.CanManageSchema,

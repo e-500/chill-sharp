@@ -50,6 +50,16 @@ namespace ChillSharp.Client.Dto
         public string? FullTextContentFormatString { get; set; }
 
         /// <summary>
+        /// Enables publication of the entity as an MCP resource.
+        /// </summary>
+        public bool EnableMCP { get; set; }
+
+        /// <summary>
+        /// Description exposed to MCP clients for the entity resource.
+        /// </summary>
+        public string? MCPDescription { get; set; }
+
+        /// <summary>
         /// Enables or disables entity change log and history persistence.
         /// </summary>
         public bool ChangeLogEnabled { get; set; }

@@ -19,6 +19,7 @@
 
 export { createChillSharpClient, createChillSharpPlugin, useChillSharpClient } from "./plugin.js";
 export {
+  useAutocompleteMutation,
   useEntityChanges,
   useEntityMutation,
   useQueryMutation,
@@ -27,6 +28,7 @@ export {
   useTest,
   useText,
   useTexts,
+  useValidateMutation,
   useVersion
 } from "./composables.js";
 export type { ChillSharpVueOptions } from "./plugin.js";
@@ -39,6 +41,7 @@ export type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
   AuthRolePermissions,
+  AuthTokenResponse,
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
@@ -56,6 +59,7 @@ export type {
   JsonObject,
   JsonPrimitive,
   JsonValue,
+  RegisterAuthIdentityRequest,
   SetAuthRoleRequest,
   SetAuthUserRequest
 } from "chill-sharp-ts-client";

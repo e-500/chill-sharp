@@ -28,6 +28,7 @@ export type {
   AuthRoleDetailsResponse,
   AuthRoleListItem,
   AuthRolePermissions,
+  AuthTokenResponse,
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
@@ -45,6 +46,8 @@ export type {
   JsonObject,
   JsonPrimitive,
   JsonValue,
+  RegisterAuthIdentityRequest,
   SetAuthRoleRequest,
   SetAuthUserRequest
 } from "chill-sharp-ts-client";
+

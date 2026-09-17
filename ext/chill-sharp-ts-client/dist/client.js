@@ -41,6 +41,7 @@ export class ChillSharpClient {
     baseUrl;
     fetchImpl;
     cultureName;
+    signalRWithCredentials;
     username;
     password;
     refreshPromise = null;
@@ -55,6 +56,7 @@ export class ChillSharpClient {
         this.username = this.normalizeOptionalValue(options.username);
         this.password = this.normalizeOptionalValue(options.password);
         this.cultureName = this.normalizeOptionalValue(options.cultureName);
+        this.signalRWithCredentials = options.signalRWithCredentials ?? true;
         this.tokenState = {
             accessToken: this.normalizeOptionalValue(options.accessToken),
             accessTokenIssuedUtc: null,
@@ -77,6 +79,12 @@ export class ChillSharpClient {
     }
     async delete(dtoEntity) {
         await this.sendJson("POST", this.buildChillUrl("delete"), dtoEntity, false);
+    }
+    autocomplete(dto) {
+        return this.sendJson("POST", this.buildChillUrl("autocomplete"), dto);
+    }
+    validate(dto) {
+        return this.sendJson("POST", this.buildChillUrl("validate"), dto);
     }
     chunk(operations) {
         return this.sendJson("POST", this.buildChillUrl("chunk"), operations);
@@ -400,6 +408,7 @@ export class ChillSharpClient {
             accessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
             refreshToken: this.tokenState.refreshToken ?? "",
             refreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
+            userId: "",
             userName: this.username ?? ""
         };
     }
@@ -492,6 +501,7 @@ export class ChillSharpClient {
         }
         const connection = new HubConnectionBuilder()
             .withUrl(this.buildNotifyUrl(), {
+            withCredentials: this.signalRWithCredentials,
             accessTokenFactory: async () => {
                 if (this.canUseAuthentication()) {
                     await this.getAuthTokenIfNecessary();

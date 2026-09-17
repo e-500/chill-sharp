@@ -20,6 +20,7 @@
 using ChillSharp.Api;
 using ChillSharp.Auth.Api;
 using ChillSharp.I18n.Api;
+using ChillSharp.Mcp.Api;
 using ChillSharp.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -86,6 +87,7 @@ internal static class TestApiHost
                 builder.Services.AddChillAuthApi<EF.DummyContext>();
                 builder.Services.AddChillI18nApi<EF.DummyContext>();
                 builder.Services.AddChillSchema<EF.DummyContext>();
+                builder.Services.AddChillMcp<EF.DummyContext>();
 
                 var app = builder.Build();
                 app.MapChillApi();
@@ -129,6 +131,7 @@ internal static class TestApiHost
                 builder.Services.AddChillAuthApi<EF.DummyContext>();
                 builder.Services.AddChillI18nApi<EF.DummyContext>();
                 builder.Services.AddChillSchema<EF.DummyContext>();
+                builder.Services.AddChillMcp<EF.DummyContext>();
 
                 var app = builder.Build();
                 app.MapChillApi();

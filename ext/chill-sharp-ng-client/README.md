@@ -140,6 +140,13 @@ providers: [
 - auth helpers like `loginAuthAccount()` and `refreshAuthAccount()`
 - auth management helpers like `getAuthPermissions()`, `getAuthUserList()`, `setAuthUser()`, `getAuthRoleList()`, and `setAuthRole()`
 
+The auth user payloads include:
+
+- `displayCultureName`
+- `displayTimeZone`
+- `displayDateFormat`
+- `displayNumberFormat`
+
 ## Examples
 
 ### Query
@@ -227,6 +234,47 @@ readonly texts$ = this.chill.getTexts([
 ]);
 ```
 
+## Chunk batches
+
+Use `chunk()` when several operations should be sent in one request.
+
+```ts
+readonly batch$ = this.chill.chunk([
+  {
+    Index: 0,
+    Verb: "transaction"
+  },
+  {
+    Index: 1,
+    Verb: "create",
+    Entity: {
+      ChillType: "Model.Post",
+      Guid: crypto.randomUUID(),
+      Properties: {
+        Title: "Batched post",
+        Author: "Grace Hopper"
+      }
+    }
+  },
+  {
+    Index: 2,
+    Verb: "update",
+    Entity: {
+      ChillType: "Model.Post",
+      Guid: existingGuid,
+      Properties: {
+        Title: "Updated in the same batch"
+      }
+    }
+  },
+  {
+    Index: 3,
+    Verb: "commit"
+  }
+]);
+```
+
+Use `transaction` and `commit` only when the enclosed write operations must be committed together.
 ## Raw client access
 
 If you need the promise-based client directly, inject `CHILL_SHARP_CLIENT`.
@@ -251,6 +299,7 @@ Because the Angular package reuses the TypeScript client, it inherits the same a
 
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
+- pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - use `loginAuthAccount()`, `refreshAuthAccount()`, password-reset methods, auth-management methods, and schema-management methods from `ChillSharpNgClient`
 
 ## Error Handling
@@ -293,5 +342,7 @@ That is intentional:
 - model-specific Angular APIs are better generated from OpenAPI for each host application
 
 If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
 
 

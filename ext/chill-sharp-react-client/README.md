@@ -10,7 +10,7 @@ This package wraps [`chill-sharp-ts-client`](../chill-sharp-ts-client) and adds:
 - `useSchemaList()` for registered type discovery
 - `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
-- `useQueryMutation()` and `useEntityMutation()` for generic API actions
+- `useQueryMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
 
 It stays generic on purpose. Payloads are plain objects so the same package can work against arbitrary ChillSharp models.
 
@@ -211,6 +211,32 @@ async function runQuery() {
 }
 ```
 
+### `useAutocompleteMutation()`
+
+```tsx
+const autocompletePost = useAutocompleteMutation();
+
+await autocompletePost.execute({
+  ChillType: "Model.Post",
+  Properties: {
+    Title: "  Draft title  "
+  }
+});
+```
+
+### `useValidateMutation()`
+
+```tsx
+const validatePost = useValidateMutation();
+
+const errors = await validatePost.execute({
+  ChillType: "Model.Post",
+  Properties: {
+    Title: ""
+  }
+});
+```
+
 ### `useEntityMutation()`
 
 Use one hook instance per entity action:
@@ -234,13 +260,65 @@ await createPost.execute({
 });
 ```
 
+## Chunk batches
+
+Call `chunk()` through `useChillSharpClient()` when several operations should be sent in one request.
+
+```tsx
+function SaveBatch() {
+  const client = useChillSharpClient();
+
+  async function executeBatch(existingGuid: string) {
+    await client.chunk([
+      { Index: 0, Verb: "transaction" },
+      {
+        Index: 1,
+        Verb: "create",
+        Entity: {
+          ChillType: "Model.Post",
+          Guid: crypto.randomUUID(),
+          Properties: {
+            Title: "Batched post",
+            Author: "Grace Hopper"
+          }
+        }
+      },
+      {
+        Index: 2,
+        Verb: "update",
+        Entity: {
+          ChillType: "Model.Post",
+          Guid: existingGuid,
+          Properties: {
+            Title: "Updated in the same batch"
+          }
+        }
+      },
+      { Index: 3, Verb: "commit" }
+    ]);
+  }
+
+  return null;
+}
+```
+
+Use `transaction` and `commit` only when the enclosed write operations must be committed together.
+
 ## Authentication
 
 Because the React package reuses the TypeScript client, it inherits the same auth behavior:
 
 - pass `accessToken` when you already have a token
 - pass `username` and `password` when the client should log in and refresh automatically
+- pass `DisplayCultureName` during registration when the server should preset auth-user display preferences
 - call `useChillSharpClient()` when you need direct access to auth account methods, auth management methods, or schema-management methods like `getEntityOptions()` and `setEntityOptions()`
+
+Auth user list/detail payloads exposed through the raw client include:
+
+- `displayCultureName`
+- `displayTimeZone`
+- `displayDateFormat`
+- `displayNumberFormat`
 
 ## Error Handling
 
@@ -281,5 +359,7 @@ That is intentional:
 - model-specific React hooks are better generated from OpenAPI for each host application
 
 If you need typed model clients, generate them from your host OpenAPI document as described in [doc/ClientGeneration/README.md](../../doc/ClientGeneration/README.md).
+
+
 
 

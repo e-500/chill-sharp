@@ -46,6 +46,11 @@ namespace ChillSharp.Client.Dto
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
+        /// Description exposed to MCP clients for the property.
+        /// </summary>
+        public string MCPDescription { get; set; } = string.Empty;
+
+        /// <summary>
         /// Whether the property can be null (null = unknown).
         /// </summary>
         public bool? IsNullable { get; set; }

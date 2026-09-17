@@ -115,7 +115,11 @@ namespace ChillSharp.Api
 
             endpoints.MapGet($"/{ApiUrlBasePath}/test", () => "ChillSharp is up and running!");
             endpoints.MapGet($"/{ApiUrlBasePath}/license", () => body);
-            endpoints.MapHub<ChillEntityChangeHub>($"/{ApiUrlBasePath}/{ChillEntityChangeHub.HubRouteSuffix}");
+            var chillEntityChangeHub = endpoints.MapHub<ChillEntityChangeHub>($"/{ApiUrlBasePath}/{ChillEntityChangeHub.HubRouteSuffix}");
+            if (options.ProtectedApi)
+            {
+                chillEntityChangeHub.RequireAuthorization();
+            }
 
             return endpoints;
         }
@@ -129,3 +133,4 @@ namespace ChillSharp.Api
         public bool ProtectedApi { get; set; } = false;
     }
 }
+

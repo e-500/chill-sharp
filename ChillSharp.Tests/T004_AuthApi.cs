@@ -61,6 +61,10 @@ public sealed class AuthApi
             ExternalId = "user-auth-test-001",
             UserName = "auth.test",
             DisplayName = "Auth Test",
+            DisplayCultureName = "it-IT",
+            DisplayTimeZone = "W. Europe Standard Time",
+            DisplayDateFormat = "DD/MM/YYYY",
+            DisplayNumberFormat = "1.000,00",
             IsActive = true
         });
 
@@ -88,6 +92,10 @@ public sealed class AuthApi
         Assert.IsNotNull(persistedUser);
         Assert.IsNotNull(persistedRole);
         Assert.IsNotNull(persistedMembership);
+        Assert.AreEqual("it-IT", persistedUser.DisplayCultureName);
+        Assert.AreEqual("W. Europe Standard Time", persistedUser.DisplayTimeZone);
+        Assert.AreEqual("DD/MM/YYYY", persistedUser.DisplayDateFormat);
+        Assert.AreEqual("1.000,00", persistedUser.DisplayNumberFormat);
     }
 
     /// <summary>
@@ -196,6 +204,7 @@ public sealed class AuthApi
             Email = "identity.user@test.local",
             Password = "Pass123$",
             DisplayName = "Identity User",
+            DisplayCultureName = "it-IT",
             CreateChillAuthUser = true
         });
 
@@ -267,6 +276,10 @@ public sealed class AuthApi
 
         Assert.IsNotNull(persistedAuthUser);
         Assert.IsNotNull(persistedRefreshToken);
+        Assert.AreEqual("it-IT", persistedAuthUser.DisplayCultureName);
+        Assert.AreEqual("W. Europe Standard Time", persistedAuthUser.DisplayTimeZone);
+        Assert.AreEqual("DD/MM/YYYY", persistedAuthUser.DisplayDateFormat);
+        Assert.AreEqual("1.000,00", persistedAuthUser.DisplayNumberFormat);
     }
 
     /// <summary>
@@ -354,6 +367,10 @@ public sealed class AuthApi
             ExternalId = $"managed-user-{Guid.NewGuid():N}",
             UserName = $"managed.user.{Guid.NewGuid():N}",
             DisplayName = "Managed User",
+            DisplayCultureName = "en-US",
+            DisplayTimeZone = "Eastern Standard Time",
+            DisplayDateFormat = "MM/DD/YYYY",
+            DisplayNumberFormat = "1,000.00",
             IsActive = true,
             CanManageSchema = true,
             RoleGuids = [role.Guid],
@@ -379,6 +396,10 @@ public sealed class AuthApi
 
         Assert.IsNotNull(fetchedUser);
         Assert.IsTrue(fetchedUser.CanManageSchema);
+        Assert.AreEqual("en-US", fetchedUser.DisplayCultureName);
+        Assert.AreEqual("Eastern Standard Time", fetchedUser.DisplayTimeZone);
+        Assert.AreEqual("MM/DD/YYYY", fetchedUser.DisplayDateFormat);
+        Assert.AreEqual("1,000.00", fetchedUser.DisplayNumberFormat);
         Assert.AreEqual(1, fetchedUser.Roles.Count);
         Assert.AreEqual(role.Guid, fetchedUser.Roles[0].Guid);
         Assert.AreEqual(1, fetchedUser.Permissions.Count);
@@ -388,6 +409,10 @@ public sealed class AuthApi
         Assert.AreEqual(1, fetchedRole.Permissions.Count);
         Assert.IsTrue(userList!.Any(x => x.Guid == user.Guid));
         Assert.IsTrue(userList!.Single(x => x.Guid == user.Guid).CanManageSchema);
+        Assert.AreEqual("en-US", userList!.Single(x => x.Guid == user.Guid).DisplayCultureName);
+        Assert.AreEqual("Eastern Standard Time", userList!.Single(x => x.Guid == user.Guid).DisplayTimeZone);
+        Assert.AreEqual("MM/DD/YYYY", userList!.Single(x => x.Guid == user.Guid).DisplayDateFormat);
+        Assert.AreEqual("1,000.00", userList!.Single(x => x.Guid == user.Guid).DisplayNumberFormat);
         Assert.IsTrue(roleList!.Any(x => x.Guid == role.Guid));
 
         var existingRolePermissionGuid = fetchedRole.Permissions[0].Guid;

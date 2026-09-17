@@ -79,11 +79,20 @@ export interface ChillDtoEntityOptions extends JsonObject {
   changeLogEnabled: boolean;
 }
 
+export interface ChillValidationError extends JsonObject {
+  fieldName: string | null;
+  message: string | null;
+}
+
 export interface AuthUserListItem extends JsonObject {
   guid: string;
   externalId: string;
   userName: string;
   displayName: string;
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -94,6 +103,25 @@ export interface AuthRoleListItem extends JsonObject {
   name: string;
   description: string;
   isActive: boolean;
+}
+
+export interface AuthTokenResponse extends JsonObject {
+  accessToken: string;
+  accessTokenIssuedUtc: string;
+  accessTokenExpiresUtc: string;
+  refreshToken: string;
+  refreshTokenExpiresUtc: string;
+  userId: string;
+  userName: string;
+}
+
+export interface RegisterAuthIdentityRequest extends JsonObject {
+  userName: string;
+  email: string | null;
+  password: string;
+  displayName: string;
+  displayCultureName: string;
+  createChillAuthUser: boolean;
 }
 
 export const PermissionEffect = {
@@ -173,6 +201,10 @@ export interface SetAuthUserRequest extends JsonObject {
   externalId: string;
   userName: string;
   displayName: string;
+  displayCultureName: string;
+  displayTimeZone: string;
+  displayDateFormat: string;
+  displayNumberFormat: string;
   isActive: boolean;
   canManagePermissions: boolean;
   canManageSchema: boolean;
@@ -195,6 +227,7 @@ export interface ChillSharpClientOptions {
   password?: string;
   cultureName?: string;
   fetchImpl?: typeof fetch;
+  signalRWithCredentials?: boolean;
 }
 
 export type ChillEntityChangeAction = "CREATED" | "UPDATED" | "DELETED";
@@ -234,10 +267,11 @@ export class ChillSharpClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly cultureName: string | null;
+  private readonly signalRWithCredentials: boolean;
 
   private username: string | null;
   private password: string | null;
-  private refreshPromise: Promise<JsonObject> | null = null;
+  private refreshPromise: Promise<AuthTokenResponse> | null = null;
   private tokenState: TokenState;
   private notificationConnection: HubConnection | null = null;
   private readonly entityChangeSubscriptions = new Map<string, LocalEntityChangeSubscription>();
@@ -250,6 +284,7 @@ export class ChillSharpClient {
     this.username = this.normalizeOptionalValue(options.username);
     this.password = this.normalizeOptionalValue(options.password);
     this.cultureName = this.normalizeOptionalValue(options.cultureName);
+    this.signalRWithCredentials = options.signalRWithCredentials ?? true;
     this.tokenState = {
       accessToken: this.normalizeOptionalValue(options.accessToken),
       accessTokenIssuedUtc: null,
@@ -277,6 +312,14 @@ export class ChillSharpClient {
 
   async delete(dtoEntity: JsonObject): Promise<void> {
     await this.sendJson("POST", this.buildChillUrl("delete"), dtoEntity, false);
+  }
+
+  autocomplete(dto: JsonObject): Promise<JsonObject> {
+    return this.sendJson<JsonObject>("POST", this.buildChillUrl("autocomplete"), dto);
+  }
+
+  validate(dto: JsonObject): Promise<ChillValidationError[]> {
+    return this.sendJson<ChillValidationError[]>("POST", this.buildChillUrl("validate"), dto);
   }
 
   chunk(operations: JsonObject[]): Promise<JsonObject[]> {
@@ -397,19 +440,19 @@ export class ChillSharpClient {
     await connection.stop();
   }
 
-  async registerAuthAccount(payload: JsonObject): Promise<JsonObject> {
-    const response = await this.sendAuthJson<JsonObject>("POST", "account/register", payload, true, true);
+  async registerAuthAccount(payload: RegisterAuthIdentityRequest): Promise<AuthTokenResponse> {
+    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "account/register", payload, true, true);
     this.applyAuthToken(response, true);
     return response;
   }
 
-  async loginAuthAccount(payload: JsonObject): Promise<JsonObject> {
-    const response = await this.sendAuthJson<JsonObject>("POST", "account/login", payload, true, true);
+  async loginAuthAccount(payload: JsonObject): Promise<AuthTokenResponse> {
+    const response = await this.sendAuthJson<AuthTokenResponse>("POST", "account/login", payload, true, true);
     this.applyAuthToken(response, true);
     return response;
   }
 
-  refreshAuthAccount(): Promise<JsonObject> {
+  refreshAuthAccount(): Promise<AuthTokenResponse> {
     return this.getAuthTokenIfNecessary(true);
   }
 
@@ -596,7 +639,7 @@ export class ChillSharpClient {
     }
   }
 
-  private async getAuthTokenIfNecessary(forceRefresh = false): Promise<JsonObject> {
+  private async getAuthTokenIfNecessary(forceRefresh = false): Promise<AuthTokenResponse> {
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
@@ -609,14 +652,14 @@ export class ChillSharpClient {
     }
   }
 
-  private async getAuthTokenIfNecessaryCore(forceRefresh: boolean): Promise<JsonObject> {
+  private async getAuthTokenIfNecessaryCore(forceRefresh: boolean): Promise<AuthTokenResponse> {
     if (!forceRefresh && this.hasUsableAccessToken() && !this.shouldRefreshAccessToken()) {
       return this.createCurrentTokenResponse();
     }
 
     if (this.tokenState.refreshToken && (!forceRefresh || !this.password)) {
       try {
-        const refreshed = await this.sendAuthJson<JsonObject>(
+        const refreshed = await this.sendAuthJson<AuthTokenResponse>(
           "POST",
           "account/refresh",
           { refreshToken: this.tokenState.refreshToken },
@@ -637,7 +680,7 @@ export class ChillSharpClient {
     }
 
     if (this.username && this.password) {
-      const token = await this.sendAuthJson<JsonObject>(
+      const token = await this.sendAuthJson<AuthTokenResponse>(
         "POST",
         "account/login",
         {
@@ -725,13 +768,14 @@ export class ChillSharpClient {
     }
   }
 
-  private createCurrentTokenResponse(): JsonObject {
+  private createCurrentTokenResponse(): AuthTokenResponse {
     return {
       accessToken: this.tokenState.accessToken ?? "",
       accessTokenIssuedUtc: this.formatDate(this.tokenState.accessTokenIssuedUtc),
       accessTokenExpiresUtc: this.formatDate(this.tokenState.accessTokenExpiresUtc),
       refreshToken: this.tokenState.refreshToken ?? "",
       refreshTokenExpiresUtc: this.formatDate(this.tokenState.refreshTokenExpiresUtc),
+      userId: "",
       userName: this.username ?? ""
     };
   }
@@ -851,6 +895,7 @@ export class ChillSharpClient {
 
     const connection = new HubConnectionBuilder()
       .withUrl(this.buildNotifyUrl(), {
+        withCredentials: this.signalRWithCredentials,
         accessTokenFactory: async () => {
           if (this.canUseAuthentication()) {
             await this.getAuthTokenIfNecessary();
@@ -963,6 +1008,18 @@ export class ChillSharpClient {
     return `${chillType}|${guid ?? ""}`;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
