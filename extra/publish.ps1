@@ -485,7 +485,10 @@ function Get-ChillSharpPackageVersion {
   }
 
   [xml]$projectXml = Get-Content -LiteralPath $chillSharpProjectPath
-  $versionNode = $projectXml.Project.PropertyGroup.Version | Select-Object -First 1
+  $versionNode = $projectXml.Project.PropertyGroup |
+    Where-Object { $_.PSObject.Properties.Name -contains 'Version' } |
+    ForEach-Object { $_.Version } |
+    Select-Object -First 1
   $packageVersion = [string]$versionNode
 
   if ([string]::IsNullOrWhiteSpace($packageVersion)) {
@@ -502,7 +505,10 @@ function Get-ChillSharpPackageOutputFolder {
   }
 
   [xml]$projectXml = Get-Content -LiteralPath $chillSharpProjectPath
-  $packageOutputPathNode = $projectXml.Project.PropertyGroup.PackageOutputPath | Select-Object -First 1
+  $packageOutputPathNode = $projectXml.Project.PropertyGroup |
+    Where-Object { $_.PSObject.Properties.Name -contains 'PackageOutputPath' } |
+    ForEach-Object { $_.PackageOutputPath } |
+    Select-Object -First 1
   $packageOutputPath = [string]$packageOutputPathNode
 
   if ([string]::IsNullOrWhiteSpace($packageOutputPath)) {
