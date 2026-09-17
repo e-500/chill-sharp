@@ -55,7 +55,7 @@ namespace ChillSharp.Tests
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", cRes.Guid);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title", "Author" });
+            q.ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"]);
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
@@ -99,7 +99,7 @@ namespace ChillSharp.Tests
             var q = new ChillDtoQuery();
             q.ChillType = "Query.PostQuery";
             q.Properties.Add("Guid", PostGuid.Value);
-            q.ResultProperties = ChillSharp.Client.Dto.ChillDtoProperty.FromStrings(new string[] { "Guid", "Title", "Author" });
+            q.ResultProperties = ChillDtoProperty.Build(["Guid", "Title", "Author"]);
             var qRes = cli.Query(q);
             Assert.IsNotNull(qRes);
             Assert.IsNotNull(qRes.Results);
