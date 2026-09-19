@@ -144,7 +144,7 @@ jobs:
               "file://$(realpath "$npm_dist_dir"/chill-sharp-ts-client-*.tgz)" \
               "file://$(realpath "$npm_dist_dir"/chill-sharp-ng-client-*.tgz)"
             npm run build
-            npm pack dist --pack-destination "$npm_dist_dir"
+            npm pack ./dist --pack-destination "$npm_dist_dir"
           )
 
           (
