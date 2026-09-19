@@ -124,6 +124,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p npm-dist
+          npm_dist_dir="$GITHUB_WORKSPACE/npm-dist"
           for package_dir in \
             extra/chill-sharp-ts-client \
             extra/chill-sharp-ng-client \
@@ -133,23 +134,39 @@ jobs:
               cd "$package_dir"
               npm ci
               npm run build
-              npm pack --ignore-scripts --pack-destination ../../npm-dist
+              npm pack --ignore-scripts --pack-destination "$npm_dist_dir"
             )
           done
 
           (
             cd extra/chill-sharp-ui-core
             npm install --no-save \
-              "file://$(realpath ../../npm-dist/chill-sharp-ts-client-*.tgz)" \
-              "file://$(realpath ../../npm-dist/chill-sharp-ng-client-*.tgz)"
+              "file://$(realpath "$npm_dist_dir"/chill-sharp-ts-client-*.tgz)" \
+              "file://$(realpath "$npm_dist_dir"/chill-sharp-ng-client-*.tgz)"
             npm run build
-            npm pack dist --pack-destination ../../npm-dist
+            npm pack dist --pack-destination "$npm_dist_dir"
           )
 
           (
             cd extra/chill-sharp-create-app
-            npm pack --ignore-scripts --pack-destination ../../npm-dist
+            npm pack --ignore-scripts --pack-destination "$npm_dist_dir"
           )
+
+          shopt -s nullglob
+          for package_name in \
+            chill-sharp-ts-client \
+            chill-sharp-ng-client \
+            chill-sharp-ui-core \
+            chill-sharp-react-client \
+            chill-sharp-vue-client \
+            chill-sharp-create-app; do
+            archives=("$npm_dist_dir"/"$package_name"-*.tgz)
+            if [ "${#archives[@]}" -ne 1 ]; then
+              printf 'Expected exactly one archive for %s; found %s.\n' "$package_name" "${#archives[@]}" >&2
+              printf '%s\n' "$npm_dist_dir"/*.tgz >&2
+              exit 1
+            fi
+          done
 
       - name: Upload npm package distributions
         uses: actions/upload-artifact@v4
@@ -192,12 +209,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for package_archive in \
-            npm-dist/chill-sharp-ts-client-*.tgz \
-            npm-dist/chill-sharp-ng-client-*.tgz \
-            npm-dist/chill-sharp-ui-core-*.tgz \
-            npm-dist/chill-sharp-react-client-*.tgz \
-            npm-dist/chill-sharp-vue-client-*.tgz \
-            npm-dist/chill-sharp-create-app-*.tgz; do
-            npm publish "./$package_archive" --access public
+          shopt -s nullglob
+          for package_name in \
+            chill-sharp-ts-client \
+            chill-sharp-ng-client \
+            chill-sharp-ui-core \
+            chill-sharp-react-client \
+            chill-sharp-vue-client \
+            chill-sharp-create-app; do
+            archives=(npm-dist/"$package_name"-*.tgz)
+            if [ "${#archives[@]}" -ne 1 ]; then
+              printf 'Expected exactly one archive for %s; found %s.\n' "$package_name" "${#archives[@]}" >&2
+              exit 1
+            fi
+            npm publish "./${archives[0]}" --access public
           done
