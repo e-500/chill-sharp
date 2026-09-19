@@ -1,7 +1,6 @@
 import type { JsonObject, JsonValue } from '@chill-sharp/ng-client';
 import {
   CHILL_PROPERTY_TYPE,
-  type AutomaticQueryFilter,
   type ChillPropertySchema,
   type ChillQuery,
   type ChillSchema
@@ -26,50 +25,45 @@ export function createAutomaticQuerySchema(entitySchema: ChillSchema): ChillSche
     queryRelatedChillType: chillType,
     metadata,
     relations: entitySchema.relations ? [...entitySchema.relations] : undefined,
-    properties: (entitySchema.properties ?? []).map((property) => ({
-      ...property,
-      isNullable: true,
-      metadata: property.metadata ? { ...property.metadata } : undefined
-    }))
+    properties: (entitySchema.properties ?? [])
+      .filter((property) => property.propertyType !== CHILL_PROPERTY_TYPE.ChillEntityCollection)
+      .map((property) => ({
+        ...property,
+        isNullable: true,
+        metadata: property.metadata ? { ...property.metadata } : undefined
+      }))
   };
 }
 
 /**
- * Converts values entered in an entity-shaped query form into Equal filters.
+ * Creates the entity-shaped compatibility query payload. The server converts the
+ * populated, exposed properties into Equal filters when no ChillQuery is configured.
  */
 export function createAutomaticQueryRequest(query: ChillQuery, schema: ChillSchema): ChillQuery {
-  const properties = query.properties ?? {};
-  const filters = (schema.properties ?? [])
-    .map((property) => createEqualFilter(property, properties[property.name]))
-    .filter((filter): filter is AutomaticQueryFilter => filter !== null);
-  const fullTextSearch = properties[FULL_TEXT_SEARCH_PROPERTY];
+  const sourceProperties = query.properties ?? {};
+  const properties = Object.fromEntries((schema.properties ?? [])
+    .map((property) => createEqualProperty(property, sourceProperties[property.name]))
+    .filter((entry): entry is [string, JsonValue] => entry !== null));
+  const fullTextSearch = sourceProperties[FULL_TEXT_SEARCH_PROPERTY];
 
-  return {
-    ...query,
-    properties: hasFilterValue(fullTextSearch)
-      ? { [FULL_TEXT_SEARCH_PROPERTY]: fullTextSearch }
-      : {},
-    automaticQuery: {
-      filter: {
-        logicalOperator: 'And',
-        filters,
-        groups: []
-      }
-    }
-  };
-}
-
-function createEqualFilter(property: ChillPropertySchema, value: JsonValue | undefined): AutomaticQueryFilter | null {
-  const propertyName = property.name?.trim();
-  if (!propertyName || !hasFilterValue(value)) {
-    return null;
+  if (hasFilterValue(fullTextSearch)) {
+    properties[FULL_TEXT_SEARCH_PROPERTY] = fullTextSearch;
   }
 
   return {
-    propertyName,
-    operator: 'Equal',
-    value: normalizeFilterValue(property, value)
+    ...query,
+    properties,
+    automaticQuery: null
   };
+}
+
+function createEqualProperty(property: ChillPropertySchema, value: JsonValue | undefined): [string, JsonValue] | null {
+  const propertyName = property.name?.trim();
+  if (!propertyName || property.propertyType === CHILL_PROPERTY_TYPE.ChillEntityCollection || !hasFilterValue(value)) {
+    return null;
+  }
+
+  return [propertyName, normalizeFilterValue(property, value)];
 }
 
 function normalizeFilterValue(property: ChillPropertySchema, value: JsonValue): JsonValue {

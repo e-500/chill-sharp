@@ -115,6 +115,16 @@ namespace ChillSharp
             if (DtoQuery.AutomaticQuery != null)
                 return ExecuteAutomaticQuery(DtoQuery);
 
+            var requestedType = ChillTypeResolver.ResolveType(
+                _Context.GetType().Assembly,
+                DtoQuery.ChillType,
+                _Context.GetChillTypePrefix());
+            if (IsConcreteChillEntity(requestedType))
+                return ExecuteAutomaticQuery(
+                    DtoQuery,
+                    requestedType,
+                    CreatePropertiesAutomaticQuery(DtoQuery, requestedType));
+
             // Activate ChillQuery object from ChillType
             var q = _Engine.ActivateChillQuery(DtoQuery.ChillType);
 
@@ -140,8 +150,23 @@ namespace ChillSharp
                 _Context.GetType().Assembly,
                 dtoQuery.ChillType,
                 _Context.GetChillTypePrefix());
-            if (!entityType.IsClass || entityType.IsAbstract || !typeof(IChillEntity).IsAssignableFrom(entityType))
+            if (!IsConcreteChillEntity(entityType))
                 throw new ChillException($"{dtoQuery.ChillType} is not a concrete IChillEntity type.");
+
+            return ExecuteAutomaticQuery(dtoQuery, entityType, dtoQuery.AutomaticQuery!);
+        }
+
+        /// <summary>
+        /// Executes an automatic query for a known entity type without changing the DTO's
+        /// <see cref="ChillDtoQuery.AutomaticQuery"/> value. This lets entity-shaped query
+        /// requests made with <see cref="ChillDtoQuery.Properties"/> remain compatible with
+        /// clients that do not send structured automatic-query definitions.
+        /// </summary>
+        private ChillDtoQuery ExecuteAutomaticQuery(
+            ChillDtoQuery dtoQuery,
+            Type entityType,
+            AutomaticQuery definition)
+        {
 
             var runtimeQueryType = typeof(AutomaticQuery<>).MakeGenericType(entityType);
             if (Activator.CreateInstance(runtimeQueryType) is not IChillQuery<IChillEntity> chillQuery
@@ -150,12 +175,70 @@ namespace ChillSharp
                 throw new ChillException($"Unable to create an automatic query for {dtoQuery.ChillType}.");
             }
 
-            automaticQuery.Definition = dtoQuery.AutomaticQuery!;
+            automaticQuery.Definition = definition;
             dtoQuery.ToAutomaticQuery(_Context, chillQuery);
             dtoQuery.Results = _Engine.Query(
                 chillQuery,
                 entity => new ChillDtoEntity(_Context, entity, dtoQuery.ResultProperties));
             return dtoQuery;
+        }
+
+        /// <summary>
+        /// Builds the compatibility form of an automatic query from entity properties.
+        /// Only properties exposed through <see cref="ChillPropertyAttribute"/> are included,
+        /// so request-only or implementation details cannot become query paths. Full-text search
+        /// remains a native <see cref="ChillQuery"/> property and is applied by its existing
+        /// search pipeline instead of as an equality comparison.
+        /// </summary>
+        private static AutomaticQuery CreatePropertiesAutomaticQuery(ChillDtoQuery dtoQuery, Type entityType)
+        {
+            var entityProperties = ChillDtoTypeMetadataCache.Get(entityType).ChillPropertiesByNameIgnoreCase;
+            var filters = new List<AutomaticQueryFilter>();
+
+            foreach (var (propertyName, value) in dtoQuery.Properties)
+            {
+                if (string.Equals(propertyName, nameof(ChillQuery.FullTextSearch), StringComparison.OrdinalIgnoreCase) ||
+                    !entityProperties.TryGetValue(propertyName, out var property) ||
+                    property.IsEntityCollection)
+                {
+                    continue;
+                }
+
+                filters.Add(new AutomaticQueryFilter
+                {
+                    PropertyName = property.Name,
+                    Operator = AutomaticQueryOperator.Equal,
+                    Value = NormalizeEntityReferenceValue(value, property.IsEntityReference)
+                });
+            }
+
+            return new AutomaticQuery
+            {
+                Filter = new AutomaticQueryGroup
+                {
+                    LogicalOperator = AutomaticQueryLogicalOperator.And,
+                    Filters = filters
+                }
+            };
+        }
+
+        private static object? NormalizeEntityReferenceValue(object? value, bool isEntityReference)
+        {
+            if (!isEntityReference || value is not System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } json)
+                return value;
+
+            foreach (var property in json.EnumerateObject())
+            {
+                if (string.Equals(property.Name, nameof(IChillEntity.Guid), StringComparison.OrdinalIgnoreCase))
+                    return property.Value;
+            }
+
+            return value;
+        }
+
+        private static bool IsConcreteChillEntity(Type type)
+        {
+            return type.IsClass && !type.IsAbstract && typeof(IChillEntity).IsAssignableFrom(type);
         }
 
         /// <summary>

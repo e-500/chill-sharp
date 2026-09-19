@@ -24,19 +24,19 @@ describe('automatic query CRUD utilities', () => {
     expect(shouldUseAutomaticQuery(null)).toBeTrue();
   });
 
-  it('uses every entity field as an optional query-form field', () => {
+  it('uses every equality-filterable entity field as an optional query-form field', () => {
     const schema = createAutomaticQuerySchema(entitySchema);
 
     expect(schema.chillType).toBe('Model.Post');
     expect(schema.queryRelatedChillType).toBe('Model.Post');
-    expect(schema.properties.map((property) => property.name)).toEqual(['Title', 'Score', 'Published', 'Blog', 'Tags']);
+    expect(schema.properties.map((property) => property.name)).toEqual(['Title', 'Score', 'Published', 'Blog']);
     expect(schema.properties.every((property) => property.isNullable)).toBeTrue();
     expect(entitySchema.properties.every((property) => !property.isNullable)).toBeTrue();
     expect(schema.metadata?.['chill-form-component']).toBeUndefined();
     expect(schema.metadata?.['preserved']).toBeTrue();
   });
 
-  it('creates Equal filters only for populated fields', () => {
+  it('creates a Properties compatibility request only with populated fields', () => {
     const query: ChillQuery = {
       chillType: 'Model.Post',
       properties: {
@@ -52,17 +52,12 @@ describe('automatic query CRUD utilities', () => {
     const request = createAutomaticQueryRequest(query, entitySchema);
     const requestProperties = request.properties as Record<string, unknown> | undefined;
 
-    expect(Object.keys(requestProperties ?? {})).toEqual(['FullTextSearch']);
+    expect(Object.keys(requestProperties ?? {})).toEqual(['Score', 'Published', 'Blog', 'FullTextSearch']);
     expect(requestProperties?.['FullTextSearch']).toBe('release');
-    expect(JSON.stringify(request.automaticQuery?.filter)).toBe(JSON.stringify({
-      logicalOperator: 'And',
-      filters: [
-        { propertyName: 'Score', operator: 'Equal', value: 0 },
-        { propertyName: 'Published', operator: 'Equal', value: false },
-        { propertyName: 'Blog', operator: 'Equal', value: '09926e8f-3291-4448-b206-df0ce562ab23' },
-        { propertyName: 'Tags', operator: 'Equal', value: [{ guid: 'a168b73f-229f-4039-aee5-d0154976dc52' }] }
-      ],
-      groups: []
-    }));
+    expect(requestProperties?.['Score']).toBe(0);
+    expect(requestProperties?.['Published']).toBeFalse();
+    expect(requestProperties?.['Blog']).toBe('09926e8f-3291-4448-b206-df0ce562ab23');
+    expect(requestProperties?.['Tags']).toBeUndefined();
+    expect(request.automaticQuery).toBeNull();
   });
 });
