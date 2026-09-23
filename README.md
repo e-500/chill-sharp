@@ -13,6 +13,15 @@ Few lines. Real endpoints. Query, find, create, update, delete. Built-in support
 Latest releases:
 [GitHub Releases](https://github.com/e-500/chill-sharp/releases/)
 
+To start an agent-ready ChillSharp workspace:
+
+```bash
+npm install -g @chill-sharp/chill-cli
+chill new my-project
+```
+
+The command adds maintained ChillSharp skills for your coding agent to `.agents/skills`.
+
 ## Deploy-Ready In A Few Lines
 
 If you already have an EF Core context, this is the core setup:

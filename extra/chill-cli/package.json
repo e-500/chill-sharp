@@ -1,0 +1,42 @@
+{
+  "name": "@chill-sharp/chill-cli",
+  "version": "0.1.0",
+  "description": "Start a ChillSharp project with agent-ready guidance.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "bin": {
+    "chill": "./bin/chill.mjs"
+  },
+  "files": [
+    "bin",
+    "skills",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/sync-skills.mjs && node --check bin/chill.mjs",
+    "check": "node --check bin/chill.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "chillsharp",
+    "cli",
+    "coding-agent",
+    "starter"
+  ],
+  "author": "Andrea Piovesan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/e-500/chill-sharp.git",
+    "directory": "extra/chill-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/e-500/chill-sharp/issues"
+  },
+  "homepage": "https://github.com/e-500/chill-sharp#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

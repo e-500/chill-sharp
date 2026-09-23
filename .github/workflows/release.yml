@@ -128,7 +128,8 @@ jobs:
             extra/chill-sharp-ts-client \
             extra/chill-sharp-ng-client \
             extra/chill-sharp-react-client \
-            extra/chill-sharp-vue-client; do
+            extra/chill-sharp-vue-client \
+            extra/chill-cli; do
             (
               cd "$package_dir"
               npm ci
@@ -186,7 +187,8 @@ jobs:
           path: npm-dist/
 
       - name: Publish npm packages
-        # Configure a GitHub Actions trusted publisher on npm for EACH package:
+        # Configure a GitHub Actions trusted publisher on npm for EACH package,
+        # including @chill-sharp/chill-cli:
         # owner e-500, repository chill-sharp, workflow release.yml, no environment.
         # The trusted publisher must allow direct publishing with npm publish.
         shell: bash
@@ -198,6 +200,7 @@ jobs:
             npm-dist/chill-sharp-ui-core-*.tgz \
             npm-dist/chill-sharp-react-client-*.tgz \
             npm-dist/chill-sharp-vue-client-*.tgz \
-            npm-dist/chill-sharp-create-app-*.tgz; do
+            npm-dist/chill-sharp-create-app-*.tgz \
+            npm-dist/chill-sharp-chill-cli-*.tgz; do
             npm publish "./$package_archive" --access public
           done

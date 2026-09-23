@@ -12,6 +12,7 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
 - [`@chill-sharp/create-app`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app): npm generator for a starter Angular client app
+- [`@chill-sharp/chill-cli`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-cli): cross-platform CLI for agent-ready ChillSharp workspaces
 - [`chill-sharp-ui-architecture`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-architecture): UI architecture notes and compatibility publish wrapper
 
 ## How-To Guides
@@ -157,9 +158,17 @@ Create an app from the public npm packages:
 npm create @chill-sharp/app my-app
 ```
 
+Create an agent-ready ChillSharp workspace:
+
+```bash
+npm install -g @chill-sharp/chill-cli
+chill new my-project
+```
+
 More information:
 
 - [`extra/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/README.md)
 - [`extra/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template/README.md)
 - [`extra/chill-sharp-create-app/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app/README.md)
+- [`extra/chill-cli/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-cli/README.md)
 - [`extra/HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](HOW_TO_CREATE_UI_CORE_PLUGIN_README.md)
