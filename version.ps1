@@ -48,7 +48,8 @@ $packageJsonPaths = @(
     'extra/chill-sharp-vue-client/package.json',
     'extra/chill-sharp-ui-core/package.json',
     'extra/chill-sharp-create-app/package.json',
-    'extra/chill-sharp-ui-template/package.json'
+    'extra/chill-sharp-ui-template/package.json',
+    'extra/chill-cli/package.json'
 )
 
 foreach ($relativePath in $packageJsonPaths) {
@@ -78,7 +79,8 @@ $packageLockPaths = @(
     'extra/chill-sharp-ng-client/package-lock.json',
     'extra/chill-sharp-react-client/package-lock.json',
     'extra/chill-sharp-vue-client/package-lock.json',
-    'extra/chill-sharp-ui-template/package-lock.json'
+    'extra/chill-sharp-ui-template/package-lock.json',
+    'extra/chill-cli/package-lock.json'
 )
 
 foreach ($relativePath in $packageLockPaths) {

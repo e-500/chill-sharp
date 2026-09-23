@@ -36,6 +36,7 @@ package_json_paths=(
   "$script_dir/extra/chill-sharp-ui-core/package.json"
   "$script_dir/extra/chill-sharp-create-app/package.json"
   "$script_dir/extra/chill-sharp-ui-template/package.json"
+  "$script_dir/extra/chill-cli/package.json"
 )
 
 for manifest_path in "${package_json_paths[@]}"; do
@@ -53,6 +54,7 @@ package_lock_paths=(
   "$script_dir/extra/chill-sharp-react-client/package-lock.json"
   "$script_dir/extra/chill-sharp-vue-client/package-lock.json"
   "$script_dir/extra/chill-sharp-ui-template/package-lock.json"
+  "$script_dir/extra/chill-cli/package-lock.json"
 )
 
 for lock_path in "${package_lock_paths[@]}"; do
@@ -98,11 +100,13 @@ case "${create_commit,,}" in
       'extra/chill-sharp-ui-core/package.json'
       'extra/chill-sharp-create-app/package.json'
       'extra/chill-sharp-ui-template/package.json'
+      'extra/chill-cli/package.json'
       'extra/chill-sharp-ts-client/package-lock.json'
       'extra/chill-sharp-ng-client/package-lock.json'
       'extra/chill-sharp-react-client/package-lock.json'
       'extra/chill-sharp-vue-client/package-lock.json'
       'extra/chill-sharp-ui-template/package-lock.json'
+      'extra/chill-cli/package-lock.json'
       'extra/chill-sharp-py-client/pyproject.toml'
     )
     git -C "$script_dir" add -- "${release_files[@]}"
