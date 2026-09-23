@@ -5,7 +5,7 @@
     "url": "git+https://github.com/e-500/chill-sharp.git",
     "directory": "extra/chill-sharp-ts-client"
   },
-  "version": "1.1.17",
+  "version": "1.1.18",
   "description": "TypeScript client for generic ChillSharp services",
   "license": "AGPL-3.0-or-later",
   "type": "module",
