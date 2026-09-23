@@ -21,6 +21,12 @@ test('new creates an agent-ready project workspace', () => {
     assert.equal(existsSync(path.join(destination, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp_model_preparation', 'SKILL.md')), true);
     assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp-full-stack-application', 'SKILL.md')), true);
+    const fullStackSkill = readFileSync(
+      path.join(destination, '.agents', 'skills', 'chillsharp-full-stack-application', 'SKILL.md'),
+      'utf8'
+    );
+    assert.match(fullStackSkill, /@chill-sharp\/create-app/);
+    assert.match(fullStackSkill, /pip install chill-sharp-py-client/);
     assert.match(
       readFileSync(path.join(destination, 'AGENTS.md'), 'utf8'),
       /connected ASP\.NET Core ChillSharp API, an authenticated management UI for real data, and a user-facing frontend/
