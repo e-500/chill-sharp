@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -20,6 +20,11 @@ test('new creates an agent-ready project workspace', () => {
     const destination = path.join(workingDirectory, 'my-project');
     assert.equal(existsSync(path.join(destination, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp_model_preparation', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp-full-stack-application', 'SKILL.md')), true);
+    assert.match(
+      readFileSync(path.join(destination, 'AGENTS.md'), 'utf8'),
+      /connected ASP\.NET Core ChillSharp API, an authenticated management UI for real data, and a user-facing frontend/
+    );
   } finally {
     rmSync(workingDirectory, { recursive: true, force: true });
   }

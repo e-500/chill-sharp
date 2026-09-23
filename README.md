@@ -22,6 +22,12 @@ chill new my-project
 
 The command adds maintained ChillSharp skills for your coding agent to `.agents/skills`.
 
+When you ask that agent to build an application, the included full-stack guidance requires a connected deliverable: a runnable ASP.NET Core ChillSharp API, an authenticated management UI that operates on real data, and a user-facing frontend using that same API. Ask explicitly for an API-only, UI-only, or static prototype when that is the intended scope.
+
+For example:
+
+> Create a blog with an ASP.NET Core ChillSharp backend and middleware. Authors sign in to manage posts and categories in an admin UI; visitors browse published posts in a separate frontend. Both UIs must use the same API and database.
+
 ## Deploy-Ready In A Few Lines
 
 If you already have an EF Core context, this is the core setup:
