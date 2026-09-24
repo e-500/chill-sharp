@@ -5,7 +5,7 @@
     "url": "git+https://github.com/e-500/chill-sharp.git",
     "directory": "extra/chill-sharp-ui-core"
   },
-  "version": "1.1.22",
+  "version": "1.1.23",
   "description": "Shared Angular UI core for ChillSharp applications.",
   "keywords": [
     "angular",
@@ -42,8 +42,8 @@
     "zone.js": "~0.15.0"
   },
   "dependencies": {
-    "@chill-sharp/ng-client": "^1.1.22",
-    "@chill-sharp/ts-client": "^1.1.22",
+    "@chill-sharp/ng-client": "^1.1.23",
+    "@chill-sharp/ts-client": "^1.1.23",
     "monaco-editor": "^0.52.2",
     "tslib": "^2.3.0"
   },

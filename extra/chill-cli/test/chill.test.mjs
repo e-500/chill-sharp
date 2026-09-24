@@ -11,6 +11,12 @@ function createOutput() {
   return { log() {}, error() {} };
 }
 
+test('uses npm.cmd when launching npm on Windows', () => {
+  assert.equal(cliModule.resolveExecutable('npm', 'win32'), 'npm.cmd');
+  assert.equal(cliModule.resolveExecutable('npm', 'linux'), 'npm');
+  assert.equal(cliModule.resolveExecutable('dotnet', 'win32'), 'dotnet');
+});
+
 test('new creates an API project and restores ChillSharp from NuGet', async () => {
   const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
   const commands = [];

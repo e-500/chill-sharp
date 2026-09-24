@@ -1,11 +1,13 @@
 ---
 name: chillsharp-full-stack-application
-description: Build a connected ChillSharp application with an ASP.NET Core API, a data-management UI, and a user-facing frontend. Use when a request is to build a site, product, or application rather than only an API or only a client.
+description: Build a connected ChillSharp application with an ASP.NET Core API, a data-management UI, and a user-facing frontend. Use when a request is to build a site, product, or application rather than only an API or only a client; use chill-cli to scaffold an initial workspace when needed.
 ---
 
 # ChillSharp Full-Stack Application
 
 Treat a request to build a new site or application in a ChillSharp workspace as a full-stack request unless the user explicitly limits it to an API, a UI, or a static prototype.
+
+If no suitable ChillSharp workspace exists yet, create one first with `chill new <project-name> --both`. This scaffolds the API, UI, and agent guidance; use `--api` or `--ui` only when the requested scope is deliberately limited.
 
 ## Public package catalog
 

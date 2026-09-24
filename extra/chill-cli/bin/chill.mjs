@@ -175,11 +175,15 @@ async function selectProjectType(flags, options) {
 }
 
 function executeCommand(command, arguments_, cwd) {
-  const result = spawnSync(command, arguments_, { cwd, stdio: 'inherit' });
+  const result = spawnSync(resolveExecutable(command), arguments_, { cwd, stdio: 'inherit' });
   if (result.error) throw new Error(`Unable to run ${command}: ${result.error.message}`);
   if (result.status !== 0) {
     throw new Error(`${command} ${arguments_.join(' ')} failed with exit code ${result.status}. The project directory was kept for inspection.`);
   }
+}
+
+export function resolveExecutable(command, platform = process.platform) {
+  return platform === 'win32' && command === 'npm' ? 'npm.cmd' : command;
 }
 
 function toPascalCase(name) {
