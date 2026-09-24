@@ -79,6 +79,7 @@ $packageLockPaths = @(
     'extra/chill-sharp-ng-client/package-lock.json',
     'extra/chill-sharp-react-client/package-lock.json',
     'extra/chill-sharp-vue-client/package-lock.json',
+    'extra/chill-sharp-create-app/package-lock.json',
     'extra/chill-sharp-ui-template/package-lock.json',
     'extra/chill-cli/package-lock.json'
 )

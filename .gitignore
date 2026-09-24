@@ -31,6 +31,9 @@ bld/
 # The npm CLI ships its executable from this source directory.
 !extra/chill-cli/bin/
 !extra/chill-cli/bin/**
+# The Angular app generator also publishes its executable from bin/.
+!extra/chill-sharp-create-app/bin/
+!extra/chill-sharp-create-app/bin/**
 [Oo]bj/
 [Oo]ut/
 [Ll]og/
