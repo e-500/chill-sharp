@@ -56,5 +56,5 @@ console.log('  npm install');
 console.log('  npm start');
 
 function printUsage() {
-  console.log('Usage: npm create @chill-sharp/app <project-name>');
+  console.log('Usage: npx --yes @chill-sharp/create-app <project-name>');
 }

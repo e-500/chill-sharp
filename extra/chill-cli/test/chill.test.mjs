@@ -15,6 +15,8 @@ test('uses npm.cmd when launching npm on Windows', () => {
   assert.equal(cliModule.resolveExecutable('npm', 'win32'), 'npm.cmd');
   assert.equal(cliModule.resolveExecutable('npm', 'linux'), 'npm');
   assert.equal(cliModule.resolveExecutable('dotnet', 'win32'), 'dotnet');
+  assert.deepEqual(cliModule.resolveCommandOptions('npm', 'win32'), { shell: true });
+  assert.deepEqual(cliModule.resolveCommandOptions('npm', 'linux'), {});
 });
 
 test('new creates an API project and restores ChillSharp from NuGet', async () => {
@@ -66,7 +68,7 @@ test('new creates a UI and installs its published npm dependencies', async () =>
 
     assert.equal(status, 0);
     assert.deepEqual(commands.map(({ command, arguments_ }) => [command, arguments_]), [
-      ['npm', ['create', '@chill-sharp/app', 'ui']],
+      ['npm', ['exec', '--yes', '--package=@chill-sharp/create-app', '--', 'create-chill-sharp-app', 'ui']],
       ['npm', ['install']]
     ]);
     assert.equal(commands[1].cwd, path.join(workingDirectory, 'my-project', 'ui'));

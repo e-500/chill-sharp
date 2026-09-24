@@ -26,7 +26,7 @@ Use these published packages directly. Do not search the local filesystem, clone
 | npm | `@chill-sharp/chill-cli` | Create an agent-ready ChillSharp workspace; it is not a runtime dependency. |
 | PyPI | `chill-sharp-py-client` | A Python client for a ChillSharp API. |
 
-For a new Angular management UI, prefer `npm create @chill-sharp/app <app-name>` rather than building a replacement from local source. For another frontend stack, install its matching client package and connect it to the API. Use only the client family needed by the requested application; do not install every package in this table.
+For a new Angular management UI, prefer `npx --yes @chill-sharp/create-app <app-name>` rather than building a replacement from local source. For another frontend stack, install its matching client package and connect it to the API. Use only the client family needed by the requested application; do not install every package in this table.
 
 For example, add the backend with `dotnet add package ChillSharp`, a browser client with `npm install @chill-sharp/ts-client`, or a Python integration with `pip install chill-sharp-py-client`.
 

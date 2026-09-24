@@ -3,7 +3,7 @@
 Creates a ready-to-run Angular application shell backed by the published ChillSharp npm packages.
 
 ```bash
-npm create @chill-sharp/app my-app
+npx --yes @chill-sharp/create-app my-app
 cd my-app
 npm install
 npm start

@@ -132,7 +132,14 @@ async function createProject(name, flags, options) {
   }
 
   if (projectType === 'ui' || projectType === 'both') {
-    await runCommand('npm', ['create', '@chill-sharp/app', 'ui'], destination);
+    await runCommand('npm', [
+      'exec',
+      '--yes',
+      '--package=@chill-sharp/create-app',
+      '--',
+      'create-chill-sharp-app',
+      'ui'
+    ], destination);
     rmSync(path.join(destination, 'ui', 'packages'), { recursive: true, force: true });
     await runCommand('npm', ['install'], path.join(destination, 'ui'));
   }
@@ -175,7 +182,11 @@ async function selectProjectType(flags, options) {
 }
 
 function executeCommand(command, arguments_, cwd) {
-  const result = spawnSync(resolveExecutable(command), arguments_, { cwd, stdio: 'inherit' });
+  const result = spawnSync(resolveExecutable(command), arguments_, {
+    cwd,
+    stdio: 'inherit',
+    ...resolveCommandOptions(command)
+  });
   if (result.error) throw new Error(`Unable to run ${command}: ${result.error.message}`);
   if (result.status !== 0) {
     throw new Error(`${command} ${arguments_.join(' ')} failed with exit code ${result.status}. The project directory was kept for inspection.`);
@@ -184,6 +195,11 @@ function executeCommand(command, arguments_, cwd) {
 
 export function resolveExecutable(command, platform = process.platform) {
   return platform === 'win32' && command === 'npm' ? 'npm.cmd' : command;
+}
+
+export function resolveCommandOptions(command, platform = process.platform) {
+  // Windows command scripts (.cmd) need a shell; otherwise Node reports EINVAL.
+  return platform === 'win32' && command === 'npm' ? { shell: true } : {};
 }
 
 function toPascalCase(name) {
