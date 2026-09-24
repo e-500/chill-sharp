@@ -22,7 +22,7 @@ chill new my-project
 
 The command adds maintained ChillSharp skills for your coding agent to `.agents/skills`.
 
-When you ask that agent to build an application, the included full-stack guidance requires a connected deliverable: a runnable ASP.NET Core ChillSharp API, an authenticated management UI that operates on real data, and a user-facing frontend using that same API. Ask explicitly for an API-only, UI-only, or static prototype when that is the intended scope.
+When you ask that agent to build an application, the included full-stack guidance requires a connected deliverable: a runnable ASP.NET Core ChillSharp API and an authenticated UI that operates on real data. Add a separate user-facing frontend when the requested users or workflows need one. Ask explicitly for an API-only, UI-only, or static prototype when that is the intended scope.
 
 For example:
 

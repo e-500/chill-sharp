@@ -101,7 +101,7 @@ async function selectDependency(flags, options) {
 async function createProject(name, flags, options) {
   const { cwd = process.cwd(), output = console, runCommand = executeCommand } = options;
   if (!name) {
-    throw new Error('A project name is required.\n\nUsage: chill new <project-name> [--api|--ui|--both]');
+    throw new Error('A project name is required.\n\nUsage: chill new <project-name> [--skills|--api|--ui|--both]');
   }
 
   if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
@@ -116,6 +116,12 @@ async function createProject(name, flags, options) {
 
   mkdirSync(destination);
   cpSync(path.join(packageDirectory, 'skills'), path.join(destination, '.agents', 'skills'), { recursive: true });
+  if (projectType === 'skills') {
+    output.log(`Created ${name} with coding agent skills in .agents/skills.`);
+    output.log(`Next step: cd ${name}`);
+    return;
+  }
+
   writeFileSync(path.join(destination, 'AGENTS.md'), projectInstructions(name));
   writeFileSync(path.join(destination, 'README.md'), projectReadme(name, projectType));
   writeFileSync(path.join(destination, '.gitignore'), projectGitignore(projectType));
@@ -153,8 +159,8 @@ async function createProject(name, flags, options) {
 
 async function selectProjectType(flags, options) {
   if (flags.length > 0) {
-    if (flags.length !== 1 || !['--api', '--ui', '--both'].includes(flags[0])) {
-      throw new Error('Use one project type option: --api, --ui, or --both.');
+    if (flags.length !== 1 || !['--skills', '--api', '--ui', '--both'].includes(flags[0])) {
+      throw new Error('Use one project type option: --skills, --api, --ui, or --both.');
     }
 
     return flags[0].slice(2);
@@ -166,15 +172,17 @@ async function selectProjectType(flags, options) {
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   try {
     output.log('What would you like to create?');
+    output.log('0. Prepare a folder with only coding agent skills');
     output.log('1. API (ASP.NET Core + ChillSharp)');
     output.log('2. UI (Angular + ChillSharp UI)');
     output.log('3. API and UI');
     while (true) {
       const answer = (await prompt.question('Select an option: ')).trim();
+      if (answer === '0') return 'skills';
       if (answer === '1') return 'api';
       if (answer === '2') return 'ui';
       if (answer === '3') return 'both';
-      output.error('Invalid choice. Valid options: 1, 2, 3');
+      output.error('Invalid choice. Valid options: 0, 1, 2, 3');
     }
   } finally {
     prompt.close();
@@ -207,7 +215,7 @@ function toPascalCase(name) {
 }
 
 function projectInstructions(name) {
-  return `# ${name}\n\nThis project is prepared for ChillSharp development with a coding agent.\n\nBefore changing ChillSharp code, inspect the relevant skill in \`.agents/skills\`. Use the project\'s existing conventions and keep implementation work focused on the requested outcome.\n\nWhen asked to build a new site or application, use \`.agents/skills/chillsharp-full-stack-application/SKILL.md\`. Unless the user explicitly asks for an API-only, UI-only, or static prototype, deliver a connected ASP.NET Core ChillSharp API, an authenticated management UI for real data, and a user-facing frontend that uses the same API. Do not replace those components with mock data, browser-only storage, or a standalone visual site.\n\nFor a new application, start by describing the users, data, and first workflow. The agent can then use the included full-stack, model, registration, permissions, i18n, menu, plugin, and MCP guidance as needed.\n`;
+  return `# ${name}\n\nThis project is prepared for ChillSharp development with a coding agent.\n\nBefore building or changing this application, inspect the relevant skill in \`.agents/skills\`. Use the project's existing conventions and keep implementation work focused on the requested outcome.\n\nWhen asked to build a site or application, use \`.agents/skills/chillsharp-full-stack-application/SKILL.md\`. The generated ASP.NET Core API is only a starting template: a runnable application without the ChillSharp package, context, and mapped API does not fulfill this workspace's purpose. Build the requested workflow with a connected ASP.NET Core ChillSharp API and UI backed by persisted data. Use a separate public frontend when the requested users or workflows need one. Do not replace these components with mock data, browser-only storage, or a visual-only site.\n\nFor a new application, start by describing the users, data, and first workflow. The agent can then use the included full-stack, model, registration, permissions, i18n, menu, plugin, and MCP guidance as needed.\n`;
 }
 
 function projectReadme(name, projectType) {
@@ -218,7 +226,7 @@ function projectReadme(name, projectType) {
     hasUi ? 'cd ui && npm start' : null
   ].filter(Boolean).join('\n');
 
-  return `# ${name}\n\nA ChillSharp project workspace prepared for coding agents. The generated projects restore ChillSharp from public NuGet and npm registries; no local package archives are used.\n\n## Run\n\n\`\`\`bash\n${startCommands}\n\`\`\`\n\n## Start building\n\nOpen this folder with your coding agent and describe the first outcome you want to deliver. The agent guidance lives in [\`.agents/skills\`](.agents/skills).\n\nA request to build an application produces a connected system by default: an ASP.NET Core ChillSharp API, an authenticated management UI, and a user-facing frontend using that API. Ask for an API-only, UI-only, or static prototype only when that is genuinely the desired scope.\n\nFor example:\n\n> Build a blog. Authors sign in to manage posts and categories in an admin UI; visitors can browse published posts in a separate public frontend. Use the same ChillSharp API and database for both.\n\n## Included guidance\n\nThe workspace contains skills for full-stack application delivery, model preparation, registration, permissions, localized text, menus, client plugins, current-user preferences, documentation, and MCP.\n`;
+  return `# ${name}\n\nA ChillSharp project workspace prepared for coding agents. The generated projects restore ChillSharp from public NuGet and npm registries; no local package archives are used.\n\n## Run\n\n\`\`\`bash\n${startCommands}\n\`\`\`\n\n## Start building\n\nOpen this folder with your coding agent and describe the first outcome you want to deliver. The agent guidance lives in [\`.agents/skills\`](.agents/skills). The generated API is a starting template; the application still needs its ChillSharp model, registration, endpoints, and authorization.\n\nA request to build an application produces a connected ASP.NET Core ChillSharp API and an authenticated UI using persisted data. Add a separate public frontend when the requested users or workflows need one. Ask for an API-only, UI-only, or static prototype only when that is genuinely the desired scope.\n\nFor example:\n\n> Build a blog. Authors sign in to manage posts and categories in an admin UI; visitors can browse published posts in a separate public frontend. Use the same ChillSharp API and database for both.\n\n## Included guidance\n\nThe workspace contains skills for full-stack application delivery, model preparation, registration, permissions, localized text, menus, client plugins, current-user preferences, documentation, and MCP.\n`;
 }
 
 function projectGitignore(projectType) {
@@ -229,11 +237,11 @@ function projectGitignore(projectType) {
 }
 
 function printUsage(output = console) {
-  output.log('Usage: chill new <project-name> [--api|--ui|--both]');
+  output.log('Usage: chill new <project-name> [--skills|--api|--ui|--both]');
   output.log('       chill install [--ng-client|--vue-client|--react-client|--ts-client|--chillsharp|--chillsharp-client|--py-client]');
   output.log('');
   output.log('Commands:');
-  output.log('  new <project-name>  Create a ChillSharp API, UI, or both.');
+  output.log('  new <project-name>  Create a skills folder, ChillSharp API, UI, or both.');
   output.log('  install             Install a published ChillSharp client or .NET package.');
   output.log('');
   output.log('Without an option, new and install show a selection menu.');

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -46,6 +47,47 @@ test('new creates an API project and restores ChillSharp from NuGet', async () =
       ['dotnet', ['add', path.join('api', 'MyProject.Api.csproj'), 'package', 'ChillSharp']]
     ]);
     assert.match(readFileSync(path.join(destination, 'README.md'), 'utf8'), /public NuGet and npm registries/);
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true });
+  }
+});
+
+test('new --skills creates only the bundled coding agent skills', async () => {
+  const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+  const commands = [];
+
+  try {
+    const status = await cliModule.run(['new', 'skills-only', '--skills'], {
+      cwd: workingDirectory,
+      output: createOutput(),
+      runCommand(command, arguments_) { commands.push([command, arguments_]); }
+    });
+
+    const destination = path.join(workingDirectory, 'skills-only');
+    assert.equal(status, 0);
+    assert.deepEqual(readdirSync(destination), ['.agents']);
+    assert.deepEqual(readdirSync(path.join(destination, '.agents')), ['skills']);
+    assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp_model_preparation', 'SKILL.md')), true);
+    assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp-full-stack-application', 'SKILL.md')), true);
+    assert.deepEqual(commands, []);
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true });
+  }
+});
+
+test('new menu option 0 prepares the skills-only folder', () => {
+  const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+
+  try {
+    const result = spawnSync(process.execPath, [path.resolve('bin/chill.mjs'), 'new', 'skills-menu'], {
+      cwd: workingDirectory,
+      input: '0\n',
+      encoding: 'utf8'
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /0\. Prepare a folder with only coding agent skills/);
+    assert.deepEqual(readdirSync(path.join(workingDirectory, 'skills-menu')), ['.agents']);
   } finally {
     rmSync(workingDirectory, { recursive: true, force: true });
   }
