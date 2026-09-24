@@ -1,22 +1,28 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
-const cliPath = path.resolve('bin/chill.mjs');
+const cliModule = await import(pathToFileURL(path.resolve('bin/chill.mjs')).href);
 
-test('new creates an agent-ready project workspace', () => {
+function createOutput() {
+  return { log() {}, error() {} };
+}
+
+test('new creates an API project and restores ChillSharp from NuGet', async () => {
   const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+  const commands = [];
 
   try {
-    const result = spawnSync(process.execPath, [cliPath, 'new', 'my-project'], {
+    const status = await cliModule.run(['new', 'my-project', '--api'], {
       cwd: workingDirectory,
-      encoding: 'utf8'
+      output: createOutput(),
+      runCommand(command, arguments_, cwd) { commands.push({ command, arguments_, cwd }); }
     });
 
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(status, 0);
     const destination = path.join(workingDirectory, 'my-project');
     assert.equal(existsSync(path.join(destination, 'AGENTS.md')), true);
     assert.equal(existsSync(path.join(destination, '.agents', 'skills', 'chillsharp_model_preparation', 'SKILL.md')), true);
@@ -27,31 +33,95 @@ test('new creates an agent-ready project workspace', () => {
     );
     assert.match(fullStackSkill, /@chill-sharp\/create-app/);
     assert.match(fullStackSkill, /pip install chill-sharp-py-client/);
-    assert.match(
-      readFileSync(path.join(destination, 'AGENTS.md'), 'utf8'),
-      /connected ASP\.NET Core ChillSharp API, an authenticated management UI for real data, and a user-facing frontend/
-    );
+    assert.deepEqual(commands.map(({ command, arguments_ }) => [command, arguments_]), [
+      ['dotnet', ['new', 'webapi', '--framework', 'net8.0', '--no-https', '--use-controllers', '--name', 'MyProject.Api', '--output', 'api']],
+      ['dotnet', ['add', path.join('api', 'MyProject.Api.csproj'), 'package', 'ChillSharp']]
+    ]);
+    assert.match(readFileSync(path.join(destination, 'README.md'), 'utf8'), /public NuGet and npm registries/);
   } finally {
     rmSync(workingDirectory, { recursive: true, force: true });
   }
 });
 
-test('new refuses to overwrite a project directory', () => {
+test('new creates a UI and installs its published npm dependencies', async () => {
+  const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+  const commands = [];
+
+  try {
+    const status = await cliModule.run(['new', 'my-project'], {
+      cwd: workingDirectory,
+      output: createOutput(),
+      chooseProjectType: async () => 'ui',
+      runCommand(command, arguments_, cwd) {
+        commands.push({ command, arguments_, cwd });
+        if (command === 'npm' && arguments_[0] === 'create') mkdirSync(path.join(cwd, 'ui', 'packages'), { recursive: true });
+      }
+    });
+
+    assert.equal(status, 0);
+    assert.deepEqual(commands.map(({ command, arguments_ }) => [command, arguments_]), [
+      ['npm', ['create', '@chill-sharp/app', 'ui']],
+      ['npm', ['install']]
+    ]);
+    assert.equal(commands[1].cwd, path.join(workingDirectory, 'my-project', 'ui'));
+    assert.equal(existsSync(path.join(workingDirectory, 'my-project', 'ui', 'packages')), false);
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true });
+  }
+});
+
+test('new refuses to overwrite a project directory', async () => {
   const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
 
   try {
-    const firstResult = spawnSync(process.execPath, [cliPath, 'new', 'my-project'], {
+    const options = { cwd: workingDirectory, output: createOutput(), runCommand() {} };
+    assert.equal(await cliModule.run(['new', 'my-project', '--both'], options), 0);
+    assert.equal(await cliModule.run(['new', 'my-project', '--both'], options), 1);
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true });
+  }
+});
+
+test('install uses the selected package manager and published package name', async () => {
+  const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+  const commands = [];
+
+  try {
+    const status = await cliModule.run(['install'], {
       cwd: workingDirectory,
-      encoding: 'utf8'
-    });
-    const secondResult = spawnSync(process.execPath, [cliPath, 'new', 'my-project'], {
-      cwd: workingDirectory,
-      encoding: 'utf8'
+      output: createOutput(),
+      chooseDependency: async () => 'vue-client',
+      runCommand(command, arguments_, cwd) { commands.push({ command, arguments_, cwd }); }
     });
 
-    assert.equal(firstResult.status, 0, firstResult.stderr);
-    assert.equal(secondResult.status, 1);
-    assert.match(secondResult.stderr, /already exists/);
+    assert.equal(status, 0);
+    assert.deepEqual(commands, [{
+      command: 'npm',
+      arguments_: ['install', '@chill-sharp/vue-client'],
+      cwd: workingDirectory
+    }]);
+  } finally {
+    rmSync(workingDirectory, { recursive: true, force: true });
+  }
+});
+
+test('install can add the ChillSharp NuGet package without prompting', async () => {
+  const workingDirectory = mkdtempSync(path.join(tmpdir(), 'chill-cli-'));
+  const commands = [];
+
+  try {
+    const status = await cliModule.run(['install', '--chillsharp'], {
+      cwd: workingDirectory,
+      output: createOutput(),
+      runCommand(command, arguments_, cwd) { commands.push({ command, arguments_, cwd }); }
+    });
+
+    assert.equal(status, 0);
+    assert.deepEqual(commands, [{
+      command: 'dotnet',
+      arguments_: ['add', 'package', 'ChillSharp'],
+      cwd: workingDirectory
+    }]);
   } finally {
     rmSync(workingDirectory, { recursive: true, force: true });
   }
