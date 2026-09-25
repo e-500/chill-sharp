@@ -36,6 +36,7 @@ typedef void (^CSChillSharpCompletion)(id _Nullable result, NSError * _Nullable 
 @property (nonatomic, copy, nullable) NSString *accessToken;
 @property (nonatomic, copy, nullable) NSString *cultureName;
 @property (nonatomic, readonly, copy) NSString *chillBaseURL;
+@property (nonatomic, readonly, copy) NSString *notificationHubURL;
 
 - (instancetype)initWithBaseURL:(NSString *)baseURL;
 - (instancetype)initWithBaseURL:(NSString *)baseURL

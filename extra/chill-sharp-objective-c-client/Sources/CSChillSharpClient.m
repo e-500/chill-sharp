@@ -25,6 +25,7 @@ NSString * const CSChillSharpClientResponseTextKey = @"responseText";
 
 @interface CSChillSharpClient ()
 @property (nonatomic, copy, readwrite) NSString *chillBaseURL;
+@property (nonatomic, copy, readwrite) NSString *notificationHubURL;
 @property (nonatomic, copy) NSString *apiBaseURL;
 @property (nonatomic, strong) NSURLSession *URLSession;
 @end
@@ -74,6 +75,7 @@ NSString * const CSChillSharpClientResponseTextKey = @"responseText";
         self.apiBaseURL = [chillLower hasSuffix:@"/chill"]
             ? [self.chillBaseURL substringToIndex:self.chillBaseURL.length - @"/chill".length]
             : self.chillBaseURL;
+        self.notificationHubURL = [self.apiBaseURL stringByAppendingString:@"/notify"];
         self.accessToken = [self normalizedString:accessToken];
         self.cultureName = [self normalizedString:cultureName];
         self.URLSession = URLSession;

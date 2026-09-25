@@ -140,11 +140,14 @@ More information: [`extra/chill-sharp-java-client/README.md`](/c:/source/persona
 
 Use this when you want the generic ChillSharp client from Objective-C.
 
-Add the local podspec to your CocoaPods project:
+Use Swift Package Manager to include the Objective-C client and the Swift SignalR bridge:
 
-```ruby
-pod 'ChillSharpObjectiveCClient', :path => '../chill-sharp-objective-c-client'
+```swift
+.package(url: "https://github.com/e-500/chill-sharp.git", branch: "main")
+.product(name: "ChillSharpObjectiveCClient", package: "chill-sharp")
 ```
+
+The Swift Package Manager product requires iOS 14+ and macOS 11+. The CocoaPods spec remains available for REST-only use.
 
 More information: [`extra/chill-sharp-objective-c-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client/README.md)
 
