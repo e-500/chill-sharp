@@ -9,6 +9,8 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`@chill-sharp/react-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-react-client): React helpers built on `@chill-sharp/ts-client`
 - [`@chill-sharp/vue-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-vue-client): Vue helpers built on `@chill-sharp/ts-client`
 - [`chill-sharp-py-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client): Python client for the generic ChillSharp HTTP API
+- [`chill-sharp-java-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-java-client): Java client for the generic ChillSharp HTTP API
+- [`chill-sharp-objective-c-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client): Objective-C client for the generic ChillSharp HTTP API
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
 - [`@chill-sharp/create-app`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app): npm generator for a starter Angular client app
@@ -122,6 +124,29 @@ python -m compileall chillsharp_py_client
 This package is not part of the npm shared-folder publish flow.
 
 More information: [`extra/chill-sharp-py-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client/README.md)
+
+### `chill-sharp-java-client`
+
+Use this when you want the generic ChillSharp client from Java.
+
+```bash
+cd extra/chill-sharp-java-client
+mvn package
+```
+
+More information: [`extra/chill-sharp-java-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-java-client/README.md)
+
+### `chill-sharp-objective-c-client`
+
+Use this when you want the generic ChillSharp client from Objective-C.
+
+Add the local podspec to your CocoaPods project:
+
+```ruby
+pod 'ChillSharpObjectiveCClient', :path => '../chill-sharp-objective-c-client'
+```
+
+More information: [`extra/chill-sharp-objective-c-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client/README.md)
 
 ### UI Packages
 
