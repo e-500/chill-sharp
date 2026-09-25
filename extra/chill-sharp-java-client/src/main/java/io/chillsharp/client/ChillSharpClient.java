@@ -23,6 +23,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.NullNode;
+import com.microsoft.signalr.HubConnection;
+import com.microsoft.signalr.HubConnectionBuilder;
+import com.microsoft.signalr.HubConnectionState;
+import io.reactivex.Single;
 
 import java.io.IOException;
 import java.net.URI;
@@ -33,6 +37,17 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * Lightweight client for the generic ChillSharp HTTP API. Payloads and responses use Jackson
@@ -48,6 +63,12 @@ public final class ChillSharpClient {
     private final String apiUrl;
     private final String cultureName;
     private volatile String accessToken;
+    private final Map<UUID, EntityChangeSubscriptionState> entityChangeSubscriptions = new ConcurrentHashMap<>();
+    private final Map<RegistrationKey, Integer> entityChangeRegistrationCounts = new HashMap<>();
+    private final AtomicInteger reconnectAttempt = new AtomicInteger();
+    private final AtomicBoolean reconnectScheduled = new AtomicBoolean();
+    private volatile HubConnection notificationConnection;
+    private volatile boolean notificationDisconnectRequested;
 
     public ChillSharpClient(String baseUrl) {
         this(baseUrl, null, null, null, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build(), new ObjectMapper());
@@ -82,6 +103,41 @@ public final class ChillSharpClient {
     public String getVersion() { return VERSION; }
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = normalizeOptional(accessToken); }
+
+    /**
+     * Subscribe to changes for a Chill type, or one entity when {@code guid} is supplied.
+     * The returned handle unregisters this callback when closed.
+     */
+    public synchronized EntityChangeSubscription subscribeToEntityChanges(
+            String chillType, Consumer<List<ChillEntityChangeNotification>> callback, UUID guid) {
+        String normalizedType = required(chillType, "chillType");
+        Objects.requireNonNull(callback, "callback");
+        HubConnection connection = ensureNotificationConnection();
+        RegistrationKey key = new RegistrationKey(normalizedType, guid);
+        int count = entityChangeRegistrationCounts.getOrDefault(key, 0);
+        if (count == 0) connection.invoke("Register", new Object[]{normalizedType, guid}).blockingAwait();
+
+        UUID subscriptionId = UUID.randomUUID();
+        entityChangeSubscriptions.put(subscriptionId, new EntityChangeSubscriptionState(normalizedType, guid, callback));
+        entityChangeRegistrationCounts.put(key, count + 1);
+        return new EntityChangeSubscription(subscriptionId, normalizedType, guid, this::unsubscribeFromEntityChanges);
+    }
+
+    public EntityChangeSubscription subscribeToEntityChanges(
+            String chillType, Consumer<List<ChillEntityChangeNotification>> callback) {
+        return subscribeToEntityChanges(chillType, callback, null);
+    }
+
+    /** Stops the shared SignalR connection and forgets all subscriptions. */
+    public synchronized void disconnectEntityChanges() {
+        notificationDisconnectRequested = true;
+        reconnectAttempt.set(0);
+        entityChangeSubscriptions.clear();
+        entityChangeRegistrationCounts.clear();
+        HubConnection connection = notificationConnection;
+        notificationConnection = null;
+        if (connection != null) connection.stop().blockingAwait();
+    }
 
     public JsonNode query(JsonNode payload) { return post(chillUrl + "/query", payload); }
     public JsonNode lookup(JsonNode payload) { return post(chillUrl + "/lookup", payload); }
@@ -149,6 +205,120 @@ public final class ChillSharpClient {
             if (token != null && !token.isNull()) setAccessToken(token.asText());
         }
         return result;
+    }
+
+    private synchronized HubConnection ensureNotificationConnection() {
+        if (notificationConnection != null && notificationConnection.getConnectionState() == HubConnectionState.CONNECTED)
+            return notificationConnection;
+        notificationConnection = null;
+        notificationDisconnectRequested = false;
+        HubConnection connection = HubConnectionBuilder.create(notifyUrl())
+                .withAccessTokenProvider(Single.defer(() -> Single.just(accessToken == null ? "" : accessToken)))
+                .build();
+        connection.on("EntitiesChanged", this::dispatchEntityChangeNotifications, ChillEntityChangeNotification[].class);
+        connection.onClosed(error -> {
+            if (notificationConnection == connection) scheduleNotificationReconnect();
+        });
+        try {
+            connection.start().blockingAwait();
+            notificationConnection = connection;
+            reconnectAttempt.set(0);
+            for (RegistrationKey registration : new ArrayList<>(entityChangeRegistrationCounts.keySet()))
+                connection.invoke("Register", new Object[]{registration.chillType(), registration.guid()}).blockingAwait();
+        } catch (RuntimeException exception) {
+            if (notificationConnection == connection) notificationConnection = null;
+            connection.stop().blockingAwait();
+            throw exception;
+        }
+        return connection;
+    }
+
+    private void dispatchEntityChangeNotifications(ChillEntityChangeNotification[] changes) {
+        if (changes == null || changes.length == 0) return;
+        List<EntityChangeSubscriptionState> subscriptions = new ArrayList<>(entityChangeSubscriptions.values());
+        for (EntityChangeSubscriptionState subscription : subscriptions) {
+            List<ChillEntityChangeNotification> matching = new ArrayList<>();
+            for (ChillEntityChangeNotification change : changes) {
+                if (change != null && subscription.chillType().equals(change.getChillType())
+                        && (subscription.guid() == null || subscription.guid().equals(change.getGuid()))) {
+                    matching.add(change);
+                }
+            }
+            if (!matching.isEmpty()) subscription.callback().accept(List.copyOf(matching));
+        }
+    }
+
+    private void unsubscribeFromEntityChanges(UUID subscriptionId) {
+        synchronized (this) {
+            EntityChangeSubscriptionState subscription = entityChangeSubscriptions.remove(subscriptionId);
+            if (subscription == null) return;
+            RegistrationKey key = new RegistrationKey(subscription.chillType(), subscription.guid());
+            int count = entityChangeRegistrationCounts.getOrDefault(key, 0);
+            if (count > 1) {
+                entityChangeRegistrationCounts.put(key, count - 1);
+            } else {
+                entityChangeRegistrationCounts.remove(key);
+                HubConnection connection = notificationConnection;
+                if (connection != null) connection.invoke("Unregister", new Object[]{subscription.chillType(), subscription.guid()}).blockingAwait();
+            }
+        }
+    }
+
+    private void scheduleNotificationReconnect() {
+        if (notificationDisconnectRequested || entityChangeSubscriptions.isEmpty() || !reconnectScheduled.compareAndSet(false, true)) return;
+        int attempt = reconnectAttempt.getAndIncrement();
+        long[] delaysSeconds = {0, 2, 10, 30};
+        long delay = delaysSeconds[Math.min(attempt, delaysSeconds.length - 1)];
+        CompletableFuture.delayedExecutor(delay, TimeUnit.SECONDS).execute(() -> {
+            reconnectScheduled.set(false);
+            synchronized (ChillSharpClient.this) {
+                if (notificationDisconnectRequested || entityChangeSubscriptions.isEmpty()) return;
+                notificationConnection = null;
+                try {
+                    ensureNotificationConnection();
+                } catch (RuntimeException ignored) {
+                    scheduleNotificationReconnect();
+                }
+            }
+        });
+    }
+
+    private String notifyUrl() { return buildApiUrl("notify"); }
+
+    private String buildApiUrl(String relativeUrl) {
+        String apiBase = chillUrl.toLowerCase().endsWith("/chill")
+                ? chillUrl.substring(0, chillUrl.length() - 6)
+                : chillUrl;
+        return apiBase.replaceAll("/+$", "") + "/" + relativeUrl.replaceAll("^/+", "");
+    }
+
+    private record RegistrationKey(String chillType, UUID guid) { }
+    private record EntityChangeSubscriptionState(
+            String chillType, UUID guid, Consumer<List<ChillEntityChangeNotification>> callback) { }
+
+    public static final class EntityChangeSubscription implements AutoCloseable {
+        private final UUID id;
+        private final String chillType;
+        private final UUID guid;
+        private final Consumer<UUID> unsubscribe;
+        private volatile boolean closed;
+
+        private EntityChangeSubscription(UUID id, String chillType, UUID guid, Consumer<UUID> unsubscribe) {
+            this.id = id;
+            this.chillType = chillType;
+            this.guid = guid;
+            this.unsubscribe = unsubscribe;
+        }
+
+        public String getChillType() { return chillType; }
+        public UUID getGuid() { return guid; }
+
+        @Override public synchronized void close() {
+            if (!closed) {
+                closed = true;
+                unsubscribe.accept(id);
+            }
+        }
     }
     private JsonNode post(String url, JsonNode payload) { return post(url, payload, false); }
     private JsonNode post(String url, JsonNode payload, boolean anonymous) { return send("POST", url, payload, anonymous); }

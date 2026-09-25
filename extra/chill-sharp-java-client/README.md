@@ -49,7 +49,21 @@ ChillSharpClient client = new ChillSharpClient(
 
 Core methods include `query`, `lookup`, `find`, `create`, `update`, `delete`, `autocomplete`, `validate`, and `chunk`. Schema methods include `getSchema`, `getSchemaList`, `getEntityOptions`, and their corresponding setters. I18n methods include `getText`, `getTexts`, and `setText`. Auth helpers cover registration, login, token refresh, logout, password reset, current permissions and preferences, and user and role lists.
 
-Methods take and return Jackson `JsonNode` values. `ChillSharpClientException` exposes `getStatusCode()` and `getResponseText()` for HTTP failures. Set a token at any time with `setAccessToken`; requests use it as a bearer token.
+Methods take and return Jackson `JsonNode` values. `ChillSharpClientException` exposes `getStatusCode()` and `getResponseText()` for HTTP failures. Set a token at any time with `setAccessToken`; HTTP requests and SignalR connections use it as a bearer token.
+
+## Entity change notifications
+
+```java
+try (ChillSharpClient.EntityChangeSubscription subscription = client.subscribeToEntityChanges(
+        "Model.Post",
+        changes -> changes.forEach(change -> System.out.println(change.getAction() + ": " + change.getGuid())))) {
+    // Keep the subscription open while the application needs updates.
+}
+
+client.disconnectEntityChanges();
+```
+
+Omit the third `UUID` argument to `subscribeToEntityChanges` to subscribe to every change for the type. Pass an entity GUID to subscribe to one entity. The client shares its connection across subscriptions and restores registered groups after reconnecting.
 
 ## Limitations
 
