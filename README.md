@@ -72,6 +72,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 - add schema metadata for strong and consistent UIs
 - layer authentication and authorization with `ChillSharp.Auth`
 - call the API from .NET with `ChillSharp.Client`
+- subscribe to entity change notifications over SignalR with `ChillSharp.Client`
+
+The .NET client can subscribe to changes for a full entity type or a single entity. The client manages one shared SignalR connection and automatically restores its registrations after reconnecting:
+
+```csharp
+await using var subscription = await client.SubscribeToEntityChangesAsync(
+    "Model.Post",
+    changes =>
+    {
+        foreach (var change in changes)
+            Console.WriteLine($"{change.Action}: {change.ChillType} {change.Guid}");
+        return Task.CompletedTask;
+    });
+
+// When the client is finished with notifications:
+await client.DisconnectEntityChangesAsync();
+```
 
 ## Built For Real Applications
 
