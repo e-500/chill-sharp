@@ -1147,6 +1147,15 @@ class ChillSharpClient:
             return None
         if text.endswith("Z"):
             text = text[:-1] + "+00:00"
+        if "." in text:
+            dot_index = text.find(".")
+            plus_index = text.find("+", dot_index)
+            minus_index = text.find("-", dot_index)
+            candidates = [index for index in (plus_index, minus_index) if index != -1]
+            timezone_start = min(candidates) if candidates else len(text)
+            fractional = text[dot_index + 1 : timezone_start]
+            if fractional.isdigit() and len(fractional) > 6:
+                text = f"{text[:dot_index + 1]}{fractional[:6]}{text[timezone_start:]}"
         parsed = datetime.fromisoformat(text)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
