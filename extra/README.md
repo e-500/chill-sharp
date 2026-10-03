@@ -9,9 +9,12 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`@chill-sharp/react-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-react-client): React helpers built on `@chill-sharp/ts-client`
 - [`@chill-sharp/vue-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-vue-client): Vue helpers built on `@chill-sharp/ts-client`
 - [`chill-sharp-py-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client): Python client for the generic ChillSharp HTTP API
+- [`chill-sharp-java-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-java-client): Java client for the generic ChillSharp HTTP API
+- [`chill-sharp-objective-c-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client): Objective-C client for the generic ChillSharp HTTP API
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
 - [`chill-sharp-ui-template`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template): starter client shell
 - [`@chill-sharp/create-app`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app): npm generator for a starter Angular client app
+- [`@chill-sharp/chill-cli`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-cli): cross-platform CLI for agent-ready ChillSharp workspaces
 - [`chill-sharp-ui-architecture`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-architecture): UI architecture notes and compatibility publish wrapper
 
 ## How-To Guides
@@ -122,6 +125,32 @@ This package is not part of the npm shared-folder publish flow.
 
 More information: [`extra/chill-sharp-py-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client/README.md)
 
+### `chill-sharp-java-client`
+
+Use this when you want the generic ChillSharp client from Java.
+
+```bash
+cd extra/chill-sharp-java-client
+mvn package
+```
+
+More information: [`extra/chill-sharp-java-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-java-client/README.md)
+
+### `chill-sharp-objective-c-client`
+
+Use this when you want the generic ChillSharp client from Objective-C.
+
+Use Swift Package Manager to include the Objective-C client and the Swift SignalR bridge:
+
+```swift
+.package(url: "https://github.com/e-500/chill-sharp.git", branch: "main")
+.product(name: "ChillSharpObjectiveCClient", package: "chill-sharp")
+```
+
+The Swift Package Manager product requires iOS 14+ and macOS 11+. The CocoaPods spec remains available for REST-only use.
+
+More information: [`extra/chill-sharp-objective-c-client/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client/README.md)
+
 ### UI Packages
 
 The UI packages live beside the other extra libraries:
@@ -157,9 +186,17 @@ Create an app from the public npm packages:
 npm create @chill-sharp/app my-app
 ```
 
+Create an agent-ready ChillSharp workspace:
+
+```bash
+npm install -g @chill-sharp/chill-cli
+chill new my-project
+```
+
 More information:
 
 - [`extra/chill-sharp-ui-core/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core/README.md)
 - [`extra/chill-sharp-ui-template/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-template/README.md)
 - [`extra/chill-sharp-create-app/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-create-app/README.md)
+- [`extra/chill-cli/README.md`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-cli/README.md)
 - [`extra/HOW_TO_CREATE_UI_CORE_PLUGIN_README.md`](HOW_TO_CREATE_UI_CORE_PLUGIN_README.md)

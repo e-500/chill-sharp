@@ -1,10 +1,44 @@
 # ChillSharp
 
-Turn an existing EF Core model into a live REST API in minutes.
+Make your data useful without giving it away.
 
-ChillSharp is built for the moment when your database model already exists, your domain types already exist, and you do not want to spend days writing repetitive controllers, DTO mappers, and CRUD plumbing just to get an application online. Plug in your `DbContext`, map the API, and you are suddenly standing on a deployable backend.
+Permission-first data infrastructure for .NET.
 
-Few lines. Real endpoints. Query, find, create, update, delete. Built-in support for authentication and schema metadata. Ready to run locally, ready to ship in a container, ready to become the data backbone of your app and the foundation for strong, consistent UIs.
+ChillSharp turns an existing .NET data model into controlled interfaces that applications, people, and AI can use without surrendering unrestricted database access. It helps teams expose the right data to the right consumers while keeping permissions, schema, and behavior consistent across the stack.
+
+## What can you build?
+
+- Build an API around an existing model
+- Build applications with controlled access to the data they need
+- Connect AI to useful data without exposing raw database access
+- Share selected data with other systems while keeping control
+- Create data-driven experiences from a single consistent model and permission layer
+
+## How it works
+
+Your existing .NET data model
+
+↓
+
+ChillSharp
+
+↓
+
+Controlled APIs, schema, auth, clients, and AI-ready interfaces
+
+↓
+
+Applications, users, and AI
+
+## What ChillSharp is not
+
+- Not a database
+- Not an ORM replacement
+- Not a generic API framework
+- Not an AI platform
+- Not a replacement for your application logic
+
+ChillSharp provides the infrastructure between your data and the systems that need to use it.
 
 [ChillSharp.dev](https://chillsharp.dev/)
 
@@ -12,6 +46,21 @@ Few lines. Real endpoints. Query, find, create, update, delete. Built-in support
 
 Latest releases:
 [GitHub Releases](https://github.com/e-500/chill-sharp/releases/)
+
+To start an agent-ready ChillSharp workspace:
+
+```bash
+npm install -g @chill-sharp/chill-cli
+chill new my-project
+```
+
+The command adds maintained ChillSharp skills for your coding agent to `.agents/skills`.
+
+When you ask that agent to build an application, the included full-stack guidance requires a connected deliverable: a runnable ASP.NET Core ChillSharp API and an authenticated UI that operates on real data. Add a separate user-facing frontend when the requested users or workflows need one. Ask explicitly for an API-only, UI-only, or static prototype when that is the intended scope.
+
+For example:
+
+> Create a blog with an ASP.NET Core ChillSharp backend and middleware. Authors sign in to manage posts and categories in an admin UI; visitors browse published posts in a separate frontend. Both UIs must use the same API and database.
 
 ## Deploy-Ready In A Few Lines
 
@@ -57,6 +106,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 - add schema metadata for strong and consistent UIs
 - layer authentication and authorization with `ChillSharp.Auth`
 - call the API from .NET with `ChillSharp.Client`
+- subscribe to entity change notifications over SignalR with `ChillSharp.Client`
+
+The .NET client can subscribe to changes for a full entity type or a single entity. The client manages one shared SignalR connection and automatically restores its registrations after reconnecting:
+
+```csharp
+await using var subscription = await client.SubscribeToEntityChangesAsync(
+    "Model.Post",
+    changes =>
+    {
+        foreach (var change in changes)
+            Console.WriteLine($"{change.Action}: {change.ChillType} {change.Guid}");
+        return Task.CompletedTask;
+    });
+
+// When the client is finished with notifications:
+await client.DisconnectEntityChangesAsync();
+```
 
 ## Built For Real Applications
 

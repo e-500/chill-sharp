@@ -46,4 +46,4 @@ The script suggests `C:\source\nuget-shared` first and asks you to confirm it or
 
 ## Agent skills
 
-The template includes `.agents/skills/` guidance for model preparation, automatic schema metadata, internationalization, MCP exposure, permission granularity, and client plugin development. The NuGet upgrade scripts refresh these skills from the package into generated backend client projects.
+The template includes `.agents/skills/` guidance for full-stack application delivery, model preparation, automatic schema metadata, internationalization, MCP exposure, permission granularity, and client plugin development. For a new application request, the full-stack guidance requires a runnable ChillSharp API plus a connected management UI and user-facing frontend unless the user explicitly limits the scope. The NuGet upgrade scripts refresh these skills from the package into generated backend client projects.
