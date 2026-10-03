@@ -21,6 +21,7 @@ import { onScopeDispose, ref, shallowRef, watch, watchEffect, type Ref } from "v
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 import type {
+  ChillDtoQuery,
   ChillDtoSchemaListItem,
   ChillUserPreferences,
   ChillEntityChangeCallback,
@@ -37,11 +38,11 @@ export interface UseChillAsyncState<TData> {
   reload: () => Promise<TData | null>;
 }
 
-export interface UseChillMutationState<TData> {
+export interface UseChillMutationState<TData, TArguments extends unknown[] = unknown[]> {
   data: ReadonlyRef<TData | null>;
   error: ReadonlyRef<unknown>;
   isLoading: ReadonlyRef<boolean>;
-  execute: (...args: unknown[]) => Promise<TData>;
+  execute: (...args: TArguments) => Promise<TData>;
   reset: () => void;
 }
 
@@ -263,14 +264,13 @@ export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPrefere
   return { data, error, isLoading, reload: load };
 }
 
-export function useQueryMutation(): UseChillMutationState<JsonObject> {
+export function useQueryMutation(): UseChillMutationState<ChillDtoQuery, [ChillDtoQuery]> {
   const client = useChillSharpClient();
-  const data = ref<JsonObject | null>(null);
+  const data = shallowRef<ChillDtoQuery | null>(null);
   const error = ref<unknown>(null);
   const isLoading = ref<boolean>(false);
 
-  const execute = async (...args: unknown[]) => {
-    const payload = args[0] as JsonObject;
+  const execute = async (payload: ChillDtoQuery) => {
     isLoading.value = true;
     error.value = null;
 

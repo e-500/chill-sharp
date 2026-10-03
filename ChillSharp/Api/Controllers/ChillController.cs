@@ -95,7 +95,11 @@ namespace ChillSharp.Api.Controllers
         [Route("query")]
         public async Task<IActionResult> Query(ChillDtoQuery DtoQuery, CancellationToken cancellationToken)
         {
-            var authorizationResult = await EnsureEntityAccessAsync(DtoQuery.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+            var authorizationResult = await EnsureEntityAccessAsync(
+                DtoQuery.ChillType,
+                ChillEntityAclAction.Query,
+                isQueryType: DtoQuery.AutomaticQuery == null,
+                cancellationToken);
             if (authorizationResult != null)
                 return authorizationResult;
             try
@@ -400,7 +404,11 @@ namespace ChillSharp.Api.Controllers
             switch (operation.Verb?.ToLowerInvariant())
             {
                 case ChillOperationVerb.QUERY when operation.Query != null:
-                    return await EnsureEntityAccessAsync(operation.Query.ChillType, ChillEntityAclAction.Query, isQueryType: true, cancellationToken);
+                    return await EnsureEntityAccessAsync(
+                        operation.Query.ChillType,
+                        ChillEntityAclAction.Query,
+                        isQueryType: operation.Query.AutomaticQuery == null,
+                        cancellationToken);
                 case ChillOperationVerb.FIND when operation.Entity != null:
                     return await EnsureEntityAccessAsync(operation.Entity.ChillType, ChillEntityAclAction.Query, isQueryType: false, cancellationToken);
                 case ChillOperationVerb.CREATE when operation.Entity != null:

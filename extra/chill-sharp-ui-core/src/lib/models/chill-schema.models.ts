@@ -104,8 +104,49 @@ export type ChillEntity = JsonObject & {
   chillState?: ChillEntityState;
 };
 
+export type AutomaticQueryLogicalOperator = 'And' | 'Or';
+
+export type AutomaticQueryOperator =
+  | 'Equal'
+  | 'NotEqual'
+  | 'GreaterThan'
+  | 'GreaterThanOrEqual'
+  | 'LessThan'
+  | 'LessThanOrEqual'
+  | 'Between'
+  | 'Contains'
+  | 'StartsWith'
+  | 'EndsWith'
+  | 'In'
+  | 'IsNull'
+  | 'IsNotNull'
+  | 'IsEmpty'
+  | 'IsNotEmpty'
+  | 'Any'
+  | 'All';
+
+export type AutomaticQueryFilter = JsonObject & {
+  propertyName: string;
+  operator: AutomaticQueryOperator;
+  value?: JsonValue;
+  secondValue?: JsonValue;
+  itemFilter?: AutomaticQueryGroup | null;
+  ignoreCase?: boolean;
+};
+
+export type AutomaticQueryGroup = JsonObject & {
+  logicalOperator?: AutomaticQueryLogicalOperator;
+  filters: AutomaticQueryFilter[];
+  groups?: AutomaticQueryGroup[];
+};
+
+export type AutomaticQuery = JsonObject & {
+  filter: AutomaticQueryGroup;
+};
+
 export type ChillQuery = JsonObject & {
   chillType?: string;
+  automaticQuery?: AutomaticQuery | null;
   properties?: Record<string, JsonValue>;
   resultProperties?: JsonValue[];
   pagination?: ChillPagination | null;
