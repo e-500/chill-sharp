@@ -1,10 +1,44 @@
 # ChillSharp
 
-Turn an existing EF Core model into a live REST API in minutes.
+Make your data useful without giving it away.
 
-ChillSharp is built for the moment when your database model already exists, your domain types already exist, and you do not want to spend days writing repetitive controllers, DTO mappers, and CRUD plumbing just to get an application online. Plug in your `DbContext`, map the API, and you are suddenly standing on a deployable backend.
+Permission-first data infrastructure for .NET.
 
-Few lines. Real endpoints. Query, find, create, update, delete. Built-in support for authentication and schema metadata. Ready to run locally, ready to ship in a container, ready to become the data backbone of your app and the foundation for strong, consistent UIs.
+ChillSharp turns an existing .NET data model into controlled interfaces that applications, people, and AI can use without surrendering unrestricted database access. It helps teams expose the right data to the right consumers while keeping permissions, schema, and behavior consistent across the stack.
+
+## What can you build?
+
+- Build an API around an existing model
+- Build applications with controlled access to the data they need
+- Connect AI to useful data without exposing raw database access
+- Share selected data with other systems while keeping control
+- Create data-driven experiences from a single consistent model and permission layer
+
+## How it works
+
+Your existing .NET data model
+
+↓
+
+ChillSharp
+
+↓
+
+Controlled APIs, schema, auth, clients, and AI-ready interfaces
+
+↓
+
+Applications, users, and AI
+
+## What ChillSharp is not
+
+- Not a database
+- Not an ORM replacement
+- Not a generic API framework
+- Not an AI platform
+- Not a replacement for your application logic
+
+ChillSharp provides the infrastructure between your data and the systems that need to use it.
 
 [ChillSharp.dev](https://chillsharp.dev/)
 
