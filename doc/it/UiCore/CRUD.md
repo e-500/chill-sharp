@@ -4,7 +4,7 @@ Versione originale in inglese: [English](../../UiCore/CRUD.md)
 
 Crea una voce di menu con `ComponentName` impostato a `CRUD`. Il suo `ComponentConfigurationJson` deve essere un oggetto JSON; le chiavi non distinguono maiuscole e minuscole. `chillType` è obbligatorio. Normalmente è il Chill type dell'entità e `chillQuery` è il Chill type della query che restituisce l'entità.
 
-Quando `chillQuery` è omesso o `null`, il CRUD usa la modalità query automatica. Il dialogo Cerca viene generato da tutti i campi dello schema dell'entità, ogni campo è facoltativo e ciascun campo valorizzato viene inviato come filtro `Equal`. I campi vuoti non vengono inviati. Le selezioni di riferimenti a entità vengono ridotte al relativo GUID per il confronto di uguaglianza. Se `chillQuery` è configurato, continua a essere usato il relativo schema query dedicato con il payload esistente.
+Quando `chillQuery` è omesso o `null`, il CRUD usa la modalità query automatica. Il dialogo Cerca viene generato dai campi scalari e dai riferimenti a entità dello schema dell'entità filtrabili per uguaglianza, ogni campo è facoltativo e ciascun campo valorizzato viene inviato tramite `Properties`. Il server converte tali proprietà esposte in filtri `Equal`. Le raccolte di entità sono escluse perché non hanno un predicato di uguaglianza. I campi vuoti non vengono inviati. Le selezioni di riferimenti a entità vengono ridotte al relativo GUID per il confronto di uguaglianza. Se `chillQuery` è configurato, continua a essere usato il relativo schema query dedicato con il payload esistente.
 
 La configurazione minima per la query automatica è:
 
@@ -66,7 +66,7 @@ Esistono due flussi indipendenti:
 | Ricerca/query | `defaultQueryValues` | `fixedQueryValues` |
 | Creazione entità | `defaultValues` | `fixedValues` |
 
-UI Core unisce ogni flusso in questo ordine. Se la stessa proprietà compare in entrambi i contenitori, prevale il valore nel contenitore `fixed...`. Usa solo il contenitore fixed quando un valore non deve essere modificato; usa solo quello default quando è soltanto un valore iniziale utile. Nella modalità query automatica, i valori query valorizzati vengono convertiti in filtri `Equal` come quelli inseriti nel form generato.
+UI Core unisce ogni flusso in questo ordine. Se la stessa proprietà compare in entrambi i contenitori, prevale il valore nel contenitore `fixed...`. Usa solo il contenitore fixed quando un valore non deve essere modificato; usa solo quello default quando è soltanto un valore iniziale utile. Nella modalità query automatica, i valori query valorizzati vengono inviati tramite `Properties` e convertiti dal server in filtri `Equal` come quelli inseriti nel form generato.
 
 `fixedQueryValues` vincola i record restituiti dal CRUD figlio. `fixedValues` vincola l'entità inviata dal flusso di creazione e rende tali proprietà di sola lettura nel form e nell'editor inline. I contenitori fixed sono configurazione, non sostituiscono autorizzazione o validazione lato server: l'API deve continuare a imporre tenant, proprietà e autorizzazioni.
 

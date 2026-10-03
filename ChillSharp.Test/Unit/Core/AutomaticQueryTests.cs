@@ -179,6 +179,30 @@ public class AutomaticQueryTests
     }
 
     [TestMethod]
+    public void ChillDtoEngineQuery_UsesEntityPropertiesWhenNoQueryObjectIsProvided()
+    {
+        using var context = CreateContext();
+        context.Post.AddRange(NewPost("Wanted", null), NewPost("Ignored", null));
+        context.SaveChanges();
+        var dtoQuery = new ChillDtoQuery
+        {
+            ChillType = "Model.Post",
+            Properties = new Dictionary<string, object?>
+            {
+                ["title"] = "Wanted"
+            },
+            ResultProperties = ChillDtoProperty.Build(["Guid", "Title"]),
+            Pagination = new ChillPagination { Page = 1, PageResults = 1 }
+        };
+
+        var result = new ChillDtoEngine(context).Query(dtoQuery);
+
+        Assert.IsNull(result.AutomaticQuery);
+        Assert.HasCount(1, result.Results);
+        Assert.AreEqual("Wanted", result.Results[0].Properties[nameof(Post.Title)]?.ToString());
+    }
+
+    [TestMethod]
     public async Task QueryEndpoint_DeserializesAutomaticQueryAndAuthorizesTheEntityResource()
     {
         const string payload = """

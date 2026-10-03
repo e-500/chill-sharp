@@ -793,9 +793,6 @@ export class CrudPageComponent implements OnInit {
       chillType: this.usesAutomaticQuery()
         ? this.configuredResultChillType()
         : this.configuredQueryChillType() || schema.chillType?.trim() || this.selectedQueryType(),
-      ...(this.usesAutomaticQuery()
-        ? { automaticQuery: { filter: { logicalOperator: 'And' as const, filters: [], groups: [] } } }
-        : {}),
       properties: {
         ...this.defaultQueryValues(),
         ...this.fixedQueryValues()
