@@ -132,6 +132,57 @@ ChillSharp is not only about exposing CRUD endpoints quickly. It also helps you 
 - `ChillSharp.Schema` exposes schema information that UI layers can use to build forms, lists, labels, and editors with a single source of truth.
 - Together, auth and schema metadata make it easier to build frontends that are not only fast to develop, but also consistent in behavior, permissions, and presentation.
 
+## Automatic Queries
+
+Query an entity directly by setting its `ChillType` and the properties to match. ChillSharp combines these values with `AND` and uses equality comparisons:
+
+```csharp
+var query = new ChillDtoQuery
+{
+    ChillType = "Model.Post",
+    Properties = new Dictionary<string, object?>
+    {
+        ["Author"] = "Ada"
+    }
+};
+
+var result = client.Query(query);
+```
+
+For more control, set `AutomaticQuery` to define operators and logical groups:
+
+```csharp
+var query = new ChillDtoQuery
+{
+    ChillType = "Model.Post",
+    AutomaticQuery = new AutomaticQuery
+    {
+        Filter = new AutomaticQueryGroup
+        {
+            LogicalOperator = AutomaticQueryLogicalOperator.Or,
+            Filters =
+            {
+                new AutomaticQueryFilter
+                {
+                    PropertyName = "Title",
+                    Operator = AutomaticQueryOperator.Contains,
+                    Value = "guide",
+                    IgnoreCase = true
+                },
+                new AutomaticQueryFilter
+                {
+                    PropertyName = "Author",
+                    Operator = AutomaticQueryOperator.Equal,
+                    Value = "Ada"
+                }
+            }
+        }
+    }
+};
+
+var result = client.Query(query);
+```
+
 ## Ordering And Position
 
 ChillSharp query DTOs now include an `Ordering` object alongside `Pagination`.
