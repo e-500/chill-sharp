@@ -9,6 +9,7 @@ This folder contains the reusable client packages and UI packages that sit along
 - [`@chill-sharp/react-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-react-client): React helpers built on `@chill-sharp/ts-client`
 - [`@chill-sharp/vue-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-vue-client): Vue helpers built on `@chill-sharp/ts-client`
 - [`chill-sharp-py-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-py-client): Python client for the generic ChillSharp HTTP API
+- [`chill-sharp-mathematica-client`](chill-sharp-mathematica-client/README.md): Wolfram Language client for authenticated, filtered, sorted, paginated queries
 - [`chill-sharp-java-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-java-client): Java client for the generic ChillSharp HTTP API
 - [`chill-sharp-objective-c-client`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-objective-c-client): Objective-C client for the generic ChillSharp HTTP API
 - [`chill-sharp-ui-core`](/c:/source/personal/chill-sharp/chill-sharp/extra/chill-sharp-ui-core): shared Angular UI package
