@@ -33,6 +33,7 @@ namespace ChillSharp.Tests.EF
 
         public DbSet<Post> Post { get; set; }
         public DbSet<Blog> Blog { get; set; }
+        public DbSet<CqrsCrudItem> CqrsCrudItems { get; set; }
         public DbSet<MapperCoverageEntity> MapperCoverage { get; set; }
         public DbSet<MapperCoverageRelated> MapperCoverageRelated { get; set; }
 

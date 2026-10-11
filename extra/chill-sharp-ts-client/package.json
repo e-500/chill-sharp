@@ -25,6 +25,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/client.test.mjs",
     "prepare": "npm run build",
     "prepack": "npm run build"
   },
