@@ -173,6 +173,22 @@ Validate without saving:
 var errors = client.Validate(blog);
 ```
 
+## Commands
+
+Execute an application-defined `IChillCommand` through `Command`. `Parameters` carries named inputs and returns the updated command values:
+
+```csharp
+var command = client.Command(new ChillDtoCommand
+{
+    ChillType = "Commands.SendNotification",
+    Parameters =
+    {
+        ["Recipient"] = "ada@example.com",
+        ["Message"] = "Your report is ready"
+    }
+});
+```
+
 ## Query And Lookup
 
 Use `Query` when the host exposes an entity query type:

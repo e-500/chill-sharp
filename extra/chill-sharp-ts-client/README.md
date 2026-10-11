@@ -111,6 +111,20 @@ Query payloads can now include:
 
 If you omit `ordering`, the backend defaults to `Position`. Entity payloads also include `position`, which defaults to `0`.
 
+### Command
+
+Use `command()` to execute a registered custom command. `parameters` contains the command's named inputs, and the response includes its updated parameters.
+
+```ts
+const result = await client.command({
+  chillType: "Commands.SendNotification",
+  parameters: {
+    recipient: "ada@example.com",
+    message: "Your report is ready"
+  }
+});
+```
+
 ### Query
 
 Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.

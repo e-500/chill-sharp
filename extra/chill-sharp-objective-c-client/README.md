@@ -69,7 +69,27 @@ Pass a server root, an existing `/api/chill` URL, or another recognized ChillSha
 
 ## Available methods
 
-Core methods: `query:completion:`, `lookup:completion:`, `find:completion:`, `create:completion:`, `update:completion:`, `deleteEntity:completion:`, `autocomplete:completion:`, `validate:completion:`, and `chunk:completion:`.
+Core methods: `command:completion:`, `query:completion:`, `lookup:completion:`, `find:completion:`, `create:completion:`, `update:completion:`, `deleteEntity:completion:`, `autocomplete:completion:`, `validate:completion:`, and `chunk:completion:`.
+
+Execute a custom command by supplying its Chill type and named parameters:
+
+```objective-c
+NSDictionary *command = @{
+    @"ChillType": @"Commands.SendNotification",
+    @"Parameters": @{
+        @"Recipient": @"ada@example.com",
+        @"Message": @"Your report is ready"
+    }
+};
+
+[client command:command completion:^(id result, NSError *error) {
+    if (error) {
+        NSLog(@"Command failed: %@", error.localizedDescription);
+        return;
+    }
+    NSLog(@"Command result: %@", result);
+}];
+```
 
 Schema methods cover reading and writing schemas and entity options. I18n methods cover reading one or many texts and setting text. Auth helpers cover registration, login, refresh, logout, password reset, permissions, current user preferences, and user and role lists.
 

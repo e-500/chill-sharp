@@ -139,6 +139,7 @@ public final class ChillSharpClient {
         if (connection != null) connection.stop().blockingAwait();
     }
 
+    public JsonNode command(JsonNode payload) { return post(chillUrl + "/command", payload); }
     public JsonNode query(JsonNode payload) { return post(chillUrl + "/query", payload); }
     public JsonNode lookup(JsonNode payload) { return post(chillUrl + "/lookup", payload); }
     public JsonNode find(JsonNode payload) { return post(chillUrl + "/find", payload); }

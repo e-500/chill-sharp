@@ -122,6 +122,19 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Executes an application-defined command using the supplied parameters.
+        /// </summary>
+        /// <param name="Command">The command type and parameter values.</param>
+        /// <returns>The command DTO with its updated parameter values.</returns>
+        public ChillDtoCommand Command(ChillDtoCommand Command)
+        {
+            var result = SendJson<ChillDtoCommand>(HttpMethod.Post, BuildChillUrl("command"), Command);
+            if (result == null)
+                throw new ChillClientException("Unexpected null command result");
+            return result;
+        }
+
+        /// <summary>
         /// Sends a query request to the ChillSharp API.
         /// </summary>
         /// <param name="Query">Query DTO defining filters and parameters.</param>

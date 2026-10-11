@@ -34,6 +34,7 @@ import type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntityOptions,
+  ChillDtoCommand,
   ChillDtoMenuItem,
   ChillDtoQuery,
   ChillDtoSchema,
@@ -67,6 +68,12 @@ import { CHILL_SHARP_NG_CLIENT_VERSION } from "./version.js";
 })
 export class ChillSharpNgClient {
   constructor(@Inject(CHILL_SHARP_CLIENT) private readonly client: ChillSharpClient) {}
+
+  command(dtoCommand: ChillDtoCommand): Observable<ChillDtoCommand>;
+  command(dtoCommand: JsonObject): Observable<JsonObject>;
+  command(dtoCommand: JsonObject): Observable<JsonObject> {
+    return from(this.client.command(dtoCommand));
+  }
 
   query(dtoQuery: ChillDtoQuery): Observable<ChillDtoQuery>;
   query(dtoQuery: JsonObject): Observable<JsonObject>;

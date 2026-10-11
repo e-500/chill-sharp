@@ -216,6 +216,11 @@ export type ChillDtoQuery = JsonObject & {
   results: ChillDtoEntity[];
 };
 
+export type ChillDtoCommand = JsonObject & {
+  chillType: string;
+  parameters: Record<string, JsonValue>;
+};
+
 export interface ChillDtoMenuItem extends JsonObject {
   guid: string;
   positionNo: number;
@@ -566,6 +571,12 @@ export class ChillSharpClient {
       refreshToken: null,
       refreshTokenExpiresUtc: null
     };
+  }
+
+  command(dtoCommand: ChillDtoCommand): Promise<ChillDtoCommand>;
+  command(dtoCommand: JsonObject): Promise<JsonObject>;
+  command(dtoCommand: JsonObject): Promise<JsonObject> {
+    return this.sendJson<JsonObject>("POST", this.buildChillUrl("command"), dtoCommand);
   }
 
   query(dtoQuery: ChillDtoQuery): Promise<ChillDtoQuery>;

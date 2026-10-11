@@ -173,6 +173,22 @@ Convalida senza salvare:
 var errors = client.Validate(blog);
 ```
 
+## Comandi
+
+Esegui un `IChillCommand` definito dall'applicazione tramite `Command`. `Parameters` contiene gli input nominati e restituisce i valori aggiornati del comando:
+
+```csharp
+var command = client.Command(new ChillDtoCommand
+{
+    ChillType = "Commands.SendNotification",
+    Parameters =
+    {
+        ["Recipient"] = "ada@example.com",
+        ["Message"] = "Your report is ready"
+    }
+});
+```
+
 ## Interrogazione e ricerca
 
 Utilizza `Query` quando l'host espone un tipo di query di entità:

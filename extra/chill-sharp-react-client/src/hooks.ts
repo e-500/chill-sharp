@@ -21,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { CHILL_SHARP_REACT_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./context.js";
 import type {
+  ChillDtoCommand,
   ChillDtoQuery,
   ChillDtoSchema,
   ChillDtoSchemaListItem,
@@ -255,6 +256,41 @@ export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPrefere
 
   useEffect(() => { void load(); }, [client]);
   return { data, error, isLoading, reload: load };
+}
+
+export function useCommandMutation(): UseChillMutationState<ChillDtoCommand, [ChillDtoCommand]> {
+  const client = useChillSharpClient();
+  const [data, setData] = useState<ChillDtoCommand | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const execute = async (payload: ChillDtoCommand) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await client.command(payload);
+      setData(response);
+      return response;
+    } catch (err) {
+      setError(err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      setData(null);
+      setError(null);
+      setIsLoading(false);
+    }
+  };
 }
 
 export function useQueryMutation(): UseChillMutationState<ChillDtoQuery, [ChillDtoQuery]> {

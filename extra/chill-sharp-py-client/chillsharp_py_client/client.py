@@ -107,6 +107,13 @@ class ChillDtoQuery(TypedDict, total=False):
     results: list[JsonDict]
 
 
+class ChillDtoCommand(TypedDict, total=False):
+    """Command endpoint payload containing a type and its named parameters."""
+
+    chillType: str
+    parameters: JsonDict
+
+
 class PermissionEffect(IntEnum):
     """Effect applied by a permission rule."""
 
@@ -169,6 +176,10 @@ class ChillSharpClient:
     def query(self, dto_query: ChillDtoQuery) -> ChillDtoQuery:
         """Send a query request to the Chill endpoint."""
         return self._send_json("POST", self._build_chill_url("query"), dto_query)
+
+    def command(self, dto_command: ChillDtoCommand) -> ChillDtoCommand:
+        """Execute a custom command using its named parameters."""
+        return self._send_json("POST", self._build_chill_url("command"), dto_command)
 
     def lookup(self, dto_query: JsonDict) -> JsonDict:
         """Send a generic full-text lookup request to the Chill endpoint."""

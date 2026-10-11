@@ -123,6 +123,7 @@ providers: [
 `ChillSharpNgClient` mirrors the generic TypeScript client but returns `Observable`s:
 
 - `query()`
+- `command()`
 - `lookup()`
 - `find()`
 - `create()`
@@ -159,6 +160,17 @@ The auth user payloads include:
 - `displayNumberFormat`
 
 ## Examples
+
+### Command
+
+Use `command()` to execute a registered command and receive its updated parameters:
+
+```ts
+readonly command$ = this.chill.command({
+  chillType: "Commands.SendNotification",
+  parameters: { recipient: "ada@example.com", message: "Your report is ready" }
+});
+```
 
 ### Query
 

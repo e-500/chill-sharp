@@ -20,6 +20,7 @@
 export { createChillSharpClient, createChillSharpPlugin, useChillSharpClient } from "./plugin.js";
 export {
   useAutocompleteMutation,
+  useCommandMutation,
   useCurrentUserPreferences,
   useEntityChanges,
   useEntityMutation,
@@ -51,6 +52,7 @@ export type {
   AuthUserDetailsResponse,
   AuthUserListItem,
   ChillDtoEntity,
+  ChillDtoCommand,
   ChillUserPreferences,
   ChillDtoEntityOptions,
   ChillDtoMenuItem,

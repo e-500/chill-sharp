@@ -84,6 +84,20 @@ If the service supports ChillSharp auth endpoints, the client can log in and ref
 Query payloads can include an `Ordering` object with `PropertyName` and `Direction`.
 If you omit `Ordering`, the backend defaults to `Position`. Entity payloads also include `Position`, with default value `0`.
 
+### Command
+
+Use `command()` to execute a registered custom command. The response includes the command's updated parameters.
+
+```python
+result = client.command({
+    "ChillType": "Commands.SendNotification",
+    "Parameters": {
+        "Recipient": "ada@example.com",
+        "Message": "Your report is ready",
+    },
+})
+```
+
 ### Query
 
 Use `query()` when `ChillType` points to a concrete query type such as `Query.PostQuery`.

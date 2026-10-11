@@ -10,7 +10,7 @@ This package wraps [`@chill-sharp/ts-client`](../chill-sharp-ts-client) and adds
 - `useSchemaList()` for registered type discovery
 - `useText()` and `useTexts()` for i18n label lookups
 - `useTest()` for endpoint health checks
-- `useQueryMutation()`, `useLookupMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
+- `useCommandMutation()`, `useQueryMutation()`, `useLookupMutation()`, `useEntityMutation()`, `useAutocompleteMutation()`, and `useValidateMutation()` for generic API actions
 
 It stays generic on purpose. Payloads are plain objects so the same package can work against arbitrary ChillSharp models.
 
@@ -218,6 +218,19 @@ const statusState = useTest();
 ```
 
 `useTest()` calls `GET /api/chill/test` and exposes the plain-text service status.
+
+### `useCommandMutation()`
+
+Pass the registered command type and its named inputs. The returned DTO includes updated parameters.
+
+```ts
+const { execute, data, isLoading } = useCommandMutation();
+
+await execute({
+  chillType: "Commands.SendNotification",
+  parameters: { recipient: "ada@example.com", message: "Your report is ready" }
+});
+```
 
 ### `useQueryMutation()`
 

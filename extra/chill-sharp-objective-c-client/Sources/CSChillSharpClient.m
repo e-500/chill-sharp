@@ -89,6 +89,7 @@ NSString * const CSChillSharpClientResponseTextKey = @"responseText";
     [self sendMethod:method URLString:urlString payload:payload anonymous:anonymous completion:completion];
 }
 
+- (void)command:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion { [self requestWithMethod:@"POST" path:@"command" payload:payload anonymous:NO completion:completion]; }
 - (void)query:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion { [self requestWithMethod:@"POST" path:@"query" payload:payload anonymous:NO completion:completion]; }
 - (void)lookup:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion { [self requestWithMethod:@"POST" path:@"lookup" payload:payload anonymous:NO completion:completion]; }
 - (void)find:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion { [self requestWithMethod:@"POST" path:@"find" payload:payload anonymous:NO completion:completion]; }

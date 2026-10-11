@@ -56,6 +56,7 @@ typedef void (^CSChillSharpCompletion)(id _Nullable result, NSError * _Nullable 
                 anonymous:(BOOL)anonymous
                completion:(CSChillSharpCompletion)completion;
 
+- (void)command:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion;
 - (void)query:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion;
 - (void)lookup:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion;
 - (void)find:(NSDictionary *)payload completion:(CSChillSharpCompletion)completion;

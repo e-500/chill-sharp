@@ -21,6 +21,7 @@ import { onScopeDispose, ref, shallowRef, watch, watchEffect, type Ref } from "v
 import { CHILL_SHARP_VUE_CLIENT_VERSION } from "./version.js";
 import { useChillSharpClient } from "./plugin.js";
 import type {
+  ChillDtoCommand,
   ChillDtoQuery,
   ChillDtoSchemaListItem,
   ChillUserPreferences,
@@ -262,6 +263,41 @@ export function useCurrentUserPreferences(): UseChillAsyncState<ChillUserPrefere
 
   watchEffect(() => { void load(); });
   return { data, error, isLoading, reload: load };
+}
+
+export function useCommandMutation(): UseChillMutationState<ChillDtoCommand, [ChillDtoCommand]> {
+  const client = useChillSharpClient();
+  const data = shallowRef<ChillDtoCommand | null>(null);
+  const error = ref<unknown>(null);
+  const isLoading = ref<boolean>(false);
+
+  const execute = async (payload: ChillDtoCommand) => {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await client.command(payload);
+      data.value = response;
+      return response;
+    } catch (err) {
+      error.value = err;
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  return {
+    data,
+    error,
+    isLoading,
+    execute,
+    reset: () => {
+      data.value = null;
+      error.value = null;
+      isLoading.value = false;
+    }
+  };
 }
 
 export function useQueryMutation(): UseChillMutationState<ChillDtoQuery, [ChillDtoQuery]> {

@@ -47,7 +47,19 @@ ChillSharpClient client = new ChillSharpClient(
 
 ## Operations
 
-Core methods include `query`, `lookup`, `find`, `create`, `update`, `delete`, `autocomplete`, `validate`, and `chunk`. Schema methods include `getSchema`, `getSchemaList`, `getEntityOptions`, and their corresponding setters. I18n methods include `getText`, `getTexts`, and `setText`. Auth helpers cover registration, login, token refresh, logout, password reset, current permissions and preferences, and user and role lists.
+Core methods include `command`, `query`, `lookup`, `find`, `create`, `update`, `delete`, `autocomplete`, `validate`, and `chunk`. Schema methods include `getSchema`, `getSchemaList`, `getEntityOptions`, and their corresponding setters. I18n methods include `getText`, `getTexts`, and `setText`. Auth helpers cover registration, login, token refresh, logout, password reset, current permissions and preferences, and user and role lists.
+
+Execute an application-defined command by sending its Chill type and named parameters:
+
+```java
+ObjectNode command = mapper.createObjectNode();
+command.put("ChillType", "Commands.SendNotification");
+command.putObject("Parameters")
+    .put("Recipient", "ada@example.com")
+    .put("Message", "Your report is ready");
+
+JsonNode result = client.command(command);
+```
 
 Methods take and return Jackson `JsonNode` values. `ChillSharpClientException` exposes `getStatusCode()` and `getResponseText()` for HTTP failures. Set a token at any time with `setAccessToken`; HTTP requests and SignalR connections use it as a bearer token.
 

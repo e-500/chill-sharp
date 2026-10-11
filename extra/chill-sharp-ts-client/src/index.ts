@@ -45,6 +45,7 @@ export type {
   ChillUserPreferences,
   ChillDtoEntity,
   ChillDtoEntityOptions,
+  ChillDtoCommand,
   ChillDtoMenuItem,
   ChillDtoProperty,
   ChillDtoPropertySchema,
