@@ -1,0 +1,85 @@
+<section class="permission-matrix" aria-label="Permission assignments">
+  @if (isLoading()) {
+    <div class="matrix-notice">{{ chill.T('A3A38AB2-1079-4FB3-A91A-4981A05E7810', 'Loading modules and permissions...', 'Caricamento moduli e permessi...') }}</div>
+  } @else if (errorMessage()) {
+    <div class="matrix-notice error">{{ errorMessage() }}</div>
+  } @else {
+    <div class="matrix-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" class="item-heading">Item</th>
+            @for (column of columns; track column.action) {
+              <th scope="col">{{ column.label }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of visibleRows(); track row.node.id) {
+            <tr [class]="'node-' + row.node.kind + (row.node.kind === 'group' ? ' group-row' : '')">
+              <th scope="row" class="item-cell">
+                <div class="tree-item" [style.padding-left.rem]="0.65 + row.depth * 1.05">
+                  @if (row.node.children.length > 0) {
+                    <button
+                      type="button"
+                      class="tree-toggle"
+                      [attr.aria-expanded]="isExpanded(row.node.id)"
+                      [attr.aria-label]="(isExpanded(row.node.id) ? 'Collapse ' : 'Expand ') + row.node.label"
+                      (click)="toggleExpanded(row.node.id)">
+                      <span aria-hidden="true">{{ isExpanded(row.node.id) ? '−' : '+' }}</span>
+                    </button>
+                  } @else {
+                    <span class="tree-spacer" aria-hidden="true"></span>
+                  }
+                  <span class="node-label">{{ row.node.label }}</span>
+                  @if (row.node.kind !== 'group') {
+                    <span class="node-kind">{{ row.node.kind }}</span>
+                  }
+                </div>
+              </th>
+              @for (column of columns; track column.action) {
+                <td>
+                  @if (isActionAvailable(row.node, column.action)) {
+                    <button
+                      type="button"
+                      class="permission-state"
+                      [class.allow]="cellState(row.node, column.action) === 'allow'"
+                      [class.deny]="cellState(row.node, column.action) === 'deny'"
+                      [class.inherited-allow]="cellState(row.node, column.action) === 'inherited-allow'"
+                      [class.inherited-deny]="cellState(row.node, column.action) === 'inherited-deny'"
+                      [attr.aria-checked]="cellState(row.node, column.action) === 'unchecked' ? 'false' : cellState(row.node, column.action) === 'allow' || cellState(row.node, column.action) === 'inherited-allow' ? 'true' : 'mixed'"
+                      [attr.aria-label]="cellLabel(row.node, column)"
+                      [title]="cellLabel(row.node, column)"
+                      role="checkbox"
+                      (click)="togglePermission(row.node, column.action)">
+                      @switch (cellState(row.node, column.action)) {
+                        @case ('allow') { <span aria-hidden="true">✓</span> }
+                        @case ('deny') { <span aria-hidden="true">×</span> }
+                        @case ('inherited-allow') { <span aria-hidden="true">✓</span> }
+                        @case ('inherited-deny') { <span aria-hidden="true">×</span> }
+                      }
+                    </button>
+                  }
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td class="empty-row" [attr.colspan]="columns.length + 1">
+                {{ chill.T('CB6476B6-815F-4DF5-813D-16C775C10754', 'No modules are available.', 'Nessun modulo disponibile.') }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <ul class="state-legend" aria-label="Permission state legend">
+      <li><span class="legend-mark"></span>Unchecked</li>
+      <li><span class="legend-mark allow">✓</span>Allow</li>
+      <li><span class="legend-mark deny">×</span>Deny</li>
+      <li><span class="legend-mark inherited-allow">✓</span>Inherited allow</li>
+      <li><span class="legend-mark inherited-deny">×</span>Inherited deny</li>
+    </ul>
+  }
+</section>

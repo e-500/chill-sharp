@@ -38,6 +38,7 @@ export * from './lib/pages/permissions/auth-role-dialog.component';
 export * from './lib/pages/permissions/auth-search-select.component';
 export * from './lib/pages/permissions/auth-user-dialog.component';
 export * from './lib/pages/permissions/permission-editor.component';
+export * from './lib/pages/permissions/permission-matrix.component';
 export * from './lib/pages/permissions/permissions-page.component';
 export * from './lib/pages/permissions/role-permission.component';
 export * from './lib/pages/permissions/user-permission.component';

@@ -12,12 +12,13 @@ import type {
 import { ChillService } from '../../services/chill.service';
 import { WorkspaceDialogService } from '../../services/workspace-dialog.service';
 import { AuthSearchSelectComponent, type AuthSearchSelectOption } from './auth-search-select.component';
-import { PermissionEditorComponent, type PermissionEditorRow } from './permission-editor.component';
+import { PermissionMatrixComponent } from './permission-matrix.component';
+import type { PermissionEditorRow } from './permission-editor.component';
 
 @Component({
   selector: 'app-role-permission',
   standalone: true,
-  imports: [CommonModule, PermissionEditorComponent, ChillI18nLabelComponent, ChillI18nButtonLabelComponent, AuthSearchSelectComponent, NoticeTransitionDirective],
+  imports: [CommonModule, PermissionMatrixComponent, ChillI18nLabelComponent, ChillI18nButtonLabelComponent, AuthSearchSelectComponent, NoticeTransitionDirective],
   templateUrl: './role-permission.component.html',
   styleUrl: './permission-editor.component.scss'
 })

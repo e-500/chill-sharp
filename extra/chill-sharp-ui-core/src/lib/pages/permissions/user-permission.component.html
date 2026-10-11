@@ -60,8 +60,11 @@
         </button>
       </header>
 
-      <div class="box-grid">
-        <app-permission-editor [rows]="permissionRows()" (rowsChange)="updatePermissionRows($event)" />
+      <div class="box-grid permission-layout">
+        <app-permission-matrix
+          [rows]="permissionRows()"
+          [inheritedRows]="inheritedPermissionRows()"
+          (rowsChange)="updatePermissionRows($event)" />
 
         <section class="box-card">
           <header class="card-header">

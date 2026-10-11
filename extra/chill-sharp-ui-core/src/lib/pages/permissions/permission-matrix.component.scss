@@ -1,0 +1,202 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.permission-matrix {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.matrix-scroll {
+  max-width: 100%;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  background: var(--surface-0);
+}
+
+table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  height: 2.75rem;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: center;
+  white-space: nowrap;
+}
+
+thead th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: var(--surface-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.item-heading,
+.item-cell {
+  position: sticky;
+  z-index: 1;
+  left: 0;
+  width: 20rem;
+  min-width: 20rem;
+  text-align: left;
+  background: var(--surface-0);
+}
+
+.item-heading {
+  z-index: 3;
+  background: var(--surface-2);
+}
+
+tbody tr:hover td,
+tbody tr:hover .item-cell {
+  background: color-mix(in srgb, var(--surface-2) 72%, var(--surface-0));
+}
+
+.group-row .item-cell {
+  background: var(--surface-2);
+  font-weight: 700;
+}
+
+.tree-item {
+  display: flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.tree-toggle,
+.tree-spacer {
+  display: grid;
+  flex: 0 0 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+}
+
+.tree-toggle {
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 0.2rem;
+  background: var(--surface-3);
+  color: var(--text-main);
+  font: inherit;
+  cursor: pointer;
+}
+
+.node-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.node-kind {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: capitalize;
+}
+
+.permission-state,
+.legend-mark {
+  display: inline-grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 0.2rem;
+  background: var(--surface-0);
+  color: transparent;
+  font: inherit;
+  font-weight: 800;
+}
+
+.permission-state {
+  cursor: pointer;
+}
+
+.permission-state:focus-visible,
+.tree-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.permission-state.allow,
+.legend-mark.allow {
+  border-color: #24734f;
+  background: #24734f;
+  color: white;
+}
+
+.permission-state.deny,
+.legend-mark.deny {
+  border-color: #a33b43;
+  background: #a33b43;
+  color: white;
+}
+
+.permission-state.inherited-allow,
+.legend-mark.inherited-allow {
+  border: 2px solid #24734f;
+  background: transparent;
+  color: #24734f;
+}
+
+.permission-state.inherited-deny,
+.legend-mark.inherited-deny {
+  border: 2px solid #a33b43;
+  background: transparent;
+  color: #a33b43;
+}
+
+.state-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin: 0;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  list-style: none;
+}
+
+.state-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legend-mark {
+  width: 1.1rem;
+  height: 1.1rem;
+  font-size: 0.72rem;
+}
+
+.matrix-notice,
+.empty-row {
+  padding: 0.9rem;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.matrix-notice.error {
+  border: 1px solid #a33b43;
+  color: #a33b43;
+}
+
+@media (max-width: 700px) {
+  .state-legend {
+    gap: 0.45rem 0.75rem;
+  }
+}

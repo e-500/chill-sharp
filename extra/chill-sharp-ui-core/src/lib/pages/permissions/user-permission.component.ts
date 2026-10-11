@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
 import { ChillI18nLabelComponent } from '../../lib/chill-i18n-label.component';
 import { ChillI18nButtonLabelComponent } from '../../lib/chill-i18n-button-label.component';
 import { NoticeTransitionDirective } from '../../lib/notice-transition.directive';
@@ -12,12 +13,13 @@ import type {
 import { ChillService } from '../../services/chill.service';
 import { WorkspaceDialogService } from '../../services/workspace-dialog.service';
 import { AuthSearchSelectComponent, type AuthSearchSelectOption } from './auth-search-select.component';
-import { PermissionEditorComponent, type PermissionEditorRow } from './permission-editor.component';
+import { PermissionMatrixComponent } from './permission-matrix.component';
+import type { PermissionEditorRow } from './permission-editor.component';
 
 @Component({
   selector: 'app-user-permission',
   standalone: true,
-  imports: [CommonModule, PermissionEditorComponent, ChillI18nLabelComponent, ChillI18nButtonLabelComponent, AuthSearchSelectComponent, NoticeTransitionDirective],
+  imports: [CommonModule, PermissionMatrixComponent, ChillI18nLabelComponent, ChillI18nButtonLabelComponent, AuthSearchSelectComponent, NoticeTransitionDirective],
   templateUrl: './user-permission.component.html',
   styleUrl: './permission-editor.component.scss'
 })
@@ -36,6 +38,7 @@ export class UserPermissionComponent {
   readonly successMessage = signal('');
   readonly selectedRoleGuids = signal<string[]>([]);
   readonly permissionRows = signal<PermissionEditorRow[]>([]);
+  readonly inheritedPermissionRows = signal<PermissionEditorRow[]>([]);
   readonly originalSnapshot = signal('');
   readonly selectionVersion = signal(0);
 
@@ -104,7 +107,34 @@ export class UserPermissionComponent {
       current.delete(roleGuid);
     }
 
-    this.selectedRoleGuids.set([...current]);
+    const roleGuids = [...current];
+    this.selectedRoleGuids.set(roleGuids);
+
+    if (roleGuids.length === 0) {
+      this.inheritedPermissionRows.set([]);
+      return;
+    }
+
+    const userGuid = this.selectedUserGuid();
+    const selectedRoleSnapshot = [...roleGuids].sort().join('|');
+    forkJoin(roleGuids.map((guid) => this.chill.getAuthRoleAccess(guid))).subscribe({
+      next: (roleAccess) => {
+        if (this.selectedUserGuid() !== userGuid
+          || [...this.selectedRoleGuids()].sort().join('|') !== selectedRoleSnapshot) {
+          return;
+        }
+
+        this.inheritedPermissionRows.set(roleAccess.flatMap((details) =>
+          details.permissions.map((permission) => this.toPermissionRow(permission))
+        ));
+      },
+      error: (error: unknown) => {
+        if (this.selectedUserGuid() === userGuid
+          && [...this.selectedRoleGuids()].sort().join('|') === selectedRoleSnapshot) {
+          this.errorMessage.set(this.chill.formatError(error));
+        }
+      }
+    });
   }
 
   updatePermissionRows(rows: PermissionEditorRow[]): void {
@@ -132,6 +162,24 @@ export class UserPermissionComponent {
         this.originalSnapshot.set(this.serializeSnapshot());
         this.isSaving.set(false);
         this.successMessage.set(this.chill.T('7F2F0CE1-88D9-4EF7-B7EA-2A729986AB27', 'User permissions updated.', 'Permessi utente aggiornati.'));
+
+        const requests = response.roles.map((role) => this.chill.getAuthRoleAccess(role.guid));
+        (requests.length ? forkJoin(requests) : of([])).subscribe({
+          next: (roleAccess) => {
+            if (this.selectedUserGuid() !== user.guid) {
+              return;
+            }
+
+            this.inheritedPermissionRows.set(roleAccess.flatMap((details) =>
+              details.permissions.map((permission) => this.toPermissionRow(permission))
+            ));
+          },
+          error: (error: unknown) => {
+            if (this.selectedUserGuid() === user.guid) {
+              this.errorMessage.set(this.chill.formatError(error));
+            }
+          }
+        });
       },
       error: (error: unknown) => {
         this.isSaving.set(false);
@@ -189,17 +237,48 @@ export class UserPermissionComponent {
   private loadSelectedUser(userGuid: string): void {
     this.isLoadingDetails.set(true);
     this.permissionRows.set([]);
+    this.inheritedPermissionRows.set([]);
     this.selectedRoleGuids.set([]);
 
     this.chill.getAuthUserAccess(userGuid).subscribe({
       next: (response) => {
+        if (this.selectedUserGuid() !== userGuid) {
+          return;
+        }
+
         this.selectionVersion.update((value) => value + 1);
-        this.selectedRoleGuids.set(response.roles.map((role) => role.guid));
+        const roleGuids = response.roles.map((role) => role.guid);
+        this.selectedRoleGuids.set(roleGuids);
         this.permissionRows.set(response.permissions.map((permission) => this.toPermissionRow(permission)));
-        this.originalSnapshot.set(this.serializeSnapshot());
-        this.isLoadingDetails.set(false);
+
+        const requests = roleGuids.map((roleGuid) => this.chill.getAuthRoleAccess(roleGuid));
+        (requests.length ? forkJoin(requests) : of([])).subscribe({
+          next: (roleAccess) => {
+            if (this.selectedUserGuid() !== userGuid) {
+              return;
+            }
+
+            this.inheritedPermissionRows.set(roleAccess.flatMap((details) =>
+              details.permissions.map((permission) => this.toPermissionRow(permission))
+            ));
+            this.originalSnapshot.set(this.serializeSnapshot());
+            this.isLoadingDetails.set(false);
+          },
+          error: (error: unknown) => {
+            if (this.selectedUserGuid() !== userGuid) {
+              return;
+            }
+
+            this.isLoadingDetails.set(false);
+            this.errorMessage.set(this.chill.formatError(error));
+          }
+        });
       },
       error: (error: unknown) => {
+        if (this.selectedUserGuid() !== userGuid) {
+          return;
+        }
+
         this.isLoadingDetails.set(false);
         this.errorMessage.set(this.chill.formatError(error));
       }
@@ -250,6 +329,7 @@ export class UserPermissionComponent {
     this.selectedUserGuid.set('');
     this.selectedRoleGuids.set([]);
     this.permissionRows.set([]);
+    this.inheritedPermissionRows.set([]);
     this.originalSnapshot.set('');
     this.isLoadingDetails.set(false);
   }
