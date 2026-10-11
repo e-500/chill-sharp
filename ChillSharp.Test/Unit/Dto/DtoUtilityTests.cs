@@ -62,6 +62,14 @@ public class DtoUtilityTests
     }
 
     [TestMethod]
+    public void ResolveType_ResolvesBuiltinTextEntityFromReferencedAssembly()
+    {
+        var resolved = ChillTypeResolver.ResolveType(typeof(TestEntity).Assembly, "Text", "ChillSharp.Test");
+
+        Assert.AreEqual(typeof(ChillSharp.I18n.Model.Text), resolved);
+    }
+
+    [TestMethod]
     public void GetCandidateAssemblies_IncludesRootAssemblyOnlyOnce()
     {
         var rootAssembly = typeof(TestEntity).Assembly;

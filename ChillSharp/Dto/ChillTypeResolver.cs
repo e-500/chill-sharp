@@ -52,6 +52,9 @@ namespace ChillSharp.Dto
             var normalizedInput = NormalizeLookupKey(chillType, chillTypePrefix);
             var matches = ChillAssemblyDiscovery.GetCandidateAssemblies(assembly)
                 .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
+                .Where(type => typeof(IChillEntity).IsAssignableFrom(type)
+                    || typeof(IChillCommand).IsAssignableFrom(type)
+                    || typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type))
                 .Select(type => new
                 {
                     Type = type,
