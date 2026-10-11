@@ -2243,8 +2243,7 @@ export class ChillService {
       password: request.Password,
       displayName: request.DisplayName,
       displayCultureName: request.DisplayCultureName,
-      displayTimeZone: request.DisplayTimeZone,
-      createChillAuthUser: request.CreateChillAuthUser
+      displayTimeZone: request.DisplayTimeZone
     };
   }
 

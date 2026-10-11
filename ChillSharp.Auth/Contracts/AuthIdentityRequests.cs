@@ -59,10 +59,6 @@ public class RegisterAuthIdentityRequest
     [MaxLength(64)]
     public string DisplayCultureName { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets whether the corresponding ChillSharp auth user should be created automatically.
-    /// </summary>
-    public bool CreateChillAuthUser { get; set; } = true;
 }
 
 /// <summary>

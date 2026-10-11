@@ -72,11 +72,6 @@ public class ChillAuthIdentityApiOptions
         TimeSpan.FromMinutes(5));
 
     /// <summary>
-    /// Gets or sets whether register should also create the matching ChillSharp auth user.
-    /// </summary>
-    public bool CreateChillAuthUserOnRegister { get; set; } = true;
-
-    /// <summary>
     /// Gets or sets whether the reset-token endpoint returns the generated token in the HTTP response.
     /// </summary>
     public bool ReturnPasswordResetTokensInResponse { get; set; } = true;

@@ -210,7 +210,6 @@ namespace ChillSharp.Tests
                 Password = "Pass123$",
                 DisplayName = "SignalR User",
                 DisplayCultureName = "it-IT",
-                CreateChillAuthUser = true
             });
 
             var authenticatedConnection = new HubConnectionBuilder()

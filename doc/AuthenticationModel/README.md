@@ -37,9 +37,8 @@ These are the routes used internally by `ChillSharpClient`.
 
 - `DisplayName`
 - `DisplayCultureName`
-- `CreateChillAuthUser`
 
-When `CreateChillAuthUser` is enabled and `DisplayCultureName` is provided, the linked `AuthUser` is automatically preset with:
+Registration always creates the linked `AuthUser`. When `DisplayCultureName` is provided, it is automatically preset with:
 
 - `DisplayCultureName`
 - `DisplayTimeZone`

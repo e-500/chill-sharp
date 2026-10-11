@@ -550,12 +550,11 @@ const token = await client.registerAuthAccount({
   Email: "root@example.com",
   Password: "Pass123$",
   DisplayName: "Root",
-  DisplayCultureName: "it-IT",
-  CreateChillAuthUser: true
+  DisplayCultureName: "it-IT"
 });
 ```
 
-If `DisplayCultureName` is provided and `CreateChillAuthUser` is `true`, the server presets the linked `AuthUser` with culture-based defaults for `displayTimeZone`, `displayDateFormat`, and `displayNumberFormat`.
+The server always creates the linked `AuthUser`. If `DisplayCultureName` is provided, it presets culture-based defaults for `displayTimeZone`, `displayDateFormat`, and `displayNumberFormat`.
 
 ### Login
 

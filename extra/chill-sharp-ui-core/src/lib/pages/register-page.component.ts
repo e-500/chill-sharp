@@ -59,11 +59,6 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             <input type="password" formControlName="confirmPassword" autocomplete="new-password" />
           </label>
 
-          <label class="checkbox full-width">
-            <input type="checkbox" formControlName="createChillAuthUser" />
-            <span><app-chill-i18n-label [labelGuid]="'E69C6D4F-07EC-42BA-B30D-AFA77B84E595'" [primaryDefaultText]="'Create linked Chill auth user'" [secondaryDefaultText]="'Crea utente auth Chill collegato'" /></span>
-          </label>
-
           @if (form.hasError('passwordMismatch') && form.touched) {
             <div class="notice error full-width">{{ chill.T('12632967-9A9B-4A16-B7DF-D64B7BA7914A', 'Password confirmation does not match.', 'La conferma della password non corrisponde.') }}</div>
           }
@@ -98,8 +93,7 @@ export class RegisterPageComponent {
     email: ['', [Validators.required, Validators.email]],
     displayName: [''],
     password: ['', [Validators.required, Validators.minLength(6)]],
-    confirmPassword: ['', [Validators.required, Validators.minLength(6)]],
-    createChillAuthUser: [true]
+    confirmPassword: ['', [Validators.required, Validators.minLength(6)]]
   }, { validators: passwordMatchValidator });
 
   submit(): void {
@@ -119,8 +113,7 @@ export class RegisterPageComponent {
       Password: value.password,
       DisplayName: value.displayName,
       DisplayCultureName: this.readBrowserCultureName(),
-      DisplayTimeZone: this.readBrowserTimeZone(),
-      CreateChillAuthUser: value.createChillAuthUser
+      DisplayTimeZone: this.readBrowserTimeZone()
     }).subscribe({
       next: () => {
         this.isSubmitting.set(false);

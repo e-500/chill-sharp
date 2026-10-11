@@ -233,8 +233,7 @@ public sealed class AuthApi
             Email = "identity.user@test.local",
             Password = "Pass123$",
             DisplayName = "Identity User",
-            DisplayCultureName = "it-IT",
-            CreateChillAuthUser = true
+            DisplayCultureName = "it-IT"
         });
 
         Assert.IsFalse(string.IsNullOrWhiteSpace(registerResponse.AccessToken));
@@ -957,8 +956,7 @@ public sealed class AuthApi
             UserName = userName,
             Email = $"{userName}@test.local",
             Password = "Pass123$",
-            DisplayName = "OAuth User",
-            CreateChillAuthUser = true
+            DisplayName = "OAuth User"
         });
 
         using var httpClient = new HttpClient(new HttpClientHandler

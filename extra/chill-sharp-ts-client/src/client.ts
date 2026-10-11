@@ -286,7 +286,6 @@ export interface RegisterAuthIdentityRequest extends JsonObject {
   password: string;
   displayName: string;
   displayCultureName: string;
-  createChillAuthUser: boolean;
 }
 
 export interface LoginAuthIdentityRequest extends JsonObject {

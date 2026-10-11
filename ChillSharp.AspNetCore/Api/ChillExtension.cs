@@ -150,7 +150,6 @@ namespace ChillSharp.Api
                 identityOptions.OAuthBasePath = NormalizeIdentityOAuthPath(options.OAuthBasePath, options.ApiBasePath, "chill-auth/oauth");
                 identityOptions.OAuthProtectedResourcePath = NormalizeIdentityOAuthPath(options.OAuthProtectedResourcePath, options.ApiBasePath, "chill-mcp");
                 identityOptions.OAuthAuthorizationCodeLifetime = options.OAuthAuthorizationCodeLifetime;
-                identityOptions.CreateChillAuthUserOnRegister = options.CreateChillAuthUserOnRegister;
                 identityOptions.ReturnPasswordResetTokensInResponse = options.ReturnPasswordResetTokensInResponse;
                 identityOptions.SendPasswordResetEmails = options.SendPasswordResetEmails;
                 identityOptions.SmtpHost = options.SmtpHost;
@@ -533,11 +532,6 @@ namespace ChillSharp.Api
             ChillAuthIdentityApiOptions.OAuthAuthorizationCodeLifetimeMinutesEnvironmentVariable,
             value => TimeSpan.FromMinutes(value),
             TimeSpan.FromMinutes(5));
-
-        /// <summary>
-        /// Gets or sets whether register should also create the matching ChillSharp auth user.
-        /// </summary>
-        public bool CreateChillAuthUserOnRegister { get; set; } = true;
 
         /// <summary>
         /// Gets or sets whether the reset-token endpoint returns the generated token in the HTTP response.

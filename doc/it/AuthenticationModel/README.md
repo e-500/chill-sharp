@@ -37,9 +37,8 @@ Queste sono le route usate internamente da `ChillSharpClient`.
 
 - `DisplayName`
 - `DisplayCultureName`
-- `CreateChillAuthUser`
 
-Quando `CreateChillAuthUser` e abilitato e viene fornito `DisplayCultureName`, il relativo `AuthUser` viene preimpostato automaticamente con:
+La registrazione crea sempre il relativo `AuthUser`. Quando viene fornito `DisplayCultureName`, l'utente viene preimpostato automaticamente con:
 
 - `DisplayCultureName`
 - `DisplayTimeZone`

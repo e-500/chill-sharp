@@ -15,7 +15,6 @@ export interface RegisterRequest {
   DisplayName: string;
   DisplayCultureName: string;
   DisplayTimeZone: string;
-  CreateChillAuthUser: boolean;
 }
 
 export interface LoginRequest {

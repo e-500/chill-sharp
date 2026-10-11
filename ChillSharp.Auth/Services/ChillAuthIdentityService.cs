@@ -297,8 +297,7 @@ internal sealed class ChillAuthIdentityService<TUser> : IChillAuthIdentityServic
         var identityUserId = await _userManager.GetUserIdAsync(user) ?? throw new InvalidOperationException("The created Identity user did not expose a user id.");
         var userName = await _userManager.GetUserNameAsync(user) ?? normalizedUserName;
 
-        if ((_options.CreateChillAuthUserOnRegister || request.CreateChillAuthUser) &&
-            await _authService.GetUserByExternalIdAsync(identityUserId, cancellationToken) == null)
+        if (await _authService.GetUserByExternalIdAsync(identityUserId, cancellationToken) == null)
         {
             var displayPreferences = BuildDisplayPreferences(request.DisplayCultureName);
             await _authService.CreateUserAsync(new CreateAuthUserRequest

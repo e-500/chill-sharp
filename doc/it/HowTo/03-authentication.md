@@ -146,14 +146,13 @@ var registerResponse = client.RegisterAuthAccount(new RegisterAuthIdentityReques
     Email = "admin@example.com",
     Password = "Pass123$",
     DisplayName = "Administrator",
-    DisplayCultureName = "it-IT",
-    CreateChillAuthUser = true
+    DisplayCultureName = "it-IT"
 });
 ```
 
 Dopo una registrazione riuscita, il client salva internamente access token e refresh token restituiti.
 
-Se `DisplayCultureName` viene fornito e `CreateChillAuthUser = true`, il relativo `AuthUser` viene inizializzato con valori derivati dalla cultura per:
+La registrazione crea sempre il relativo `AuthUser`. Se viene fornito `DisplayCultureName`, l'utente viene inizializzato con valori derivati dalla cultura per:
 
 - `DisplayTimeZone`
 - `DisplayDateFormat`
@@ -214,7 +213,7 @@ var refreshed = client.RefreshAuthAccount();
 
 - Usa `options.ProtectedApi = true` su `AddChillApi<TContext>(...)` se gli endpoint ChillSharp devono richiedere autenticazione.
 - L'utente root creato da `AddChillAuthIdentityApi(...)` e il percorso bootstrap amministrativo. Quando `CreateChillAuthUserForRoot = true`, il relativo `AuthUser` ChillSharp viene creato con `CanManagePermissions = true`.
-- `CreateChillAuthUser = true` crea l'`AuthUser` ChillSharp collegato, ma non concede automaticamente permessi amministrativi.
+- La registrazione crea sempre l'`AuthUser` ChillSharp collegato, ma non concede automaticamente permessi amministrativi.
 - `DisplayCultureName` in registrazione preimposta `DisplayTimeZone`, `DisplayDateFormat` e `DisplayNumberFormat` per il relativo `AuthUser`.
 - In produzione, inizializza il primo amministratore in modo deliberato, ad esempio con root-user initialization o un flusso trusted in fase di installazione.
 

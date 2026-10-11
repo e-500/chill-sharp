@@ -403,11 +403,10 @@ token = client.register_auth_account({
     "Password": "Pass123$",
     "DisplayName": "Root",
     "DisplayCultureName": "it-IT",
-    "CreateChillAuthUser": True,
 })
 ```
 
-If `DisplayCultureName` is provided and `CreateChillAuthUser` is `True`, the server presets the linked `AuthUser` with culture-based defaults for `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
+The server always creates the linked `AuthUser`. If `DisplayCultureName` is provided, it presets culture-based defaults for `DisplayTimeZone`, `DisplayDateFormat`, and `DisplayNumberFormat`.
 
 ### Login
 
