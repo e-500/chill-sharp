@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ChillSharpClient } from "../dist/client.js";
+import { ChillSharpClient, PermissionAction } from "../dist/client.js";
+
+test("Command permissions and command lookups are available", async () => {
+  const requests = [];
+  const client = new ChillSharpClient("https://example.test/api/chill", {
+    fetchImpl: async input => {
+      requests.push(String(input));
+      return Response.json(["RenameItem"]);
+    }
+  });
+
+  assert.equal(PermissionAction.Command, 7);
+  assert.deepEqual(await client.getAuthCommandList("Commands"), ["RenameItem"]);
+  assert.deepEqual(requests, ["https://example.test/api/chill-auth/get-command-list?module=Commands"]);
+});
 
 test("CQRS and CRUD methods POST their DTOs to the matching Chill endpoints", async () => {
   const requests = [];

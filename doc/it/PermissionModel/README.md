@@ -1,6 +1,6 @@
 # Modello Dei Permessi
 
-Versione originale in inglese: [English](../../PermissionModel/README.md)
+English version: [English](../../PermissionModel/README.md)
 
 Questo documento descrive il modello di autorizzazione implementato da `ChillSharp.Auth`.
 
@@ -64,6 +64,7 @@ Una proprieta e un campo di un'entita, per esempio:
 
 ### Azioni entita
 
+- `Command` per i comandi definiti dall'applicazione
 - `Query`
 - `Create`
 - `Update`
@@ -75,6 +76,7 @@ Una proprieta e un campo di un'entita, per esempio:
 - `Modify`
 
 I permessi proprieta raffinano un'operazione entita gia consentita. Non sostituiscono i permessi entita.
+I comandi vengono autorizzati usando il tipo del comando come risorsa modulo/entita e richiedono `Command`; le regole sulle proprieta non si applicano ai parametri dei comandi.
 
 ## Effetti
 
@@ -134,6 +136,12 @@ Per eliminare un'entita:
 1. l'utente deve avere `Delete` a livello entita
 
 I permessi proprieta non contano nel delete.
+
+### Esecuzione di un comando
+
+1. l'utente deve avere `Command` per il tipo di comando
+
+Per esempio, `Commands.RebuildIndexCommand` viene autorizzato con `Command` sul modulo `Commands` e sull'entita `RebuildIndexCommand`.
 
 ## Postura Di Sicurezza Predefinita
 

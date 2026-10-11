@@ -238,6 +238,15 @@ namespace ChillSharp.Client
         }
 
         /// <summary>
+        /// Returns the distinct commands available for the specified logical module.
+        /// </summary>
+        public List<string> GetAuthCommandList(string? module = null)
+        {
+            var suffix = module == null ? string.Empty : $"?module={Uri.EscapeDataString(module)}";
+            return SendAuthJson<List<string>>(HttpMethod.Get, $"get-command-list{suffix}") ?? new List<string>();
+        }
+
+        /// <summary>
         /// Returns the distinct queries available for the specified logical module.
         /// </summary>
         public List<string> GetAuthQueryList(string? module = null)

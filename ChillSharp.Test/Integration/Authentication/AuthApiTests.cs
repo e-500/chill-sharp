@@ -1066,9 +1066,11 @@ public sealed class AuthApi
         Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Comment", ChillEntityAclAction.Query));
         Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Comment", ChillEntityAclAction.Query));
         Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Blog", "Post", ChillEntityAclAction.Update));
+        Assert.IsTrue(await aclService.AuthorizeAsync(principal, "Commands", "EchoCommand", ChillEntityAclAction.Command));
 
         Assert.AreEqual(1, fakeAuthService.GetUserByExternalIdCalls);
-        Assert.AreEqual(3, fakeAuthService.EvaluateEntityPermissionCalls);
+        Assert.AreEqual(4, fakeAuthService.EvaluateEntityPermissionCalls);
+        CollectionAssert.Contains(fakeAuthService.EvaluatedActions, PermissionAction.Command);
     }
 
     [TestMethod]
@@ -1592,6 +1594,7 @@ public sealed class AuthApi
         public AuthRole CreateRoleResult { get; set; } = new() { Guid = Guid.NewGuid(), Name = "Role", IsActive = true };
         public int GetUserByExternalIdCalls { get; private set; }
         public int EvaluateEntityPermissionCalls { get; private set; }
+        public List<PermissionAction> EvaluatedActions { get; } = new();
 
         public Task<GetAuthPermissionsResponse> GetPermissionsAsync(string externalId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<AuthUserListItemResponse>> GetUserListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -1603,6 +1606,7 @@ public sealed class AuthApi
         public Task<IReadOnlyList<string>> GetModuleListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<string>> GetCommandListAsync(string? module = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<string>> GetPropertyListAsync(string chillType, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<AuthUser>> GetUsersAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<AuthUser?> GetUserAsync(Guid userGuid, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -1633,6 +1637,7 @@ public sealed class AuthApi
         public Task<PermissionEvaluationResult> EvaluateEntityPermissionAsync(EvaluateEntityPermissionRequest request, CancellationToken cancellationToken = default)
         {
             EvaluateEntityPermissionCalls++;
+            EvaluatedActions.Add(request.Action);
             return Task.FromResult(EvaluateEntityPermissionResult);
         }
 

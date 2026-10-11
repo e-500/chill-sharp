@@ -125,6 +125,7 @@ class PermissionAction(IntEnum):
     """Action controlled by a permission rule."""
 
     FULL_CONTROL = 0
+    COMMAND = 7
     QUERY = 1
     CREATE = 2
     UPDATE = 3
@@ -488,6 +489,13 @@ class ChillSharpClient:
         normalized_module = self._normalize_optional_value(module)
         suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
         response = self._send_auth_json("GET", f"get-entity-list{suffix}")
+        return response if isinstance(response, list) else []
+
+    def get_auth_command_list(self, module: str | None = None) -> list[str]:
+        """Return the distinct command list for an optional auth module."""
+        normalized_module = self._normalize_optional_value(module)
+        suffix = f"?module={quote(normalized_module)}" if normalized_module is not None else ""
+        response = self._send_auth_json("GET", f"get-command-list{suffix}")
         return response if isinstance(response, list) else []
 
     def get_auth_query_list(self, module: str | None = None) -> list[str]:

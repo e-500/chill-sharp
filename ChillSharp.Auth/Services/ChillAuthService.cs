@@ -248,6 +248,12 @@ public class ChillAuthService : IChillAuthService
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<string>> GetCommandListAsync(string? module = null, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_chillContext.GetCommands(module));
+    }
+
+    /// <inheritdoc />
     public Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_chillContext.GetQueries(module));

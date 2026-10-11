@@ -64,6 +64,7 @@ A property is a field on an entity, for example:
 
 ### Entity actions
 
+- `Command` for application-defined commands
 - `Query`
 - `Create`
 - `Update`
@@ -75,6 +76,7 @@ A property is a field on an entity, for example:
 - `Modify`
 
 Property permissions refine an already-allowed entity operation. They do not replace entity permissions.
+Commands are authorized against their command type as a module/entity resource and require `Command`; property rules do not apply to command parameters.
 
 ## Effects
 
@@ -134,6 +136,12 @@ To delete an entity:
 1. the user must have entity `Delete`
 
 Property rules do not matter for delete.
+
+### Command execution
+
+1. the user must have `Command` for the command type
+
+For example, `Commands.RebuildIndexCommand` is authorized as `Command` on module `Commands`, entity `RebuildIndexCommand`.
 
 ## Default Security Posture
 

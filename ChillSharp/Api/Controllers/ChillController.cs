@@ -97,7 +97,7 @@ namespace ChillSharp.Api.Controllers
         {
             var authorizationResult = await EnsureEntityAccessAsync(
                 DtoCommand.ChillType,
-                ChillEntityAclAction.Update,
+                ChillEntityAclAction.Command,
                 isQueryType: false,
                 cancellationToken);
             if (authorizationResult != null)

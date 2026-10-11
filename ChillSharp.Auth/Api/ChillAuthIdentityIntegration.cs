@@ -159,6 +159,7 @@ internal sealed class ChillAuthEntityAclService : IChillEntityAclService
             UserGuid = userSnapshot.UserGuid.Value,
             Action = action switch
             {
+                ChillEntityAclAction.Command => PermissionAction.Command,
                 ChillEntityAclAction.Query => PermissionAction.Query,
                 ChillEntityAclAction.Create => PermissionAction.Create,
                 ChillEntityAclAction.Update => PermissionAction.Update,

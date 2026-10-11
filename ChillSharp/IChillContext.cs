@@ -158,6 +158,20 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Returns the distinct command names discovered for the specified module.
+        /// </summary>
+        IReadOnlyList<string> GetCommands(string? module = null)
+        {
+            var catalog = GetMetadataCatalog(this);
+            var normalizedModule = NormalizeOptionalModule(module);
+            return normalizedModule == null
+                ? catalog.AllCommands
+                : catalog.CommandsByModule.TryGetValue(normalizedModule, out var commands)
+                    ? commands
+                    : Array.Empty<string>();
+        }
+
+        /// <summary>
         /// Returns the distinct query names discovered for the specified module.
         /// </summary>
         /// <param name="module">
@@ -253,6 +267,11 @@ namespace ChillSharp
                 .Distinct()
                 .ToList();
 
+            var commandResources = resources
+                .Where(type => typeof(IChillCommand).IsAssignableFrom(type))
+                .Select(type => ToLogicalResource(ChillTypeResolver.NormalizeChillType(type, chillTypePrefix)))
+                .Distinct()
+                .ToList();
             var queryResources = resources
                 .Where(IsDiscoverableQueryType)
                 .Select(type => ToLogicalResource(ChillTypeResolver.NormalizeChillType(type, chillTypePrefix)))
@@ -262,11 +281,17 @@ namespace ChillSharp
             return new MetadataCatalog(
                 Modules: entityResources
                     .Select(x => x.Module)
+                    .Concat(commandResources.Select(x => x.Module))
                     .Concat(queryResources.Select(x => x.Module))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 AllEntities: entityResources
+                    .Select(x => x.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToArray(),
+                AllCommands: commandResources
                     .Select(x => x.Name)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
@@ -277,6 +302,15 @@ namespace ChillSharp
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                     .ToArray(),
                 EntitiesByModule: entityResources
+                    .GroupBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => (IReadOnlyList<string>)group.Select(x => x.Name)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                            .ToArray(),
+                        StringComparer.OrdinalIgnoreCase),
+                CommandsByModule: commandResources
                     .GroupBy(x => x.Module, StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(
                         group => group.Key,
@@ -351,8 +385,10 @@ namespace ChillSharp
     internal sealed record MetadataCatalog(
         IReadOnlyList<string> Modules,
         IReadOnlyList<string> AllEntities,
+        IReadOnlyList<string> AllCommands,
         IReadOnlyList<string> AllQueries,
         IReadOnlyDictionary<string, IReadOnlyList<string>> EntitiesByModule,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> CommandsByModule,
         IReadOnlyDictionary<string, IReadOnlyList<string>> QueriesByModule,
         IReadOnlyDictionary<string, IReadOnlyList<string>> PropertiesByChillType);
 

@@ -129,6 +129,7 @@ export enum PermissionEffect {
 
 export enum PermissionAction {
   FullControl = 0,
+  Command = 7,
   Query = 1,
   Create = 2,
   Update = 3,

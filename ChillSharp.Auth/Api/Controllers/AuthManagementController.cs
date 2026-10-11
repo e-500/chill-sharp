@@ -118,6 +118,16 @@ public class AuthManagementController : ControllerBase
     }
 
     /// <summary>
+    /// Returns the distinct commands available for the specified logical module.
+    /// </summary>
+    [HttpGet("get-command-list")]
+    [ServiceFilter(typeof(ChillAuthManagementAccessFilter))]
+    public async Task<IActionResult> GetCommandList([FromQuery] string? module, CancellationToken cancellationToken)
+    {
+        return Ok(await _service.GetCommandListAsync(module, cancellationToken));
+    }
+
+    /// <summary>
     /// Returns the distinct queries available for the specified logical module.
     /// </summary>
     [HttpGet("get-query-list")]

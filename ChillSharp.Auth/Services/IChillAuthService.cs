@@ -79,6 +79,11 @@ public interface IChillAuthService
     Task<IReadOnlyList<string>> GetEntityListAsync(string? module = null, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns the distinct commands available for the specified logical module.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetCommandListAsync(string? module = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Returns the distinct queries available for the specified logical module.
     /// </summary>
     Task<IReadOnlyList<string>> GetQueryListAsync(string? module = null, CancellationToken cancellationToken = default);

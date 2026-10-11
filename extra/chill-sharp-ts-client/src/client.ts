@@ -336,6 +336,7 @@ export type PermissionEffect = (typeof PermissionEffect)[keyof typeof Permission
 
 export const PermissionAction = {
   FullControl: 0,
+  Command: 7,
   Query: 1,
   Create: 2,
   Update: 3,
@@ -940,6 +941,12 @@ export class ChillSharpClient {
     const normalizedModule = this.normalizeQueryValue(module);
     const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
     return this.sendAuthJson<string[]>("GET", `get-entity-list${suffix}`);
+  }
+
+  getAuthCommandList(module?: string | null): Promise<string[]> {
+    const normalizedModule = this.normalizeQueryValue(module);
+    const suffix = normalizedModule === null ? "" : `?module=${encodeURIComponent(normalizedModule)}`;
+    return this.sendAuthJson<string[]>("GET", `get-command-list${suffix}`);
   }
 
   getAuthQueryList(module?: string | null): Promise<string[]> {

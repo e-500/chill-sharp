@@ -46,6 +46,11 @@ public enum PermissionAction
     FullControl = 0,
 
     /// <summary>
+    /// Allows invoking an application-defined command.
+    /// </summary>
+    Command = 7,
+
+    /// <summary>
     /// Allows querying entity data.
     /// </summary>
     Query = 1,

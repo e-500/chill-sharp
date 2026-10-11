@@ -317,6 +317,10 @@ export class ChillSharpNgClient {
     return from(this.client.getAuthEntityList(module));
   }
 
+  getAuthCommandList(module?: string | null): Observable<string[]> {
+    return from(this.client.getAuthCommandList(module));
+  }
+
   getAuthQueryList(module?: string | null): Observable<string[]> {
     return from(this.client.getAuthQueryList(module));
   }

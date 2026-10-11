@@ -40,6 +40,7 @@ export class PermissionEditorComponent {
 
   readonly permissionActionOptions = [
     { value: PermissionAction.FullControl, label: 'FullControl' },
+    { value: PermissionAction.Command, label: 'Command' },
     { value: PermissionAction.Query, label: 'Query' },
     { value: PermissionAction.Create, label: 'Create' },
     { value: PermissionAction.Update, label: 'Update' },
@@ -240,9 +241,11 @@ export class PermissionEditorComponent {
       return;
     }
 
-    const source = action === PermissionAction.Query
-      ? this.chill.getQueryList(normalizedModule)
-      : this.chill.getEntityList(normalizedModule);
+    const source = action === PermissionAction.Command
+        ? this.chill.getCommandList(normalizedModule)
+        : action === PermissionAction.Query
+          ? this.chill.getQueryList(normalizedModule)
+          : this.chill.getEntityList(normalizedModule);
 
     source.subscribe({
       next: (entities) => {

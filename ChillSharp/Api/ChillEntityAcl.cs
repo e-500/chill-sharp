@@ -27,6 +27,11 @@ namespace ChillSharp.Api;
 public enum ChillEntityAclAction
 {
     /// <summary>
+    /// Command access for an application-defined command.
+    /// </summary>
+    Command = 5,
+
+    /// <summary>
     /// Query or find access.
     /// </summary>
     Query = 1,

@@ -142,10 +142,12 @@ interface ChillSharpNgClientEntityChangeSupport {
 
 interface ChillSharpNgClientPermissionLookupSupport {
   getModuleList?: () => Observable<unknown>;
+  getCommandList?: (module?: string | null) => Observable<unknown>;
   getQueryList?: (module?: string | null) => Observable<unknown>;
   getEntityList?: (module?: string | null) => Observable<unknown>;
   getPropertyList?: (chillType: string) => Observable<unknown>;
   getAuthModuleList?: () => Observable<unknown>;
+  getAuthCommandList?: (module?: string | null) => Observable<unknown>;
   getAuthQueryList?: (module?: string | null) => Observable<unknown>;
   getAuthEntityList?: (module?: string | null) => Observable<unknown>;
   getAuthPropertyList?: (chillType: string) => Observable<unknown>;
@@ -674,6 +676,22 @@ export class ChillService {
 
     if (!source) {
       return throwError(() => new Error('The current ChillSharp client does not expose getEntityList().'));
+    }
+
+    return source(module).pipe(
+      map((response) => this.normalizeStringList(response)),
+      catchError((error) => this.rethrowFriendlyError(error))
+    );
+  }
+
+  getCommandList(module?: string | null) {
+    const client = this.chill as unknown as ChillSharpNgClientPermissionLookupSupport;
+    const source = typeof client.getCommandList === 'function'
+      ? client.getCommandList.bind(this.chill)
+      : client.getAuthCommandList?.bind(this.chill);
+
+    if (!source) {
+      return throwError(() => new Error('The current ChillSharp client does not expose getCommandList().'));
     }
 
     return source(module).pipe(
@@ -1556,6 +1574,7 @@ export class ChillService {
     const value = this.readJsonNumber(payload, 'Action');
     switch (value) {
       case PermissionAction.FullControl:
+      case PermissionAction.Command:
       case PermissionAction.Query:
       case PermissionAction.Create:
       case PermissionAction.Update:
