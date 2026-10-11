@@ -159,6 +159,7 @@ public class ChillMcpAuthorizationTests
         public void BeginTransaction() { }
         public void CommitTransaction() { }
         public void RollbackTransaction() { }
+        public ChillDtoCommand Command(ChillDtoCommand command) => command;
         public ChillDtoQuery Query(ChillDtoQuery query) => query;
         public ChillDtoQuery Lookup(ChillDtoQuery query) => query;
         public ChillDtoEntity? Find(ChillDtoEntity entity) => entity;

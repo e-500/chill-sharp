@@ -1191,6 +1191,7 @@ namespace ChillSharp.Tests
             public void BeginTransaction() => throw new NotSupportedException();
             public void CommitTransaction() => throw new NotSupportedException();
             public void RollbackTransaction() => throw new NotSupportedException();
+            public ChillDtoCommand Command(ChillDtoCommand DtoCommand) => throw new NotSupportedException();
             public ChillDtoQuery Query(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
             public ChillDtoQuery Lookup(ChillDtoQuery DtoQuery) => throw new NotSupportedException();
             public ChillDtoEntity? Find(ChillDtoEntity DtoEntity) => throw new NotSupportedException();
