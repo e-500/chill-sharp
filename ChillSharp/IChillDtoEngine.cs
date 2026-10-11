@@ -60,6 +60,13 @@ namespace ChillSharp
         void RollbackTransaction();
 
         /// <summary>
+        /// Executes an application-defined command represented by a <see cref="ChillDtoCommand"/>.
+        /// </summary>
+        /// <param name="DtoCommand">The command type and its input parameters.</param>
+        /// <returns>The command DTO with its input and output parameters.</returns>
+        ChillDtoCommand Command(ChillDtoCommand DtoCommand);
+
+        /// <summary>
         /// Executes a query represented by a <see cref="ChillDtoQuery"/> and populates its results.
         /// </summary>
         /// <param name="DtoQuery">The DTO query containing parameters and type information.</param>

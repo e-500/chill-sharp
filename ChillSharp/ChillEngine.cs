@@ -456,6 +456,18 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Instantiates an application-defined <see cref="IChillCommand"/> from a Chill type identifier.
+        /// </summary>
+        /// <param name="ChillType">The short Chill type name used to resolve the command.</param>
+        /// <returns>A newly created command instance.</returns>
+        public IChillCommand ActivateChillCommand(string ChillType)
+        {
+            var res = ChillTypeResolver.ActivateType(_GetContextAssembly(), ChillType, _Context.GetChillTypePrefix());
+            return res as IChillCommand
+                ?? throw new ChillException($"{ChillType} does not implement IChillCommand");
+        }
+
+        /// <summary>
         /// Instantiates a <see cref="IChillQuery{IChillEntity}"/> implementation based on the
         /// provided Chill type identifier.
         /// </summary>

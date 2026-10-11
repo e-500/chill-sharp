@@ -37,6 +37,7 @@ namespace ChillSharp.Api.Controllers
     ///
     /// <para>Endpoints:<br/>
     /// <list type="bullet">
+    ///   <item><description>POST: api/chill/command → Executes an application-defined command.</description></item>
     ///   <item><description>POST: api/chill/query  → Executes a data query based on a <see cref="ChillDtoQuery"/>.</description></item>
     ///   <item><description>POST: api/chill/lookup → Executes a generic full-text lookup against an entity type.</description></item>
     ///   <item><description>POST: api/chill/find   → Retrieves a specific entity using a <see cref="ChillDtoEntity"/>.</description></item>
@@ -83,6 +84,34 @@ namespace ChillSharp.Api.Controllers
         private readonly IChillDtoEngine _ce;
         private readonly IChillContext _context;
         private readonly IChillEntityAclService? _entityAclService;
+
+        /// <summary>
+        /// Executes an application-defined command using its supplied parameters.
+        /// </summary>
+        /// <param name="DtoCommand">The command type and parameter values.</param>
+        /// <param name="cancellationToken">Token used to cancel the authorization check.</param>
+        /// <returns>The command DTO with its updated parameter values.</returns>
+        [HttpPost]
+        [Route("command")]
+        public async Task<IActionResult> Command(ChillDtoCommand DtoCommand, CancellationToken cancellationToken)
+        {
+            var authorizationResult = await EnsureEntityAccessAsync(
+                DtoCommand.ChillType,
+                ChillEntityAclAction.Update,
+                isQueryType: false,
+                cancellationToken);
+            if (authorizationResult != null)
+                return authorizationResult;
+
+            try
+            {
+                return Ok(_ce.Command(DtoCommand));
+            }
+            catch (Exception ex)
+            {
+                throw new ChillException($"Error {ex.Message} processing command {DtoCommand.ChillType}", ex);
+            }
+        }
 
         /// <summary>
         /// Executes a dynamic query using the Chill DTO engine and returns the result set.

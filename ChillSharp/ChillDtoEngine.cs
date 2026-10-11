@@ -100,6 +100,18 @@ namespace ChillSharp
         }
 
         /// <summary>
+        /// Executes an application-defined command and returns its updated parameter values.
+        /// </summary>
+        public ChillDtoCommand Command(ChillDtoCommand DtoCommand)
+        {
+            var command = _Engine.ActivateChillCommand(DtoCommand.ChillType);
+            DtoCommand.ToCommand(_Context, command);
+            command.OnCommand(_Context);
+            DtoCommand.FromCommand(_Context, command);
+            return DtoCommand;
+        }
+
+        /// <summary>
         /// Executes a Chill query represented by a <see cref="ChillDtoQuery"/>, 
         /// populates its <see cref="ChillDtoQuery.Results"/> with the results, 
         /// and returns the executed DTO query.
