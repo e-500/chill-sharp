@@ -47,6 +47,69 @@ namespace ChillSharp.Test
         }
 
         [TestMethod]
+        public async Task ChunkCommandOperation_ExecutesCommandAndReturnsUpdatedParameters()
+        {
+            var operation = new ChillOperation
+            {
+                Verb = ChillOperationVerb.COMMAND,
+                Command = new ChillDtoCommand
+                {
+                    ChillType = "Commands.EchoCommand",
+                    Parameters = new Dictionary<string, object?> { [nameof(EchoCommand.Input)] = "hello" }
+                }
+            };
+            var options = new DbContextOptionsBuilder<DummyContext>()
+                .UseInMemoryDatabase($"chunk-command-{Guid.NewGuid():N}")
+                .Options;
+            using var context = new DummyContext(options);
+            var controller = new ChillController(new ChillDtoEngine(context), context);
+
+            var action = await controller.Chunk([operation], CancellationToken.None);
+
+            var ok = action as OkObjectResult;
+            Assert.IsNotNull(ok);
+            var result = ok.Value as List<ChillOperation>;
+            Assert.IsNotNull(result);
+            Assert.AreEqual("HELLO", result[0].Command?.Parameters[nameof(EchoCommand.Output)]?.ToString());
+        }
+
+        [TestMethod]
+        public async Task ChunkCommandOperation_RequiresCommandPermission()
+        {
+            var operation = new ChillOperation
+            {
+                Verb = ChillOperationVerb.COMMAND,
+                Command = new ChillDtoCommand
+                {
+                    ChillType = "Commands.EchoCommand",
+                    Parameters = new Dictionary<string, object?> { [nameof(EchoCommand.Input)] = "hello" }
+                }
+            };
+            var options = new DbContextOptionsBuilder<DummyContext>()
+                .UseInMemoryDatabase($"chunk-command-denied-{Guid.NewGuid():N}")
+                .Options;
+            using var context = new DummyContext(options);
+            var acl = new RecordingAclService { IsAllowed = false };
+            var controller = new ChillController(new ChillDtoEngine(context), context, acl)
+            {
+                ControllerContext = new ControllerContext
+                {
+                    HttpContext = new DefaultHttpContext
+                    {
+                        User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "tester")], "test"))
+                    }
+                }
+            };
+
+            var action = await controller.Chunk([operation], CancellationToken.None);
+
+            Assert.IsInstanceOfType<ForbidResult>(action);
+            Assert.AreEqual("Commands", acl.Module);
+            Assert.AreEqual("EchoCommand", acl.EntityName);
+            Assert.AreEqual(ChillEntityAclAction.Command, acl.Action);
+        }
+
+        [TestMethod]
         public async Task CommandEndpoint_RequiresCommandPermissionForCommandType()
         {
             const string payload = """

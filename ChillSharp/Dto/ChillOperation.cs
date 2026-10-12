@@ -42,6 +42,11 @@ namespace ChillSharp.Dto
         public string? Verb { get; set; }
 
         /// <summary>
+        /// The command object to execute, if applicable.
+        /// </summary>
+        public ChillDtoCommand? Command { get; set; }
+
+        /// <summary>
         /// The query object to execute, if applicable.
         /// </summary>
         public ChillDtoQuery? Query { get; set; }
@@ -71,6 +76,10 @@ namespace ChillSharp.Dto
             {
                 case ChillOperationVerb.TRANSACTION:
                     ChillEngine.BeginTransaction();
+                    break;
+                case ChillOperationVerb.COMMAND:
+                    if (Command == null) return;
+                    Command = ChillEngine.Command(Command);
                     break;
                 case ChillOperationVerb.QUERY:
                     if (obj == null) return;
@@ -127,6 +136,7 @@ namespace ChillSharp.Dto
     public static class ChillOperationVerb
     {
         public const string TRANSACTION  = "transaction";
+        public const string COMMAND = "command";
         public const string QUERY  = "query";
         public const string FIND   = "find";
         public const string CREATE = "create";

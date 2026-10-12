@@ -432,6 +432,12 @@ namespace ChillSharp.Api.Controllers
         {
             switch (operation.Verb?.ToLowerInvariant())
             {
+                case ChillOperationVerb.COMMAND when operation.Command != null:
+                    return await EnsureEntityAccessAsync(
+                        operation.Command.ChillType,
+                        ChillEntityAclAction.Command,
+                        isQueryType: false,
+                        cancellationToken);
                 case ChillOperationVerb.QUERY when operation.Query != null:
                     return await EnsureEntityAccessAsync(
                         operation.Query.ChillType,
