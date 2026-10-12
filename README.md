@@ -85,6 +85,7 @@ app.Run();
 That is enough to expose ChillSharp endpoints such as:
 
 - `POST /api/chill/query`
+- `POST /api/chill/command`
 - `POST /api/chill/lookup`
 - `POST /api/chill/find`
 - `POST /api/chill/create`
@@ -97,6 +98,15 @@ If you prefer SQLite, the registration is the same:
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=app.db"));
 ```
+
+### CQRS Alongside CRUD
+
+Since v1.3.4, ChillSharp supports CQRS alongside its entity-based CRUD API:
+
+- **Read:** Implement `IChillQuery<IChillEntity>`, typically by deriving from `ChillQuery`, and define the query in `OnQuery(...)`.
+- **Write:** Implement `IChillCommand` or derive from `ChillCommand`; put the use-case logic in `OnCommand(IChillContext)`. Mark command input and output properties with `[ChillProperty]`. Clients execute commands through `POST /api/chill/command` using `ChillDtoCommand`.
+
+CQRS does not remove CRUD: create, query, update, and delete remain available. To enforce a CQRS-only client, deny `Create`, `Update`, and `Delete` on the relevant entities, then grant only `Query` on read entities and `Command` on approved command types. Authorization is enforced by the server, so this controls access as well as which operations the client should offer.
 
 ## Why It Feels Fast
 

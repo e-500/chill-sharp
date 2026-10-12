@@ -187,6 +187,17 @@ If the client does not send an explicit ordering, ChillSharp applies `Position` 
 
 When `PropertyName` points to a referenced Chill entity, ordering is applied using the referenced entity `Label`. This keeps generic list screens readable without requiring clients to know the foreign-key internals.
 
+### CQRS Model (Since v1.3.4)
+
+ChillSharp supports a CQRS style alongside its entity-based CRUD API:
+
+- **Reads:** Define a query by implementing `IChillQuery<IChillEntity>`, usually by deriving from `ChillQuery`. Override `OnQuery(...)` to return the filtered `IQueryable`; the standard query pipeline can also apply search, ordering, pagination, and validation.
+- **Writes:** Define an application command by implementing `IChillCommand` or deriving from `ChillCommand`, then implement `OnCommand(IChillContext)`. Mark input and output properties with `[ChillProperty]`. A client sends a `ChillDtoCommand` to `POST /api/chill/command`; the response contains the command's updated parameters.
+
+Commands let an application expose use-case operations instead of making each write a generic entity update. They do not remove the existing CRUD actions: create, query, update, and delete remain available when authorized.
+
+For a CQRS-only client, configure permissions to deny `Create`, `Update`, and `Delete` on the relevant entities, and grant only `Query` on read entities and `Command` on the command types the client may execute. ChillSharp authorization is default-deny, and the client can use these permissions to offer only the intended query/command workflow.
+
 ## API Surface
 
 The core mapped API is exposed by:

@@ -136,6 +136,17 @@ Dopo gli aggiornamenti, ChillSharp salva automaticamente:
 
 La logica di audit e applicata tramite il percorso `IChillEntity` usato da `ChillEngine`, quindi una classe derivata puo ridefinire `OnAfterUpdate()` senza saltare l'aggiornamento di audit della base.
 
+### Modello CQRS (da v1.3.4)
+
+ChillSharp supporta lo stile CQRS accanto alla propria API CRUD basata sulle entita:
+
+- **Letture:** Definisci una query implementando `IChillQuery<IChillEntity>`, normalmente ereditando da `ChillQuery`. Ridefinisci `OnQuery(...)` per restituire l'`IQueryable` filtrata; la pipeline standard delle query puo inoltre applicare ricerca, ordinamento, paginazione e validazione.
+- **Scritture:** Definisci un comando applicativo implementando `IChillCommand` o ereditando da `ChillCommand`, quindi implementa `OnCommand(IChillContext)`. Contrassegna le proprieta di input e output con `[ChillProperty]`. Un client invia un `ChillDtoCommand` a `POST /api/chill/command`; la risposta contiene i parametri aggiornati del comando.
+
+I comandi permettono all'applicazione di esporre operazioni di caso d'uso invece di eseguire ogni scrittura come un aggiornamento generico dell'entita. Non rimuovono le azioni CRUD esistenti: creazione, query, aggiornamento ed eliminazione restano disponibili quando autorizzate.
+
+Per un client che deve usare solo CQRS, configura i permessi per negare `Create`, `Update` e `Delete` sulle entita interessate e concedere solo `Query` sulle entita di lettura e `Command` sui tipi di comando che il client puo eseguire. L'autorizzazione di ChillSharp nega l'accesso per impostazione predefinita; il client puo usare questi permessi per offrire solo il flusso di query e comandi previsto.
+
 ## Superficie API
 
 La superficie API core viene esposta da:
