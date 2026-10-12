@@ -672,8 +672,13 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
 
     this.chill.getSchemaList().subscribe({
       next: (schemaList) => {
+        const entityChillTypes = new Set(schemaList
+          .filter((schema) => this.isEntitySchema(schema))
+          .map((schema) => schema.chillType?.trim().toLowerCase() ?? '')
+          .filter(Boolean));
         const crudTypes = schemaList
           .filter((schema) => this.isQuerySchema(schema))
+          .filter((schema) => entityChillTypes.has(schema.relatedChillType?.trim().toLowerCase() ?? ''))
           .map((schema) => this.toCrudSchemaOption(schema))
           .sort((left, right) => left.displayName.localeCompare(right.displayName));
         const entityOptionsTypes = schemaList
@@ -789,13 +794,25 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
 
   private isQuerySchema(item: ChillSchemaListItem): boolean {
     const type = item.type?.trim().toLowerCase() ?? '';
+    if (type) {
+      return type === 'query';
+    }
+
     const name = item.name?.trim().toLowerCase() ?? '';
     const chillType = item.chillType?.trim().toLowerCase() ?? '';
 
-    return type === 'query'
-      || name.endsWith('query')
+    return name.endsWith('query')
       || chillType.includes('.query.')
       || chillType.endsWith('.query');
+  }
+
+  private isEntitySchema(item: ChillSchemaListItem): boolean {
+    const type = item.type?.trim().toLowerCase() ?? '';
+    if (type) {
+      return type === 'entity';
+    }
+
+    return !this.isQuerySchema(item);
   }
 
   private toCrudSchemaOption(schema: ChillSchemaListItem): CrudSchemaOption {
