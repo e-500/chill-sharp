@@ -1,6 +1,16 @@
 import type { JsonValue } from '@chill-sharp/ng-client';
 import type { ChillSchema, ChillSchemaRelation, ChillSchemaRelationLabel } from '../models/chill-schema.models';
 
+export function mergeRelationQueryValues(
+  fixedValues: Record<string, JsonValue>,
+  fixedQueryValues: Record<string, JsonValue>
+): Record<string, JsonValue> {
+  return {
+    ...fixedValues,
+    ...fixedQueryValues
+  };
+}
+
 export function applySchemaRelationsToCrudConfiguration(
   baseConfiguration: Record<string, unknown>,
   schema: ChillSchema | null

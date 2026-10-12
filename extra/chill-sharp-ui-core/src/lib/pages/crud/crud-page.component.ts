@@ -12,6 +12,7 @@ import { CHILL_PROPERTY_TYPE, ChillEntityStatus, ChillState, type ChillEntity, t
 import { ChillService } from '../../services/chill.service';
 import { WorkspaceDialogService } from '../../services/workspace-dialog.service';
 import { WorkspaceService } from '../../services/workspace.service';
+import { mergeRelationQueryValues } from '../../lib/crud-configuration.utils';
 import { createAutomaticQueryRequest, createAutomaticQuerySchema, shouldUseAutomaticQuery } from './automatic-query.utils';
 
 const DEFAULT_VIEW_CODE = 'default';
@@ -1720,6 +1721,9 @@ export class CrudPageComponent implements OnInit {
     configuration: CrudPageComponentConfiguration,
     entity: ChillEntity
   ): CrudPageComponentConfiguration {
+    const fixedValues = this.resolveConfigRecord(configuration.fixedValues, entity);
+    const fixedQueryValues = this.resolveConfigRecord(configuration.fixedQueryValues, entity);
+
     return {
       chillType: configuration.chillType,
       chillQuery: configuration.chillQuery ?? null,
@@ -1733,12 +1737,8 @@ export class CrudPageComponent implements OnInit {
       defaultValues: {
         ...this.resolveConfigRecord(configuration.defaultValues, entity)
       },
-      fixedValues: {
-        ...this.resolveConfigRecord(configuration.fixedValues, entity)
-      },
-      fixedQueryValues: {
-        ...this.resolveConfigRecord(configuration.fixedQueryValues, entity)
-      },
+      fixedValues,
+      fixedQueryValues: mergeRelationQueryValues(fixedValues, fixedQueryValues),
       defaultQueryValues: {
         ...this.resolveConfigRecord(configuration.defaultQueryValues, entity)
       },
