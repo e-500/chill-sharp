@@ -11,11 +11,13 @@ import { WorkspaceLayoutService } from '../services/workspace-layout.service';
 import { WorkspaceService } from '../services/workspace.service';
 
 interface CrudSchemaOption {
+  key: string;
   module: string;
   chillType: string;
   queryChillType: string;
   displayName: string;
   viewCode: string;
+  kind: 'Entity' | 'Query';
 }
 
 interface EntityOptionsSchemaOption {
@@ -33,6 +35,50 @@ interface WorkspaceMenuNode {
   isLoadingChildren: boolean;
   childrenError: string;
   hasChildren: boolean;
+}
+
+export function createCrudSchemaOptions(schemaList: ChillSchemaListItem[]): CrudSchemaOption[] {
+  const isQuerySchema = (schema: ChillSchemaListItem): boolean => {
+    const type = schema.type?.trim().toLowerCase() ?? '';
+    if (type) {
+      return type === 'query';
+    }
+
+    const name = schema.name?.trim().toLowerCase() ?? '';
+    const chillType = schema.chillType?.trim().toLowerCase() ?? '';
+
+    return name.endsWith('query')
+      || chillType.includes('.query.')
+      || chillType.endsWith('.query');
+  };
+  const toOption = (schema: ChillSchemaListItem, kind: 'Entity' | 'Query'): CrudSchemaOption => {
+    const queryChillType = kind === 'Query' ? schema.chillType.trim() : '';
+    const chillType = kind === 'Query'
+      ? schema.relatedChillType?.trim() || queryChillType
+      : schema.chillType.trim();
+
+    return {
+      key: `${kind.toLowerCase()}:${kind === 'Query' ? queryChillType : chillType}`,
+      module: schema.module?.trim() || chillType.split('.')[0] || 'Default',
+      chillType,
+      queryChillType,
+      displayName: schema.displayName?.trim() || schema.name?.trim() || chillType,
+      viewCode: schema.chillViewCode?.trim() || 'default',
+      kind
+    };
+  };
+  const entitySchemas = schemaList.filter((schema) => {
+    const type = schema.type?.trim().toLowerCase() ?? '';
+    return type ? type === 'entity' : !isQuerySchema(schema);
+  });
+  const querySchemas = schemaList.filter(isQuerySchema);
+
+  return [
+    ...entitySchemas.map((schema) => toOption(schema, 'Entity')),
+    ...querySchemas.map((schema) => toOption(schema, 'Query'))
+  ].sort((left, right) => left.displayName.localeCompare(right.displayName)
+    || left.kind.localeCompare(right.kind)
+    || left.key.localeCompare(right.key));
 }
 
 @Component({
@@ -114,11 +160,11 @@ interface WorkspaceMenuNode {
           <label class="workspace-menu__field">
             <span>Type</span>
             <select
-              [ngModel]="selectedChillType()"
-              (ngModelChange)="selectedChillType.set($event)"
+              [ngModel]="selectedCrudTypeKey()"
+              (ngModelChange)="selectedCrudTypeKey.set($event)"
               [disabled]="isLoadingSchemas() || filteredCrudTypes().length === 0">
-              @for (schema of filteredCrudTypes(); track schema.chillType) {
-                <option [value]="schema.chillType">{{ schema.displayName }} ({{ schema.chillType }})</option>
+              @for (schema of filteredCrudTypes(); track schema.key) {
+                <option [value]="schema.key">{{ schema.displayName }} ({{ schema.kind }}: {{ schema.kind === 'Query' ? schema.queryChillType : schema.chillType }})</option>
               }
             </select>
           </label>
@@ -352,7 +398,7 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
   readonly crudTypes = signal<CrudSchemaOption[]>([]);
   readonly entityOptionsTypes = signal<EntityOptionsSchemaOption[]>([]);
   readonly selectedModule = signal('');
-  readonly selectedChillType = signal('');
+  readonly selectedCrudTypeKey = signal('');
   readonly selectedEntityOptionsModule = signal('');
   readonly selectedEntityOptionsChillType = signal('');
   readonly viewCode = signal('default');
@@ -368,7 +414,7 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
   readonly filteredCrudTypes = computed(() => this.crudTypes()
     .filter((schema) => schema.module === this.selectedModule()));
   readonly selectedCrudSchema = computed(() => this.filteredCrudTypes()
-    .find((schema) => schema.chillType === this.selectedChillType()) ?? null);
+    .find((schema) => schema.key === this.selectedCrudTypeKey()) ?? null);
   readonly entityOptionsModuleOptions = computed(() => [...new Set(this.entityOptionsTypes().map((schema) => schema.module))]);
   readonly filteredEntityOptionsTypes = computed(() => this.entityOptionsTypes()
     .filter((schema) => schema.module === this.selectedEntityOptionsModule()));
@@ -387,7 +433,7 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
   selectModule(module: string): void {
     this.selectedModule.set(module);
     const firstSchema = this.filteredCrudTypes()[0] ?? null;
-    this.selectedChillType.set(firstSchema?.chillType ?? '');
+    this.selectedCrudTypeKey.set(firstSchema?.key ?? '');
   }
 
   selectEntityOptionsModule(module: string): void {
@@ -672,15 +718,7 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
 
     this.chill.getSchemaList().subscribe({
       next: (schemaList) => {
-        const entityChillTypes = new Set(schemaList
-          .filter((schema) => this.isEntitySchema(schema))
-          .map((schema) => schema.chillType?.trim().toLowerCase() ?? '')
-          .filter(Boolean));
-        const crudTypes = schemaList
-          .filter((schema) => this.isQuerySchema(schema))
-          .filter((schema) => entityChillTypes.has(schema.relatedChillType?.trim().toLowerCase() ?? ''))
-          .map((schema) => this.toCrudSchemaOption(schema))
-          .sort((left, right) => left.displayName.localeCompare(right.displayName));
+        const crudTypes = createCrudSchemaOptions(schemaList);
         const entityOptionsTypes = schemaList
           .map((schema) => this.toEntityOptionsSchemaOption(schema))
           .filter((schema): schema is EntityOptionsSchemaOption => schema !== null)
@@ -696,7 +734,7 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
         const firstModule = crudTypes[0]?.module ?? '';
         this.selectedModule.set(firstModule);
         const firstSchema = crudTypes.find((schema) => schema.module === firstModule) ?? null;
-        this.selectedChillType.set(firstSchema?.chillType ?? '');
+        this.selectedCrudTypeKey.set(firstSchema?.key ?? '');
 
         const firstEntityOptionsModule = entityOptionsTypes[0]?.module ?? '';
         this.selectedEntityOptionsModule.set(firstEntityOptionsModule);
@@ -804,26 +842,6 @@ export class WorkspaceMenuComponent implements OnInit, OnDestroy {
     return name.endsWith('query')
       || chillType.includes('.query.')
       || chillType.endsWith('.query');
-  }
-
-  private isEntitySchema(item: ChillSchemaListItem): boolean {
-    const type = item.type?.trim().toLowerCase() ?? '';
-    if (type) {
-      return type === 'entity';
-    }
-
-    return !this.isQuerySchema(item);
-  }
-
-  private toCrudSchemaOption(schema: ChillSchemaListItem): CrudSchemaOption {
-    const chillType = schema.relatedChillType?.trim() || schema.chillType?.trim() || '';
-    return {
-      module: schema.module?.trim() || chillType.split('.')[0] || 'Default',
-      chillType,
-      queryChillType: schema.chillType?.trim() ?? '',
-      displayName: schema.displayName?.trim() || schema.name?.trim() || chillType,
-      viewCode: schema.chillViewCode?.trim() || 'default'
-    };
   }
 
   private toEntityOptionsSchemaOption(schema: ChillSchemaListItem): EntityOptionsSchemaOption | null {
