@@ -84,8 +84,11 @@ app.Run();
 
 That is enough to expose ChillSharp endpoints such as:
 
+For CQRS lovers:
 - `POST /api/chill/query`
 - `POST /api/chill/command`
+
+If you prefer CRUD style:
 - `POST /api/chill/lookup`
 - `POST /api/chill/find`
 - `POST /api/chill/create`
