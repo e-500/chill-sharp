@@ -30,6 +30,7 @@ using ChillSharp.Mcp.Api;
 using ChillSharp.Schema;
 using ChillSharp.Schema.Api;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -62,10 +63,15 @@ namespace ChillSharp.Api
             services.AddSingleton(options);
             services.AddSignalR();
             services.AddScoped<IChillEntityChangeDispatcher, ChillEntityChangeDispatcher>();
+            services.AddScoped<ChillRequestCultureFilter>();
 
             services.AddControllers()
                 .AddApplicationPart(typeof(ChillController).Assembly)
-                .AddMvcOptions(mvcOptions => mvcOptions.Conventions.Add(new ChillApiRouteBasePathConvention(options.ApiBasePath)))
+                .AddMvcOptions(mvcOptions =>
+                {
+                    mvcOptions.Conventions.Add(new ChillApiRouteBasePathConvention(options.ApiBasePath));
+                    mvcOptions.Filters.AddService<ChillRequestCultureFilter>();
+                })
                 .AddControllersAsServices();
 
             services.AddScoped<IChillContext>(provider =>
@@ -451,6 +457,51 @@ namespace ChillSharp.Api
 
     public class ChillApiOptions
     {
+        /// <summary>
+        /// IConfiguration key for the fallback request display culture name.
+        /// </summary>
+        public const string DisplayCultureNameConfigurationKey = "ChillSharp:DisplayCultureName";
+
+        /// <summary>
+        /// IConfiguration key for the fallback request UI culture name.
+        /// </summary>
+        public const string DisplayUiCultureNameConfigurationKey = "ChillSharp:DisplayUiCultureName";
+
+        /// <summary>
+        /// IConfiguration key for the fallback request time-zone identifier.
+        /// </summary>
+        public const string DisplayTimeZoneConfigurationKey = "ChillSharp:DisplayTimeZone";
+
+        /// <summary>
+        /// IConfiguration key for the fallback request date format.
+        /// </summary>
+        public const string DisplayDateFormatConfigurationKey = "ChillSharp:DisplayDateFormat";
+
+        /// <summary>
+        /// IConfiguration key for the fallback request number format sample.
+        /// </summary>
+        public const string DisplayNumberFormatConfigurationKey = "ChillSharp:DisplayNumberFormat";
+
+        /// <summary>
+        /// IConfiguration key for an explicit fallback thousands separator.
+        /// </summary>
+        public const string ThousandSeparatorConfigurationKey = "ChillSharp:ThousandSeparator";
+
+        /// <summary>
+        /// IConfiguration key for an explicit fallback decimal separator.
+        /// </summary>
+        public const string DecimalSeparatorConfigurationKey = "ChillSharp:DecimalSeparator";
+
+        /// <summary>
+        /// Legacy IConfiguration key for the fallback request culture name.
+        /// </summary>
+        public const string CultureNameConfigurationKey = "ChillSharp:CultureName";
+
+        /// <summary>
+        /// Legacy IConfiguration key for the fallback request time-zone identifier.
+        /// </summary>
+        public const string TimeZoneIdConfigurationKey = "ChillSharp:TimeZoneId";
+
         /// <summary>
         /// If true, Chill API endpoints will require authentication.
         /// </summary>

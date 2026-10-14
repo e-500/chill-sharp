@@ -57,6 +57,32 @@ provideChillSharpUiCore({ additionalThemes: ['cini'] })
 
 The built-in choices are `bright`, `dark`, and `soft`. If an authenticated user's stored value is not available in that client, UI Core falls back to the browser light/dark preference.
 
+## Applying Preferences To MVC Requests
+
+When `AddChillApi` is registered, ChillSharp applies display preferences to MVC requests before model binding. This makes the selected culture available to model binding, controller code, and response formatting without mutating shared culture instances.
+
+For each setting, the authenticated user's cached `AuthUser` preference takes precedence over application configuration and environment variables. Missing or invalid values fall back to the configured value, then to the runtime defaults. `DisplayCultureName` sets both `CurrentCulture` and `CurrentUICulture` for the user. An optional `DisplayUiCultureName` setting can separate UI resource lookup from formatting when there is no user culture preference.
+
+Application configuration uses these keys:
+
+```json
+{
+    "ChillSharp": {
+        "DisplayCultureName": "en-GB",
+        "DisplayUiCultureName": "en",
+        "DisplayTimeZone": "Europe/Rome",
+        "DisplayDateFormat": "dd/MM/yyyy",
+        "DisplayNumberFormat": "1.234,56",
+        "ThousandSeparator": ".",
+        "DecimalSeparator": ","
+    }
+}
+```
+
+Equivalent environment variables are `CHILLSHARP_DISPLAY_CULTURE_NAME`, `CHILLSHARP_DISPLAY_UI_CULTURE_NAME`, `CHILLSHARP_DISPLAY_TIME_ZONE`, `CHILLSHARP_DISPLAY_DATE_FORMAT`, `CHILLSHARP_DISPLAY_TIME_FORMAT`, `CHILLSHARP_DISPLAY_NUMBER_FORMAT`, `CHILLSHARP_THOUSAND_SEPARATOR`, and `CHILLSHARP_DECIMAL_SEPARATOR`. `DisplayTimeFormat` is accepted as an alias for the date-format fallback. The existing `CHILLSHARP_SYSTEM_TIMEZONE` remains a fallback for the time zone.
+
+`DisplayDateFormat` uses a .NET short-date pattern; uppercase `DD` and `YYYY` tokens from existing user preferences are normalized. A `DisplayNumberFormat` sample such as `1.234,56` supplies the grouping and decimal separators. Explicit `ThousandSeparator` and `DecimalSeparator` settings override the application number-format sample; user separators inferred from `AuthUser.DisplayNumberFormat` take precedence over both. If no date or number override is supplied, the selected culture's `DateTimeFormat.ShortDatePattern` and `NumberFormat` are used. The time-zone fallback is `ChillSharpInitOptions.GetSystemTimeZone()`.
+
 ## Host DbContext
 
 `IChillContext.GetCurrentUserPreferences()` returns `ChillUserPreferences.Empty` by default. In an auth-enabled custom host context, inject `IChillAuthUserPreferencesAccessor` and delegate to it:

@@ -401,7 +401,7 @@ namespace ChillSharp.Dto
             }
 
             if (targetType == typeof(DateTimeOffset) && value is DateTimeOffset dateTimeOffsetValue)
-                return dateTimeOffsetValue.ToUniversalTime();
+                return dateTimeOffsetValue;
 
             if (targetType.IsInstanceOfType(value))
                 return value;
@@ -506,10 +506,10 @@ namespace ChillSharp.Dto
             if (targetType == typeof(DateTimeOffset))
             {
                 if (hasUtcDesignator || hasExplicitOffset)
-                    return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUniversalTime();
+                    return DateTimeOffset.Parse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
                 var localDateTime = ParseUnspecifiedDateTime(text);
-                return new DateTimeOffset(localDateTime, systemTimeZone.GetUtcOffset(localDateTime)).ToUniversalTime();
+                return new DateTimeOffset(localDateTime, systemTimeZone.GetUtcOffset(localDateTime));
             }
 
             if (hasUtcDesignator || hasExplicitOffset)
