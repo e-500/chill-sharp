@@ -72,7 +72,15 @@ public sealed class ChillSharpInitOptions
     /// </summary>
     public static TimeZoneInfo GetSystemTimeZone()
     {
-        return ResolveTimeZone(Current.SystemTimeZoneId);
+        return ChillSharpThreadContext.CurrentTimeZone ?? ResolveTimeZone(Current.SystemTimeZoneId);
+    }
+
+    /// <summary>
+    /// Attempts to resolve an IANA or Windows time-zone identifier.
+    /// </summary>
+    public static bool TryGetTimeZone(string? timeZoneId, out TimeZoneInfo timeZone)
+    {
+        return TryResolveTimeZone(timeZoneId, out timeZone);
     }
 
     /// <summary>

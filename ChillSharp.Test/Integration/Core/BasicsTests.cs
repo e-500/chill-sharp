@@ -18,6 +18,8 @@
  */
 
 using ChillSharp.Annotations;
+using ChillSharp.Api;
+using ChillSharp.Auth.Services;
 using ChillSharp.Client;
 using ChillSharp.Client.Dto;
 using DtoObjectMapper = ChillSharp.Dto.ChillDtoObjectMapper;
@@ -27,6 +29,13 @@ using ChillSharp.Schema;
 using ChillSharp.Schema.Model;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Net;
 using System.Reflection;
@@ -1528,6 +1537,143 @@ namespace ChillSharp.Tests
         }
 
         [TestMethod]
+        public async Task RequestThreadContextAppliesCultureAndTimeZoneAcrossAsyncWork()
+        {
+            var originalCulture = CultureInfo.CurrentCulture;
+            var originalUiCulture = CultureInfo.CurrentUICulture;
+            var originalTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+            var requestCulture = CultureInfo.GetCultureInfo("it-IT");
+            var requestTimeZone = TimeZoneInfo.FindSystemTimeZoneById("America/New_York");
+
+            using (ChillSharpThreadContext.Begin(requestCulture, requestTimeZone))
+            {
+                Assert.AreEqual(requestCulture, CultureInfo.CurrentCulture);
+                Assert.AreEqual(requestCulture, CultureInfo.CurrentUICulture);
+                Assert.AreEqual(requestTimeZone, ChillSharpInitOptions.GetSystemTimeZone());
+
+                await Task.Yield();
+
+                Assert.AreEqual(requestCulture, CultureInfo.CurrentCulture);
+                Assert.AreEqual(requestTimeZone, ChillSharpInitOptions.GetSystemTimeZone());
+            }
+
+            Assert.AreEqual(originalCulture, CultureInfo.CurrentCulture);
+            Assert.AreEqual(originalUiCulture, CultureInfo.CurrentUICulture);
+            Assert.AreEqual(originalTimeZone, ChillSharpInitOptions.GetSystemTimeZone());
+        }
+
+        [TestMethod]
+        public async Task RequestCultureFilterPrefersUserValuesOverConfiguration()
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [ChillApiOptions.CultureNameConfigurationKey] = "fr-FR",
+                    [ChillApiOptions.DisplayUiCultureNameConfigurationKey] = "fr-FR",
+                    [ChillApiOptions.TimeZoneIdConfigurationKey] = "Europe/London",
+                    [ChillApiOptions.DisplayDateFormatConfigurationKey] = "DD.MM.YYYY",
+                    [ChillApiOptions.DisplayNumberFormatConfigurationKey] = "1,234.56"
+                })
+                .Build();
+            var preferences = new ChillUserPreferences(
+                "it-IT",
+                "America/New_York",
+                "YYYY/MM/DD",
+                "1.234,56",
+                string.Empty);
+            var services = new ServiceCollection()
+                .AddSingleton<IChillAuthUserPreferencesAccessor>(new TestUserPreferencesAccessor(preferences))
+                .BuildServiceProvider();
+            var httpContext = new DefaultHttpContext { RequestServices = services };
+            var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
+            var filters = new List<IFilterMetadata>();
+            var executingContext = new ResourceExecutingContext(
+                actionContext,
+                filters,
+                new List<Microsoft.AspNetCore.Mvc.ModelBinding.IValueProviderFactory>());
+
+            await new ChillRequestCultureFilter(configuration).OnResourceExecutionAsync(executingContext, () =>
+            {
+                Assert.AreEqual("it-IT", CultureInfo.CurrentCulture.Name);
+                Assert.AreEqual("it-IT", CultureInfo.CurrentUICulture.Name);
+                Assert.AreEqual("America/New_York", ChillSharpInitOptions.GetSystemTimeZone().Id);
+                Assert.AreEqual("yyyy/MM/dd", CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
+                Assert.AreEqual(".", CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator);
+                Assert.AreEqual(",", CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+                return Task.FromResult(new ResourceExecutedContext(actionContext, filters));
+            });
+        }
+
+        [TestMethod]
+        public async Task RequestCultureFilterFallsBackToConfigurationThenSystemDefaults()
+        {
+            var services = new ServiceCollection().BuildServiceProvider();
+            var originalCulture = CultureInfo.CurrentCulture;
+            var originalUiCulture = CultureInfo.CurrentUICulture;
+            var systemTimeZone = ChillSharpInitOptions.GetSystemTimeZone();
+            var filter = new ChillRequestCultureFilter(new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [ChillApiOptions.DisplayCultureNameConfigurationKey] = "fr-FR",
+                    [ChillApiOptions.DisplayUiCultureNameConfigurationKey] = "de-DE",
+                    [ChillApiOptions.TimeZoneIdConfigurationKey] = "Europe/London",
+                    [ChillApiOptions.DisplayDateFormatConfigurationKey] = "DD.MM.YYYY",
+                    [ChillApiOptions.DisplayNumberFormatConfigurationKey] = "1,234.56"
+                })
+                .Build());
+
+            await InvokeFilter(filter, services, () =>
+            {
+                Assert.AreEqual("fr-FR", CultureInfo.CurrentCulture.Name);
+                Assert.AreEqual("de-DE", CultureInfo.CurrentUICulture.Name);
+                Assert.AreEqual("Europe/London", ChillSharpInitOptions.GetSystemTimeZone().Id);
+                Assert.AreEqual("dd.MM.yyyy", CultureInfo.CurrentCulture.DateTimeFormat.ShortDatePattern);
+                Assert.AreEqual(",", CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator);
+                Assert.AreEqual(".", CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+            });
+
+            filter = new ChillRequestCultureFilter(new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [ChillApiOptions.DisplayCultureNameConfigurationKey] = "en-US",
+                    [ChillApiOptions.DisplayNumberFormatConfigurationKey] = "1,234.56",
+                    [ChillApiOptions.ThousandSeparatorConfigurationKey] = "1",
+                    [ChillApiOptions.DecimalSeparatorConfigurationKey] = ":"
+                })
+                .Build());
+            await InvokeFilter(filter, services, () =>
+            {
+                Assert.AreEqual(",", CultureInfo.CurrentCulture.NumberFormat.NumberGroupSeparator);
+                Assert.AreEqual(":", CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator);
+            });
+
+            filter = new ChillRequestCultureFilter(new ConfigurationBuilder().Build());
+            await InvokeFilter(filter, services, () =>
+            {
+                Assert.AreEqual(originalCulture, CultureInfo.CurrentCulture);
+                Assert.AreEqual(originalUiCulture, CultureInfo.CurrentUICulture);
+                Assert.AreEqual(systemTimeZone, ChillSharpInitOptions.GetSystemTimeZone());
+            });
+
+            static async Task InvokeFilter(ChillRequestCultureFilter filter, IServiceProvider services, Action assert)
+            {
+                var httpContext = new DefaultHttpContext { RequestServices = services };
+                var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
+                var filters = new List<IFilterMetadata>();
+                var executingContext = new ResourceExecutingContext(
+                    actionContext,
+                    filters,
+                    new List<Microsoft.AspNetCore.Mvc.ModelBinding.IValueProviderFactory>());
+
+                await filter.OnResourceExecutionAsync(executingContext, () =>
+                {
+                    assert();
+                    return Task.FromResult(new ResourceExecutedContext(actionContext, filters));
+                });
+            }
+        }
+
+        [TestMethod]
         public void Step022_ApplyPropertiesNormalizesTemporalValuesUsingConfiguredSystemTimeZone()
         {
             var originalEnvironmentValue = Environment.GetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName);
@@ -1556,7 +1702,7 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 10, 30, 15, DateTimeKind.Utc), target.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, target.OccurredAtOffset.Kind);
-                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), target.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2)), target.RecordedAtOffset);
                 Assert.AreEqual(new DateOnly(2024, 1, 10), target.PublishedOn);
                 Assert.AreEqual(new TimeOnly(23, 59, 58, 321), target.PublishedAt);
 
@@ -1575,7 +1721,7 @@ namespace ChillSharp.Tests
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtUtc.Kind);
                 Assert.AreEqual(new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc), targetWithoutOffsets.OccurredAtOffset);
                 Assert.AreEqual(DateTimeKind.Utc, targetWithoutOffsets.OccurredAtOffset.Kind);
-                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 11, 30, 15, TimeSpan.Zero), targetWithoutOffsets.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(1)), targetWithoutOffsets.RecordedAtOffset);
 
                 var targetWithDateTimeOffsetValue = new TemporalMappingEntity();
                 var sourceValuesWithDateTimeOffsetValue = new Dictionary<string, object?>
@@ -1586,12 +1732,74 @@ namespace ChillSharp.Tests
                 DtoObjectMapper.ApplyProperties(db, targetWithDateTimeOffsetValue, "Tests.TemporalMappingEntity",
                     sourceValuesWithDateTimeOffsetValue, properties, "TemporalMappingEntity", false);
 
-                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 10, 30, 15, TimeSpan.Zero), targetWithDateTimeOffsetValue.RecordedAtOffset);
+                Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(2)), targetWithDateTimeOffsetValue.RecordedAtOffset);
             }
             finally
             {
                 Environment.SetEnvironmentVariable(ChillSharpInitOptions.SystemTimeZoneEnvironmentVariableName, originalEnvironmentValue);
                 ChillSharpInitOptions.Initialize();
+            }
+        }
+
+        [TestMethod]
+        public void DtoDateTimeDeserializationUsesRequestTimeZoneWhenOffsetIsMissing()
+        {
+            using var db = TestApiHost.CreateDbContext();
+            var target = new TemporalMappingEntity();
+            var properties = DtoTypeMetadataCache.Get(typeof(TemporalMappingEntity)).ChillProperties;
+            var sourceValues = new Dictionary<string, object?>
+            {
+                ["OccurredAtUtc"] = "2024-01-10T12:30:15.000",
+                ["OccurredAtOffset"] = "2024-01-10T12:30:15.000Z",
+                ["RecordedAtOffset"] = "2024-01-10T12:30:15.000"
+            };
+
+            using (ChillSharpThreadContext.Begin(
+                CultureInfo.GetCultureInfo("it-IT"),
+                TimeZoneInfo.FindSystemTimeZoneById("Europe/Rome")))
+            {
+                DtoObjectMapper.ApplyProperties(db, target, "Tests.TemporalMappingEntity", sourceValues,
+                    properties, "TemporalMappingEntity", false);
+            }
+
+            var expectedUtc = new DateTime(2024, 1, 10, 11, 30, 15, DateTimeKind.Utc);
+            Assert.AreEqual(expectedUtc, target.OccurredAtUtc);
+            Assert.AreEqual(new DateTime(2024, 1, 10, 12, 30, 15, DateTimeKind.Utc), target.OccurredAtOffset);
+            Assert.AreEqual(new DateTimeOffset(2024, 1, 10, 12, 30, 15, TimeSpan.FromHours(1)), target.RecordedAtOffset);
+        }
+
+        [TestMethod]
+        public void DateOnlyDtoRoundTripIgnoresRequestTimeZone()
+        {
+            using var db = TestApiHost.CreateDbContext();
+            var properties = DtoTypeMetadataCache.Get(typeof(TemporalMappingEntity)).ChillProperties;
+            var requestTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Athens");
+            var expectedDate = new DateOnly(2024, 1, 2);
+
+            Assert.AreEqual(TimeSpan.FromHours(2), requestTimeZone.GetUtcOffset(new DateTime(2024, 1, 2)));
+
+            using (ChillSharpThreadContext.Begin(CultureInfo.GetCultureInfo("it-IT"), requestTimeZone))
+            {
+                foreach (var input in new[] { "2024-01-02T00:00:00", "2024-01-02T00:00:00Z" })
+                {
+                    var target = new TemporalMappingEntity
+                    {
+                        OccurredAtUtc = new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Utc),
+                        OccurredAtOffset = new DateTime(2024, 1, 2, 0, 0, 0, DateTimeKind.Unspecified)
+                    };
+                    var sourceValues = new Dictionary<string, object?>
+                    {
+                        [nameof(TemporalMappingEntity.PublishedOn)] = input
+                    };
+
+                    DtoObjectMapper.ApplyProperties(db, target, "Tests.TemporalMappingEntity", sourceValues,
+                        properties, "TemporalMappingEntity", false);
+
+                    Assert.AreEqual(expectedDate, target.PublishedOn);
+                    var dtoProperties = DtoObjectMapper.BuildProperties(db, target, "Tests.TemporalMappingEntity", properties);
+                    Assert.AreEqual(expectedDate, dtoProperties[nameof(TemporalMappingEntity.PublishedOn)]);
+                    StringAssert.Contains(JsonSerializer.Serialize(dtoProperties), "\"PublishedOn\":\"2024-01-02\"");
+                }
             }
         }
 
@@ -1897,6 +2105,11 @@ namespace ChillSharp.Tests
             Assert.IsNotNull(result);
             Assert.IsInstanceOfType<ChillSharp.Dto.ChillDtoEntity>(result.Properties["Blog"]);
             Assert.AreEqual(selectedBlog.Guid, ((ChillSharp.Dto.ChillDtoEntity)result.Properties["Blog"]!).Guid);
+        }
+
+        private sealed class TestUserPreferencesAccessor(ChillUserPreferences preferences) : IChillAuthUserPreferencesAccessor
+        {
+            public ChillUserPreferences Current => preferences;
         }
 
         private sealed class NullableDateEntity

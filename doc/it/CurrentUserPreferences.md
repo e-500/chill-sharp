@@ -57,6 +57,32 @@ provideChillSharpUiCore({ additionalThemes: ['cini'] })
 
 Le scelte integrate sono `bright`, `dark` e `soft`. Se il valore salvato di un utente autenticato non e disponibile nel client, UI Core torna alla preferenza chiara/scura del browser.
 
+## Applicazione Delle Preferenze Alle Richieste MVC
+
+Quando viene registrato `AddChillApi`, ChillSharp applica le preferenze di visualizzazione alle richieste MVC prima del model binding. In questo modo la cultura selezionata e disponibile per il model binding, il codice dei controller e la formattazione delle risposte, senza modificare istanze di cultura condivise.
+
+Per ogni impostazione, la preferenza `AuthUser` in cache dell'utente autenticato prevale sulla configurazione dell'applicazione e sulle variabili d'ambiente. I valori mancanti o non validi usano prima il valore configurato e poi i valori predefiniti del runtime. Per l'utente, `DisplayCultureName` imposta sia `CurrentCulture` sia `CurrentUICulture`. L'impostazione facoltativa `DisplayUiCultureName` consente di separare la ricerca delle risorse UI dalla formattazione quando non esiste una cultura utente.
+
+La configurazione dell'applicazione usa queste chiavi:
+
+```json
+{
+    "ChillSharp": {
+        "DisplayCultureName": "en-GB",
+        "DisplayUiCultureName": "en",
+        "DisplayTimeZone": "Europe/Rome",
+        "DisplayDateFormat": "dd/MM/yyyy",
+        "DisplayNumberFormat": "1.234,56",
+        "ThousandSeparator": ".",
+        "DecimalSeparator": ","
+    }
+}
+```
+
+Le variabili d'ambiente equivalenti sono `CHILLSHARP_DISPLAY_CULTURE_NAME`, `CHILLSHARP_DISPLAY_UI_CULTURE_NAME`, `CHILLSHARP_DISPLAY_TIME_ZONE`, `CHILLSHARP_DISPLAY_DATE_FORMAT`, `CHILLSHARP_DISPLAY_TIME_FORMAT`, `CHILLSHARP_DISPLAY_NUMBER_FORMAT`, `CHILLSHARP_THOUSAND_SEPARATOR` e `CHILLSHARP_DECIMAL_SEPARATOR`. `DisplayTimeFormat` e accettato come alias per il fallback del formato data. `CHILLSHARP_SYSTEM_TIMEZONE` esistente rimane un fallback per il fuso orario.
+
+`DisplayDateFormat` usa un pattern .NET per la data breve; i token maiuscoli `DD` e `YYYY` delle preferenze utente esistenti vengono normalizzati. Un esempio di `DisplayNumberFormat` come `1.234,56` fornisce i separatori delle migliaia e decimali. Le impostazioni esplicite `ThousandSeparator` e `DecimalSeparator` prevalgono sull'esempio del formato numerico dell'applicazione; i separatori dedotti da `AuthUser.DisplayNumberFormat` hanno priorita su entrambi. Se non viene fornita alcuna sovrascrittura per data o numeri, vengono usati `DateTimeFormat.ShortDatePattern` e `NumberFormat` della cultura selezionata. Il fallback del fuso orario e `ChillSharpInitOptions.GetSystemTimeZone()`.
+
 ## DbContext Host
 
 Per impostazione predefinita `IChillContext.GetCurrentUserPreferences()` restituisce `ChillUserPreferences.Empty`. In un contesto host personalizzato con auth abilitata, inietta `IChillAuthUserPreferencesAccessor` e delega a esso:
