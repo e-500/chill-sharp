@@ -16,7 +16,7 @@ test('uses npm.cmd when launching npm on Windows', () => {
   assert.equal(cliModule.resolveExecutable('npm', 'win32'), 'npm.cmd');
   assert.equal(cliModule.resolveExecutable('npm', 'linux'), 'npm');
   assert.equal(cliModule.resolveExecutable('dotnet', 'win32'), 'dotnet');
-  assert.deepEqual(cliModule.resolveCommandOptions('npm', 'win32'), { shell: true });
+  assert.deepEqual(cliModule.resolveCommandOptions('npm', 'win32'), {});
   assert.deepEqual(cliModule.resolveCommandOptions('npm', 'linux'), {});
 });
 
