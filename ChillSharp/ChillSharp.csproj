@@ -7,7 +7,7 @@
         <OutputType>Library</OutputType>
         <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
         <Title>ChillSharp</Title>
-	        <Copyright>© 2025 Andrea Piovesan</Copyright>
+	    <Copyright>© 2025 Andrea Piovesan</Copyright>
         <PackageIcon>logo.png</PackageIcon>
         <RepositoryUrl>https://github.com/e-500/chill-sharp</RepositoryUrl>
         <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
@@ -35,14 +35,17 @@
         <None Include="..\doc\**\*">
             <Pack>True</Pack>
             <PackagePath>doc\</PackagePath>
+            <Link>doc\%(RecursiveDir)%(Filename)%(Extension)</Link>
         </None>
         <None Include="..\ChillSharp.Template\.agents\skills\**\*">
             <Pack>True</Pack>
             <PackagePath>.agents\skills\</PackagePath>
+            <Link>.agents\skills\%(RecursiveDir)%(Filename)%(Extension)</Link>
         </None>
         <None Include="..\.agents\skills\chillsharp-menu-json\**\*">
             <Pack>True</Pack>
             <PackagePath>.agents\skills\chillsharp-menu-json\</PackagePath>
+            <Link>.agents\skills\chillsharp-menu-json\%(RecursiveDir)%(Filename)%(Extension)</Link>
         </None>
     </ItemGroup>
 
