@@ -107,7 +107,7 @@ public sealed class ChillAttachmentArchive : IChillAttachmentArchive
     {
         var raw = string.IsNullOrWhiteSpace(value) ? "general" : value.Trim();
         var invalidChars = Path.GetInvalidFileNameChars()
-            .Concat(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar })
+            .Concat(new[] { '/', '\\' })
             .Distinct()
             .ToArray();
 
