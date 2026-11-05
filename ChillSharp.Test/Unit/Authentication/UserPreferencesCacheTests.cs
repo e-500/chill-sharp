@@ -21,4 +21,32 @@ public class ChillAuthUserPreferencesCacheTests
         Assert.IsTrue(cache.TryGet("user-2", out var retained));
         Assert.AreSame(second, retained);
     }
+
+    [TestMethod]
+    public void Set_NormalizesBlankIdentifiersAndRejectsNullPreferences()
+    {
+        var cache = new ChillAuthUserPreferencesCache();
+        var preferences = new ChillUserPreferences("en-GB", "Europe/London", "dd/MM/yyyy", "N2", "soft");
+
+        cache.Set("   ", preferences);
+
+        Assert.IsTrue(cache.TryGet(string.Empty, out var cached));
+        Assert.AreSame(preferences, cached);
+        Assert.Throws<ArgumentNullException>(() => cache.Set("user-1", null!));
+    }
+
+    [TestMethod]
+    public void InvalidateAll_RemovesEveryCachedSnapshot()
+    {
+        var cache = new ChillAuthUserPreferencesCache();
+        cache.Set("user-1", new ChillUserPreferences("it-IT", "Europe/Rome", "dd/MM/yyyy", "N2", "cini"));
+        cache.Set("user-2", new ChillUserPreferences("en-GB", "Europe/London", "dd/MM/yyyy", "N2", "soft"));
+
+        cache.InvalidateAll();
+
+        Assert.IsFalse(cache.TryGet("user-1", out var first));
+        Assert.IsNull(first);
+        Assert.IsFalse(cache.TryGet("user-2", out var second));
+        Assert.IsNull(second);
+    }
 }

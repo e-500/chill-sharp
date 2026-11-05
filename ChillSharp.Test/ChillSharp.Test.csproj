@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.27" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="MSTest" Version="4.0.2" />
+    <PackageReference Include="coverlet.msbuild" Version="6.0.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.27" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.27" />
@@ -30,7 +31,7 @@
     <ProjectReference Include="..\ChillSharp.AspNetCore\ChillSharp.AspNetCore.csproj" />
     <ProjectReference Include="..\ChillSharp.Attachment\ChillSharp.Attachment.csproj" />
     <ProjectReference Include="..\ChillSharp.I18n\ChillSharp.I18n.csproj" />
-    <ProjectReference Include="..\ChillSharp.Schema\ChillSharp.Schema.csproj" />
+    <ProjectReference Include="..\ChillSharp.Schema\ChillSharp.Schema.csproj" Aliases="global,ChillSchemaAssembly" />
     <ProjectReference Include="..\ChillSharp.Mcp\ChillSharp.Mcp.csproj" />
     <ProjectReference Include="..\ChillSharp.Schema.Abstractions\ChillSharp.Schema.Abstractions.csproj" />
   </ItemGroup>
