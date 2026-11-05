@@ -144,9 +144,9 @@ public sealed class ChillMcpTools
     }
 
     [McpServerTool(Name = "ChillSharp.get-schema-list", UseStructuredContent = true), Description(
-        "Lists all MCP-enabled ChillSharp entity and query schemas available to the authenticated caller. " +
-        "Use this first to discover the database structure entry points, then call 'ChillSharp get-schema' for the full shape of a specific entity or query. " +
-        "Schema entries describe entities, queries, their properties, and returned types. " +
+        "Lists all MCP-enabled ChillSharp entity, query, and command schemas available to the authenticated caller. " +
+        "Use this first to discover the database structure entry points, then call 'ChillSharp get-schema' for the full shape of a specific entity, query, or command. " +
+        "Schema entries describe entities, queries, commands, their properties, and returned types. " +
         AuthenticationAndPermissionsNotice)]
     public Task<IReadOnlyList<ChillMcpSchemaListItem>> GetSchemaList(
         [Description("Optional culture name used to localize schema labels, for example 'en-GB' or 'it-IT'.")]
@@ -157,13 +157,14 @@ public sealed class ChillMcpTools
     }
 
     [McpServerTool(Name = "ChillSharp.get-schema", UseStructuredContent = true), Description(
-        "Returns the full ChillSharp schema for one MCP-enabled entity or query type. " +
-        "Use this tool to understand the structure of the database before querying: schemas describe entities, query types, their properties, descriptions, reference types, and for query schemas the related returned entity type. " +
+        "Returns the full ChillSharp schema for one MCP-enabled entity, query, or command type. " +
+        "Use this tool to understand the structure of the database before querying or executing a command: schemas describe types, their properties, descriptions, reference types, and for query schemas the related returned entity type. " +
         "Each property includes propertyType as a stable numeric id and simplePropertyType as an agent-friendly string to use when constructing request payloads. " +
-        "This is the best tool for learning which fields exist and how a query is expected to behave. " +
+        "For commands, use the exact schema property names and types as the command Parameters. " +
+        "This is the best tool for learning which fields exist and how a query or command is expected to behave. " +
         AuthenticationAndPermissionsNotice)]
     public Task<ChillMcpSchema?> GetSchemaAsync(
-        [Description("The ChillSharp entity or query type, for example 'Model.Blog' or 'Query.PostQuery'.")]
+        [Description("The ChillSharp entity, query, or command type, for example 'Model.Blog', 'Query.PostQuery', or 'Commands.EchoCommand'.")]
         string chillType,
         [Description("Optional view code. Use 'default' unless the host exposes a custom schema view.")]
         string chillViewCode = "default",
@@ -172,6 +173,20 @@ public sealed class ChillMcpTools
         CancellationToken cancellationToken = default)
     {
         return _schemaDiscoveryService.GetSchemaAsync(chillType, chillViewCode, cultureName, cancellationToken);
+    }
+
+    [McpServerTool(Name = "ChillSharp.command", UseStructuredContent = true), Description(
+        "Executes an MCP-enabled ChillSharp command and returns its updated Parameters, including output values. " +
+        "First call 'ChillSharp get-schema-list' to find a command, then 'ChillSharp get-schema' to inspect its description and exact parameter names and simplePropertyType values. " +
+        "Send the command ChillType and a Parameters object containing the required input values. The command can perform side effects; execute it only when requested by the user. " +
+        AuthenticationAndPermissionsNotice)]
+    public async Task<ChillMcpCommand> Command(
+        [Description("The command payload. Use an MCP-enabled command ChillType and supply its input values in Parameters using exact names and schema-compatible values.")]
+        ChillMcpCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureCommandMcpEnabledAsync(command.ChillType, cancellationToken);
+        return ChillMcpCommand.FromDto(_dtoEngine.Command(command.ToDto()));
     }
 
     [McpServerTool(Name = "ChillSharp.get-dto-examples", UseStructuredContent = true), Description(
@@ -338,12 +353,13 @@ public sealed class ChillMcpTools
 
     [McpServerTool(Name = "ChillSharp.chunk", UseStructuredContent = true), Description(
         "Executes a list of MCP operation items against MCP-enabled ChillSharp schemas and returns the updated operation list. " +
-        "Supported verbs are transaction, query, find, create, update, delete, autocomplete, validate, and commit. " +
+        "Supported verbs are transaction, command, query, find, create, update, delete, autocomplete, validate, and commit. " +
+        "Provide the Command, Query, or Entity payload that matches each operation's verb. " +
         "Each operation is checked for MCP visibility before any operation is executed, so unpublished schemas are rejected for the whole chunk. " +
         RequestPayloadGuidance +
         AuthenticationAndPermissionsNotice)]
     public async Task<List<ChillMcpOperation>> Chunk(
-        [Description("Ordered operation items. Use Index for client-side ordering and Verb to choose the operation; provide Query or Entity according to the verb.")]
+        [Description("Ordered operation items. Use Index for client-side ordering and Verb to choose the operation; provide Command, Query, or Entity according to the verb.")]
         List<ChillMcpOperation> chunk,
         CancellationToken cancellationToken = default)
     {
@@ -370,6 +386,9 @@ public sealed class ChillMcpTools
     {
         switch (operation.Verb?.ToLowerInvariant())
         {
+            case ChillOperationVerb.COMMAND when operation.Command != null:
+                await EnsureCommandMcpEnabledAsync(operation.Command.ChillType, cancellationToken);
+                break;
             case ChillOperationVerb.QUERY when operation.Query != null:
                 await EnsureMcpEnabledAsync(
                     operation.Query.ChillType,
@@ -390,6 +409,14 @@ public sealed class ChillMcpTools
             case ChillOperationVerb.VALIDATE when operation.Entity != null:
                 await EnsureMcpEnabledAsync(operation.Entity.ChillType, isQueryType: false, cancellationToken);
                 break;
+        }
+    }
+
+    private async Task EnsureCommandMcpEnabledAsync(string chillType, CancellationToken cancellationToken)
+    {
+        if (!await _schemaDiscoveryService.IsMcpEnabledAsync(chillType, "default", cancellationToken: cancellationToken))
+        {
+            throw new InvalidOperationException($"ChillSharp command '{chillType}' is not MCP-enabled.");
         }
     }
 

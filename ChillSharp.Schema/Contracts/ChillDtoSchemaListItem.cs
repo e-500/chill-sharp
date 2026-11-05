@@ -25,7 +25,7 @@ using System.Reflection;
 namespace ChillSharp.Schema.Contracts
 {
     /// <summary>
-    /// Lightweight descriptor for a registered Chill entity or query type.
+    /// Lightweight descriptor for a registered Chill entity, query, or command type.
     /// </summary>
     public class ChillDtoSchemaListItem
     {
@@ -40,7 +40,7 @@ namespace ChillSharp.Schema.Contracts
         public string ChillType { get; set; } = string.Empty;
 
         /// <summary>
-        /// Descriptor kind: <c>entity</c> or <c>query</c>.
+        /// Descriptor kind: <c>entity</c>, <c>query</c>, or <c>command</c>.
         /// </summary>
         public string Type { get; set; } = string.Empty;
 
@@ -90,7 +90,24 @@ namespace ChillSharp.Schema.Contracts
         public static ChillDtoSchemaListItem CreateFromQueryType(Type queryType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
         {
             return FromQueryType(queryType, shrinkTypePrefix, context, cultureName);
-        }        
+        }
+
+        public static ChillDtoSchemaListItem FromCommandType(Type commandType, string shrinkTypePrefix, IChillContext? context, string? cultureName)
+        {
+            var chillAttr = commandType.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
+
+            return new ChillDtoSchemaListItem
+            {
+                Name = ChillLabelResolver.Resolve(
+                    chillAttr?.PrimaryLanguageLabel,
+                    chillAttr?.SecondaryLanguageLabel,
+                    commandType.Name,
+                    context,
+                    cultureName),
+                ChillType = NormalizeChillType(commandType, shrinkTypePrefix),
+                Type = "command"
+            };
+        }
         
         internal static string NormalizeChillType(Type type, string shrinkTypePrefix)
         {

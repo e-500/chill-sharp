@@ -51,6 +51,7 @@ The module registers these tools:
 
 - `ChillSharp get-schema-list`
 - `ChillSharp get-schema`
+- `ChillSharp command`
 - `ChillSharp query`
 - `ChillSharp lookup`
 - `ChillSharp find`
@@ -65,15 +66,15 @@ The module registers these tools:
 
 ### `ChillSharp get-schema-list`
 
-Lists the available MCP-enabled ChillSharp entity and query schemas visible to the authenticated caller.
+Lists the available MCP-enabled ChillSharp entity, query, and command schemas visible to the authenticated caller.
 
-Use this tool first to discover the available database structure entry points, then call `ChillSharp get-schema` for the full schema of the entity or query you want to inspect.
+Use this tool first to discover the available database structure entry points, then call `ChillSharp get-schema` for the full schema of the entity, query, or command you want to inspect.
 
 ### `ChillSharp get-schema`
 
-Returns the full schema for one MCP-enabled ChillSharp entity or query type.
+Returns the full schema for one MCP-enabled ChillSharp entity, query, or command type.
 
-Use this tool to understand the structure of the database and the available query surface. Schemas contain descriptions of queries and entities, their own properties, reference types, returned types, and for entity schemas relation metadata inferred from annotated collection properties. Query schemas also describe the related entity type returned by the query.
+Use this tool to understand the structure of the database and the available query and command surface. Schemas contain descriptions of entities, queries, and commands, their properties, reference types, returned types, and for entity schemas relation metadata inferred from annotated collection properties. Query schemas also describe the related entity type returned by the query.
 
 Each property includes both:
 
@@ -81,6 +82,17 @@ Each property includes both:
 - `simplePropertyType`: an agent-friendly string such as `int`, `decimal`, `string`, `json`, `chill-entity`, or `chill-entity-collection`
 
 Agents should use `simplePropertyType` when constructing request payloads.
+
+### `ChillSharp command`
+
+The MCP server instructions and this tool guide the command workflow:
+
+1. call `ChillSharp get-schema-list` and choose a command schema
+2. call `ChillSharp get-schema` for its `ChillType`
+3. build `Parameters` with the exact schema property names and matching `simplePropertyType` values
+4. call `ChillSharp command` and inspect the returned `Parameters` for output values
+
+Commands may perform side effects, so execute them only when requested by the user.
 
 Entity schemas can also expose `relations`, where each item contains:
 
@@ -199,6 +211,7 @@ Executes a list of `ChillOperation` items and returns the updated operation list
 Supported verbs are:
 
 - `transaction`
+- `command`
 - `query`
 - `find`
 - `create`
@@ -210,7 +223,7 @@ Supported verbs are:
 
 Each operation is checked for MCP visibility before any operation executes. If one operation targets a non-MCP-enabled schema, the whole chunk is rejected.
 
-For `query`, `autocomplete`, and `validate` operations that use a query payload, set `Query`. For entity operations, set `Entity`.
+For `command` operations, set `Command`. For `query`, `autocomplete`, and `validate` operations that use a query payload, set `Query`. For entity operations, set `Entity`.
 
 ## Authentication and permissions
 

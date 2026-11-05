@@ -1,10 +1,14 @@
 using ChillSharp;
 using ChillSharp.Dto;
 using ChillSharp.Mcp;
+using ChillSharp.Mcp.Api;
 using ChillSharp.Mcp.Contracts;
 using ChillSharp.Schema.Contracts;
+using ChillSharp.Tests.EF.Commands;
 using ChillSharp.Tests.EF.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using System.Reflection;
 using System.Text.Json;
@@ -22,6 +26,7 @@ public sealed class McpApi
 
         var getSchemaList = GetToolMethod(nameof(ChillMcpTools.GetSchemaList));
         var getSchema = GetToolMethod(nameof(ChillMcpTools.GetSchemaAsync));
+        var command = GetToolMethod(nameof(ChillMcpTools.Command));
         var getDtoExamples = GetToolMethod(nameof(ChillMcpTools.GetDtoExamples));
         var query = GetToolMethod(nameof(ChillMcpTools.Query));
         var lookup = GetToolMethod(nameof(ChillMcpTools.Lookup));
@@ -38,6 +43,7 @@ public sealed class McpApi
         {
             getSchemaList,
             getSchema,
+            command,
             getDtoExamples,
             query,
             lookup,
@@ -52,8 +58,9 @@ public sealed class McpApi
             chunk
         };
 
-        AssertToolMetadata(getSchemaList, "ChillSharp.get-schema-list", "MCP-enabled", "bearer token");
-        AssertToolMetadata(getSchema, "ChillSharp.get-schema", "MCP-enabled", "properties", "SimplePropertyType");
+        AssertToolMetadata(getSchemaList, "ChillSharp.get-schema-list", "MCP-enabled", "command", "bearer token");
+        AssertToolMetadata(getSchema, "ChillSharp.get-schema", "MCP-enabled", "properties", "SimplePropertyType", "commands");
+        AssertToolMetadata(command, "ChillSharp.command", "MCP-enabled", "get-schema-list", "get-schema", "Parameters", "side effects");
         AssertToolMetadata(getDtoExamples, "ChillSharp.get-dto-examples", "MCP query", "entity payload", "Pagination with Page and PageResults", "Ordering with PropertyName and Direction");
         AssertToolMetadata(query, "ChillSharp.query", "MCP-enabled", "MCP query", "schema property names", "simplePropertyType", "FullTextSearch");
         AssertToolMetadata(lookup, "ChillSharp.lookup", "MCP-enabled", "full-text");
@@ -65,7 +72,7 @@ public sealed class McpApi
         AssertToolMetadata(autocompleteQuery, "ChillSharp.autocomplete-query", "MCP-enabled", "query DTO");
         AssertToolMetadata(validateEntity, "ChillSharp.validate-entity", "MCP-enabled", "validation errors");
         AssertToolMetadata(validateQuery, "ChillSharp.validate-query", "MCP-enabled", "validation errors");
-        AssertToolMetadata(chunk, "ChillSharp.chunk", "MCP-enabled", "operation");
+        AssertToolMetadata(chunk, "ChillSharp.chunk", "MCP-enabled", "operation", "command", "Command");
 
         foreach (var method in toolMethods)
         {
@@ -159,6 +166,7 @@ public sealed class McpApi
         var schemaList = await discoveryService.GetSchemaListAsync("it-IT");
         Assert.IsTrue(schemaList.Any(x => x.ChillType == "Model.Blog"));
         Assert.IsTrue(schemaList.Any(x => x.ChillType == "Query.BlogQuery"));
+        Assert.IsTrue(schemaList.Any(x => x.ChillType == "Commands.EchoCommand" && x.Type == "command"));
         Assert.IsFalse(schemaList.Any(x => x.ChillType == "Model.Post"));
         Assert.IsFalse(schemaList.Any(x => x.ChillType == "Query.PostQuery"));
         Assert.AreEqual(
@@ -172,9 +180,73 @@ public sealed class McpApi
         Assert.AreEqual(
             "Blog title used to identify the resource.",
             blogSchema.Properties.Single(x => x.Name == nameof(Blog.Title)).Description);
+        var commandSchema = await discoveryService.GetSchemaAsync("Commands.EchoCommand", cancellationToken: CancellationToken.None);
+        Assert.IsNotNull(commandSchema);
+        Assert.AreEqual("Converts the input text to uppercase.", commandSchema.Description);
+        Assert.AreEqual("Text to convert.", commandSchema.Properties.Single(x => x.Name == nameof(EchoCommand.Input)).Description);
 
         var postQuerySchema = await discoveryService.GetSchemaAsync("Query.PostQuery", cancellationToken: CancellationToken.None);
         Assert.IsNull(postQuerySchema);
+    }
+
+    [TestMethod]
+    public async Task Step005_CommandToolExecutesEnabledCommandsAndReturnsOutputParameters()
+    {
+        var options = new DbContextOptionsBuilder<EF.DummyContext>()
+            .UseInMemoryDatabase($"mcp-command-{Guid.NewGuid():N}")
+            .Options;
+
+        await using var context = new EF.DummyContext(options);
+        var schemaService = CreateSchemaService(context);
+        var tools = new ChillMcpTools(
+            new ChillMcpSchemaDiscoveryService(context, schemaService),
+            new ChillDtoEngine(context));
+
+        var result = await tools.Command(new ChillMcpCommand
+        {
+            ChillType = "Commands.EchoCommand",
+            Parameters = { [nameof(EchoCommand.Input)] = "hello" }
+        });
+
+        Assert.AreEqual("HELLO", result.Parameters[nameof(EchoCommand.Output)]?.ToString());
+
+        var chunkResult = await tools.Chunk(
+        [
+            new ChillMcpOperation
+            {
+                Verb = ChillOperationVerb.COMMAND,
+                Command = new ChillMcpCommand
+                {
+                    ChillType = "Commands.EchoCommand",
+                    Parameters = { [nameof(EchoCommand.Input)] = "chunk" }
+                }
+            }
+        ]);
+        Assert.AreEqual("CHUNK", chunkResult[0].Command?.Parameters[nameof(EchoCommand.Output)]?.ToString());
+
+        await AssertInvalidOperationAsync(() => tools.Command(new ChillMcpCommand
+        {
+            ChillType = "Commands.RenameCqrsCrudItemCommand"
+        }));
+    }
+
+    [TestMethod]
+    public void Step006_ServerInstructionsDescribeCommandExecution()
+    {
+        var services = new ServiceCollection()
+            .AddLogging()
+            .AddDbContext<EF.DummyContext>(options => options.UseInMemoryDatabase($"mcp-instructions-{Guid.NewGuid():N}"));
+        services.AddChillMcpApi<EF.DummyContext>();
+
+        using var provider = services.BuildServiceProvider();
+        var serverOptions = provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
+
+        var instructions = serverOptions.ServerInstructions
+            ?? throw new AssertFailedException("MCP server instructions were not configured.");
+        Assert.Contains("ChillSharp.get-schema-list", instructions);
+        Assert.Contains("ChillSharp.get-schema", instructions);
+        Assert.Contains("ChillSharp.command", instructions);
+        Assert.Contains("side effects", instructions);
     }
 
     [TestMethod]
