@@ -32,6 +32,11 @@ namespace ChillSharp.Mcp.Api;
 /// </summary>
 public static class ChillMcpServiceCollectionExtensions
 {
+    private const string ServerInstructions =
+        "Use ChillSharp.get-schema-list to discover MCP-enabled entities, queries, and commands. " +
+        "Before executing a command, call ChillSharp.get-schema for its command type and build Parameters using the exact schema property names and simplePropertyType values. " +
+        "Call ChillSharp.command with that ChillType and Parameters; inspect the returned Parameters for output values. Commands may have side effects, so execute them only when requested by the user.";
+
     /// <summary>
     /// Adds the ChillSharp MCP module and binds it to an existing Chill context and schema-aware DbContext.
     /// </summary>
@@ -78,7 +83,7 @@ public static class ChillMcpServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ChillMcpSchemaDiscoveryService>();
         services.AddScoped<ChillMcpTools>();
-        services.AddMcpServer()
+        services.AddMcpServer(options => options.ServerInstructions = ServerInstructions)
             .WithHttpTransport()
             .WithTools<ChillMcpTools>();
         return services;

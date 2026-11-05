@@ -242,6 +242,39 @@ public sealed class ChillMcpEntity
 }
 
 /// <summary>
+/// MCP-specific command DTO containing the command type and its input/output parameters.
+/// </summary>
+public sealed class ChillMcpCommand
+{
+    public string ChillType { get; set; } = string.Empty;
+    public Dictionary<string, object?> Parameters { get; set; } = [];
+
+    public ChillDtoCommand ToDto()
+    {
+        return new ChillDtoCommand
+        {
+            ChillType = ChillType,
+            Parameters = Parameters.ToDictionary(
+                item => item.Key,
+                item => ChillMcpEntity.ToDtoValue(item.Value),
+                StringComparer.Ordinal)
+        };
+    }
+
+    public static ChillMcpCommand FromDto(ChillDtoCommand dto)
+    {
+        return new ChillMcpCommand
+        {
+            ChillType = dto.ChillType,
+            Parameters = dto.Parameters.ToDictionary(
+                item => item.Key,
+                item => ChillMcpEntity.FromDtoValue(item.Value),
+                StringComparer.Ordinal)
+        };
+    }
+}
+
+/// <summary>
 /// MCP-specific query DTO with a compact schema for tool request and response payloads.
 /// </summary>
 public sealed class ChillMcpQuery
@@ -384,6 +417,7 @@ public sealed class ChillMcpOperation
 {
     public int Index { get; set; }
     public string? Verb { get; set; }
+    public ChillMcpCommand? Command { get; set; }
     public ChillMcpQuery? Query { get; set; }
     public ChillMcpEntity? Entity { get; set; }
     public List<ChillMcpValidationError>? ValidationErrors { get; set; }
@@ -394,6 +428,7 @@ public sealed class ChillMcpOperation
         {
             Index = Index,
             Verb = Verb,
+            Command = Command?.ToDto(),
             Query = Query?.ToDto(),
             Entity = Entity?.ToDto()
         };
@@ -405,6 +440,7 @@ public sealed class ChillMcpOperation
         {
             Index = dto.Index,
             Verb = dto.Verb,
+            Command = dto.Command == null ? null : ChillMcpCommand.FromDto(dto.Command),
             Query = dto.Query == null ? null : ChillMcpQuery.FromDto(dto.Query),
             Entity = dto.Entity == null ? null : ChillMcpEntity.FromDto(dto.Entity),
             ValidationErrors = dto.ValidationErrors?.Select(ChillMcpValidationError.FromDto).ToList()

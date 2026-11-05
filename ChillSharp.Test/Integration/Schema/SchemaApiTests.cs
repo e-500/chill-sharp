@@ -413,7 +413,18 @@ namespace ChillSharp.Tests
             var controller = await CreateSchemaController();
 
             Assert.IsInstanceOfType<OkObjectResult>(await controller.GetSchema("Model.Post", "default"));
-            Assert.IsInstanceOfType<OkObjectResult>(controller.GetSchemaList());
+            var schemaListResult = controller.GetSchemaList() as OkObjectResult;
+            Assert.IsNotNull(schemaListResult);
+            var schemaList = schemaListResult.Value as List<ChillDtoSchemaListItem>;
+            Assert.IsNotNull(schemaList);
+            Assert.IsTrue(schemaList.Any(item => item.ChillType == "Commands.EchoCommand" && item.Type == "command"));
+            var commandSchemaResult = await controller.GetSchema("Commands.EchoCommand", "default") as OkObjectResult;
+            Assert.IsNotNull(commandSchemaResult);
+            var commandSchema = commandSchemaResult.Value as ChillDtoSchema;
+            Assert.IsNotNull(commandSchema);
+            Assert.AreEqual("Converts the input text to uppercase.", commandSchema.MCPDescription);
+            Assert.IsTrue(commandSchema.Properties.Any(property => property.Name == "Input"));
+            Assert.IsTrue(commandSchema.Properties.Any(property => property.Name == "Output"));
             Assert.IsInstanceOfType<OkObjectResult>(await controller.SetSchema(new ChillDtoSchema { ChillType = "Model.Post", ChillViewCode = "default" }));
             Assert.IsInstanceOfType<OkObjectResult>(await controller.GetEntityOptions("Model.Post"));
             Assert.IsInstanceOfType<OkObjectResult>(await controller.SetEntityOptions(new ChillDtoEntityOptions { ChillType = "Model.Post" }));
@@ -1300,7 +1311,6 @@ namespace ChillSharp.Tests
         }
     }
 }
-
 
 
 

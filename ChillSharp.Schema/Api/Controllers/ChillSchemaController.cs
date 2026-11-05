@@ -128,8 +128,14 @@ public sealed class ChillSchemaController : ControllerBase
             .Where(IsRegisteredQueryType)
             .Select(type => ChillDtoSchemaListItem.CreateFromQueryType(type, shrinkTypePrefix, _context, cultureName));
 
+        var commandItems = assemblies
+            .SelectMany(ChillAssemblyDiscovery.GetLoadableTypes)
+            .Where(IsRegisteredCommandType)
+            .Select(type => ChillDtoSchemaListItem.FromCommandType(type, shrinkTypePrefix, _context, cultureName));
+
         return entityItems
             .Concat(queryItems)
+            .Concat(commandItems)
             .OrderBy(x => x.Type, StringComparer.Ordinal)
             .ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.ChillType, StringComparer.OrdinalIgnoreCase)
@@ -150,6 +156,14 @@ public sealed class ChillSchemaController : ControllerBase
             && type.IsClass
             && !type.IsAbstract
             && typeof(IChillQuery<IChillEntity>).IsAssignableFrom(type);
+    }
+
+    private static bool IsRegisteredCommandType(Type type)
+    {
+        return (type.IsPublic || type.IsNestedPublic)
+            && type.IsClass
+            && !type.IsAbstract
+            && typeof(IChillCommand).IsAssignableFrom(type);
     }
 
     private async Task<IReadOnlyList<ChillDtoMenuItem>> FilterMenuAsync(IReadOnlyList<ChillDtoMenuItem> menuItems, CancellationToken cancellationToken)
