@@ -65,7 +65,17 @@ public sealed class ChillContextSchemaRuntimeContext : IChillSchemaRuntimeContex
                 cultureName);
         }
 
+        if (activatedType is IChillCommand chillCommand)
+        {
+            return ChillDtoSchema.FromIChillCommand(
+                chillCommand,
+                chillViewCode,
+                ChillTypePrefix,
+                _context,
+                cultureName);
+        }
+
         throw new ChillException(
-            $"Activated type '{activatedType.GetType().FullName ?? activatedType.GetType().Name}' is not a Chill entity or query.");
+            $"Activated type '{activatedType.GetType().FullName ?? activatedType.GetType().Name}' is not a Chill entity, query, or command.");
     }
 }

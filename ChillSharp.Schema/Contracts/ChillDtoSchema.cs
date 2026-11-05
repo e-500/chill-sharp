@@ -186,6 +186,43 @@ namespace ChillSharp.Schema.Contracts
             return schema;
         }
 
+        /// <summary>
+        /// Builds schema metadata from a command instance.
+        /// </summary>
+        public static ChillDtoSchema FromIChillCommand(
+            IChillCommand chillCommand,
+            string ChillViewCode = "default",
+            string shrinkTypePrefix = "",
+            IChillContext? context = null,
+            string? cultureName = null)
+        {
+            ArgumentNullException.ThrowIfNull(chillCommand);
+
+            Type type = chillCommand.GetType();
+            ChillEntityAttribute? chillAttr = type.GetCustomAttribute<ChillEntityAttribute>(inherit: true);
+            var schema = new ChillDtoSchema
+            {
+                DisplayName = ChillLabelResolver.Resolve(
+                    chillAttr?.PrimaryLanguageLabel,
+                    chillAttr?.SecondaryLanguageLabel,
+                    type.Name,
+                    context,
+                    cultureName),
+                ChillType = ChillTypeResolver.NormalizeChillType(type, shrinkTypePrefix),
+                ChillViewCode = ChillViewCode,
+                EnableMCP = chillAttr?.EnableMCP ?? false,
+                MCPDescription = chillAttr?.MCPDescription ?? string.Empty,
+                Metadata = chillAttr?.GetMetadata() ?? new Dictionary<string, string>()
+            };
+
+            schema.Properties = type.GetProperties()
+                .Where(property => property.IsDefined(typeof(ChillPropertyAttribute), false))
+                .Select(property => ChillDtoPropertySchema.FromPropertyInfo(property, shrinkTypePrefix, context, cultureName))
+                .ToList();
+
+            return schema;
+        }
+
         private static List<ChillDtoSchemaRelation> BuildRelations(
             Type parentType,
             IEnumerable<PropertyInfo> properties,
@@ -415,4 +452,3 @@ namespace ChillSharp.Schema.Contracts
         }
     }
 }
-

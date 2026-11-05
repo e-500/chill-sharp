@@ -26,6 +26,7 @@ The module registers these MCP tools:
 
 - `ChillSharp get-schema-list`
 - `ChillSharp get-schema`
+- `ChillSharp command`
 - `ChillSharp query`
 - `ChillSharp lookup`
 - `ChillSharp find`
@@ -42,13 +43,13 @@ The module registers these MCP tools:
 
 Returns only the schemas that are MCP-enabled.
 
-Use this as the discovery entry point. It tells the AI which entities and queries are intended to be consumed through MCP.
+Use this as the discovery entry point. It tells the AI which entities, queries, and commands are intended to be consumed through MCP.
 
 ### `ChillSharp get-schema`
 
-Returns the full `ChillDtoSchema` for one MCP-enabled entity or query type.
+Returns the full `ChillDtoSchema` for one MCP-enabled entity, query, or command type.
 
-This is the most important introspection tool. It includes:
+This is the most important introspection tool. For entities, queries, and commands, it includes:
 
 - schema metadata
 - query related type information
@@ -68,6 +69,21 @@ In practice, this is how an AI learns:
 - which value shape each request property requires
 
 Agents should not invent request objects. Use `get-schema` as the contract, copy exact property names from the schema, and send values that match each property's `simplePropertyType`.
+
+### `ChillSharp command`
+
+Executes an MCP-enabled application command and returns its updated `Parameters`, including output values.
+
+Use this workflow:
+
+1. call `ChillSharp get-schema-list` and choose an entry whose `type` is `command`
+2. call `ChillSharp get-schema` with that command's `chillType`
+3. build `Parameters` using the exact schema property names and values matching each property's `simplePropertyType`
+4. call `ChillSharp command` with the command `ChillType` and `Parameters`
+5. read the returned `Parameters` for command outputs
+
+Commands can perform side effects. Run one only when requested by the user, and follow the host's authentication and authorization requirements.
+The MCP server also provides these steps as model-level instructions when a client initializes the connection.
 
 For entity schemas, `Relations` describes child relation collections that the UI can wire automatically at runtime. Each relation entry includes:
 
@@ -206,6 +222,7 @@ Executes a list of `ChillOperation` items and returns the updated operation list
 Supported verbs are:
 
 - `transaction`
+- `command`
 - `query`
 - `find`
 - `create`
@@ -217,7 +234,7 @@ Supported verbs are:
 
 Each operation is checked for MCP visibility before any operation executes. If one operation targets a non-MCP-enabled schema, the whole chunk is rejected.
 
-For `query`, `autocomplete`, and `validate` operations that use a query payload, set `Query`. For entity operations, set `Entity`.
+For `command` operations, set `Command`. For `query`, `autocomplete`, and `validate` operations that use a query payload, set `Query`. For entity operations, set `Entity`.
 
 ## Basic host setup
 

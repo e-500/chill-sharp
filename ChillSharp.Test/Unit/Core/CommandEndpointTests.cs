@@ -180,12 +180,18 @@ namespace ChillSharp.Test
 
 namespace ChillSharp.Tests.EF.Commands
 {
+    [ChillEntity(
+        UniquePropertyKeyString: "B544BD92-9986-4EF9-BC0D-BE62E48580C5",
+        PrimaryLanguageLabel: "Echo",
+        SecondaryLanguageLabel: "Echo",
+        EnableMCP = true,
+        MCPDescription = "Converts the input text to uppercase.")]
     public sealed class EchoCommand : IChillCommand
     {
-        [ChillProperty]
+        [ChillProperty(MCPDescription = "Text to convert.")]
         public string Input { get; set; } = string.Empty;
 
-        [ChillProperty]
+        [ChillProperty(MCPDescription = "Converted text.")]
         public string Output { get; set; } = string.Empty;
 
         public void OnCommand(IChillContext Context)

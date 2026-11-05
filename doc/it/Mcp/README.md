@@ -1,6 +1,6 @@
 # Modulo MCP ChillSharp
 
-Versione originale in inglese: [English](../../Mcp/README.md)
+English version: [English](../../Mcp/README.md)
 
 
 Questo documento descrive il modulo `ChillSharp.Mcp`, come registrarlo in un host ASP.NET Core e come preparare un `DbContext` e un modello in modo che gli agenti IA possano utilizzare lo schema esposto e la superficie delle query in modo efficiente.
@@ -24,31 +24,32 @@ Dopo la configurazione, un client MCP può:
 
 Il modulo registra questi strumenti MCP:
 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
+- `ChillSharp get-schema-list`
+- `ChillSharp get-schema`
+- `ChillSharp command`
+- `ChillSharp query`
+- `ChillSharp lookup`
+- `ChillSharp find`
+- `ChillSharp create`
+- `ChillSharp update`
+- `ChillSharp delete`
+- `ChillSharp autocomplete-entity`
+- `ChillSharp autocomplete-query`
+- `ChillSharp validate-entity`
+- `ChillSharp validate-query`
+- `ChillSharp chunk`
 
 ### `ChillSharp get-schema-list`
 
 Restituisce solo gli schemi abilitati per MCP.
 
-Utilizzalo come punto di ingresso per il rilevamento. Indica all'IA quali entità e query devono essere utilizzate tramite MCP.
+Utilizzalo come punto di ingresso per il rilevamento. Indica all'IA quali entità, query e comandi sono disponibili tramite MCP.
 
 ### `ChillSharp get-schema`
 
-Restituisce l'intero `ChillDtoSchema` per un'entità o un tipo di query abilitato per MCP.
+Restituisce l'intero `ChillDtoSchema` per un'entità, una query o un comando abilitato per MCP.
 
-Questo è lo strumento di introspezione più importante. Include:
+Questo è lo strumento di introspezione più importante. Per entità, query e comandi, include:
 
 - metadati dello schema
 - informazioni sul tipo correlato alla query
@@ -68,6 +69,21 @@ In pratica, ecco come apprende un’intelligenza artificiale:
 - quale forma di valore richiede ciascuna proprietà della richiesta
 
 Gli agenti non dovrebbero inventare oggetti di richiesta. Utilizza `get-schema` come contratto, copia i nomi esatti delle proprietà dallo schema e invia valori che corrispondono a `simplePropertyType` di ciascuna proprietà.
+
+### `ChillSharp command`
+
+Esegue un comando applicativo abilitato per MCP e restituisce i valori aggiornati di `Parameters`, inclusi i risultati.
+
+Segui questo flusso:
+
+1. chiama `ChillSharp get-schema-list` e scegli una voce con `type` uguale a `command`
+2. chiama `ChillSharp get-schema` usando il `chillType` del comando
+3. crea `Parameters` usando i nomi esatti delle proprietà dello schema e valori compatibili con il rispettivo `simplePropertyType`
+4. chiama `ChillSharp command` passando il `ChillType` del comando e `Parameters`
+5. leggi i valori restituiti in `Parameters`
+
+I comandi possono produrre effetti collaterali. Eseguili solo su richiesta dell'utente e rispetta i requisiti di autenticazione e autorizzazione dell'host.
+Il server MCP fornisce inoltre questi passaggi come istruzioni per il modello durante l'inizializzazione della connessione.
 
 Per gli schemi di entità, `Relations` descrive le raccolte di relazioni figlio che l'interfaccia utente può collegare automaticamente in fase di esecuzione. Ogni voce di relazione include:
 
@@ -205,19 +221,20 @@ Esegue un elenco di elementi `ChillOperation` e restituisce l'elenco delle opera
 
 I verbi supportati sono:
 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
-- 
+- `transaction`
+- `command`
+- `query`
+- `find`
+- `create`
+- `update`
+- `delete`
+- `autocomplete`
+- `validate`
+- `commit`
 
 Ogni operazione viene controllata per la visibilità MCP prima dell'esecuzione di qualsiasi operazione. Se un'operazione prende di mira uno schema non abilitato per MCP, l'intero blocco viene rifiutato.
 
-Per le operazioni `query`, `autocomplete` e `validate` che utilizzano un payload di query, impostare `Query`. Per le operazioni sulle entità, impostare `Entity`.
+Per le operazioni `command`, impostare `Command`. Per le operazioni `query`, `autocomplete` e `validate` che utilizzano un payload di query, impostare `Query`. Per le operazioni sulle entità, impostare `Entity`.
 
 ## Configurazione di base dell'host
 
